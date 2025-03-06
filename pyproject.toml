@@ -22,6 +22,6 @@ classifiers = [
 [project.urls]
 Homepage = ""
 Documentation = ""
-Repository = ""
-"Bug Tracker" = ""
-Changelog = ""
+Repository = "https://github.com/bclasky1539/noakweather-engineering-pipeline"
+"Bug Tracker" = "https://github.com/bclasky1539/noakweather-engineering-pipeline/issues"
+Changelog = "https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/CHANGELOG.md"
