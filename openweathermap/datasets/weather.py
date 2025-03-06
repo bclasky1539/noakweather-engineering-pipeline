@@ -1,5 +1,5 @@
 """
-This python script is for the shared dataclasses used for the current weather
+This python script is for the weather dataclasses used for the current weather
 and forecast for the openweather API.
 """
 import decimal
@@ -233,40 +233,6 @@ class BaseDimension:
     updated_at: Optional[datetime] = field(default=None)
 
 
-# This implementation:
-#
-# Adds a new local_names dictionary field to store translations indexed by language code
-# Updates both from_dict methods to handle the local_names field from the input data
-# Adds a new get_name() method to retrieve the name in a specific language (with fallback)
-#
-# You could use the class like this:
-# # Create a city with multiple language names
-# london_data = {
-#     "city_id": 2643743,
-#     "name": "London",
-#     "local_names": {
-#         "en": "London",
-#         "fr": "Londres",
-#         "es": "Londres",
-#         "de": "London",
-#         "ru": "Лондон",
-#         "ja": "ロンドン"
-#     },
-#     "country": "GB",
-#     "timezone": 0,
-#     "latitude": 51.5074,
-#     "longitude": -0.1278
-# }
-#
-# london = DimCity.from_dict(london_data)
-#
-# # Get name in different languages
-# print(london.get_name())      # "London" (default)
-# print(london.get_name("fr"))  # "Londres"
-# print(london.get_name("ru"))  # "Лондон"
-# print(london.get_name("zh"))  # "London" (falls back to default)
-# This approach gives you a flexible way to store and access localized city
-# names while maintaining compatibility with the rest of your data model.
 @dataclass
 class DimCity(BaseDimension):
     """
@@ -286,21 +252,7 @@ class DimCity(BaseDimension):
     elevation_meters: Optional[int] = field(default=None)
     region: Optional[str] = field(default=None)
 
-    # This implementation:
-    #
-    # Uses @classmethod to create a factory method that can be inherited properly
-    # Creates a copy of the input dictionary to avoid modifying the original
-    # Handles conversion of:
-    #
-    # String values to Decimal for latitude and longitude
-    # String values to datetime for sunrise and sunset
-    # Various types to int for population and elevation_meters
-    #
-    #
-    # Uses the class reference to instantiate a new object, which makes it work with inheritance
-    #
-    # The method handles the various data types in your class, including the Decimal type for
-    # coordinates and Optional fields that might be None.
+    # Class method decorator to ensure the method works properly with inheritance
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Self:
         """
@@ -340,59 +292,6 @@ class DimCity(BaseDimension):
 
         # Add the local_names to the parameters
         return cls(local_names=local_names, **data_copy)
-
-    # Key differences from the class method version:
-    #
-    # Uses the @staticmethod decorator instead of @classmethod
-    # Does not have a cls parameter
-    # Explicitly references DimCity in the return statement rather than using cls
-    # If a subclass inherits this method, it will still return a DimCity instance, not an
-    # instance of the subclass
-    #
-    # This approach works but has drawbacks compared to using a class method, particularly:
-    #
-    # It's less adaptable to inheritance
-    # If the class name changes, you need to update the hardcoded class name in the return statement
-    # It doesn't benefit from polymorphism (a subclass calling this method will get a parent class
-    # instance, not a subclass instance)
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimCity":
-        """
-        Create a DimCity instance from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the DimCity attributes.
-
-        Returns:
-            DimCity: A new DimCity instance.
-        """
-        data_copy = data.copy()
-
-        # Handle local_names if present
-        local_names = {}
-        if 'local_names' in data_copy:
-            if isinstance(data_copy['local_names'], dict):
-                local_names = data_copy['local_names']
-            # Remove from data_copy to avoid duplicate keyword argument
-            del data_copy['local_names']
-
-        # Convert string to Decimal for latitude and longitude
-        for decimal_field in ['latitude', 'longitude']:
-            if decimal_field in data_copy and not isinstance(data_copy[decimal_field], Decimal):
-                data_copy[decimal_field] = Decimal(str(data_copy[decimal_field]))
-
-        # Convert string to datetime for sunrise and sunset
-        for datetime_field in ['sunrise', 'sunset']:
-            if datetime_field in data_copy and isinstance(data_copy[datetime_field], str):
-                data_copy[datetime_field] = datetime.fromisoformat(data_copy[datetime_field])
-
-        # Ensure proper types for optional integer fields
-        for int_field in ['population', 'elevation_meters']:
-            if int_field in data_copy and data_copy[int_field] is not None:
-                data_copy[int_field] = int(data_copy[int_field])
-
-        # Must explicitly reference the DimCity class here and add local_names
-        return DimCity(local_names=local_names, **data_copy)
 
     def get_name(self, lang_code: str = '') -> str:
         """
@@ -440,7 +339,6 @@ class DimWeatherCondition(BaseDimension):
         if self.is_extreme is False:
             self._is_extreme_weather()
 
-    # TODO This needs proper testing # pylint: disable=fixme
     def _is_extreme_weather(self) -> None:
         """Determine if a weather condition is considered extreme."""
         extreme_ranges = [
@@ -484,38 +382,6 @@ class DimWeatherCondition(BaseDimension):
 
         return cls(**data_copy)
 
-    # Static method to explicitly references DimWeatherCondition in the return statement
-    # rather than using a class reference
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimWeatherCondition":
-        """
-        Create a DimWeatherCondition instance from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the DimWeatherCondition attributes.
-
-        Returns:
-            DimWeatherCondition: A new DimWeatherCondition instance.
-        """
-        data_copy = data.copy()
-
-        # Ensure proper type for condition_id
-        if 'condition_id' in data_copy and not isinstance(data_copy['condition_id'], int):
-            data_copy['condition_id'] = int(data_copy['condition_id'])
-
-        # Ensure proper type for severity_level if present
-        if 'severity_level' in data_copy and data_copy['severity_level'] is not None:
-            data_copy['severity_level'] = int(data_copy['severity_level'])
-
-        # Convert boolean fields from strings if needed
-        for bool_field in ['is_precipitation', 'is_extreme']:
-            if bool_field in data_copy and isinstance(data_copy[bool_field], str):
-                data_copy[bool_field] = (data_copy[bool_field].lower()
-                                         in ['true', 't', 'yes', 'y', '1'])
-
-        # Must explicitly reference the DimWeatherCondition class here
-        return DimWeatherCondition(**data_copy)
-
 
 @dataclass
 class DimWind(BaseDimension):
@@ -537,7 +403,6 @@ class DimWind(BaseDimension):
         if self.beaufort_scale == -99 or self.beaufort_description is None:
             self._wind_force_category()
 
-    # TODO This needs proper testing # pylint: disable=fixme
     def _direction_cardinal(self) -> None:
         """Calculate the cardinal direction based on degrees."""
         # Convert degrees to an index from 0-15 (16 directions)
@@ -552,13 +417,11 @@ class DimWind(BaseDimension):
         ]
         self.direction_cardinal = directions[index]
 
-    # TODO This needs proper testing # pylint: disable=fixme
     def _wind_force_category(self) -> None:
         """Calculate the Beaufort scale category."""
         # return strings as before but still use enums internally, you could modify
         # the function to return
         # BeaufortCategory.from_speed(float(self.speed)).value.
-        # TODO This needs to be properly tested # pylint: disable=fixme
         category = BeaufortCategory.wind_force_cat(float(self.speed))
         self.beaufort_scale = category.scale
         # self.beaufort_description = category.description
@@ -575,7 +438,6 @@ class DimWind(BaseDimension):
         Returns:
             DimWind: A new DimWind instance.
         """
-        # TODO Implement try/except in all areas # pylint: disable=fixme
         try:
             data_copy = data.copy()
 
@@ -599,42 +461,7 @@ class DimWind(BaseDimension):
             return cls(**data_copy)
         except (ValueError, TypeError, decimal.InvalidOperation) as e:
             print(f"Error creating {cls.__name__} from data: {e}")
-            raise ValueError(f"Invalid wind data: {e}")
-
-    # Static method to explicitly references DimWeatherCondition in the return statement
-    # rather than using a class reference
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimWind":
-        """
-        Create a DimWind instance from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the DimWind attributes.
-
-        Returns:
-            DimWind: A new DimWind instance.
-        """
-        data_copy = data.copy()
-
-        # Ensure proper type for wind_id
-        if 'wind_id' in data_copy and not isinstance(data_copy['wind_id'], int):
-            data_copy['wind_id'] = int(data_copy['wind_id'])
-
-        # Ensure proper type for speed
-        if 'speed' in data_copy and not isinstance(data_copy['speed'], Decimal):
-            data_copy['speed'] = Decimal(str(data_copy['speed']))
-
-        # Ensure proper type for degrees
-        if 'degrees' in data_copy and not isinstance(data_copy['degrees'], int):
-            data_copy['degrees'] = int(data_copy['degrees'])
-
-        # Ensure proper type for gust_speed if present
-        if ('gust_speed' in data_copy and data_copy['gust_speed']
-                is not None and not isinstance(data_copy['gust_speed'], Decimal)):
-            data_copy['gust_speed'] = Decimal(str(data_copy['gust_speed']))
-
-        # Must explicitly reference the DimWind class here
-        return DimWind(**data_copy)
+            raise ValueError(f"Invalid wind data: {e}") from e
 
     @property
     def is_gusty(self) -> bool:
@@ -729,42 +556,6 @@ class DimTemperature(BaseDimension):
                 data_copy[optional_decimal_field] = Decimal(str(data_copy[optional_decimal_field]))
 
         return cls(**data_copy)
-
-    # Static method to explicitly references DimWeatherCondition in the return statement
-    # rather than using a class reference
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimTemperature":
-        """
-        Create a DimTemperature instance from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the DimTemperature attributes.
-
-        Returns:
-            DimTemperature: A new DimTemperature instance.
-            :param data:
-            :return:
-        """
-        data_copy = data.copy()
-
-        # Ensure proper type for temperature_id
-        if 'temperature_id' in data_copy and not isinstance(data_copy['temperature_id'], int):
-            data_copy['temperature_id'] = int(data_copy['temperature_id'])
-
-        # Convert required Decimal fields
-        for decimal_field in ['temperature', 'feels_like']:
-            if decimal_field in data_copy and not isinstance(data_copy[decimal_field], Decimal):
-                data_copy[decimal_field] = Decimal(str(data_copy[decimal_field]))
-
-        # Convert optional Decimal fields
-        for optional_decimal_field in ['temp_min', 'temp_max', 'temp_deviation']:
-            if (optional_decimal_field in data_copy and
-                    data_copy[optional_decimal_field] is not None and
-                    not isinstance(data_copy[optional_decimal_field], Decimal)):
-                data_copy[optional_decimal_field] = Decimal(str(data_copy[optional_decimal_field]))
-
-        # Must explicitly reference the DimTemperature class here
-        return DimTemperature(**data_copy)
 
 
 @dataclass
@@ -865,59 +656,6 @@ class DimPressure(BaseDimension):
 
         return cls(**data_copy)
 
-    # Static method to explicitly references DimWeatherCondition in the return statement
-    # rather than using a class reference
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimPressure":
-        """
-        Create a DimPressure instance from a dictionary.
-
-        Args:
-            data (dict): Dictionary containing the DimPressure attributes.
-
-        Returns:
-            DimPressure: A new DimPressure instance.
-        """
-        data_copy = data.copy()
-
-        # Ensure proper type for pressure_id
-        if 'pressure_id' in data_copy and not isinstance(data_copy['pressure_id'], int):
-            data_copy['pressure_id'] = int(data_copy['pressure_id'])
-
-        # Ensure proper type for pressure
-        if 'pressure' in data_copy and not isinstance(data_copy['pressure'], int):
-            data_copy['pressure'] = int(data_copy['pressure'])
-
-        # Ensure proper types for optional int fields
-        for int_field in ['sea_level_pressure', 'ground_level_pressure']:
-            if (int_field in data_copy and data_copy[int_field]
-                    is not None and not isinstance(data_copy[int_field], int)):
-                data_copy[int_field] = int(data_copy[int_field])
-
-        # Handle pressure_trend enum conversion
-        if 'pressure_trend' in data_copy and data_copy['pressure_trend'] is not None:
-            # If it's a string, convert to enum
-            if isinstance(data_copy['pressure_trend'], str):
-                try:
-                    data_copy['pressure_trend'] = PressureTrend[data_copy['pressure_trend']]
-                except KeyError:
-                    # Try by value if not by name
-                    try:
-                        data_copy['pressure_trend'] = PressureTrend(data_copy['pressure_trend'])
-                    except ValueError:
-                        # Default to None if conversion fails
-                        data_copy['pressure_trend'] = None
-            # If it's an int, try to convert to enum by value
-            elif isinstance(data_copy['pressure_trend'], int):
-                try:
-                    data_copy['pressure_trend'] = PressureTrend(data_copy['pressure_trend'])
-                except ValueError:
-                    # Default to None if conversion fails
-                    data_copy['pressure_trend'] = None
-
-        # Must explicitly reference the DimPressure class here
-        return DimPressure(**data_copy)
-
 
 @dataclass
 class DimHumidity(BaseDimension):
@@ -1009,34 +747,6 @@ class DimHumidity(BaseDimension):
 
         # Create and return instance with all parameters
         return cls(
-            humidity_id=humidity_id,
-            humidity=humidity,
-            **base_params
-        )
-
-    # Static method to explicitly references DimWeatherCondition in the return statement
-    # rather than using a class reference
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimHumidity":
-        """
-        Create a DimHumidity instance from a dictionary.
-
-        Args:
-            data: Dictionary containing the humidity data
-
-        Returns:
-            A new DimHumidity instance
-        """
-        # Get values from dict with fallback to defaults if keys don't exist
-        humidity_id = data.get('humidity_id', 0)
-        humidity = data.get('humidity', 0)
-
-        # Filter out keys specific to this class
-        base_params = {k: v for k, v in data.items()
-                       if k not in ('humidity_id', 'humidity')}
-
-        # Create and return instance with all parameters
-        return DimHumidity(
             humidity_id=humidity_id,
             humidity=humidity,
             **base_params
@@ -1200,53 +910,6 @@ class DimPrecipitation(BaseDimension):
 
         # Create and return the instance using cls reference
         return cls(
-            precipitation_id=precipitation_id,
-            precipitation_type=precipitation_type,
-            volume_1h=volume_1h,
-            volume_3h=volume_3h,
-            **base_params
-        )
-
-    # Static method to explicitly references DimWeatherCondition in the return statement
-    # rather than using a class reference
-    @staticmethod
-    def from_dict_stat(data: Dict[str, Any]) -> "DimPrecipitation":
-        """
-        Create a DimPrecipitation instance from a dictionary.
-
-        Args:
-            data: Dictionary containing precipitation data
-
-        Returns:
-            A new DimPrecipitation instance
-        """
-        # Extract precipitation-specific fields with defaults
-        precipitation_id = data.get('precipitation_id', 0)
-
-        # Handle enum conversion - assuming string representation in dict
-        precipitation_type_raw = data.get('precipitation_type', PrecipitationType.NONE)
-        if isinstance(precipitation_type_raw, str):
-            try:
-                precipitation_type = PrecipitationType[precipitation_type_raw]
-            except KeyError:
-                precipitation_type = PrecipitationType.NONE
-        else:
-            precipitation_type = precipitation_type_raw
-
-        # Handle Decimal conversions for volume fields
-        volume_1h_raw = data.get('volume_1h')
-        volume_1h = Decimal(volume_1h_raw) if volume_1h_raw is not None else None
-
-        volume_3h_raw = data.get('volume_3h')
-        volume_3h = Decimal(volume_3h_raw) if volume_3h_raw is not None else None
-
-        # Get remaining fields for the base class
-        base_params = {k: v for k, v in data.items()
-                       if k not in ('precipitation_id', 'precipitation_type',
-                                    'volume_1h', 'volume_3h')}
-
-        # Create and return the instance
-        return DimPrecipitation(
             precipitation_id=precipitation_id,
             precipitation_type=precipitation_type,
             volume_1h=volume_1h,

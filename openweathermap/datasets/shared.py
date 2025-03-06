@@ -60,7 +60,6 @@ class DimDate:
         # Handle boolean conversion for is_weekend and is_holiday if they're strings
         for bool_field in ['is_weekend', 'is_holiday']:
             if bool_field in data and isinstance(data[bool_field], str):
-                data = data.copy() if data is data else data  # Create a copy if not already done
                 data[bool_field] = data[bool_field].lower() in ['true', 't', 'yes', 'y', '1']
 
         return cls(**data)
@@ -421,6 +420,7 @@ class DimensionFactory:
 
 
 # Data Transfer Object to Domain Object mapper
+# pylint: disable=too-few-public-methods
 class WeatherMapper:
     """
     A dataclass containing the WeatherMapper attributes.
@@ -501,12 +501,12 @@ class DateDimensionFactory:
         month = date_value.month
         if month in (12, 1, 2):
             return "Winter"
-        elif month in (3, 4, 5):
+        if month in (3, 4, 5):
             return "Spring"
-        elif month in (6, 7, 8):
+        if month in (6, 7, 8):
             return "Summer"
-        else:  # month in (9, 10, 11)
-            return "Fall"
+        # month in (9, 10, 11)
+        return "Fall"
 
     @staticmethod
     def create_date_range(start_date: date, end_date: date) -> List[DimDate]:
@@ -551,16 +551,16 @@ class TimeDimensionFactory:
         hour = time_value.hour
         if 5 <= hour <= 8:
             return "Early Morning"
-        elif 9 <= hour <= 11:
+        if 9 <= hour <= 11:
             return "Morning"
-        elif 12 <= hour <= 14:
+        if 12 <= hour <= 14:
             return "Midday"
-        elif 15 <= hour <= 17:
+        if 15 <= hour <= 17:
             return "Afternoon"
-        elif 18 <= hour <= 21:
+        if 18 <= hour <= 21:
             return "Evening"
-        else:
-            return "Night"
+        # hour > 21
+        return "Night"
 
     @staticmethod
     def create_hourly_times() -> List[DimTime]:
