@@ -31,15 +31,7 @@ class DimDate:
     day_name: str = field()
     is_holiday: bool = field(default=False)
 
-    # Key differences from the @classmethod version:
-    #
-    # No cls parameter - the method doesn't automatically receive a reference to the class
-    # The class name (DimDate) is hardcoded in the return statement
-    # The method doesn't work properly with inheritance - if a subclass calls this method, it will
-    # always return a DimDate instance, not an instance of the subclass
-    #
-    # While this works, it's generally considered better practice to use @classmethod for factor
-    # methods like from_dict because it's more maintainable and works better with inheritance.
+    # Class method decorator to ensure the method works properly with inheritance
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Self:
         """
@@ -94,7 +86,9 @@ class DimDate:
 
     @property
     def yearly_range(self) -> range:
-        """Calculate the yearly range for this date."""
+        """Calculate the yearly range for this date.
+        :return:
+        """
         start = (self.year * 1000) + ((self.month - 1) * 31) + self.day
         return range(start, start + 1)
 
@@ -110,23 +104,7 @@ class DimTime:
     day_night: str = field()
     time_of_day: str = field()
 
-    # @classmethod is appropriate here because:
-    #
-    # The method needs access to the class itself (via the cls parameter) to create and
-    # return an instance of the class. It uses cls(**data) to instantiate a new object,
-    # which requires the class to be passed as the first parameter.
-    #
-    # A @staticmethod wouldn't have access to the class unless you explicitly passed it
-    # as an argument, because static methods don't automatically receive the class as
-    # their first parameter.
-    # Using @classmethod is the standard practice for factory methods like from_dict in
-    # Python because:
-    #
-    # 1. It makes the code more maintainable if the class name changes
-    # 2. It works properly with inheritance (if a subclass calls this method, it will create an
-    #    instance of the subclass, not the parent class)
-    # 3. It follows the principle of keeping code DRY (Don't Repeat Yourself) by using the class
-    #    reference passed to it
+    # Class method decorator to ensure the method works properly with inheritance
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> Self:
         """
@@ -167,31 +145,6 @@ class DimTime:
 
 
 # Bridge table for multivalued relationships
-# the BridgeWeatherConditions class serves a specific purpose in your data model. This class
-# represents what's known as a "bridge table" or "junction table" in database design.
-# In your weather data model, this bridge table is used to handle a many-to-many relationship
-# between weather events and weather conditions. Here's what it's specifically used for:
-#
-# 1. Many-to-Many Relationship: The bridge table connects a weather event (identified by weather_id)
-#    with a specific weather condition (identified by condition_id). This allows a single weather
-#    event
-#    to have multiple weather conditions (like "partly cloudy" and "light rain" simultaneously).
-# 2. Additional Relationship Attributes: The condition_intensity field adds an attribute to the
-#    relationship itself. This allows you to not only record that rain is occurring, but also
-#    specify its intensity
-#    (e.g., "light", "moderate", "heavy").
-# 3. Dimensional Data Model Support: This pattern aligns with star schema or snowflake schema
-#    designs often used in data warehouses. In your case, it's part of a dimensional model for
-#    weather data analysis.
-#
-# In practical terms, this would allow your system to represent complex weather situations like:
-#   A storm with multiple concurrent conditions (thunderstorm, heavy rain, and strong winds)
-#   Different intensities of the same condition at different locations
-#   Tracking how conditions change over time for the same weather event
-#
-# The design pattern follows best practices for dimensional modeling by separating the facts
-# (weather events) from the dimensions (weather conditions) and using a bridge table to form the
-# many-to-many relationship between them.
 @dataclass
 class BridgeWeatherConditions:
     """
@@ -203,75 +156,8 @@ class BridgeWeatherConditions:
 
 
 # Data Transfer Object for API inputs
-# The `WeatherDataDTO` class in your code is a Data Transfer Object (DTO) specifically designed to
-# handle API inputs for weather data. Let me explain what it does:
-#
-# 1. Purpose of a DTO**: This class acts as a container that encapsulates weather data coming from
-#    external sources (like weather APIs) into a single object. DTOs are commonly used to transfer
-#    data between subsystems of an application, particularly across network boundaries.
-#
-# 2. Data Validation and Standardization**: By defining specific types and default values for
-#    each field, the class ensures all weather data adheres to a consistent format regardless
-#    of the source.
-#
-# 3. Field Structure**: The class contains fields for all essential weather measurements:
-#    - Geographic identification (`city_id`)
-#    - Temperature data (`temperature`, `feels_like`, `temp_min`, `temp_max`)
-#    - Atmospheric conditions (`pressure`, `humidity`)
-#    - Wind information (`wind_speed`, `wind_degrees`, `wind_gust`)
-#    - Visibility factors (`cloudiness`, `visibility`)
-#    - Precipitation details (`precipitation_type`, `precipitation_volume_1h`, `precipitation
-#      volume_3h`)
-#    - Weather condition code (`weather_condition_id` with 800 defaulting to "clear sky")
-#    - Timestamp (`calculation_time`)
-#
-# 4. Default Values**: Each field has a sensible default value, making it easier to create
-#    valid instances even with partial data.
-#
-# 5. Integration Role**: Looking at the broader context in your file, this DTO works with
-#    the `WeatherMapper` class, which transforms this raw data structure into your domain
-#    model objects (the dimension classes).
-#
-# In your weather data system, this class serves as the entry point for external data
-#  providing a clean interface between the API layer and your internal domain model. It collects
-#  all the raw weather metrics in one place before they get processed and stored in your more
-#  specialized dimensional model classes.
-#
-# The data class WeatherDataDTO seems to be for both the FactCurrentWeather and the FactForecast and
-# their dimensions, correct?
-#
-# Yes, you're absolutely right. Looking at your codebase more holistically, the `WeatherDataDTO`
-# class serves as a unified data transfer object that feeds both the current weather facts
-# (`FactCurrentWeather`)
-# and forecast facts (`FactForecast`), along with their associated dimensions.
-#
-# This design shows a smart approach to data handling:
-#
-# 1. Single Entry Point**: `WeatherDataDTO` acts as a standardized container for weather data
-#    coming from external sources (like APIs), regardless of whether that data represents current
-#    conditions or a forecast.
-#
-# 2. Transformation Process**: The `WeatherMapper.dto_to_dimensions()` method takes this DTO
-#    and transforms
-#    it into the appropriate dimension objects:
-#       - `DimWind`
-#       - `DimTemperature`
-#       - `DimPressure`
-#       - `DimHumidity`
-#       - `DimPrecipitation`
-#
-# 3. Shared Structure**: Both `FactCurrentWeather` and `FactForecast` share a very similar structure
-#    with many identical fields, which explains why a single DTO can effectively serve both fact
-#    tables.
-#
-# 4. Domain Model Bridge**: The DTO acts as a bridge between external data representations and your
-#    internal domain model, shielding the domain model from having to deal with the peculiarities of
-#    various data sources.
-#
-# This approach follows the good practice in data warehouse and domain-driven design patterns where
-# you separate the concerns of data acquisition from data storage and analysis. The DTO captures the
-# raw data in a consistent format, which can then be processed into your dimensional model with
-# appropriate fact and dimension tables for both current weather and forecasts.
+# This class acts as a container that encapsulates weather data coming from
+# external sources (like weather APIs) into a single object.
 @dataclass
 class WeatherDataDTO:
     """
@@ -308,10 +194,6 @@ class WeatherDataDTO:
     intensity_category: Optional[str] = field(default=None)
     impact_level: Optional[str] = field(default=None)
     flooding_risk: Optional[str] = field(default=None)
-    # List of weather condition dictionaries
-    # weather_conditions: List[Dict[str, Any]] = None,
-    # List of condition IDs
-    # weather_condition_ids: List[int] = [],
     weather_condition_ids: List[Any] = field(default_factory=list)
     calculation_time: datetime = field(default_factory=datetime.now)
 
@@ -328,7 +210,12 @@ class DimensionFactory:
             degrees: int,
             gust_speed: Optional[Decimal] = None
     ) -> DimWind:
-        """Factory method to create a wind dimension object without an ID (for new records)."""
+        """Factory method to create a wind dimension object without an ID (for new records).
+        :param speed:
+        :param degrees:
+        :param gust_speed:
+        :return:
+        """
         return DimWind(
             wind_id=-1,  # Temporary ID, to be replaced by database
             speed=speed,
@@ -346,7 +233,16 @@ class DimensionFactory:
             temperature_category: Optional[str] = None,
             temp_range: Optional[Decimal] = Decimal('inf')
     ) -> DimTemperature:
-        """Factory method to create a temperature dimension object without an ID."""
+        """Factory method to create a temperature dimension object without an ID.
+        :param temperature:
+        :param feels_like:
+        :param temp_min:
+        :param temp_max:
+        :param comfort_level:
+        :param temperature_category:
+        :param temp_range:
+        :return:
+        """
         return DimTemperature(
             temperature_id=-1,  # Temporary ID, to be replaced by database
             temperature=temperature,
@@ -368,7 +264,16 @@ class DimensionFactory:
             is_normal_range: Optional[bool] = False,
             storm_potential: Optional[bool] = False
     ) -> DimPressure:
-        """Factory method to create a pressure dimension object without an ID."""
+        """Factory method to create a pressure dimension object without an ID.
+        :param pressure:
+        :param sea_level_pressure:
+        :param ground_level_pressure:
+        :param pressure_trend:
+        :param pressure_category:
+        :param is_normal_range:
+        :param storm_potential:
+        :return:
+        """
         return DimPressure(
             pressure_id=-1,  # Temporary ID, to be replaced by database
             pressure=pressure,
@@ -388,7 +293,14 @@ class DimensionFactory:
             is_dew_point_risk: Optional[bool] = False,
             mold_risk_level: Optional[str] = None
     ) -> DimHumidity:
-        """Factory method to create a humidity dimension object without an ID."""
+        """Factory method to create a humidity dimension object without an ID.
+        :param humidity:
+        :param humidity_category:
+        :param comfort_impact:
+        :param is_dew_point_risk:
+        :param mold_risk_level:
+        :return:
+        """
         return DimHumidity(
             humidity_id=-1,  # Temporary ID, to be replaced by database
             humidity=humidity,
@@ -407,7 +319,15 @@ class DimensionFactory:
             impact_level: Optional[str] = None,
             flooding_risk: Optional[str] = None
     ) -> DimPrecipitation:
-        """Factory method to create a precipitation dimension object without an ID."""
+        """Factory method to create a precipitation dimension object without an ID.
+        :param precipitation_type:
+        :param volume_1h:
+        :param volume_3h:
+        :param intensity_category:
+        :param impact_level:
+        :param flooding_risk:
+        :return:
+        """
         return DimPrecipitation(
             precipitation_id=-1,  # Temporary ID, to be replaced by database
             precipitation_type=precipitation_type,
@@ -428,7 +348,10 @@ class WeatherMapper:
 
     @staticmethod
     def dto_to_dimensions(dto: WeatherDataDTO) -> Dict[str, Any]:
-        """Convert a DTO to dimension objects."""
+        """Convert a DTO to dimension objects.
+        :param dto:
+        :return:
+        """
         dimensions = {
             "wind": DimensionFactory.create_wind_dimension(
                 speed=dto.wind_speed,
@@ -480,7 +403,10 @@ class DateDimensionFactory:
 
     @staticmethod
     def create_from_date(date_value: date) -> DimDate:
-        """Create a date dimension from a date object."""
+        """Create a date dimension from a date object.
+        :param date_value:
+        :return:
+        """
         return DimDate(
             date_id=date_value,
             year=date_value.year,
@@ -497,7 +423,10 @@ class DateDimensionFactory:
 
     @staticmethod
     def _get_season(date_value: date) -> str:
-        """Determine the season based on the date."""
+        """Determine the season based on the date.
+        :param date_value:
+        :return:
+        """
         month = date_value.month
         if month in (12, 1, 2):
             return "Winter"
@@ -510,7 +439,11 @@ class DateDimensionFactory:
 
     @staticmethod
     def create_date_range(start_date: date, end_date: date) -> List[DimDate]:
-        """Create date dimensions for a range of dates."""
+        """Create date dimensions for a range of dates.
+        :param start_date:
+        :param end_date:
+        :return:
+        """
         result = []
         current_date = start_date
 
@@ -529,7 +462,10 @@ class TimeDimensionFactory:
 
     @staticmethod
     def create_from_time(time_value: time) -> DimTime:
-        """Create a time dimension from a time object."""
+        """Create a time dimension from a time object.
+        :param time_value:
+        :return:
+        """
         return DimTime(
             time_id=time_value,
             hour=time_value.hour,
@@ -540,14 +476,20 @@ class TimeDimensionFactory:
 
     @staticmethod
     def _get_day_night(time_value: time) -> str:
-        """Determine if it's day or night based on time."""
+        """Determine if it's day or night based on time.
+        :param time_value:
+        :return:
+        """
         if 6 <= time_value.hour <= 18:
             return "Day"
         return "Night"
 
     @staticmethod
     def _get_time_of_day(time_value: time) -> str:
-        """Get more specific time of day description."""
+        """Get more specific time of day description.
+        :param time_value:
+        :return:
+        """
         hour = time_value.hour
         if 5 <= hour <= 8:
             return "Early Morning"
@@ -564,7 +506,9 @@ class TimeDimensionFactory:
 
     @staticmethod
     def create_hourly_times() -> List[DimTime]:
-        """Create time dimensions for each hour of the day."""
+        """Create time dimensions for each hour of the day.
+        :return:
+        """
         return [
             TimeDimensionFactory.create_from_time(time(hour=h, minute=0))
             for h in range(24)
