@@ -1,0 +1,27 @@
+[build-system]
+
+[project]
+name = "noakweather-engineering-pipeline"
+version = "0.1.3"
+dependencies = []
+authors = [
+  {name = "Brian Clasky", email = "quark95cos@noayok.com"},
+]
+maintainers = [
+  {name = "Brian Clasky", email = "quark95cos@noayok.com"}
+]
+description = "NOAK Weather Engineering Pipeline"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+classifiers = [
+  "Development Status :: 1 - Alpha",
+  "Programming Language :: Python"
+]
+
+[project.urls]
+Homepage = ""
+Documentation = ""
+Repository = ""
+"Bug Tracker" = ""
+Changelog = ""

@@ -1,0 +1,55 @@
+{
+  "coord": {
+    "lon": -92.462,
+    "lat": 31.291
+  },
+  "weather": [
+    {
+      "id": 501,
+      "main": "Rain",
+      "description": "moderate rain",
+      "icon": "10d"
+    },
+    {
+      "id": 701,
+      "main": "Mist",
+      "description": "mist",
+      "icon": "50d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 69.89,
+    "feels_like": 70.48,
+    "temp_min": 69.42,
+    "temp_max": 70.03,
+    "pressure": 999,
+    "humidity": 83,
+    "sea_level": 999,
+    "grnd_level": 994
+  },
+  "visibility": 4828,
+  "wind": {
+    "speed": 31.07,
+    "deg": 170,
+    "gust": 48.34
+  },
+  "rain": {
+    "1h": 1.17
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1741112029,
+  "sys": {
+    "type": 1,
+    "id": 3238,
+    "country": "US",
+    "sunrise": 1741091583,
+    "sunset": 1741133415
+  },
+  "timezone": -21600,
+  "id": 4314550,
+  "name": "Alexandria",
+  "cod": 200
+}

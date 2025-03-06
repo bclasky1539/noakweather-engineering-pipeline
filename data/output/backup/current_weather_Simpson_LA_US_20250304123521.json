@@ -1,0 +1,46 @@
+{
+  "coord": {
+    "lon": -87.0003,
+    "lat": 34.5834
+  },
+  "weather": [
+    {
+      "id": 800,
+      "main": "Clear",
+      "description": "clear sky",
+      "icon": "01d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 66.11,
+    "feels_like": 65.25,
+    "temp_min": 64.33,
+    "temp_max": 67.91,
+    "pressure": 1010,
+    "humidity": 60,
+    "sea_level": 1010,
+    "grnd_level": 988
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 25.32,
+    "deg": 150,
+    "gust": 39.12
+  },
+  "clouds": {
+    "all": 0
+  },
+  "dt": 1741109721,
+  "sys": {
+    "type": 2,
+    "id": 50746,
+    "country": "US",
+    "sunrise": 1741090388,
+    "sunset": 1741131989
+  },
+  "timezone": -21600,
+  "id": 4058553,
+  "name": "Decatur",
+  "cod": 200
+}

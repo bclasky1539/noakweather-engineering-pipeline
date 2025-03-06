@@ -1,0 +1,49 @@
+{
+  "coord": {
+    "lon": -93.2651,
+    "lat": 31.1431
+  },
+  "weather": [
+    {
+      "id": 501,
+      "main": "Rain",
+      "description": "moderate rain",
+      "icon": "10d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 69.89,
+    "feels_like": 70.72,
+    "temp_min": 68.29,
+    "temp_max": 69.89,
+    "pressure": 1001,
+    "humidity": 88,
+    "sea_level": 1001,
+    "grnd_level": 990
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 21.85,
+    "deg": 150,
+    "gust": 36.82
+  },
+  "rain": {
+    "1h": 1.69
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1741107465,
+  "sys": {
+    "type": 1,
+    "id": 5388,
+    "country": "US",
+    "sunrise": 1741091771,
+    "sunset": 1741133613
+  },
+  "timezone": -21600,
+  "id": 4330740,
+  "name": "Leesville",
+  "cod": 200
+}

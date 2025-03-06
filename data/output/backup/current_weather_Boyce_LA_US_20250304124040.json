@@ -1,0 +1,49 @@
+{
+  "coord": {
+    "lon": -92.6693,
+    "lat": 31.3905
+  },
+  "weather": [
+    {
+      "id": 500,
+      "main": "Rain",
+      "description": "light rain",
+      "icon": "10d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 70.68,
+    "feels_like": 71.11,
+    "temp_min": 67.3,
+    "temp_max": 71.56,
+    "pressure": 998,
+    "humidity": 78,
+    "sea_level": 998,
+    "grnd_level": 993
+  },
+  "visibility": 10000,
+  "wind": {
+    "speed": 28.77,
+    "deg": 160,
+    "gust": 42.57
+  },
+  "rain": {
+    "1h": 0.95
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1741109879,
+  "sys": {
+    "type": 1,
+    "id": 3238,
+    "country": "US",
+    "sunrise": 1741091636,
+    "sunset": 1741133462
+  },
+  "timezone": -21600,
+  "id": 4317734,
+  "name": "Boyce",
+  "cod": 200
+}

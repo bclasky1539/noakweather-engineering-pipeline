@@ -1,0 +1,61 @@
+{
+  "coord": {
+    "lon": -90.198,
+    "lat": 32.309
+  },
+  "weather": [
+    {
+      "id": 701,
+      "main": "Mist",
+      "description": "mist",
+      "icon": "50d"
+    },
+    {
+      "id": 503,
+      "main": "Rain",
+      "description": "very heavy rain",
+      "icon": "10d"
+    },
+    {
+      "id": 202,
+      "main": "Thunderstorm",
+      "description": "thunderstorm with heavy rain",
+      "icon": "11d"
+    }
+  ],
+  "base": "stations",
+  "main": {
+    "temp": 64.85,
+    "feels_like": 65.12,
+    "temp_min": 62.62,
+    "temp_max": 66.25,
+    "pressure": 996,
+    "humidity": 87,
+    "sea_level": 996,
+    "grnd_level": 984
+  },
+  "visibility": 2012,
+  "wind": {
+    "speed": 31.07,
+    "deg": 140,
+    "gust": 47.18
+  },
+  "rain": {
+    "1h": 16.8
+  },
+  "clouds": {
+    "all": 100
+  },
+  "dt": 1741120969,
+  "sys": {
+    "type": 2,
+    "id": 2001438,
+    "country": "US",
+    "sunrise": 1741091075,
+    "sunset": 1741132837
+  },
+  "timezone": -21600,
+  "id": 4431410,
+  "name": "Jackson",
+  "cod": 200
+}
