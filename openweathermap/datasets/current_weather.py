@@ -69,9 +69,9 @@ class FactCurrentWeather:
             processed_data['response_code'] = data['response_code']
 
         # Process optional string fields
-        for field in ['base_param', 'source_system']:
-            if field in data:
-                processed_data[field] = data[field]
+        for field_name in ['base_param', 'source_system']:
+            if field_name in data:
+                processed_data[field_name] = data[field_name]
 
         # TODO This needs proper testing # pylint: disable=fixme
         # Process date field
@@ -201,9 +201,9 @@ class FactCurrentWeather:
             processed_data['response_code'] = data['response_code']
 
         # Process optional string fields
-        for field in ['base_param', 'source_system']:
-            if field in data:
-                processed_data[field] = data[field]
+        for field_name in ['base_param', 'source_system']:
+            if field_name in data:
+                processed_data[field_name] = data[field_name]
 
         # TODO This needs proper testing # pylint: disable=fixme
         # Process date field
