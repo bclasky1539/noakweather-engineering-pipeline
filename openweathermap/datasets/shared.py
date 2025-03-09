@@ -12,6 +12,7 @@ from openweathermap.datasets.weather import (PrecipitationType, DimWind, DimTemp
                                              DimPrecipitation)
 
 
+# pylint: disable=too-many-instance-attributes
 # Dimension classes
 @dataclass
 class DimDate:
@@ -158,6 +159,7 @@ class BridgeWeatherConditions:
 # Data Transfer Object for API inputs
 # This class acts as a container that encapsulates weather data coming from
 # external sources (like weather APIs) into a single object.
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class WeatherDataDTO:
     """
@@ -223,6 +225,7 @@ class DimensionFactory:
             gust_speed=gust_speed
         )
 
+    # pylint: disable=too-many-arguments,disable=too-many-positional-arguments
     @staticmethod
     def create_temperature_dimension(
             temperature: Decimal,
@@ -516,6 +519,7 @@ class TimeDimensionFactory:
 
 
 # Example of a composite class for analytical results
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class WeatherAnalysis:
     """

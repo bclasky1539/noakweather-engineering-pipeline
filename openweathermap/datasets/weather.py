@@ -233,6 +233,7 @@ class BaseDimension:
     updated_at: Optional[datetime] = field(default=None)
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class DimCity(BaseDimension):
     """
@@ -351,6 +352,10 @@ class DimWeatherCondition(BaseDimension):
         ]
 
         self.is_extreme = any(start <= self.condition_id <= end for start, end in extreme_ranges)
+
+    def __str__(self) -> str:
+        return (f"{self.created_at}: {self.condition_id}:"
+                f"{self.condition_main} - {self.description} (Icon: {self.icon_code})")
 
     # Class method decorator to ensure the method works properly with inheritance
     @classmethod
