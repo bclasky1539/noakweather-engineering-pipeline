@@ -6,6 +6,7 @@ from datetime import date, time, datetime
 from typing import Optional, List
 
 
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class FactForecast:
     """Class representing the Forecast information"""
@@ -26,6 +27,7 @@ class FactForecast:
     visibility: int = field(default=0)
     probability_of_precipitation: Optional[float] = field(default=None)
     created_at: datetime = field(default_factory=datetime.now)
+    source_system: Optional[str] = field(default=None)
 
     # This implementation:
     #
@@ -37,6 +39,7 @@ class FactForecast:
     #
     # The method is robust in handling both string representations and native Python objects for
     # dates, times, and datetimes, making it flexible for different data sources.
+    # pylint: disable=too-many-branches
     @classmethod
     def from_dict(cls, data: dict) -> "FactForecast":
         """
@@ -61,6 +64,11 @@ class FactForecast:
         # Process optional float field
         if 'probability_of_precipitation' in data:
             processed_data['probability_of_precipitation'] = data['probability_of_precipitation']
+
+        # Process optional string fields
+        for field_name in ['base_param', 'source_system']:
+            if field_name in data:
+                processed_data[field_name] = data[field_name]
 
         # TODO This needs proper testing # pylint: disable=fixme
         # Process date field
@@ -182,6 +190,11 @@ class FactForecast:
         # Process optional float field
         if 'probability_of_precipitation' in data:
             processed_data['probability_of_precipitation'] = data['probability_of_precipitation']
+
+        # Process optional string fields
+        for field_name in ['base_param', 'source_system']:
+            if field_name in data:
+                processed_data[field_name] = data[field_name]
 
         # TODO This needs proper testing # pylint: disable=fixme
         # Process date field

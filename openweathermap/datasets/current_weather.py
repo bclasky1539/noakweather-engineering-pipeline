@@ -8,6 +8,7 @@ from typing import Optional, List
 
 
 # Fact Classes
+# pylint: disable=too-many-instance-attributes
 @dataclass
 class FactCurrentWeather:
     """Class representing the Current Weather Data information"""
@@ -43,6 +44,7 @@ class FactCurrentWeather:
     #
     # The method is robust enough to handle various input formats for the date, time, and numeric
     # fields, making it flexible for different data sources.
+    # pylint: disable=too-many-branches
     @classmethod
     def from_dict(cls, data: dict) -> "FactCurrentWeather":
         """
