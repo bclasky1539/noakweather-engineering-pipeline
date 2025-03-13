@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 0.2.0 - Date: March 12, 2025
+
+- Implemented architectural reorganization according to domain-driven design principles throughout the weather data
+<br>processing pipeline.
+- Developed and established the core domain layer with defined entities, value objects, and domain services.
+
+
 ## Version 0.1.5 - Date: March 9, 2025
 
 - Refactored the weather processor scripts into three separate scripts, one for current weather,

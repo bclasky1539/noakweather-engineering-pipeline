@@ -1,13 +1,12 @@
 # NOAK Weather Engineering Pipeline project
 
-This project is a weather engineering pipeline in Python. Currently, it will return the current weather and forecast
-from OpenWeatherMap. In the
-future the project will be improved to include other items such as the following
+This Python-based weather engineering pipeline currently retrieves current conditions and forecasts from
+OpenWeatherMap. We plan to enhance the project with several capabilities, including:
 
-- Database support for the weather results. This will follow a dimensional data model
-- Integrating cloud technology to be part of the pipeline for data ingestion, etc.
-- Machine Learning processes
-- Other weather sources such as NOAA
+- Implementing dimensional data modeling for persistent storage of weather data.
+- Leveraging cloud technologies for streamlined data ingestion and processing.
+- Incorporating machine learning algorithms for advanced analytics.
+- Expanding data sources to include additional providers such as NOAA.
 
 ## Project Setup
 
@@ -57,8 +56,86 @@ The file contains the following information
 If you notice any problems with running this, please open an
 issue [here](https://github.com/bclasky1539/noakweather-engineering-pipeline/issues).
 
-## Fixing Issues and/or Adding New Features
+## Contributing to the Project
 
-- Feel free to fork and fix an issue(s) or add a feature.
-- Please provide tests for the submitted code.
-- Once the pull request is submitted, it'll be tested and merged.
+- We welcome contributions through forking the repository to address issues or implement new features.
+- Please include appropriate test coverage for all submitted code.
+- After submission, your pull request will undergo review and testing before being merged into the main codebase.
+
+<br>
+
+# Updated for domain-driven design principles 
+
+The existing project follows a conventional functional organization as outlined above. Please maintain this structure
+while we progressively implement the domain-driven design architecture.
+
+We plan to restructure the project to follow domain-driven design principles for our weather data processing pipeline.
+The redesigned system will retrieve weather information from external APIs, transform this data according to our
+business rules, and persist it in either PostgreSQL or Snowflake databases.
+
+## Architecture
+
+This project follows Domain-Driven Design (DDD) principles with a layered architecture:
+
+- **Domain Layer**: Core business logic, models, and domain services.
+- **Application Layer**: Orchestration of domain objects to fulfill use cases.
+- **Infrastructure Layer**: Technical implementations of repositories and external services.
+- **Interface Layer**: Entry points to the application (CLI, API).
+
+## Project Structure
+
+Below is the proposed project architecture. While minor adjustments may occur during implementation, we intend to
+maintain this fundamental organizational structure throughout development.
+
+```
+noakweather-engineering-pipeline/
+│
+├── src/
+│   ├── domain/                 # Domain layer with core business logic
+│   │   ├── models/             # Domain entities and value objects
+│   │   ├── services/           # Domain services
+│   │   └── repositories/       # Repository interfaces
+│   │
+│   ├── application/            # Application layer (use cases)
+│   │   ├── services/           # Application services
+│   │   ├── dto/                # Data Transfer Objects
+│   │   └── pipeline.py         # Pipeline orchestration
+│   │
+│   ├── infrastructure/         # Infrastructure layer
+│   │   ├── repositories/       # Repository implementations
+│   │   ├── external/           # External service integrations
+│   │   └── persistence/        # Database connections
+│   │
+│   └── interfaces/             # Interface layer
+│       ├── cli/                # Command-line interfaces
+│       └── api/                # API interfaces (if applicable)
+│
+├── config/                     # Configuration
+├── tests/                      # Test suite
+├── scripts/                    # Utility scripts
+├── docker/                     # Docker configuration
+│
+├── requirements.txt            # Python dependencies
+├── setup.py                    # Package installation
+└── README.md                   # Project documentation
+```
+
+## Domain Models
+
+The core domain models include the following:
+
+```
+src/
+└── domain/
+    └── models/
+        ├── init.py
+        ├── common.py            # Base classes and value objects
+        ├── enums.py             # All domain enums
+        ├── location.py          # City and location-related entities
+        ├── atmospheric.py       # Pressure, Humidity entities
+        ├── weather.py           # WeatherCondition, Temperature, Wind, Precipitation
+        ├── current_weather.py   # FactCurrentWeather entity
+        ├── forecast.py          # FactForecast and ForecastItem entities
+        └── aggregates.py        # WeatherData aggregate root
+```
+

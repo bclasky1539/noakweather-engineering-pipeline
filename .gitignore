@@ -1,10 +1,23 @@
 # ignoring specific files
 .DS_Store
 .env
+docker-compose.yml
+Dockerfile
+requirements.txt
+setup.py
+src/domain/models/README.md
 # ignoring specific directories
 __pycache__/
+config/
+scripts/
+tests/
 documentation/
 exportToHTML/
+src/domain/repositories/
+src/domain/services/
+src/application/
+src/infrastructure/
+src/interfaces/
 # ignorning specific environments
 .idea/
 # exceptions
