@@ -1,0 +1,84 @@
+I have created the domain models for your fact tables (FactCurrentWeather and FactForecast) and a comprehensive README that explains the entire domain model structure. Let me explain the key components:
+Fact Table Domain Models
+I have created two main fact entities:
+
+FactCurrentWeather
+    Represents the current weather at a specific location and time
+    Contains references to all dimension entities (City, WeatherCondition, etc.)
+    Includes computed properties and methods for weather analysis
+    Has factory methods for creating from API responses
+
+FactForecast
+    Represents a complete weather forecast for a location
+    Contains a list of ForecastItem entities for different time points
+    Includes methods for filtering forecasts by day, time, and conditions
+    Provides daily summaries and extreme weather alerts
+
+ForecastItem
+    Represents a single forecast data point for a specific time
+    Similar structure to FactCurrentWeather but for a future time
+
+Key Domain-Driven Design Features
+The fact models follow DDD principles:
+
+    1. Rich Domain Model: They encapsulate both data and behavior
+    2. Computed Properties: Fields like is_daytime, forecast_count are calculated
+    3. Business Logic: Methods like get_forecast_for_day(), has_precipitation_upcoming()
+    4. Value-Added Methods: Both models provide helpful summaries like weather_summary and daily_summaries
+    5. Factory Methods: from_api_response() and from_dict() for proper object creation
+
+Complete Domain Model Structure
+The README artifact provides a comprehensive overview of:
+
+The complete package structure
+All domain model types (value objects, entities, etc.)
+The relationships between models
+DDD principles applied
+Usage examples
+Extension guidance
+
+This structure fully implements a domain-driven design approach, keeping business logic within the domain
+models and separating it from infrastructure concerns. It's designed to be maintainable, testable, and flexible
+as your understanding of the domain evolves.
+
+
+I have updated the organization of the domain models to match your preferred package structure. This modular
+approach groups related entities and concepts together, making the codebase more maintainable.
+
+Here is how the content is distributed across the files:
+    1. common.py
+        Contains the base Entity class
+        Contains value objects like GeoCoordinate
+        Provides core functionality used by all domain models
+
+    2. enums.py
+        Centralizes all domain enums
+        Includes related classification methods for each enum
+
+    3. location.py
+        Contains the City entity
+        Handles geographical and location-related concepts
+
+    4. atmospheric.py
+        Contains Pressure and Humidity entities
+        Handles atmospheric condition measurements
+
+    5. weather.py
+        Contains WeatherCondition, Temperature, Wind, and Precipitation entities
+        Handles core weather-related measurements and conditions
+
+    6.current_weather.py
+        Contains the FactCurrentWeather entity
+        Represents the fact table for current weather measurements
+
+    7. forecast.py
+        Contains ForecastItem and FactForecast entities
+        Handles weather forecasts and prediction data
+
+    8. aggregates.py
+        Contains the WeatherData aggregate root
+        Serves as a comprehensive container for weather data
+
+This structure follows your preferred organization while maintaining the domain-driven design principles
+we have established. The classes are logically grouped by their domain concerns, and imports between files
+manage the relationships.
