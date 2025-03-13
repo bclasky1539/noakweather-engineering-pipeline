@@ -6,6 +6,7 @@ Dockerfile
 requirements.txt
 setup.py
 src/domain/models/README.md
+src/domain/models/document.py
 # ignoring specific directories
 __pycache__/
 config/
