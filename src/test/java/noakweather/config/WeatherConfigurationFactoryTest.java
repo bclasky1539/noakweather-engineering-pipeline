@@ -32,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author bclasky1539
  *
  */
-public class WeatherConfigurationFactoryTest {
+class WeatherConfigurationFactoryTest {
     
     @BeforeEach
     void setUp() {
