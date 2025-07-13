@@ -88,3 +88,4 @@ jacoco-it.exec
 # Application specific
 application-local.properties
 
+/nbproject/
