@@ -14,6 +14,9 @@ jobs:
   sonarcloud:
     name: SonarCloud Analysis
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java-version: [11, 17, 21]
     
     steps:
     - name: Checkout code
@@ -21,24 +24,24 @@ jobs:
       with:
         fetch-depth: 0  # Shallow clones should be disabled for better analysis
 
-    - name: Set up JDK 11
+    - name: Set up JDK ${{ matrix.java-version }}
       uses: actions/setup-java@v4
       with:
-        java-version: '11'
+        java-version: ${{ matrix.java-version }}
         distribution: 'temurin'
 
     - name: Cache SonarCloud packages
       uses: actions/cache@v3
       with:
         path: ~/.sonar/cache
-        key: ${{ runner.os }}-sonar
+        key: ${{ runner.os }}-sonar-${{ matrix.java-version }}
         restore-keys: ${{ runner.os }}-sonar
 
     - name: Cache Maven packages
       uses: actions/cache@v3
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}-${{ matrix.java-version }}
         restore-keys: ${{ runner.os }}-m2
 
     - name: Verify SONAR_TOKEN exists
@@ -51,6 +54,7 @@ jobs:
         fi
 
     - name: Build and analyze
+      if: matrix.java-version == '11'  # Only run SonarCloud analysis on Java 11
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -60,3 +64,7 @@ jobs:
           -Dsonar.organization=bclasky1539 \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+    - name: Build only (non-SonarCloud)
+      if: matrix.java-version != '11'  # Just build and test on other Java versions
+      run: mvn clean verify
