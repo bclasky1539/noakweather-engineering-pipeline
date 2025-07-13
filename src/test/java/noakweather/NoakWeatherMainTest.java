@@ -27,6 +27,12 @@ import java.lang.reflect.InvocationTargetException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import java.util.stream.Stream;
+
 /**
  * Comprehensive test suite for NoakWeatherMain class.
  * Tests all public methods and command line interface functionality.
@@ -139,30 +145,6 @@ class NoakWeatherMainTest {
     }
     
     @Test
-    void testMainWithHelpCommand() {
-        String[] helpCommands = {"help", "-h", "--help", "HELP"};
-        
-        for (String helpCommand : helpCommands) {
-            String[] args = {helpCommand};
-            assertDoesNotThrow(() -> {
-                NoakWeatherMain.main(args);
-            }, "Help command should work: " + helpCommand);
-        }
-    }
-    
-    @Test
-    void testMainWithVersionCommand() {
-        String[] versionCommands = {"version", "-v", "--version", "VERSION"};
-        
-        for (String versionCommand : versionCommands) {
-            String[] args = {versionCommand};
-            assertDoesNotThrow(() -> {
-                NoakWeatherMain.main(args);
-            }, "Version command should work: " + versionCommand);
-        }
-    }
-    
-    @Test
     void testMainWithWeatherCommandValidStation() {
         String[] args = {"weather", "KJFK"};
         assertDoesNotThrow(() -> {
@@ -178,26 +160,6 @@ class NoakWeatherMainTest {
         });
     }
     
-    @Test
-    void testMainWithWeatherCommandNoStation() {
-        String[] args = {"weather"};
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.main(args);
-        });
-    }
-    
-    @Test
-    void testMainWithWeatherCommandInvalidStation() {
-        String[] invalidStations = {"12", "TOOLONG", "K1FK", ""};
-        
-        for (String invalidStation : invalidStations) {
-            String[] args = {"weather", invalidStation};
-            assertDoesNotThrow(() -> {
-                NoakWeatherMain.main(args);
-            }, "Should handle invalid station gracefully: " + invalidStation);
-        }
-    }
-    
     // NEW TESTS for METAR functionality
     @Test
     void testMainWithMetarCommand() {
@@ -209,22 +171,6 @@ class NoakWeatherMainTest {
                 NoakWeatherMain.main(args);
             }, "METAR command should work: " + metarCommand);
         }
-    }
-    
-    @Test
-    void testMainWithMetarCommandNoStation() {
-        String[] args = {"metar"};
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.main(args);
-        });
-    }
-    
-    @Test
-    void testMainWithMetarCommandInvalidStation() {
-        String[] args = {"metar", "INVALID123"};
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.main(args);
-        });
     }
     
     @Test
@@ -262,22 +208,6 @@ class NoakWeatherMainTest {
     }
     
     @Test
-    void testMainWithTafCommandNoStation() {
-        String[] args = {"taf"};
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.main(args);
-        });
-    }
-    
-    @Test
-    void testMainWithTafCommandInvalidStation() {
-        String[] args = {"taf", "INVALID123"};
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.main(args);
-        });
-    }
-    
-    @Test
     void testHandleTafCommand() {
         // Test with valid station
         String[] args = {"taf", "KLAX"};
@@ -295,14 +225,6 @@ class NoakWeatherMainTest {
         String[] argsInvalid = {"taf", "INVALID123"};
         assertDoesNotThrow(() -> {
             NoakWeatherMain.handleTafCommand(argsInvalid);
-        });
-    }
-    
-    @Test
-    void testMainWithUnknownCommand() {
-        String[] args = {"unknown"};
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.main(args);
         });
     }
     
@@ -503,5 +425,75 @@ class NoakWeatherMainTest {
                 NoakWeatherMain.main(command);
             }, "Command should handle invalid station gracefully: " + String.join(" ", command));
         }
+    }
+
+    // Replace the repetitive tests with these parameterized versions:
+
+    // 1. Replace the "no station" tests with a single parameterized test
+    @ParameterizedTest
+    @ValueSource(strings = {"weather", "metar", "taf"})
+    void testMainWithCommandNoStation(String command) {
+        String[] args = {command};
+        assertDoesNotThrow(() -> {
+            NoakWeatherMain.main(args);
+        }, "Command should handle missing station gracefully: " + command);
+    }
+    
+    // 2. Replace the "invalid station" tests with a single parameterized test
+    @ParameterizedTest
+    @MethodSource("provideCommandsAndInvalidStations")
+    void testMainWithCommandInvalidStation(String command, String invalidStation) {
+        String[] args = {command, invalidStation};
+        assertDoesNotThrow(() -> {
+            NoakWeatherMain.main(args);
+        }, "Command should handle invalid station gracefully: " + command + " " + invalidStation);
+    }
+    
+    // Method source for invalid station combinations
+    private static Stream<Arguments> provideCommandsAndInvalidStations() {
+        String[] commands = {"weather", "metar", "taf"};
+        String[] invalidStations = {"12", "TOOLONG", "K1FK", "", "INVALID123"};
+        
+        return Stream.of(commands)
+            .flatMap(command -> Stream.of(invalidStations)
+                .map(station -> Arguments.of(command, station)));
+    }
+    
+    // 3. Replace valid station tests with parameterized test
+    @ParameterizedTest
+    @ValueSource(strings = {"weather", "metar", "taf", "-m", "-t"})
+    void testMainWithCommandValidStation(String command) {
+        String[] args = {command, "KJFK"};
+        assertDoesNotThrow(() -> {
+            NoakWeatherMain.main(args);
+        }, "Command should work with valid station: " + command + " KJFK");
+    }
+
+    // 4. Replace unknown command test (this one might stay as is since it's just one test)
+    @Test
+    void testMainWithUnknownCommand() {
+        String[] args = {"unknown"};
+        assertDoesNotThrow(() -> {
+            NoakWeatherMain.main(args);
+        });
+    }
+    
+    // You can also refactor the help and version command tests:
+    @ParameterizedTest
+    @ValueSource(strings = {"help", "-h", "--help", "HELP"})
+    void testMainWithHelpCommands(String helpCommand) {
+        String[] args = {helpCommand};
+        assertDoesNotThrow(() -> {
+            NoakWeatherMain.main(args);
+        }, "Help command should work: " + helpCommand);
+    }
+    
+    @ParameterizedTest
+    @ValueSource(strings = {"version", "-v", "--version", "VERSION"})
+    void testMainWithVersionCommands(String versionCommand) {
+        String[] args = {versionCommand};
+        assertDoesNotThrow(() -> {
+            NoakWeatherMain.main(args);
+        }, "Version command should work: " + versionCommand);
     }
 }
