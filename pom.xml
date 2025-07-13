@@ -32,7 +32,7 @@
         <!-- SonarQube properties -->
         <sonar.organization>bclasky1539</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.projectKey>bclasky1539_noakweather-java</sonar.projectKey>
+        <sonar.projectKey>bclasky1539_noakweather-java2</sonar.projectKey>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
     </properties>

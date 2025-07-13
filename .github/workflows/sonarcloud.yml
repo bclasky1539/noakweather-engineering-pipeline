@@ -60,7 +60,7 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       run: |
         mvn clean verify sonar:sonar \
-          -Dsonar.projectKey=bclasky1539_noakweather-java \
+          -Dsonar.projectKey=bclasky1539_noakweather-java2 \
           -Dsonar.organization=bclasky1539 \
           -Dsonar.host.url=https://sonarcloud.io \
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
