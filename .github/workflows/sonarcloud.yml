@@ -54,7 +54,7 @@ jobs:
         fi
 
     - name: Build and analyze
-      if: matrix.java-version == '11'  # Only run SonarCloud analysis on Java 11
+      if: matrix.java-version == '17'  # Run SonarCloud analysis on Java 17 (required)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -66,5 +66,5 @@ jobs:
           -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
     - name: Build only (non-SonarCloud)
-      if: matrix.java-version != '11'  # Just build and test on other Java versions
+      if: matrix.java-version != '17'  # Just verify build on other Java versions
       run: mvn clean verify
