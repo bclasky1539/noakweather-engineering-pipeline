@@ -1,5 +1,10 @@
 # Changelog
 
+## Version 0.0.3 - Date: July 14, 2025
+- Changes to the project to implement a more domain based architecture
+- Added classes for services
+- Fixed weth.sh shell script to allow all necessary arguments to be passed correctly
+
 ## Version 0.0.2 - Date: July 13, 2025
 - Implementation of configuration items
 
