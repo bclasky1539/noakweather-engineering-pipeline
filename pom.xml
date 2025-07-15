@@ -13,6 +13,26 @@
     <name>NoakWeather Java</name>
     <description>Wnoakweather-java is a Java library for parsing raw weather data (e.g. METAR, TAF)</description>
 
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>https://opensource.org/licenses/Apache-2.0</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>bclasky1539</id>
+            <name>Brian Clasky</name>
+            <email>quark95cos@noayok.com</email>
+            <organization></organization>
+            <roles>
+                <role>architect</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
