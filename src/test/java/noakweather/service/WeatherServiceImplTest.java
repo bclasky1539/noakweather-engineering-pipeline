@@ -39,7 +39,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author bclasky1539
  * 
  */
-public class WeatherServiceImplTest {
+class WeatherServiceImplTest {
     
     private TestConfigurationService testConfigService;
     private WeatherServiceImpl weatherService;

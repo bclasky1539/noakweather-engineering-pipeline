@@ -125,17 +125,13 @@ class NoakWeatherMainTest {
     @Test
     void testDisplayVersion() {
         // This method logs the version info, so we test it doesn't throw exceptions
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.displayVersion();
-        });
+        assertDoesNotThrow(NoakWeatherMain::displayVersion);
     }
     
     @Test
     void testDisplayHelp() {
         // This method logs help information, so we test it doesn't throw exceptions
-        assertDoesNotThrow(() -> {
-            NoakWeatherMain.displayHelp();
-        });
+        assertDoesNotThrow(NoakWeatherMain::displayHelp);
     }
     
     @Test
