@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 
  * @author bclasky1539
  */
-public class WeatherServiceExceptionTest {
+class WeatherServiceExceptionTest {
     
     private static final String TEST_MESSAGE = "Test error message";
     private static final String TEST_STATION = "KJFK";
