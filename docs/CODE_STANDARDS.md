@@ -9,28 +9,32 @@ This document establishes coding standards for the NoakWeather Java library, whi
 Based on the established architecture, follow this structure:
 
 ```
-src/main/java/noakweather/
-├── service/                              # Main coordination layer
-│   ├── WeatherService.java               # Main service interface
-│   ├── WeatherServiceImpl.java           # Service implementation
-│   └── exception/                        # Service layer exceptions
-│       └── WeatherServiceException.java
-├── noaa_api/                             # Complete NOAA implementation
-│   ├── service/                          # NOAA-specific service
-│   ├── client/                           # Main NOAA API client & HTTP client
-│   ├── model/                            # Base classes (NoaaAviationWeatherData)
-│   │   ├── NoaaMetarData.java            # Extends base - METAR specific
-│   │   └── NoaaTafData.java              # Extends base - TAF specific
-│   └── exception/                        # NOAA-specific exceptions
-├── openweather_api/                      # Complete OpenWeatherMap implementation
-│   ├── service/                          # OpenWeatherMap service
-│   ├── client/                           # OpenWeatherMap API client & HTTP client
-│   ├── model/                            # Current & forecast data models
-│   └── exception/                        # OpenWeatherMap exceptions
-├── config/                               # Configuration classes
-│   ├── WeatherConfigurationService.java  # Configuration management
-│   └── WeatherConfigurationFactory.java  # Configuration factory
-└── NoakWeatherMain.java                  # Main application entry point
+noakweather-java/
+├── src/main/java/noakweather/
+│   ├── service/                              # Main coordination layer
+│   │   ├── WeatherService.java               # Main service interface
+│   │   ├── WeatherServiceImpl.java           # Service implementation
+│   │   └── exception/                        # Service layer exceptions
+│   │       └── WeatherServiceException.java
+│   ├── noaa_api/                             # Complete NOAA implementation
+│   │   ├── service/                          # NOAA-specific service
+│   │   ├── client/                           # Main NOAA API client & HTTP client
+│   │   ├── model/                            # Base classes (NoaaAviationWeatherData)
+│   │   │   ├── NoaaMetarData.java            # Extends base - METAR specific
+│   │   │   └── NoaaTafData.java              # Extends base - TAF specific
+│   │   └── exception/                        # NOAA-specific exceptions
+│   ├── openweather_api/                      # Complete OpenWeatherMap implementation
+│   │   ├── service/                          # OpenWeatherMap service
+│   │   ├── client/                           # OpenWeatherMap API client & HTTP client
+│   │   ├── model/                            # Current & forecast data models
+│   │   └── exception/                        # OpenWeatherMap exceptions
+│   ├── config/                               # Configuration classes
+│   │   ├── WeatherConfigurationService.java  # Configuration management
+│   │   └── WeatherConfigurationFactory.java  # Configuration factory
+│   └── NoakWeatherMain.java                  # Main application entry point
+└── docs/                                     # Project documentation
+    ├── CODE_STANDARDS.md                     # Development guidelines
+    └── WEATHER_FORMAT_REFERENCES.md          # METAR/TAF specifications
 ```
 
 ### Architecture Principles
