@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.4 - Date: July 17, 2025
+- Created comprehensive code standards document
+
 ## Version 0.0.3 - Date: July 15, 2025
 - Changes to the project to implement a more domain based architecture
 - Added classes for services
