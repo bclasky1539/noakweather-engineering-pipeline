@@ -225,19 +225,19 @@ class WindInformationTest {
     @Test
     @DisplayName("equals returns true for same object")
     void testEqualsSameObject() {
-        assertTrue(windInformation.equals(windInformation));
+        assertEquals(windInformation, windInformation);
     }
 
     @Test
     @DisplayName("equals returns false for null")
     void testEqualsNull() {
-        assertFalse(windInformation.equals(null));
+        assertNotEquals(windInformation, null);
     }
 
     @Test
     @DisplayName("equals returns false for different class")
     void testEqualsDifferentClass() {
-        assertFalse(windInformation.equals("not a wind object"));
+        assertNotEquals(windInformation, "not a wind object");
     }
 
     @Test
@@ -249,7 +249,7 @@ class WindInformationTest {
         WindInformation wind2 = new WindInformation(270, 15, 22);
         wind2.setWindVariableDirection("240V300");
         
-        assertTrue(wind1.equals(wind2));
+        assertEquals(wind1, wind2);
         assertEquals(wind1.hashCode(), wind2.hashCode());
     }
 
@@ -259,7 +259,7 @@ class WindInformationTest {
         WindInformation wind1 = new WindInformation(270, 15, 22);
         WindInformation wind2 = new WindInformation(180, 15, 22);
         
-        assertFalse(wind1.equals(wind2));
+        assertNotEquals(wind1, wind2);
     }
 
     @Test

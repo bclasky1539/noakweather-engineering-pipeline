@@ -349,7 +349,7 @@ class NoaaTafDataTest {
         taf2.getBaseWindInformation().setWindDirectionDegrees(270);
         taf2.getBaseWeatherConditions().setVisibilityStatuteMiles(10.0);
         
-        assertTrue(taf1.equals(taf2));
+        assertEquals(taf1, taf2);
         assertEquals(taf1.hashCode(), taf2.hashCode());
     }
 
@@ -364,7 +364,7 @@ class NoaaTafDataTest {
         NoaaTafData taf2 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
         taf2.getBaseWindInformation().setWindDirectionDegrees(180);
         
-        assertFalse(taf1.equals(taf2));
+        assertNotEquals(taf1, taf2);
     }
 
     @Test
@@ -488,8 +488,8 @@ class NoaaTafDataTest {
         group2.setChangeTimeTo(to);
         group2.getWindInformation().setWindDirectionDegrees(180);
         group2.getWeatherConditions().setVisibilityStatuteMiles(3.0);
-        
-        assertTrue(group1.equals(group2));
+
+        assertEquals(group1, group2);
         assertEquals(group1.hashCode(), group2.hashCode());
     }
 

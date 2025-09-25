@@ -278,7 +278,7 @@ class NoaaMetarDataTest {
         metar2.getWindInformation().setWindSpeedKnots(12);
         metar2.getWeatherConditions().setVisibilityStatuteMiles(10.0);
         
-        assertTrue(metar1.equals(metar2));
+        assertEquals(metar1, metar2);
         assertEquals(metar1.hashCode(), metar2.hashCode());
     }
 
@@ -295,7 +295,7 @@ class NoaaMetarDataTest {
         metar2.setTemperatureCelsius(15.0);
         metar2.getWindInformation().setWindDirectionDegrees(180); // Different wind direction
         
-        assertFalse(metar1.equals(metar2));
+        assertNotEquals(metar1, metar2);
     }
 
     @Test
