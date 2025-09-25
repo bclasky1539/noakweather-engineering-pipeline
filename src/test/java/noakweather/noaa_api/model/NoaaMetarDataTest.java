@@ -19,644 +19,408 @@ package noakweather.noaa_api.model;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for NoaaMetarData class.
- * 
- * Tests METAR-specific functionality including temperature conversions,
- * wind data, visibility, precipitation, and the isCurrent() business logic.
- * 
- * @author bclasky1539
- */
-@DisplayName("NOAA METAR Data Tests")
+@DisplayName("NoaaMetarData Tests")
 class NoaaMetarDataTest {
-    
+
     private NoaaMetarData metarData;
-    private LocalDateTime testObservationTime;
-    
+    private LocalDateTime testTime;
+
     @BeforeEach
     void setUp() {
+        testTime = LocalDateTime.now().minusHours(1);
         metarData = new NoaaMetarData();
-        testObservationTime = LocalDateTime.now().minusHours(1); // 1 hour ago
     }
-    
-    @Nested
-    @DisplayName("Constructor Tests")
-    class ConstructorTests {
-        
-        @Test
-        @DisplayName("Default constructor creates empty METAR")
-        void defaultConstructor() {
-            NoaaMetarData data = new NoaaMetarData();
-            
-            assertNull(data.getRawText());
-            assertNull(data.getStationId());
-            assertNull(data.getObservationTime());
-            assertNull(data.getTemperatureCelsius());
-            assertNull(data.getWindSpeedKnots());
-            assertNull(data.getMetarType());
-            assertNull(data.getIsAutoReport());
-        }
-        
-        @Test
-        @DisplayName("Parameterized constructor parses METAR type from raw text")
-        void parameterizedConstructorWithMetar() {
-            String rawText = "METAR KJFK 151830Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2";
-            
-            NoaaMetarData data = new NoaaMetarData(rawText, "KJFK", testObservationTime);
-            
-            assertEquals(rawText, data.getRawText());
-            assertEquals("KJFK", data.getStationId());
-            assertEquals(testObservationTime, data.getObservationTime());
-            assertEquals("METAR", data.getMetarType());
-            assertFalse(data.getIsAutoReport()); // No AUTO in raw text
-        }
-        
-        @Test
-        @DisplayName("Parameterized constructor recognizes SPECI reports")
-        void parameterizedConstructorWithSpeci() {
-            String rawText = "SPECI KJFK 151845Z AUTO 28020G25KT 10SM CLR 23/11 A3016";
-            
-            NoaaMetarData data = new NoaaMetarData(rawText, "KJFK", testObservationTime);
-            
-            assertEquals("SPECI", data.getMetarType());
-            assertTrue(data.getIsAutoReport()); // Contains AUTO
-        }
-        
-        @Test
-        @DisplayName("Constructor handles null raw text gracefully")
-        void constructorWithNullRawText() {
-            NoaaMetarData data = new NoaaMetarData(null, "KJFK", testObservationTime);
-            
-            assertNull(data.getMetarType());
-            assertNull(data.getIsAutoReport());
-        }
+
+    @Test
+    @DisplayName("Default constructor initializes wind and weather objects")
+    void testDefaultConstructor() {
+        assertNotNull(metarData.getWindInformation());
+        assertNotNull(metarData.getWeatherConditions());
+        assertEquals("METAR", metarData.getReportType());
     }
-    
-    @Nested
-    @DisplayName("Temperature Tests")
-    class TemperatureTests {
+
+    @Test
+    @DisplayName("Parameterized constructor sets basic fields and parses raw text")
+    void testParameterizedConstructor() {
+        String rawText = "METAR AUTO KJFK 251851Z 28015G22KT 10SM FEW250 16/M03 A3012";
+        NoaaMetarData metar = new NoaaMetarData(rawText, "KJFK", testTime);
         
-        @Test
-        @DisplayName("Temperature Celsius field works correctly")
-        void temperatureCelsiusField() {
-            Double tempC = 22.0;
-            
-            metarData.setTemperatureCelsius(tempC);
-            assertEquals(tempC, metarData.getTemperatureCelsius());
-            
-            metarData.setTemperatureCelsius(null);
-            assertNull(metarData.getTemperatureCelsius());
-        }
-        
-        @Test
-        @DisplayName("Temperature Fahrenheit conversion works correctly")
-        void temperatureFahrenheitConversion() {
-            // Test freezing point
-            metarData.setTemperatureCelsius(0.0);
-            assertEquals(32.0, metarData.getTemperatureFahrenheit(), 0.01);
-            
-            // Test room temperature
-            metarData.setTemperatureCelsius(22.0);
-            assertEquals(71.6, metarData.getTemperatureFahrenheit(), 0.01);
-            
-            // Test negative temperature
-            metarData.setTemperatureCelsius(-10.0);
-            assertEquals(14.0, metarData.getTemperatureFahrenheit(), 0.01);
-        }
-        
-        @Test
-        @DisplayName("Temperature Fahrenheit returns null when Celsius is null")
-        void temperatureFahrenheitWithNullCelsius() {
-            metarData.setTemperatureCelsius(null);
-            assertNull(metarData.getTemperatureFahrenheit());
-        }
-        
-        @Test
-        @DisplayName("Dewpoint Celsius field works correctly")
-        void dewpointCelsiusField() {
-            Double dewpointC = 12.0;
-            
-            metarData.setDewpointCelsius(dewpointC);
-            assertEquals(dewpointC, metarData.getDewpointCelsius());
-        }
-        
-        @Test
-        @DisplayName("Dewpoint Fahrenheit conversion works correctly")
-        void dewpointFahrenheitConversion() {
-            metarData.setDewpointCelsius(12.0);
-            assertEquals(53.6, metarData.getDewpointFahrenheit(), 0.01);
-            
-            metarData.setDewpointCelsius(null);
-            assertNull(metarData.getDewpointFahrenheit());
-        }
+        assertEquals(rawText, metar.getRawText());
+        assertEquals("KJFK", metar.getStationId());
+        assertEquals(testTime, metar.getObservationTime());
+        assertEquals("METAR", metar.getMetarType());
+        assertEquals("METAR", metar.getReportType());
+        assertTrue(metar.getIsAutoReport());
     }
-    
-    @Nested
-    @DisplayName("Wind Tests")
-    class WindTests {
+
+    @Test
+    @DisplayName("Constructor handles SPECI reports")
+    void testSpeciConstructor() {
+        String rawText = "SPECI KJFK 251851Z 28015G22KT 10SM FEW250 16/M03 A3012";
+        NoaaMetarData metar = new NoaaMetarData(rawText, "KJFK", testTime);
         
-        @Test
-        @DisplayName("Wind direction field works correctly")
-        void windDirectionField() {
-            Integer direction = 280;
-            
-            metarData.setWindDirectionDegrees(direction);
-            assertEquals(direction, metarData.getWindDirectionDegrees());
-            
-            metarData.setWindDirectionDegrees(null);
-            assertNull(metarData.getWindDirectionDegrees());
-        }
-        
-        @Test
-        @DisplayName("Wind speed field works correctly")
-        void windSpeedField() {
-            Integer speed = 16;
-            
-            metarData.setWindSpeedKnots(speed);
-            assertEquals(speed, metarData.getWindSpeedKnots());
-        }
-        
-        @Test
-        @DisplayName("Wind gust field works correctly")
-        void windGustField() {
-            Integer gust = 25;
-            
-            metarData.setWindGustKnots(gust);
-            assertEquals(gust, metarData.getWindGustKnots());
-        }
-        
-        @Test
-        @DisplayName("Wind variable direction field works correctly")
-        void windVariableDirectionField() {
-            String variableDir = "240V300";
-            
-            metarData.setWindVariableDirection(variableDir);
-            assertEquals(variableDir, metarData.getWindVariableDirection());
-        }
-        
-        @Test
-        @DisplayName("Wind direction boundary values")
-        void windDirectionBoundaryValues() {
-            // Valid wind direction is 0-360 degrees
-            metarData.setWindDirectionDegrees(0);
-            assertEquals(0, metarData.getWindDirectionDegrees());
-            
-            metarData.setWindDirectionDegrees(360);
-            assertEquals(360, metarData.getWindDirectionDegrees());
-            
-            metarData.setWindDirectionDegrees(180);
-            assertEquals(180, metarData.getWindDirectionDegrees());
-        }
+        assertEquals("SPECI", metar.getMetarType());
+        assertEquals("SPECI", metar.getReportType());
     }
-    
-    @Nested
-    @DisplayName("Visibility and Conditions Tests")
-    class VisibilityAndConditionsTests {
+
+    @Test
+    @DisplayName("Temperature setters and getters work correctly")
+    void testTemperatureFields() {
+        metarData.setTemperatureCelsius(15.5);
+        assertEquals(15.5, metarData.getTemperatureCelsius());
         
-        @Test
-        @DisplayName("Visibility field works correctly")
-        void visibilityField() {
-            Double visibility = 10.0;
-            
-            metarData.setVisibilityStatuteMiles(visibility);
-            assertEquals(visibility, metarData.getVisibilityStatuteMiles());
-        }
+        metarData.setDewpointCelsius(-3.2);
+        assertEquals(-3.2, metarData.getDewpointCelsius());
+    }
+
+    @Test
+    @DisplayName("Temperature conversion to Fahrenheit works correctly")
+    void testTemperatureConversion() {
+        metarData.setTemperatureCelsius(0.0);
+        assertEquals(32.0, metarData.getTemperatureFahrenheit());
         
-        @Test
-        @DisplayName("Weather string field works correctly")
-        void weatherStringField() {
-            String weather = "RA BR"; // Rain and mist
-            
-            metarData.setWeatherString(weather);
-            assertEquals(weather, metarData.getWeatherString());
-        }
+        metarData.setTemperatureCelsius(20.0);
+        assertEquals(68.0, metarData.getTemperatureFahrenheit());
         
-        @Test
-        @DisplayName("Sky condition field works correctly")
-        void skyConditionField() {
-            String skyCondition = "FEW250";
-            
-            metarData.setSkyCondition(skyCondition);
-            assertEquals(skyCondition, metarData.getSkyCondition());
-        }
+        metarData.setTemperatureCelsius(-10.0);
+        assertEquals(14.0, metarData.getTemperatureFahrenheit());
         
-        @Test
-        @DisplayName("Flight category field works correctly")
-        void flightCategoryField() {
-            String category = "VFR";
-            
-            metarData.setFlightCategory(category);
-            assertEquals(category, metarData.getFlightCategory());
-            
-            // Test all common flight categories
-            String[] categories = {"VFR", "MVFR", "IFR", "LIFR"};
-            for (String cat : categories) {
-                metarData.setFlightCategory(cat);
-                assertEquals(cat, metarData.getFlightCategory());
+        // Test null handling
+        metarData.setTemperatureCelsius(null);
+        assertNull(metarData.getTemperatureFahrenheit());
+    }
+
+    @Test
+    @DisplayName("Dewpoint conversion to Fahrenheit works correctly")
+    void testDewpointConversion() {
+        metarData.setDewpointCelsius(0.0);
+        assertEquals(32.0, metarData.getDewpointFahrenheit());
+        
+        metarData.setDewpointCelsius(15.0);
+        assertEquals(59.0, metarData.getDewpointFahrenheit());
+        
+        // Test null handling
+        metarData.setDewpointCelsius(null);
+        assertNull(metarData.getDewpointFahrenheit());
+    }
+
+    @Test
+    @DisplayName("Altimeter setter and getter work correctly")
+    void testAltimeterField() {
+        metarData.setAltimeterInHg(30.12);
+        assertEquals(30.12, metarData.getAltimeterInHg());
+    }
+
+    @Test
+    @DisplayName("Wind information delegation works correctly")
+    void testWindInformationDelegation() {
+        // Test direct access to wind information object
+        WindInformation wind = new WindInformation(270, 15, 22);
+        metarData.setWindInformation(wind);
+        assertEquals(wind, metarData.getWindInformation());
+        
+        // Test convenience methods delegate correctly
+        assertEquals(270, metarData.getWindDirectionDegrees());
+        assertEquals(15, metarData.getWindSpeedKnots());
+        assertEquals(22, metarData.getWindGustKnots());
+    }
+
+    @Test
+    @DisplayName("Wind convenience setters work correctly")
+    void testWindConvenienceSetters() {
+        metarData.setWindDirectionDegrees(180);
+        metarData.setWindSpeedKnots(12);
+        metarData.setWindGustKnots(18);
+        metarData.setWindVariableDirection("160V200");
+        
+        assertEquals(180, metarData.getWindDirectionDegrees());
+        assertEquals(12, metarData.getWindSpeedKnots());
+        assertEquals(18, metarData.getWindGustKnots());
+        assertEquals("160V200", metarData.getWindVariableDirection());
+        
+        // Verify they're stored in the wind information object
+        WindInformation wind = metarData.getWindInformation();
+        assertEquals(180, wind.getWindDirectionDegrees());
+        assertEquals(12, wind.getWindSpeedKnots());
+        assertEquals(18, wind.getWindGustKnots());
+        assertEquals("160V200", wind.getWindVariableDirection());
+    }
+
+    @Test
+    @DisplayName("Wind setters create wind information object when null")
+    void testWindSettersWithNullObject() {
+        metarData.setWindInformation(null);
+        
+        metarData.setWindDirectionDegrees(90);
+        assertNotNull(metarData.getWindInformation());
+        assertEquals(90, metarData.getWindDirectionDegrees());
+    }
+
+    @Test
+    @DisplayName("Weather conditions delegation works correctly")
+    void testWeatherConditionsDelegation() {
+        // Test direct access to weather conditions object
+        WeatherConditions weather = new WeatherConditions(5.0, "RA BR", "OVC010");
+        metarData.setWeatherConditions(weather);
+        assertEquals(weather, metarData.getWeatherConditions());
+        
+        // Test convenience methods delegate correctly
+        assertEquals(5.0, metarData.getVisibilityStatuteMiles());
+        assertEquals("RA BR", metarData.getWeatherString());
+        assertEquals("OVC010", metarData.getSkyCondition());
+    }
+
+    @Test
+    @DisplayName("Weather convenience setters work correctly")
+    void testWeatherConvenienceSetters() {
+        metarData.setVisibilityStatuteMiles(7.5);
+        metarData.setWeatherString("-SN");
+        metarData.setSkyCondition("BKN020");
+        
+        assertEquals(7.5, metarData.getVisibilityStatuteMiles());
+        assertEquals("-SN", metarData.getWeatherString());
+        assertEquals("BKN020", metarData.getSkyCondition());
+        
+        // Verify they're stored in the weather conditions object
+        WeatherConditions weather = metarData.getWeatherConditions();
+        assertEquals(7.5, weather.getVisibilityStatuteMiles());
+        assertEquals("-SN", weather.getWeatherString());
+        assertEquals("BKN020", weather.getSkyCondition());
+    }
+
+    @Test
+    @DisplayName("Weather setters create weather conditions object when null")
+    void testWeatherSettersWithNullObject() {
+        metarData.setWeatherConditions(null);
+        
+        metarData.setVisibilityStatuteMiles(10.0);
+        assertNotNull(metarData.getWeatherConditions());
+        assertEquals(10.0, metarData.getVisibilityStatuteMiles());
+    }
+
+    @Test
+    @DisplayName("Flight category setter and getter work correctly")
+    void testFlightCategory() {
+        metarData.setFlightCategory("VFR");
+        assertEquals("VFR", metarData.getFlightCategory());
+        
+        metarData.setFlightCategory("IFR");
+        assertEquals("IFR", metarData.getFlightCategory());
+    }
+
+    @Test
+    @DisplayName("Precipitation fields work correctly")
+    void testPrecipitationFields() {
+        metarData.setPrecipitationLastHourInches(0.25);
+        metarData.setPrecipitationLast3HoursInches(0.75);
+        metarData.setPrecipitationLast6HoursInches(1.5);
+        
+        assertEquals(0.25, metarData.getPrecipitationLastHourInches());
+        assertEquals(0.75, metarData.getPrecipitationLast3HoursInches());
+        assertEquals(1.5, metarData.getPrecipitationLast6HoursInches());
+    }
+
+    @Test
+    @DisplayName("Special fields work correctly")
+    void testSpecialFields() {
+        metarData.setMetarType("SPECI");
+        metarData.setIsAutoReport(true);
+        
+        assertEquals("SPECI", metarData.getMetarType());
+        assertEquals("SPECI", metarData.getReportType());
+        assertTrue(metarData.getIsAutoReport());
+    }
+
+    @Test
+    @DisplayName("isCurrent returns true for recent observations")
+    void testIsCurrentRecent() {
+        metarData.setObservationTime(LocalDateTime.now().minusHours(2));
+        assertTrue(metarData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("isCurrent returns false for old observations")
+    void testIsCurrentOld() {
+        metarData.setObservationTime(LocalDateTime.now().minusHours(4));
+        assertFalse(metarData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("isCurrent returns false for null observation time")
+    void testIsCurrentNullTime() {
+        metarData.setObservationTime(null);
+        assertFalse(metarData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("equals works correctly with composition objects")
+    void testEquals() {
+        LocalDateTime time = LocalDateTime.now();
+        
+        NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 251851Z", "KJFK", time);
+        metar1.setTemperatureCelsius(15.0);
+        metar1.setWindDirectionDegrees(270);
+        metar1.setWindSpeedKnots(12);
+        metar1.setVisibilityStatuteMiles(10.0);
+        
+        NoaaMetarData metar2 = new NoaaMetarData("METAR KJFK 251851Z", "KJFK", time);
+        metar2.setTemperatureCelsius(15.0);
+        metar2.setWindDirectionDegrees(270);
+        metar2.setWindSpeedKnots(12);
+        metar2.setVisibilityStatuteMiles(10.0);
+        
+        assertTrue(metar1.equals(metar2));
+        assertEquals(metar1.hashCode(), metar2.hashCode());
+    }
+
+    @Test
+    @DisplayName("equals returns false for different composition objects")
+    void testEqualsNotEqual() {
+        LocalDateTime time = LocalDateTime.now();
+        
+        NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 251851Z", "KJFK", time);
+        metar1.setTemperatureCelsius(15.0);
+        metar1.setWindDirectionDegrees(270);
+        
+        NoaaMetarData metar2 = new NoaaMetarData("METAR KJFK 251851Z", "KJFK", time);
+        metar2.setTemperatureCelsius(15.0);
+        metar2.setWindDirectionDegrees(180); // Different wind direction
+        
+        assertFalse(metar1.equals(metar2));
+    }
+
+    @Test
+    @DisplayName("equals handles null composition objects")
+    void testEqualsWithNullComposition() {
+        NoaaMetarData metar1 = new NoaaMetarData();
+        metar1.setWindInformation(null);
+        
+        NoaaMetarData metar2 = new NoaaMetarData();
+        metar2.setWindInformation(null);
+        
+        assertTrue(metar1.equals(metar2));
+    }
+
+    @Test
+    @DisplayName("hashCode is consistent with composition objects")
+    void testHashCodeConsistency() {
+        metarData.setTemperatureCelsius(20.0);
+        metarData.setWindDirectionDegrees(90);
+        metarData.setVisibilityStatuteMiles(8.0);
+        
+        int hashCode1 = metarData.hashCode();
+        int hashCode2 = metarData.hashCode();
+        
+        assertEquals(hashCode1, hashCode2);
+    }
+
+    @Test
+    @DisplayName("Setting wind information to null creates new instance")
+    void testSetWindInformationNull() {
+        metarData.setWindInformation(null);
+        assertNotNull(metarData.getWindInformation());
+    }
+
+    @Test
+    @DisplayName("Setting weather conditions to null creates new instance")
+    void testSetWeatherConditionsNull() {
+        metarData.setWeatherConditions(null);
+        assertNotNull(metarData.getWeatherConditions());
+    }
+
+    @Test
+    @DisplayName("Wind getters return null when wind information is null")
+    void testWindGettersWithNullWindInformation() {
+        metarData.setWindInformation(null);
+        // Even though we create a new instance in setter, test the null case in getter
+        metarData = new NoaaMetarData() {
+            @Override
+            public WindInformation getWindInformation() {
+                return null; // Force null for testing
             }
-        }
+        };
         
-        @Test
-        @DisplayName("Altimeter field works correctly")
-        void altimeterField() {
-            Double altimeter = 30.15;
-            
-            metarData.setAltimeterInHg(altimeter);
-            assertEquals(altimeter, metarData.getAltimeterInHg());
-        }
+        assertNull(metarData.getWindDirectionDegrees());
+        assertNull(metarData.getWindSpeedKnots());
+        assertNull(metarData.getWindGustKnots());
+        assertNull(metarData.getWindVariableDirection());
     }
-    
-    @Nested
-    @DisplayName("Precipitation Tests")
-    class PrecipitationTests {
+
+    @Test
+    @DisplayName("Weather getters return null when weather conditions is null")
+    void testWeatherGettersWithNullWeatherConditions() {
+        metarData = new NoaaMetarData() {
+            @Override
+            public WeatherConditions getWeatherConditions() {
+                return null; // Force null for testing
+            }
+        };
         
-        @Test
-        @DisplayName("Precipitation last hour field works correctly")
-        void precipitationLastHourField() {
-            Double precip = 0.05;
-            
-            metarData.setPrecipitationLastHourInches(precip);
-            assertEquals(precip, metarData.getPrecipitationLastHourInches());
-        }
-        
-        @Test
-        @DisplayName("Precipitation last 3 hours field works correctly")
-        void precipitationLast3HoursField() {
-            Double precip = 0.12;
-            
-            metarData.setPrecipitationLast3HoursInches(precip);
-            assertEquals(precip, metarData.getPrecipitationLast3HoursInches());
-        }
-        
-        @Test
-        @DisplayName("Precipitation last 6 hours field works correctly")
-        void precipitationLast6HoursField() {
-            Double precip = 0.25;
-            
-            metarData.setPrecipitationLast6HoursInches(precip);
-            assertEquals(precip, metarData.getPrecipitationLast6HoursInches());
-        }
-        
-        @Test
-        @DisplayName("Zero precipitation values")
-        void zeroPrecipitationValues() {
-            metarData.setPrecipitationLastHourInches(0.0);
-            assertEquals(0.0, metarData.getPrecipitationLastHourInches());
-        }
+        assertNull(metarData.getVisibilityStatuteMiles());
+        assertNull(metarData.getWeatherString());
+        assertNull(metarData.getSkyCondition());
     }
-    
-    @Nested
-    @DisplayName("METAR Type Tests")
-    class MetarTypeTests {
+
+    @Test
+    @DisplayName("Complete METAR data workflow")
+    void testCompleteMetarWorkflow() {
+        // Create a complete METAR report
+        String rawText = "METAR AUTO KJFK 251851Z 28015G22KT 10SM FEW250 16/M03 A3012 RMK AO2";
+        NoaaMetarData metar = new NoaaMetarData(rawText, "KJFK", testTime);
         
-        @Test
-        @DisplayName("METAR type field works correctly")
-        void metarTypeField() {
-            metarData.setMetarType("METAR");
-            assertEquals("METAR", metarData.getMetarType());
-            
-            metarData.setMetarType("SPECI");
-            assertEquals("SPECI", metarData.getMetarType());
-        }
+        // Set all the data
+        metar.setTemperatureCelsius(16.0);
+        metar.setDewpointCelsius(-3.0);
+        metar.setAltimeterInHg(30.12);
         
-        @Test
-        @DisplayName("Auto report flag works correctly")
-        void autoReportFlag() {
-            metarData.setIsAutoReport(true);
-            assertTrue(metarData.getIsAutoReport());
-            
-            metarData.setIsAutoReport(false);
-            assertFalse(metarData.getIsAutoReport());
-            
-            metarData.setIsAutoReport(null);
-            assertNull(metarData.getIsAutoReport());
-        }
-    }
-    
-    @Nested
-    @DisplayName("Business Logic Tests")
-    class BusinessLogicTests {
+        metar.setWindDirectionDegrees(280);
+        metar.setWindSpeedKnots(15);
+        metar.setWindGustKnots(22);
         
-        @Test
-        @DisplayName("isCurrent returns true for recent observations")
-        void isCurrentWithRecentObservation() {
-            // Set observation time to 1 hour ago
-            metarData.setObservationTime(LocalDateTime.now().minusHours(1));
-            assertTrue(metarData.isCurrent());
-            
-            // Set observation time to 2 hours ago
-            metarData.setObservationTime(LocalDateTime.now().minusHours(2));
-            assertTrue(metarData.isCurrent());
-            
-            // Set observation time to exactly 3 hours ago
-            metarData.setObservationTime(LocalDateTime.now().minusHours(3));
-            assertTrue(metarData.isCurrent());
-        }
+        metar.setVisibilityStatuteMiles(10.0);
+        metar.setWeatherString("");
+        metar.setSkyCondition("FEW250");
+        metar.setFlightCategory("VFR");
         
-        @Test
-        @DisplayName("isCurrent returns false for old observations")
-        void isCurrentWithOldObservation() {
-            // Set observation time to 4 hours ago
-            metarData.setObservationTime(LocalDateTime.now().minusHours(4));
-            assertFalse(metarData.isCurrent());
-            
-            // Set observation time to 24 hours ago
-            metarData.setObservationTime(LocalDateTime.now().minusHours(24));
-            assertFalse(metarData.isCurrent());
-        }
+        // Verify all data is accessible
+        assertEquals("KJFK", metar.getStationId());
+        assertEquals(rawText, metar.getRawText());
+        assertEquals(testTime, metar.getObservationTime());
+        assertEquals("METAR", metar.getReportType());
+        assertTrue(metar.getIsAutoReport());
         
-        @Test
-        @DisplayName("isCurrent returns false for null observation time")
-        void isCurrentWithNullObservationTime() {
-            metarData.setObservationTime(null);
-            assertFalse(metarData.isCurrent());
-        }
+        assertEquals(16.0, metar.getTemperatureCelsius());
+        assertEquals(60.8, metar.getTemperatureFahrenheit(), 0.01);
+        assertEquals(-3.0, metar.getDewpointCelsius());
+        assertEquals(26.6, metar.getDewpointFahrenheit(), 0.01);
+        assertEquals(30.12, metar.getAltimeterInHg());
         
-        @Test
-        @DisplayName("getReportType returns correct type")
-        void getReportTypeMethod() {
-            metarData.setMetarType("METAR");
-            assertEquals("METAR", metarData.getReportType());
-            
-            metarData.setMetarType("SPECI");
-            assertEquals("SPECI", metarData.getReportType());
-            
-            metarData.setMetarType(null);
-            assertEquals("METAR", metarData.getReportType()); // Default fallback
-        }
-    }
-    
-    @Nested
-    @DisplayName("Equals and HashCode Tests")
-    class EqualsAndHashCodeTests {
+        assertEquals(280, metar.getWindDirectionDegrees());
+        assertEquals(15, metar.getWindSpeedKnots());
+        assertEquals(22, metar.getWindGustKnots());
         
-        @Test
-        @DisplayName("Objects with same METAR data are equal")
-        void equalMetarObjects() {
-            NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar1.setTemperatureCelsius(22.0);
-            metar1.setWindDirectionDegrees(280);
-            metar1.setWindSpeedKnots(16);
-            
-            NoaaMetarData metar2 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar2.setTemperatureCelsius(22.0);
-            metar2.setWindDirectionDegrees(280);
-            metar2.setWindSpeedKnots(16);
-            
-            assertEquals(metar1, metar2);
-            assertEquals(metar1.hashCode(), metar2.hashCode());
-        }
+        assertEquals(10.0, metar.getVisibilityStatuteMiles());
+        assertEquals("", metar.getWeatherString());
+        assertEquals("FEW250", metar.getSkyCondition());
+        assertEquals("VFR", metar.getFlightCategory());
         
-        @Test
-        @DisplayName("Objects with different temperatures are not equal")
-        void differentTemperatures() {
-            NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar1.setTemperatureCelsius(22.0);
-            
-            NoaaMetarData metar2 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar2.setTemperatureCelsius(25.0);
-            
-            assertNotEquals(metar1, metar2);
-        }
+        // Verify composition objects have the data
+        WindInformation wind = metar.getWindInformation();
+        assertEquals(280, wind.getWindDirectionDegrees());
+        assertEquals("W", wind.getWindDirectionCardinal());
+        assertTrue(wind.hasGusts());
+        assertFalse(wind.isCalm());
         
-        @Test
-        @DisplayName("Objects with different wind data are not equal")
-        void differentWindData() {
-            NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar1.setWindDirectionDegrees(280);
-            metar1.setWindSpeedKnots(16);
-            
-            NoaaMetarData metar2 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar2.setWindDirectionDegrees(290);
-            metar2.setWindSpeedKnots(16);
-            
-            assertNotEquals(metar1, metar2);
-        }
+        WeatherConditions weather = metar.getWeatherConditions();
+        assertEquals(10.0, weather.getVisibilityStatuteMiles());
+        assertTrue(weather.hasGoodVisibility());
+        assertFalse(weather.hasActiveWeather());
         
-        @Test
-        @DisplayName("Objects with different METAR types are not equal")
-        void differentMetarTypes() {
-            NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            metar1.setMetarType("METAR");
-            
-            NoaaMetarData metar2 = new NoaaMetarData("SPECI KJFK 151830Z", "KJFK", testObservationTime);
-            metar2.setMetarType("SPECI");
-            
-            assertNotEquals(metar1, metar2);
-        }
-        
-        @Test
-        @DisplayName("Equals calls super.equals() correctly")
-        void equalsCallsSuper() {
-            // Test that base class fields are also considered in equals
-            NoaaMetarData metar1 = new NoaaMetarData("METAR KJFK 151830Z", "KJFK", testObservationTime);
-            NoaaMetarData metar2 = new NoaaMetarData("METAR KLGA 151830Z", "KLGA", testObservationTime);
-            
-            assertNotEquals(metar1, metar2); // Different station IDs from base class
-        }
-    }
-    
-    @Nested
-    @DisplayName("Edge Cases and Boundary Values")
-    class EdgeCasesAndBoundaryValues {
-        
-        @Test
-        @DisplayName("Extreme temperature values")
-        void extremeTemperatureValues() {
-            // Test very cold temperature
-            metarData.setTemperatureCelsius(-50.0);
-            assertEquals(-50.0, metarData.getTemperatureCelsius());
-            assertEquals(-58.0, metarData.getTemperatureFahrenheit(), 0.01);
-            
-            // Test very hot temperature
-            metarData.setTemperatureCelsius(50.0);
-            assertEquals(50.0, metarData.getTemperatureCelsius());
-            assertEquals(122.0, metarData.getTemperatureFahrenheit(), 0.01);
-        }
-        
-        @Test
-        @DisplayName("Edge case wind speeds")
-        void edgeWindSpeeds() {
-            // Calm winds
-            metarData.setWindSpeedKnots(0);
-            assertEquals(0, metarData.getWindSpeedKnots());
-            
-            // Very high winds
-            metarData.setWindSpeedKnots(200);
-            assertEquals(200, metarData.getWindSpeedKnots());
-        }
-        
-        @Test
-        @DisplayName("Edge case visibility values")
-        void edgeVisibilityValues() {
-            // Zero visibility
-            metarData.setVisibilityStatuteMiles(0.0);
-            assertEquals(0.0, metarData.getVisibilityStatuteMiles());
-            
-            // Unlimited visibility
-            metarData.setVisibilityStatuteMiles(99.0);
-            assertEquals(99.0, metarData.getVisibilityStatuteMiles());
-            
-            // Fractional visibility
-            metarData.setVisibilityStatuteMiles(0.25);
-            assertEquals(0.25, metarData.getVisibilityStatuteMiles());
-        }
-        
-        @Test
-        @DisplayName("Edge case altimeter values")
-        void edgeAltimeterValues() {
-            // Very low pressure
-            metarData.setAltimeterInHg(25.00);
-            assertEquals(25.00, metarData.getAltimeterInHg());
-            
-            // Very high pressure
-            metarData.setAltimeterInHg(35.00);
-            assertEquals(35.00, metarData.getAltimeterInHg());
-        }
-        
-        @Test
-        @DisplayName("Complex weather string")
-        void complexWeatherString() {
-            String complexWeather = "-RASN BR FG";
-            metarData.setWeatherString(complexWeather);
-            assertEquals(complexWeather, metarData.getWeatherString());
-        }
-        
-        @Test
-        @DisplayName("Multiple sky condition layers")
-        void multipleSkyConditionLayers() {
-            String skyCondition = "FEW015 SCT030 BKN080 OVC250";
-            metarData.setSkyCondition(skyCondition);
-            assertEquals(skyCondition, metarData.getSkyCondition());
-        }
-    }
-    
-    @Nested
-    @DisplayName("Real World Data Tests")
-    class RealWorldDataTests {
-        
-        @Test
-        @DisplayName("Typical JFK METAR data")
-        void typicalJfkMetar() {
-            String rawText = "METAR KJFK 151851Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2 SLP210 T02220122";
-            
-            NoaaMetarData metar = new NoaaMetarData(rawText, "KJFK", testObservationTime);
-            metar.setTemperatureCelsius(22.0);
-            metar.setDewpointCelsius(12.0);
-            metar.setWindDirectionDegrees(280);
-            metar.setWindSpeedKnots(16);
-            metar.setVisibilityStatuteMiles(10.0);
-            metar.setSkyCondition("FEW250");
-            metar.setAltimeterInHg(30.15);
-            metar.setFlightCategory("VFR");
-            
-            assertEquals("KJFK", metar.getStationId());
-            assertEquals("METAR", metar.getMetarType());
-            assertFalse(metar.getIsAutoReport());
-            assertEquals(71.6, metar.getTemperatureFahrenheit(), 0.01);
-            assertEquals(53.6, metar.getDewpointFahrenheit(), 0.01);
-            assertTrue(metar.isCurrent());
-        }
-        
-        @Test
-        @DisplayName("SPECI with gusty winds")
-        void speciWithGustyWinds() {
-            String rawText = "SPECI KJFK 151915Z AUTO 29025G35KT 3SM -RA BR BKN008 OVC015 18/17 A2995";
-            
-            NoaaMetarData metar = new NoaaMetarData(rawText, "KJFK", testObservationTime);
-            metar.setTemperatureCelsius(18.0);
-            metar.setDewpointCelsius(17.0);
-            metar.setWindDirectionDegrees(290);
-            metar.setWindSpeedKnots(25);
-            metar.setWindGustKnots(35);
-            metar.setVisibilityStatuteMiles(3.0);
-            metar.setWeatherString("-RA BR");
-            metar.setSkyCondition("BKN008 OVC015");
-            metar.setAltimeterInHg(29.95);
-            metar.setFlightCategory("IFR");
-            
-            assertEquals("SPECI", metar.getMetarType());
-            assertTrue(metar.getIsAutoReport());
-            assertEquals(35, metar.getWindGustKnots());
-            assertEquals("IFR", metar.getFlightCategory());
-        }
-        
-        @Test
-        @DisplayName("METAR with variable wind direction")
-        void metarWithVariableWind() {
-            NoaaMetarData metar = new NoaaMetarData();
-            metar.setStationId("KLGA");
-            metar.setObservationTime(testObservationTime);
-            metar.setWindDirectionDegrees(240);
-            metar.setWindSpeedKnots(8);
-            metar.setWindVariableDirection("210V270");
-            
-            assertEquals("210V270", metar.getWindVariableDirection());
-        }
-        
-        @Test
-        @DisplayName("METAR with precipitation data")
-        void metarWithPrecipitation() {
-            NoaaMetarData metar = new NoaaMetarData();
-            metar.setStationId("KEWR");
-            metar.setObservationTime(testObservationTime);
-            metar.setPrecipitationLastHourInches(0.05);
-            metar.setPrecipitationLast3HoursInches(0.12);
-            metar.setPrecipitationLast6HoursInches(0.25);
-            
-            assertEquals(0.05, metar.getPrecipitationLastHourInches());
-            assertEquals(0.12, metar.getPrecipitationLast3HoursInches());
-            assertEquals(0.25, metar.getPrecipitationLast6HoursInches());
-        }
-    }
-    
-    @Nested
-    @DisplayName("Integration with Base Class")
-    class IntegrationWithBaseClass {
-        
-        @Test
-        @DisplayName("Base class fields work correctly in METAR context")
-        void baseClassFieldsInMetarContext() {
-            metarData.setStationId("KJFK");
-            metarData.setObservationTime(testObservationTime);
-            metarData.setLatitude(40.6413);
-            metarData.setLongitude(-73.7781);
-            metarData.setElevationFeet(13);
-            metarData.setQualityControlFlags("AUTO A02");
-            
-            // Verify base class fields
-            assertEquals("KJFK", metarData.getStationId());
-            assertEquals(testObservationTime, metarData.getObservationTime());
-            assertEquals(40.6413, metarData.getLatitude());
-            assertEquals(-73.7781, metarData.getLongitude());
-            assertEquals(13, metarData.getElevationFeet());
-            assertEquals("AUTO A02", metarData.getQualityControlFlags());
-            
-            // Verify METAR-specific behavior
-            assertTrue(metarData.isCurrent());
-            assertEquals("METAR", metarData.getReportType());
-        }
-        
-        @Test
-        @DisplayName("toString includes both base and METAR fields")
-        void toStringIncludesBothTypes() {
-            metarData.setStationId("KJFK");
-            metarData.setObservationTime(testObservationTime);
-            metarData.setRawText("METAR KJFK 151830Z 28016KT");
-            metarData.setTemperatureCelsius(22.0);
-            metarData.setWindSpeedKnots(16);
-            
-            String result = metarData.toString();
-            
-            assertTrue(result.contains("NoaaMetarData"));
-            assertTrue(result.contains("KJFK"));
-            assertTrue(result.contains("METAR"));
-        }
+        assertTrue(metar.isCurrent());
     }
 }

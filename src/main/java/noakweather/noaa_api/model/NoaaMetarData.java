@@ -37,18 +37,9 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
     private Double dewpointCelsius;
     private Double altimeterInHg;
     
-    // Wind information
-    private Integer windDirectionDegrees;
-    private Integer windSpeedKnots;
-    private Integer windGustKnots;
-    private String windVariableDirection; // e.g., "240V300" for variable wind
-    
-    // Visibility
-    private Double visibilityStatuteMiles;
-    
-    // Weather conditions
-    private String weatherString; // Raw weather phenomena (e.g., "RA BR", "-SN")
-    private String skyCondition;  // Sky coverage information
+    // Composition objects to eliminate duplication
+    private WindInformation windInformation;
+    private WeatherConditions weatherConditions;
     
     // Flight category (VFR, MVFR, IFR, LIFR) - calculated by NOAA
     private String flightCategory;
@@ -64,10 +55,15 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
     
     public NoaaMetarData() {
         super();
+        this.windInformation = new WindInformation();
+        this.weatherConditions = new WeatherConditions();
     }
     
     public NoaaMetarData(String rawText, String stationId, LocalDateTime observationTime) {
         super(rawText, stationId, observationTime);
+        this.windInformation = new WindInformation();
+        this.weatherConditions = new WeatherConditions();
+        
         // Parse the METAR type from raw text if available
         if (rawText != null) {
             this.metarType = rawText.startsWith("SPECI") ? "SPECI" : "METAR";
@@ -116,64 +112,104 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
         this.altimeterInHg = altimeterInHg;
     }
     
-    // Wind information getters/setters
+    // Wind information - delegating to WindInformation object
+    public WindInformation getWindInformation() {
+        return windInformation;
+    }
+    
+    public void setWindInformation(WindInformation windInformation) {
+        this.windInformation = windInformation != null ? windInformation : new WindInformation();
+    }
+    
+    // Convenience methods for backward compatibility
     public Integer getWindDirectionDegrees() {
-        return windDirectionDegrees;
+        return windInformation != null ? windInformation.getWindDirectionDegrees() : null;
     }
     
     public void setWindDirectionDegrees(Integer windDirectionDegrees) {
-        this.windDirectionDegrees = windDirectionDegrees;
+        if (windInformation == null) {
+            windInformation = new WindInformation();
+        }
+        windInformation.setWindDirectionDegrees(windDirectionDegrees);
     }
     
     public Integer getWindSpeedKnots() {
-        return windSpeedKnots;
+        return windInformation != null ? windInformation.getWindSpeedKnots() : null;
     }
     
     public void setWindSpeedKnots(Integer windSpeedKnots) {
-        this.windSpeedKnots = windSpeedKnots;
+        if (windInformation == null) {
+            windInformation = new WindInformation();
+        }
+        windInformation.setWindSpeedKnots(windSpeedKnots);
     }
     
     public Integer getWindGustKnots() {
-        return windGustKnots;
+        return windInformation != null ? windInformation.getWindGustKnots() : null;
     }
     
     public void setWindGustKnots(Integer windGustKnots) {
-        this.windGustKnots = windGustKnots;
+        if (windInformation == null) {
+            windInformation = new WindInformation();
+        }
+        windInformation.setWindGustKnots(windGustKnots);
     }
     
     public String getWindVariableDirection() {
-        return windVariableDirection;
+        return windInformation != null ? windInformation.getWindVariableDirection() : null;
     }
     
     public void setWindVariableDirection(String windVariableDirection) {
-        this.windVariableDirection = windVariableDirection;
+        if (windInformation == null) {
+            windInformation = new WindInformation();
+        }
+        windInformation.setWindVariableDirection(windVariableDirection);
     }
     
-    // Visibility and conditions getters/setters
+    // Weather conditions - delegating to WeatherConditions object
+    public WeatherConditions getWeatherConditions() {
+        return weatherConditions;
+    }
+    
+    public void setWeatherConditions(WeatherConditions weatherConditions) {
+        this.weatherConditions = weatherConditions != null ? weatherConditions : new WeatherConditions();
+    }
+    
+    // Convenience methods for backward compatibility
     public Double getVisibilityStatuteMiles() {
-        return visibilityStatuteMiles;
+        return weatherConditions != null ? weatherConditions.getVisibilityStatuteMiles() : null;
     }
     
     public void setVisibilityStatuteMiles(Double visibilityStatuteMiles) {
-        this.visibilityStatuteMiles = visibilityStatuteMiles;
+        if (weatherConditions == null) {
+            weatherConditions = new WeatherConditions();
+        }
+        weatherConditions.setVisibilityStatuteMiles(visibilityStatuteMiles);
     }
     
     public String getWeatherString() {
-        return weatherString;
+        return weatherConditions != null ? weatherConditions.getWeatherString() : null;
     }
     
     public void setWeatherString(String weatherString) {
-        this.weatherString = weatherString;
+        if (weatherConditions == null) {
+            weatherConditions = new WeatherConditions();
+        }
+        weatherConditions.setWeatherString(weatherString);
     }
     
     public String getSkyCondition() {
-        return skyCondition;
+        return weatherConditions != null ? weatherConditions.getSkyCondition() : null;
     }
     
     public void setSkyCondition(String skyCondition) {
-        this.skyCondition = skyCondition;
+        if (weatherConditions == null) {
+            weatherConditions = new WeatherConditions();
+        }
+        weatherConditions.setSkyCondition(skyCondition);
     }
     
+    // Flight category getter/setter
     public String getFlightCategory() {
         return flightCategory;
     }
@@ -226,7 +262,7 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
     
     /**
      * Convenience method to get temperature in Fahrenheit
-     * @return 
+     * @return temperature in Fahrenheit or null if not available
      */
     public Double getTemperatureFahrenheit() {
         if (temperatureCelsius == null) {
@@ -237,7 +273,7 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
     
     /**
      * Convenience method to get dewpoint in Fahrenheit
-     * @return 
+     * @return dewpoint in Fahrenheit or null if not available
      */
     public Double getDewpointFahrenheit() {
         if (dewpointCelsius == null) {
@@ -259,13 +295,13 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
         }
         NoaaMetarData that = (NoaaMetarData) o;
         return Objects.equals(temperatureCelsius, that.getTemperatureCelsius()) &&
-               Objects.equals(windDirectionDegrees, that.getWindDirectionDegrees()) &&
-               Objects.equals(windSpeedKnots, that.getWindSpeedKnots()) &&
+               Objects.equals(windInformation, that.getWindInformation()) &&
+               Objects.equals(weatherConditions, that.getWeatherConditions()) &&
                Objects.equals(metarType, that.getMetarType());
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), temperatureCelsius, windDirectionDegrees, windSpeedKnots, metarType);
+        return Objects.hash(super.hashCode(), temperatureCelsius, windInformation, weatherConditions, metarType);
     }
 }
