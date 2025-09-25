@@ -177,19 +177,19 @@ class WeatherConditionsTest {
     @Test
     @DisplayName("equals returns true for same object")
     void testEqualsSameObject() {
-        assertTrue(weatherConditions.equals(weatherConditions));
+        assertEquals(weatherConditions, weatherConditions);
     }
 
     @Test
     @DisplayName("equals returns false for null")
     void testEqualsNull() {
-        assertFalse(weatherConditions.equals(null));
+        assertNotEquals(weatherConditions, null);
     }
 
     @Test
     @DisplayName("equals returns false for different class")
     void testEqualsDifferentClass() {
-        assertFalse(weatherConditions.equals("not a weather object"));
+        assertNotEquals(weatherConditions,"not a weather object");
     }
 
     @Test
@@ -198,7 +198,7 @@ class WeatherConditionsTest {
         WeatherConditions weather1 = new WeatherConditions(5.0, "RA", "OVC010");
         WeatherConditions weather2 = new WeatherConditions(5.0, "RA", "OVC010");
         
-        assertTrue(weather1.equals(weather2));
+        assertEquals(weather1,weather2);
         assertEquals(weather1.hashCode(), weather2.hashCode());
     }
 
@@ -208,7 +208,7 @@ class WeatherConditionsTest {
         WeatherConditions weather1 = new WeatherConditions(5.0, "RA", "OVC010");
         WeatherConditions weather2 = new WeatherConditions(10.0, "RA", "OVC010");
         
-        assertFalse(weather1.equals(weather2));
+        assertNotEquals(weather1,weather2);
     }
 
     @Test
@@ -217,13 +217,13 @@ class WeatherConditionsTest {
         WeatherConditions weather1 = new WeatherConditions();
         WeatherConditions weather2 = new WeatherConditions();
         
-        assertTrue(weather1.equals(weather2));
+        assertEquals(weather1,weather2);
         
         weather1.setVisibilityStatuteMiles(5.0);
-        assertFalse(weather1.equals(weather2));
+        assertNotEquals(weather1,weather2);
         
         weather2.setVisibilityStatuteMiles(5.0);
-        assertTrue(weather1.equals(weather2));
+        assertEquals(weather1,weather2);
     }
 
     @Test
