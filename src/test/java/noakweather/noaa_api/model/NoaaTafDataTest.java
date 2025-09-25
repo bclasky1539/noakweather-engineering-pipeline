@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@DisplayName("NoaaTafData Tests")
+@DisplayName("Simplified NoaaTafData Tests")
 class NoaaTafDataTest {
 
     private NoaaTafData tafData;
@@ -59,6 +59,8 @@ class NoaaTafDataTest {
         assertEquals("TAF", taf.getReportType());
         assertNull(taf.getIsAmended());
         assertNull(taf.getIsCorrected());
+        assertNotNull(taf.getBaseWindInformation());
+        assertNotNull(taf.getBaseWeatherConditions());
     }
 
     @Test
@@ -133,87 +135,78 @@ class NoaaTafDataTest {
     }
 
     @Test
-    @DisplayName("Base wind information delegation works correctly")
-    void testBaseWindInformationDelegation() {
-        // Test direct access to base wind information object
-        WindInformation wind = new WindInformation(270, 15, 22);
-        tafData.setBaseWindInformation(wind);
-        assertEquals(wind, tafData.getBaseWindInformation());
-        
-        // Test convenience methods delegate correctly
-        assertEquals(270, tafData.getBaseWindDirectionDegrees());
-        assertEquals(15, tafData.getBaseWindSpeedKnots());
-        assertEquals(22, tafData.getBaseWindGustKnots());
-    }
-
-    @Test
-    @DisplayName("Base wind convenience setters work correctly")
-    void testBaseWindConvenienceSetters() {
-        tafData.setBaseWindDirectionDegrees(180);
-        tafData.setBaseWindSpeedKnots(12);
-        tafData.setBaseWindGustKnots(18);
-        
-        assertEquals(180, tafData.getBaseWindDirectionDegrees());
-        assertEquals(12, tafData.getBaseWindSpeedKnots());
-        assertEquals(18, tafData.getBaseWindGustKnots());
-        
-        // Verify they're stored in the base wind information object
+    @DisplayName("Base wind information composition works correctly")
+    void testBaseWindInformationComposition() {
         WindInformation wind = tafData.getBaseWindInformation();
-        assertEquals(180, wind.getWindDirectionDegrees());
-        assertEquals(12, wind.getWindSpeedKnots());
-        assertEquals(18, wind.getWindGustKnots());
+        assertNotNull(wind);
+        
+        wind.setWindDirectionDegrees(270);
+        wind.setWindSpeedKnots(15);
+        wind.setWindGustKnots(22);
+        
+        assertEquals(270, tafData.getBaseWindInformation().getWindDirectionDegrees());
+        assertEquals(15, tafData.getBaseWindInformation().getWindSpeedKnots());
+        assertEquals(22, tafData.getBaseWindInformation().getWindGustKnots());
+        
+        assertFalse(tafData.getBaseWindInformation().isCalm());
+        assertTrue(tafData.getBaseWindInformation().hasGusts());
+        assertEquals("W", tafData.getBaseWindInformation().getWindDirectionCardinal());
     }
 
     @Test
-    @DisplayName("Base wind setters create wind information object when null")
-    void testBaseWindSettersWithNullObject() {
+    @DisplayName("Setting base wind information to null creates new instance")
+    void testSetBaseWindInformationNull() {
         tafData.setBaseWindInformation(null);
-        
-        tafData.setBaseWindDirectionDegrees(90);
         assertNotNull(tafData.getBaseWindInformation());
-        assertEquals(90, tafData.getBaseWindDirectionDegrees());
     }
 
     @Test
-    @DisplayName("Base weather conditions delegation works correctly")
-    void testBaseWeatherConditionsDelegation() {
-        // Test direct access to base weather conditions object
-        WeatherConditions weather = new WeatherConditions(5.0, "RA BR", "OVC010");
-        tafData.setBaseWeatherConditions(weather);
-        assertEquals(weather, tafData.getBaseWeatherConditions());
+    @DisplayName("Setting custom base wind information object works")
+    void testSetCustomBaseWindInformation() {
+        WindInformation customWind = new WindInformation(180, 12, null);
+        tafData.setBaseWindInformation(customWind);
         
-        // Test convenience methods delegate correctly
-        assertEquals(5.0, tafData.getBaseVisibilityStatuteMiles());
-        assertEquals("RA BR", tafData.getBaseWeatherString());
-        assertEquals("OVC010", tafData.getBaseSkyCondition());
+        assertEquals(180, tafData.getBaseWindInformation().getWindDirectionDegrees());
+        assertEquals(12, tafData.getBaseWindInformation().getWindSpeedKnots());
+        assertNull(tafData.getBaseWindInformation().getWindGustKnots());
     }
 
     @Test
-    @DisplayName("Base weather convenience setters work correctly")
-    void testBaseWeatherConvenienceSetters() {
-        tafData.setBaseVisibilityStatuteMiles(7.5);
-        tafData.setBaseWeatherString("-SN");
-        tafData.setBaseSkyCondition("BKN020");
-        
-        assertEquals(7.5, tafData.getBaseVisibilityStatuteMiles());
-        assertEquals("-SN", tafData.getBaseWeatherString());
-        assertEquals("BKN020", tafData.getBaseSkyCondition());
-        
-        // Verify they're stored in the base weather conditions object
+    @DisplayName("Base weather conditions composition works correctly")
+    void testBaseWeatherConditionsComposition() {
         WeatherConditions weather = tafData.getBaseWeatherConditions();
-        assertEquals(7.5, weather.getVisibilityStatuteMiles());
-        assertEquals("-SN", weather.getWeatherString());
-        assertEquals("BKN020", weather.getSkyCondition());
+        assertNotNull(weather);
+        
+        weather.setVisibilityStatuteMiles(5.0);
+        weather.setWeatherString("RA BR");
+        weather.setSkyCondition("OVC010");
+        
+        assertEquals(5.0, tafData.getBaseWeatherConditions().getVisibilityStatuteMiles());
+        assertEquals("RA BR", tafData.getBaseWeatherConditions().getWeatherString());
+        assertEquals("OVC010", tafData.getBaseWeatherConditions().getSkyCondition());
+        
+        assertTrue(tafData.getBaseWeatherConditions().hasGoodVisibility());
+        assertTrue(tafData.getBaseWeatherConditions().hasActiveWeather());
     }
 
     @Test
-    @DisplayName("Base weather setters create weather conditions object when null")
-    void testBaseWeatherSettersWithNullObject() {
+    @DisplayName("Setting base weather conditions to null creates new instance")
+    void testSetBaseWeatherConditionsNull() {
         tafData.setBaseWeatherConditions(null);
-        
-        tafData.setBaseVisibilityStatuteMiles(10.0);
         assertNotNull(tafData.getBaseWeatherConditions());
-        assertEquals(10.0, tafData.getBaseVisibilityStatuteMiles());
+    }
+
+    @Test
+    @DisplayName("Setting custom base weather conditions object works")
+    void testSetCustomBaseWeatherConditions() {
+        WeatherConditions customWeather = new WeatherConditions(2.5, "FG", "OVC005");
+        tafData.setBaseWeatherConditions(customWeather);
+        
+        assertEquals(2.5, tafData.getBaseWeatherConditions().getVisibilityStatuteMiles());
+        assertEquals("FG", tafData.getBaseWeatherConditions().getWeatherString());
+        assertEquals("OVC005", tafData.getBaseWeatherConditions().getSkyCondition());
+        assertFalse(tafData.getBaseWeatherConditions().hasGoodVisibility());
+        assertTrue(tafData.getBaseWeatherConditions().hasActiveWeather());
     }
 
     @Test
@@ -345,16 +338,16 @@ class NoaaTafDataTest {
         taf1.setValidToTime(validTo);
         taf1.setIssueTime(issueTime);
         taf1.setTafType("TAF");
-        taf1.setBaseWindDirectionDegrees(270);
-        taf1.setBaseVisibilityStatuteMiles(10.0);
+        taf1.getBaseWindInformation().setWindDirectionDegrees(270);
+        taf1.getBaseWeatherConditions().setVisibilityStatuteMiles(10.0);
         
         NoaaTafData taf2 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
         taf2.setValidFromTime(validFrom);
         taf2.setValidToTime(validTo);
         taf2.setIssueTime(issueTime);
         taf2.setTafType("TAF");
-        taf2.setBaseWindDirectionDegrees(270);
-        taf2.setBaseVisibilityStatuteMiles(10.0);
+        taf2.getBaseWindInformation().setWindDirectionDegrees(270);
+        taf2.getBaseWeatherConditions().setVisibilityStatuteMiles(10.0);
         
         assertTrue(taf1.equals(taf2));
         assertEquals(taf1.hashCode(), taf2.hashCode());
@@ -366,10 +359,10 @@ class NoaaTafDataTest {
         LocalDateTime time = LocalDateTime.now();
         
         NoaaTafData taf1 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
-        taf1.setBaseWindDirectionDegrees(270);
+        taf1.getBaseWindInformation().setWindDirectionDegrees(270);
         
         NoaaTafData taf2 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
-        taf2.setBaseWindDirectionDegrees(180); // Different wind direction
+        taf2.getBaseWindInformation().setWindDirectionDegrees(180);
         
         assertFalse(taf1.equals(taf2));
     }
@@ -378,8 +371,8 @@ class NoaaTafDataTest {
     @DisplayName("hashCode is consistent with composition objects")
     void testHashCodeConsistency() {
         tafData.setTafType("TAF AMD");
-        tafData.setBaseWindDirectionDegrees(90);
-        tafData.setBaseVisibilityStatuteMiles(8.0);
+        tafData.getBaseWindInformation().setWindDirectionDegrees(90);
+        tafData.getBaseWeatherConditions().setVisibilityStatuteMiles(8.0);
         
         int hashCode1 = tafData.hashCode();
         int hashCode2 = tafData.hashCode();
@@ -426,41 +419,56 @@ class NoaaTafDataTest {
     }
 
     @Test
-    @DisplayName("TafChangeGroup wind delegation works correctly")
-    void testTafChangeGroupWindDelegation() {
+    @DisplayName("TafChangeGroup wind composition works correctly")
+    void testTafChangeGroupWindComposition() {
         NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
         
-        changeGroup.setWindDirectionDegrees(220);
-        changeGroup.setWindSpeedKnots(18);
-        changeGroup.setWindGustKnots(25);
-        
-        assertEquals(220, changeGroup.getWindDirectionDegrees());
-        assertEquals(18, changeGroup.getWindSpeedKnots());
-        assertEquals(25, changeGroup.getWindGustKnots());
-        
         WindInformation wind = changeGroup.getWindInformation();
-        assertEquals(220, wind.getWindDirectionDegrees());
-        assertEquals(18, wind.getWindSpeedKnots());
-        assertEquals(25, wind.getWindGustKnots());
+        assertNotNull(wind);
+        
+        wind.setWindDirectionDegrees(220);
+        wind.setWindSpeedKnots(18);
+        wind.setWindGustKnots(25);
+        
+        assertEquals(220, changeGroup.getWindInformation().getWindDirectionDegrees());
+        assertEquals(18, changeGroup.getWindInformation().getWindSpeedKnots());
+        assertEquals(25, changeGroup.getWindInformation().getWindGustKnots());
+        
+        assertFalse(changeGroup.getWindInformation().isCalm());
+        assertTrue(changeGroup.getWindInformation().hasGusts());
+        assertEquals("SW", changeGroup.getWindInformation().getWindDirectionCardinal());
     }
 
     @Test
-    @DisplayName("TafChangeGroup weather delegation works correctly")
-    void testTafChangeGroupWeatherDelegation() {
+    @DisplayName("TafChangeGroup weather composition works correctly")
+    void testTafChangeGroupWeatherComposition() {
         NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
         
-        changeGroup.setVisibilityStatuteMiles(3.0);
-        changeGroup.setWeatherString("BR");
-        changeGroup.setSkyCondition("OVC008");
-        
-        assertEquals(3.0, changeGroup.getVisibilityStatuteMiles());
-        assertEquals("BR", changeGroup.getWeatherString());
-        assertEquals("OVC008", changeGroup.getSkyCondition());
-        
         WeatherConditions weather = changeGroup.getWeatherConditions();
-        assertEquals(3.0, weather.getVisibilityStatuteMiles());
-        assertEquals("BR", weather.getWeatherString());
-        assertEquals("OVC008", weather.getSkyCondition());
+        assertNotNull(weather);
+        
+        weather.setVisibilityStatuteMiles(3.0);
+        weather.setWeatherString("BR");
+        weather.setSkyCondition("OVC008");
+        
+        assertEquals(3.0, changeGroup.getWeatherConditions().getVisibilityStatuteMiles());
+        assertEquals("BR", changeGroup.getWeatherConditions().getWeatherString());
+        assertEquals("OVC008", changeGroup.getWeatherConditions().getSkyCondition());
+        
+        assertTrue(changeGroup.getWeatherConditions().hasGoodVisibility());
+        assertTrue(changeGroup.getWeatherConditions().hasActiveWeather());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup setting composition objects to null creates new instances")
+    void testTafChangeGroupSetCompositionObjectsNull() {
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
+        
+        changeGroup.setWindInformation(null);
+        assertNotNull(changeGroup.getWindInformation());
+        
+        changeGroup.setWeatherConditions(null);
+        assertNotNull(changeGroup.getWeatherConditions());
     }
 
     @Test
@@ -472,14 +480,14 @@ class NoaaTafDataTest {
         NoaaTafData.TafChangeGroup group1 = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 3SM BR");
         group1.setChangeTimeFrom(from);
         group1.setChangeTimeTo(to);
-        group1.setWindDirectionDegrees(180);
-        group1.setVisibilityStatuteMiles(3.0);
+        group1.getWindInformation().setWindDirectionDegrees(180);
+        group1.getWeatherConditions().setVisibilityStatuteMiles(3.0);
         
         NoaaTafData.TafChangeGroup group2 = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 3SM BR");
         group2.setChangeTimeFrom(from);
         group2.setChangeTimeTo(to);
-        group2.setWindDirectionDegrees(180);
-        group2.setVisibilityStatuteMiles(3.0);
+        group2.getWindInformation().setWindDirectionDegrees(180);
+        group2.getWeatherConditions().setVisibilityStatuteMiles(3.0);
         
         assertTrue(group1.equals(group2));
         assertEquals(group1.hashCode(), group2.hashCode());
@@ -500,66 +508,105 @@ class NoaaTafDataTest {
     }
 
     @Test
-    @DisplayName("Complete TAF data workflow")
+    @DisplayName("Complete TAF data workflow with composition objects")
     void testCompleteTafWorkflow() {
-        // Create a complete TAF report
-        String rawText = "TAF AMD KJFK 251720Z 2518/2624 28012KT P6SM SCT040 BKN100 TEMPO 2520/2524 3SM BR OVC008";
+        String rawText = "TAF AMD KJFK 251720Z 2518/2627 28012KT P6SM SCT040 BKN100 TEMPO 2520/2524 2SM BR OVC008";
         LocalDateTime issueTime = LocalDateTime.of(2025, 1, 25, 17, 20);
         LocalDateTime validFrom = LocalDateTime.of(2025, 1, 25, 18, 0);
         LocalDateTime validTo = LocalDateTime.of(2025, 1, 27, 0, 0);
         
         NoaaTafData taf = new NoaaTafData(rawText, "KJFK", issueTime);
         
-        // Set validity period
         taf.setValidFromTime(validFrom);
         taf.setValidToTime(validTo);
         taf.setIssueTime(issueTime);
         taf.setBulletinTime("251720Z");
         
-        // Set base forecast conditions
         taf.setBaseForecastText("28012KT P6SM SCT040 BKN100");
-        taf.setBaseWindDirectionDegrees(280);
-        taf.setBaseWindSpeedKnots(12);
-        taf.setBaseVisibilityStatuteMiles(10.0);
-        taf.setBaseSkyCondition("SCT040 BKN100");
         
-        // Add change group
+        WindInformation baseWind = taf.getBaseWindInformation();
+        baseWind.setWindDirectionDegrees(280);
+        baseWind.setWindSpeedKnots(12);
+        
+        WeatherConditions baseWeather = taf.getBaseWeatherConditions();
+        baseWeather.setVisibilityStatuteMiles(10.0);
+        baseWeather.setSkyCondition("SCT040 BKN100");
+        
         NoaaTafData.TafChangeGroup tempoGroup = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 2SM BR OVC008");
         tempoGroup.setChangeTimeFrom(LocalDateTime.of(2025, 1, 25, 20, 0));
         tempoGroup.setChangeTimeTo(LocalDateTime.of(2025, 1, 26, 0, 0));
-        tempoGroup.setVisibilityStatuteMiles(2.0);
-        tempoGroup.setWeatherString("BR");
-        tempoGroup.setSkyCondition("OVC008");
+        
+        WeatherConditions tempoWeather = tempoGroup.getWeatherConditions();
+        tempoWeather.setVisibilityStatuteMiles(2.0);
+        tempoWeather.setWeatherString("BR");
+        tempoWeather.setSkyCondition("OVC008");
         
         taf.addChangeGroup(tempoGroup);
         
-        // Verify all data
         assertEquals("KJFK", taf.getStationId());
         assertEquals(rawText, taf.getRawText());
         assertEquals("TAF AMD", taf.getTafType());
         assertTrue(taf.isModified());
         assertEquals(30, taf.getValidityPeriodHours());
         
-        assertEquals(280, taf.getBaseWindDirectionDegrees());
-        assertEquals(12, taf.getBaseWindSpeedKnots());
-        assertEquals(10.0, taf.getBaseVisibilityStatuteMiles());
+        WindInformation retrievedBaseWind = taf.getBaseWindInformation();
+        assertEquals(280, retrievedBaseWind.getWindDirectionDegrees());
+        assertEquals(12, retrievedBaseWind.getWindSpeedKnots());
+        assertEquals("W", retrievedBaseWind.getWindDirectionCardinal());
+        assertFalse(retrievedBaseWind.isCalm());
+        
+        WeatherConditions retrievedBaseWeather = taf.getBaseWeatherConditions();
+        assertEquals(10.0, retrievedBaseWeather.getVisibilityStatuteMiles());
+        assertEquals("SCT040 BKN100", retrievedBaseWeather.getSkyCondition());
+        assertTrue(retrievedBaseWeather.hasGoodVisibility());
         
         assertEquals(1, taf.getChangeGroups().size());
         NoaaTafData.TafChangeGroup retrievedGroup = taf.getChangeGroups().get(0);
         assertEquals("TEMPO", retrievedGroup.getChangeType());
-        assertEquals(2.0, retrievedGroup.getVisibilityStatuteMiles());
-        assertEquals("BR", retrievedGroup.getWeatherString());
         
-        // Verify composition objects
-        WindInformation baseWind = taf.getBaseWindInformation();
-        assertEquals("W", baseWind.getWindDirectionCardinal());
-        assertFalse(baseWind.isCalm());
+        WeatherConditions retrievedTempoWeather = retrievedGroup.getWeatherConditions();
+        assertEquals(2.0, retrievedTempoWeather.getVisibilityStatuteMiles());
+        assertEquals("BR", retrievedTempoWeather.getWeatherString());
+        assertEquals("OVC008", retrievedTempoWeather.getSkyCondition());
+        assertFalse(retrievedTempoWeather.hasGoodVisibility());
+        assertTrue(retrievedTempoWeather.hasActiveWeather());
+    }
+
+    @Test
+    @DisplayName("Composition objects maintain independence across TAF instances")
+    void testCompositionObjectIndependence() {
+        NoaaTafData taf1 = new NoaaTafData();
+        NoaaTafData taf2 = new NoaaTafData();
         
-        WeatherConditions baseWeather = taf.getBaseWeatherConditions();
-        assertTrue(baseWeather.hasGoodVisibility());
+        taf1.getBaseWindInformation().setWindDirectionDegrees(270);
+        taf1.getBaseWindInformation().setWindSpeedKnots(15);
         
-        WeatherConditions tempoWeather = retrievedGroup.getWeatherConditions();
-        assertFalse(tempoWeather.hasGoodVisibility());
-        assertTrue(tempoWeather.hasActiveWeather());
+        assertNull(taf2.getBaseWindInformation().getWindDirectionDegrees());
+        assertNull(taf2.getBaseWindInformation().getWindSpeedKnots());
+        
+        taf2.getBaseWeatherConditions().setVisibilityStatuteMiles(5.0);
+        taf2.getBaseWeatherConditions().setWeatherString("RA");
+        
+        assertNull(taf1.getBaseWeatherConditions().getVisibilityStatuteMiles());
+        assertNull(taf1.getBaseWeatherConditions().getWeatherString());
+    }
+
+    @Test
+    @DisplayName("Composition objects maintain independence across change groups")
+    void testChangeGroupCompositionObjectIndependence() {
+        NoaaTafData.TafChangeGroup group1 = new NoaaTafData.TafChangeGroup();
+        NoaaTafData.TafChangeGroup group2 = new NoaaTafData.TafChangeGroup();
+        
+        group1.getWindInformation().setWindDirectionDegrees(180);
+        group1.getWindInformation().setWindSpeedKnots(20);
+        
+        assertNull(group2.getWindInformation().getWindDirectionDegrees());
+        assertNull(group2.getWindInformation().getWindSpeedKnots());
+        
+        group2.getWeatherConditions().setVisibilityStatuteMiles(1.0);
+        group2.getWeatherConditions().setWeatherString("FG");
+        
+        assertNull(group1.getWeatherConditions().getVisibilityStatuteMiles());
+        assertNull(group1.getWeatherConditions().getWeatherString());
     }
 }

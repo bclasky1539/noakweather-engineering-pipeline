@@ -27,6 +27,9 @@ import java.util.Objects;
  * METAR reports are current weather observations, typically updated hourly.
  * Think of this as a snapshot of current conditions at a specific airport.
  * 
+ * Uses composition with WindInformation and WeatherConditions to eliminate
+ * code duplication and provide a cleaner domain model.
+ * 
  * @author bclasky1539
  * 
  */
@@ -112,7 +115,7 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
         this.altimeterInHg = altimeterInHg;
     }
     
-    // Wind information - delegating to WindInformation object
+    // Direct access to composition objects (preferred approach)
     public WindInformation getWindInformation() {
         return windInformation;
     }
@@ -121,92 +124,12 @@ public class NoaaMetarData extends NoaaAviationWeatherData {
         this.windInformation = windInformation != null ? windInformation : new WindInformation();
     }
     
-    // Convenience methods for backward compatibility
-    public Integer getWindDirectionDegrees() {
-        return windInformation != null ? windInformation.getWindDirectionDegrees() : null;
-    }
-    
-    public void setWindDirectionDegrees(Integer windDirectionDegrees) {
-        if (windInformation == null) {
-            windInformation = new WindInformation();
-        }
-        windInformation.setWindDirectionDegrees(windDirectionDegrees);
-    }
-    
-    public Integer getWindSpeedKnots() {
-        return windInformation != null ? windInformation.getWindSpeedKnots() : null;
-    }
-    
-    public void setWindSpeedKnots(Integer windSpeedKnots) {
-        if (windInformation == null) {
-            windInformation = new WindInformation();
-        }
-        windInformation.setWindSpeedKnots(windSpeedKnots);
-    }
-    
-    public Integer getWindGustKnots() {
-        return windInformation != null ? windInformation.getWindGustKnots() : null;
-    }
-    
-    public void setWindGustKnots(Integer windGustKnots) {
-        if (windInformation == null) {
-            windInformation = new WindInformation();
-        }
-        windInformation.setWindGustKnots(windGustKnots);
-    }
-    
-    public String getWindVariableDirection() {
-        return windInformation != null ? windInformation.getWindVariableDirection() : null;
-    }
-    
-    public void setWindVariableDirection(String windVariableDirection) {
-        if (windInformation == null) {
-            windInformation = new WindInformation();
-        }
-        windInformation.setWindVariableDirection(windVariableDirection);
-    }
-    
-    // Weather conditions - delegating to WeatherConditions object
     public WeatherConditions getWeatherConditions() {
         return weatherConditions;
     }
     
     public void setWeatherConditions(WeatherConditions weatherConditions) {
         this.weatherConditions = weatherConditions != null ? weatherConditions : new WeatherConditions();
-    }
-    
-    // Convenience methods for backward compatibility
-    public Double getVisibilityStatuteMiles() {
-        return weatherConditions != null ? weatherConditions.getVisibilityStatuteMiles() : null;
-    }
-    
-    public void setVisibilityStatuteMiles(Double visibilityStatuteMiles) {
-        if (weatherConditions == null) {
-            weatherConditions = new WeatherConditions();
-        }
-        weatherConditions.setVisibilityStatuteMiles(visibilityStatuteMiles);
-    }
-    
-    public String getWeatherString() {
-        return weatherConditions != null ? weatherConditions.getWeatherString() : null;
-    }
-    
-    public void setWeatherString(String weatherString) {
-        if (weatherConditions == null) {
-            weatherConditions = new WeatherConditions();
-        }
-        weatherConditions.setWeatherString(weatherString);
-    }
-    
-    public String getSkyCondition() {
-        return weatherConditions != null ? weatherConditions.getSkyCondition() : null;
-    }
-    
-    public void setSkyCondition(String skyCondition) {
-        if (weatherConditions == null) {
-            weatherConditions = new WeatherConditions();
-        }
-        weatherConditions.setSkyCondition(skyCondition);
     }
     
     // Flight category getter/setter
