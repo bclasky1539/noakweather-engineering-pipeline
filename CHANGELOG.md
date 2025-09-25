@@ -1,5 +1,8 @@
 # Changelog
 
+## Version 0.0.5 - Date: September 25, 2025
+- Added classes for noaa_api/model
+
 ## Version 0.0.4 - Date: July 17, 2025
 - Created comprehensive code standards document
 - Created weather format references document
