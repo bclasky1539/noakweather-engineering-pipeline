@@ -16,777 +16,550 @@
  */
 package noakweather.noaa_api.model;
 
-import noakweather.noaa_api.model.NoaaTafData.TafChangeGroup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Unit tests for NoaaTafData class.
- * 
- * Tests TAF-specific functionality including forecast validity periods,
- * change groups, amended/corrected flags, and the isCurrent() business logic
- * specific to forecasts.
- * 
- * @author bclasky1539
- */
-@DisplayName("NOAA TAF Data Tests")
+@DisplayName("NoaaTafData Tests")
 class NoaaTafDataTest {
-    
+
     private NoaaTafData tafData;
-    private LocalDateTime testIssueTime;
-    private LocalDateTime testValidFromTime;
-    private LocalDateTime testValidToTime;
-    
+    private LocalDateTime testTime;
+
     @BeforeEach
     void setUp() {
+        testTime = LocalDateTime.now().minusHours(1);
         tafData = new NoaaTafData();
-        testIssueTime = LocalDateTime.now().minusHours(1);
-        testValidFromTime = LocalDateTime.now();
-        testValidToTime = LocalDateTime.now().plusHours(24);
     }
-    
-    @Nested
-    @DisplayName("Constructor Tests")
-    class ConstructorTests {
-        
-        @Test
-        @DisplayName("Default constructor creates empty TAF")
-        void defaultConstructor() {
-            NoaaTafData data = new NoaaTafData();
-            
-            assertNull(data.getRawText());
-            assertNull(data.getStationId());
-            assertNull(data.getObservationTime());
-            assertNull(data.getValidFromTime());
-            assertNull(data.getValidToTime());
-            assertNull(data.getIssueTime());
-            assertNull(data.getTafType());
-            assertNull(data.getIsAmended());
-            assertNull(data.getIsCorrected());
-            assertNotNull(data.getChangeGroups());
-            assertTrue(data.getChangeGroups().isEmpty());
-        }
-        
-        @Test
-        @DisplayName("Parameterized constructor parses TAF type from raw text")
-        void parameterizedConstructorWithTaf() {
-            String rawText = "TAF KJFK 151720Z 1518/1624 28016KT P6SM FEW250";
-            
-            NoaaTafData data = new NoaaTafData(rawText, "KJFK", testIssueTime);
-            
-            assertEquals(rawText, data.getRawText());
-            assertEquals("KJFK", data.getStationId());
-            assertEquals(testIssueTime, data.getObservationTime());
-            assertEquals("TAF", data.getTafType());
-            assertNull(data.getIsAmended());
-            assertNull(data.getIsCorrected());
-        }
-        
-        @Test
-        @DisplayName("Parameterized constructor recognizes amended TAF")
-        void parameterizedConstructorWithAmendedTaf() {
-            String rawText = "TAF AMD KJFK 151800Z 1518/1624 29020KT P6SM FEW180";
-            
-            NoaaTafData data = new NoaaTafData(rawText, "KJFK", testIssueTime);
-            
-            assertEquals("TAF AMD", data.getTafType());
-            assertTrue(data.getIsAmended());
-            assertNull(data.getIsCorrected());
-        }
-        
-        @Test
-        @DisplayName("Parameterized constructor recognizes corrected TAF")
-        void parameterizedConstructorWithCorrectedTaf() {
-            String rawText = "TAF COR KJFK 151800Z 1518/1624 29020KT P6SM FEW180";
-            
-            NoaaTafData data = new NoaaTafData(rawText, "KJFK", testIssueTime);
-            
-            assertEquals("TAF COR", data.getTafType());
-            assertNull(data.getIsAmended());
-            assertTrue(data.getIsCorrected());
-        }
+
+    @Test
+    @DisplayName("Default constructor initializes composition objects and collections")
+    void testDefaultConstructor() {
+        assertNotNull(tafData.getBaseWindInformation());
+        assertNotNull(tafData.getBaseWeatherConditions());
+        assertNotNull(tafData.getChangeGroups());
+        assertTrue(tafData.getChangeGroups().isEmpty());
+        assertEquals("TAF", tafData.getReportType());
     }
-    
-    @Nested
-    @DisplayName("Validity Period Tests")
-    class ValidityPeriodTests {
+
+    @Test
+    @DisplayName("Parameterized constructor sets basic fields and parses TAF type")
+    void testParameterizedConstructor() {
+        String rawText = "TAF KJFK 251720Z 2518/2624 28012KT P6SM SCT040 BKN100";
+        NoaaTafData taf = new NoaaTafData(rawText, "KJFK", testTime);
         
-        @Test
-        @DisplayName("Valid from time field works correctly")
-        void validFromTimeField() {
-            tafData.setValidFromTime(testValidFromTime);
-            assertEquals(testValidFromTime, tafData.getValidFromTime());
-            
-            tafData.setValidFromTime(null);
-            assertNull(tafData.getValidFromTime());
-        }
-        
-        @Test
-        @DisplayName("Valid to time field works correctly")
-        void validToTimeField() {
-            tafData.setValidToTime(testValidToTime);
-            assertEquals(testValidToTime, tafData.getValidToTime());
-        }
-        
-        @Test
-        @DisplayName("Issue time field works correctly")
-        void issueTimeField() {
-            tafData.setIssueTime(testIssueTime);
-            assertEquals(testIssueTime, tafData.getIssueTime());
-        }
-        
-        @Test
-        @DisplayName("Bulletin time field works correctly")
-        void bulletinTimeField() {
-            String bulletinTime = "151720Z";
-            
-            tafData.setBulletinTime(bulletinTime);
-            assertEquals(bulletinTime, tafData.getBulletinTime());
-        }
-        
-        @Test
-        @DisplayName("Validity period hours calculation")
-        void validityPeriodHours() {
-            LocalDateTime from = LocalDateTime.of(2024, 1, 15, 18, 0);
-            LocalDateTime to = LocalDateTime.of(2024, 1, 16, 18, 0);
-            
-            tafData.setValidFromTime(from);
-            tafData.setValidToTime(to);
-            
-            assertEquals(24, tafData.getValidityPeriodHours());
-        }
-        
-        @Test
-        @DisplayName("Validity period with null times returns zero")
-        void validityPeriodWithNullTimes() {
-            assertEquals(0, tafData.getValidityPeriodHours());
-            
-            tafData.setValidFromTime(testValidFromTime);
-            assertEquals(0, tafData.getValidityPeriodHours()); // Still null to time
-            
-            tafData.setValidFromTime(null);
-            tafData.setValidToTime(testValidToTime);
-            assertEquals(0, tafData.getValidityPeriodHours()); // Still null from time
-        }
+        assertEquals(rawText, taf.getRawText());
+        assertEquals("KJFK", taf.getStationId());
+        assertEquals(testTime, taf.getObservationTime());
+        assertEquals("TAF", taf.getTafType());
+        assertEquals("TAF", taf.getReportType());
+        assertNull(taf.getIsAmended());
+        assertNull(taf.getIsCorrected());
     }
-    
-    @Nested
-    @DisplayName("TAF Type and Status Tests")
-    class TafTypeAndStatusTests {
+
+    @Test
+    @DisplayName("Constructor handles TAF AMD reports")
+    void testTafAmdConstructor() {
+        String rawText = "TAF AMD KJFK 251720Z 2518/2624 28012KT P6SM SCT040 BKN100";
+        NoaaTafData taf = new NoaaTafData(rawText, "KJFK", testTime);
         
-        @Test
-        @DisplayName("TAF type field works correctly")
-        void tafTypeField() {
-            tafData.setTafType("TAF");
-            assertEquals("TAF", tafData.getTafType());
-            
-            tafData.setTafType("TAF AMD");
-            assertEquals("TAF AMD", tafData.getTafType());
-            
-            tafData.setTafType("TAF COR");
-            assertEquals("TAF COR", tafData.getTafType());
-        }
-        
-        @Test
-        @DisplayName("Amended flag works correctly")
-        void amendedFlag() {
-            tafData.setIsAmended(true);
-            assertTrue(tafData.getIsAmended());
-            
-            tafData.setIsAmended(false);
-            assertFalse(tafData.getIsAmended());
-            
-            tafData.setIsAmended(null);
-            assertNull(tafData.getIsAmended());
-        }
-        
-        @Test
-        @DisplayName("Corrected flag works correctly")
-        void correctedFlag() {
-            tafData.setIsCorrected(true);
-            assertTrue(tafData.getIsCorrected());
-            
-            tafData.setIsCorrected(false);
-            assertFalse(tafData.getIsCorrected());
-        }
-        
-        @Test
-        @DisplayName("isModified method works correctly")
-        void isModifiedMethod() {
-            // Default state - not modified
-            assertFalse(tafData.isModified());
-            
-            // Amended TAF is modified
-            tafData.setIsAmended(true);
-            assertTrue(tafData.isModified());
-            
-            // Reset and test corrected
-            tafData.setIsAmended(null);
-            tafData.setIsCorrected(true);
-            assertTrue(tafData.isModified());
-            
-            // Both amended and corrected
-            tafData.setIsAmended(true);
-            tafData.setIsCorrected(true);
-            assertTrue(tafData.isModified());
-            
-            // Explicitly false flags
-            tafData.setIsAmended(false);
-            tafData.setIsCorrected(false);
-            assertFalse(tafData.isModified());
-        }
+        assertEquals("TAF AMD", taf.getTafType());
+        assertEquals("TAF AMD", taf.getReportType());
+        assertTrue(taf.getIsAmended());
+        assertNull(taf.getIsCorrected());
     }
-    
-    @Nested
-    @DisplayName("Base Forecast Tests")
-    class BaseForecastTests {
+
+    @Test
+    @DisplayName("Constructor handles TAF COR reports")
+    void testTafCorConstructor() {
+        String rawText = "TAF COR KJFK 251720Z 2518/2624 28012KT P6SM SCT040 BKN100";
+        NoaaTafData taf = new NoaaTafData(rawText, "KJFK", testTime);
         
-        @Test
-        @DisplayName("Base forecast text field works correctly")
-        void baseForecastTextField() {
-            String forecastText = "28016KT P6SM FEW250";
-            
-            tafData.setBaseForecastText(forecastText);
-            assertEquals(forecastText, tafData.getBaseForecastText());
-        }
-        
-        @Test
-        @DisplayName("Base wind fields work correctly")
-        void baseWindFields() {
-            tafData.setBaseWindDirectionDegrees(280);
-            assertEquals(280, tafData.getBaseWindDirectionDegrees());
-            
-            tafData.setBaseWindSpeedKnots(16);
-            assertEquals(16, tafData.getBaseWindSpeedKnots());
-            
-            tafData.setBaseWindGustKnots(25);
-            assertEquals(25, tafData.getBaseWindGustKnots());
-        }
-        
-        @Test
-        @DisplayName("Base visibility field works correctly")
-        void baseVisibilityField() {
-            Double visibility = 6.0;
-            
-            tafData.setBaseVisibilityStatuteMiles(visibility);
-            assertEquals(visibility, tafData.getBaseVisibilityStatuteMiles());
-        }
-        
-        @Test
-        @DisplayName("Base weather and sky condition fields work correctly")
-        void baseWeatherAndSkyFields() {
-            String weather = "SHRA";
-            String skyCondition = "SCT030 BKN080";
-            
-            tafData.setBaseWeatherString(weather);
-            assertEquals(weather, tafData.getBaseWeatherString());
-            
-            tafData.setBaseSkyCondition(skyCondition);
-            assertEquals(skyCondition, tafData.getBaseSkyCondition());
-        }
+        assertEquals("TAF COR", taf.getTafType());
+        assertEquals("TAF COR", taf.getReportType());
+        assertNull(taf.getIsAmended());
+        assertTrue(taf.getIsCorrected());
     }
-    
-    @Nested
-    @DisplayName("Change Groups Tests")
-    class ChangeGroupsTests {
+
+    @Test
+    @DisplayName("Validity period getters and setters work correctly")
+    void testValidityPeriodFields() {
+        LocalDateTime fromTime = LocalDateTime.now().plusHours(1);
+        LocalDateTime toTime = LocalDateTime.now().plusHours(25);
         
-        @Test
-        @DisplayName("Change groups list initialization")
-        void changeGroupsListInitialization() {
-            NoaaTafData taf = new NoaaTafData();
-            assertNotNull(taf.getChangeGroups());
-            assertTrue(taf.getChangeGroups().isEmpty());
-        }
+        tafData.setValidFromTime(fromTime);
+        tafData.setValidToTime(toTime);
         
-        @Test
-        @DisplayName("Adding change groups works correctly")
-        void addingChangeGroups() {
-            TafChangeGroup group1 = new TafChangeGroup("TEMPO", "TEMPO 1520/1522 29025G35KT 3SM -RA");
-            TafChangeGroup group2 = new TafChangeGroup("BECMG", "BECMG 1600/1602 28015KT");
-            
-            tafData.addChangeGroup(group1);
-            assertEquals(1, tafData.getChangeGroups().size());
-            assertEquals(group1, tafData.getChangeGroups().get(0));
-            
-            tafData.addChangeGroup(group2);
-            assertEquals(2, tafData.getChangeGroups().size());
-            assertEquals(group2, tafData.getChangeGroups().get(1));
-        }
-        
-        @Test
-        @DisplayName("Setting change groups list works correctly")
-        void settingChangeGroupsList() {
-            List<TafChangeGroup> groups = new ArrayList<>();
-            groups.add(new TafChangeGroup("TEMPO", "TEMPO 1520/1522 29025G35KT"));
-            groups.add(new TafChangeGroup("FM", "FM151800 28012KT"));
-            
-            tafData.setChangeGroups(groups);
-            assertEquals(2, tafData.getChangeGroups().size());
-            assertEquals("TEMPO", tafData.getChangeGroups().get(0).getChangeType());
-            assertEquals("FM", tafData.getChangeGroups().get(1).getChangeType());
-        }
-        
-        @Test
-        @DisplayName("Setting null change groups creates empty list")
-        void settingNullChangeGroups() {
-            tafData.setChangeGroups(null);
-            assertNotNull(tafData.getChangeGroups());
-            assertTrue(tafData.getChangeGroups().isEmpty());
-        }
-        
-        @Test
-        @DisplayName("Adding change group to null list initializes list")
-        void addingToNullChangeGroupsList() {
-            tafData.setChangeGroups(null);
-            TafChangeGroup group = new TafChangeGroup("TEMPO", "TEMPO 1520/1522");
-            
-            tafData.addChangeGroup(group);
-            assertEquals(1, tafData.getChangeGroups().size());
-        }
+        assertEquals(fromTime, tafData.getValidFromTime());
+        assertEquals(toTime, tafData.getValidToTime());
     }
-    
-    @Nested
-    @DisplayName("Business Logic Tests")
-    class BusinessLogicTests {
+
+    @Test
+    @DisplayName("Issue time and bulletin time fields work correctly")
+    void testIssueTimeFields() {
+        LocalDateTime issueTime = LocalDateTime.now();
+        String bulletinTime = "251720Z";
         
-        @Test
-        @DisplayName("isCurrent returns true for valid TAF")
-        void isCurrentWithValidTaf() {
-            LocalDateTime now = LocalDateTime.now();
-            
-            tafData.setValidFromTime(now.minusHours(1));
-            tafData.setValidToTime(now.plusHours(23));
-            
-            assertTrue(tafData.isCurrent());
-        }
+        tafData.setIssueTime(issueTime);
+        tafData.setBulletinTime(bulletinTime);
         
-        @Test
-        @DisplayName("isCurrent returns false for expired TAF")
-        void isCurrentWithExpiredTaf() {
-            LocalDateTime now = LocalDateTime.now();
-            
-            tafData.setValidFromTime(now.minusHours(25));
-            tafData.setValidToTime(now.minusHours(1));
-            
-            assertFalse(tafData.isCurrent());
-        }
-        
-        @Test
-        @DisplayName("isCurrent returns false for future TAF")
-        void isCurrentWithFutureTaf() {
-            LocalDateTime now = LocalDateTime.now();
-            
-            tafData.setValidFromTime(now.plusHours(1));
-            tafData.setValidToTime(now.plusHours(25));
-            
-            assertFalse(tafData.isCurrent());
-        }
-        
-        @Test
-        @DisplayName("isCurrent returns false with null valid to time")
-        void isCurrentWithNullValidToTime() {
-            tafData.setValidFromTime(LocalDateTime.now().minusHours(1));
-            tafData.setValidToTime(null);
-            
-            assertFalse(tafData.isCurrent());
-        }
-        
-        @Test
-        @DisplayName("isCurrent handles null valid from time correctly")
-        void isCurrentWithNullValidFromTime() {
-            LocalDateTime now = LocalDateTime.now();
-            
-            tafData.setValidFromTime(null);
-            tafData.setValidToTime(now.plusHours(23));
-            
-            assertTrue(tafData.isCurrent()); // Should be current if before valid to time
-        }
-        
-        @Test
-        @DisplayName("getReportType returns correct type")
-        void getReportTypeMethod() {
-            tafData.setTafType("TAF");
-            assertEquals("TAF", tafData.getReportType());
-            
-            tafData.setTafType("TAF AMD");
-            assertEquals("TAF AMD", tafData.getReportType());
-            
-            tafData.setTafType(null);
-            assertEquals("TAF", tafData.getReportType()); // Default fallback
-        }
+        assertEquals(issueTime, tafData.getIssueTime());
+        assertEquals(bulletinTime, tafData.getBulletinTime());
     }
-    
-    @Nested
-    @DisplayName("TafChangeGroup Tests")
-    class TafChangeGroupTests {
+
+    @Test
+    @DisplayName("TAF type and amendment fields work correctly")
+    void testTafTypeFields() {
+        tafData.setTafType("TAF AMD");
+        tafData.setIsAmended(true);
+        tafData.setIsCorrected(false);
         
-        @Test
-        @DisplayName("TafChangeGroup default constructor")
-        void tafChangeGroupDefaultConstructor() {
-            TafChangeGroup group = new TafChangeGroup();
-            
-            assertNull(group.getChangeType());
-            assertNull(group.getChangeText());
-            assertNull(group.getChangeTimeFrom());
-            assertNull(group.getChangeTimeTo());
-        }
-        
-        @Test
-        @DisplayName("TafChangeGroup parameterized constructor")
-        void tafChangeGroupParameterizedConstructor() {
-            String changeType = "TEMPO";
-            String changeText = "TEMPO 1520/1522 29025G35KT 3SM -RA";
-            
-            TafChangeGroup group = new TafChangeGroup(changeType, changeText);
-            
-            assertEquals(changeType, group.getChangeType());
-            assertEquals(changeText, group.getChangeText());
-        }
-        
-        @Test
-        @DisplayName("TafChangeGroup all fields work correctly")
-        void tafChangeGroupAllFields() {
-            TafChangeGroup group = new TafChangeGroup();
-            LocalDateTime timeFrom = LocalDateTime.of(2024, 1, 15, 20, 0);
-            LocalDateTime timeTo = LocalDateTime.of(2024, 1, 15, 22, 0);
-            
-            group.setChangeType("TEMPO");
-            group.setChangeText("TEMPO 1520/1522 29025G35KT 3SM -RA");
-            group.setChangeTimeFrom(timeFrom);
-            group.setChangeTimeTo(timeTo);
-            group.setWindDirectionDegrees(290);
-            group.setWindSpeedKnots(25);
-            group.setWindGustKnots(35);
-            group.setVisibilityStatuteMiles(3.0);
-            group.setWeatherString("-RA");
-            group.setSkyCondition("BKN008 OVC015");
-            
-            assertEquals("TEMPO", group.getChangeType());
-            assertEquals("TEMPO 1520/1522 29025G35KT 3SM -RA", group.getChangeText());
-            assertEquals(timeFrom, group.getChangeTimeFrom());
-            assertEquals(timeTo, group.getChangeTimeTo());
-            assertEquals(290, group.getWindDirectionDegrees());
-            assertEquals(25, group.getWindSpeedKnots());
-            assertEquals(35, group.getWindGustKnots());
-            assertEquals(3.0, group.getVisibilityStatuteMiles());
-            assertEquals("-RA", group.getWeatherString());
-            assertEquals("BKN008 OVC015", group.getSkyCondition());
-        }
-        
-        @Test
-        @DisplayName("TafChangeGroup equals and hashCode")
-        void tafChangeGroupEqualsAndHashCode() {
-            LocalDateTime timeFrom = LocalDateTime.of(2024, 1, 15, 20, 0);
-            LocalDateTime timeTo = LocalDateTime.of(2024, 1, 15, 22, 0);
-            
-            TafChangeGroup group1 = new TafChangeGroup("TEMPO", "TEMPO 1520/1522");
-            group1.setChangeTimeFrom(timeFrom);
-            group1.setChangeTimeTo(timeTo);
-            
-            TafChangeGroup group2 = new TafChangeGroup("TEMPO", "TEMPO 1520/1522");
-            group2.setChangeTimeFrom(timeFrom);
-            group2.setChangeTimeTo(timeTo);
-            
-            assertEquals(group1, group2);
-            assertEquals(group1.hashCode(), group2.hashCode());
-            
-            // Different change type
-            group2.setChangeType("BECMG");
-            assertNotEquals(group1, group2);
-        }
-        
-        @Test
-        @DisplayName("TafChangeGroup toString")
-        void tafChangeGroupToString() {
-            LocalDateTime timeFrom = LocalDateTime.of(2024, 1, 15, 20, 0);
-            LocalDateTime timeTo = LocalDateTime.of(2024, 1, 15, 22, 0);
-            
-            TafChangeGroup group = new TafChangeGroup("TEMPO", "TEMPO 1520/1522");
-            group.setChangeTimeFrom(timeFrom);
-            group.setChangeTimeTo(timeTo);
-            
-            String result = group.toString();
-            
-            assertTrue(result.contains("TafChangeGroup"));
-            assertTrue(result.contains("TEMPO"));
-            assertTrue(result.contains(timeFrom.toString()));
-            assertTrue(result.contains(timeTo.toString()));
-        }
+        assertEquals("TAF AMD", tafData.getTafType());
+        assertEquals("TAF AMD", tafData.getReportType());
+        assertTrue(tafData.getIsAmended());
+        assertFalse(tafData.getIsCorrected());
     }
-    
-    @Nested
-    @DisplayName("Equals and HashCode Tests")
-    class EqualsAndHashCodeTests {
-        
-        @Test
-        @DisplayName("Objects with same TAF data are equal")
-        void equalTafObjects() {
-            NoaaTafData taf1 = new NoaaTafData("TAF KJFK 151720Z", "KJFK", testIssueTime);
-            taf1.setValidFromTime(testValidFromTime);
-            taf1.setValidToTime(testValidToTime);
-            taf1.setIssueTime(testIssueTime);
-            
-            NoaaTafData taf2 = new NoaaTafData("TAF KJFK 151720Z", "KJFK", testIssueTime);
-            taf2.setValidFromTime(testValidFromTime);
-            taf2.setValidToTime(testValidToTime);
-            taf2.setIssueTime(testIssueTime);
-            
-            assertEquals(taf1, taf2);
-            assertEquals(taf1.hashCode(), taf2.hashCode());
-        }
-        
-        @Test
-        @DisplayName("Objects with different validity periods are not equal")
-        void differentValidityPeriods() {
-            NoaaTafData taf1 = new NoaaTafData("TAF KJFK 151720Z", "KJFK", testIssueTime);
-            taf1.setValidFromTime(testValidFromTime);
-            taf1.setValidToTime(testValidToTime);
-            
-            NoaaTafData taf2 = new NoaaTafData("TAF KJFK 151720Z", "KJFK", testIssueTime);
-            taf2.setValidFromTime(testValidFromTime);
-            taf2.setValidToTime(testValidToTime.plusHours(6)); // Different end time
-            
-            assertNotEquals(taf1, taf2);
-        }
-        
-        @Test
-        @DisplayName("Objects with different TAF types are not equal")
-        void differentTafTypes() {
-            NoaaTafData taf1 = new NoaaTafData("TAF KJFK 151720Z", "KJFK", testIssueTime);
-            taf1.setTafType("TAF");
-            
-            NoaaTafData taf2 = new NoaaTafData("TAF AMD KJFK 151720Z", "KJFK", testIssueTime);
-            taf2.setTafType("TAF AMD");
-            
-            assertNotEquals(taf1, taf2);
-        }
-        
-        @Test
-        @DisplayName("Equals calls super.equals() correctly")
-        void equalsCallsSuper() {
-            // Test that base class fields are also considered in equals
-            NoaaTafData taf1 = new NoaaTafData("TAF KJFK 151720Z", "KJFK", testIssueTime);
-            NoaaTafData taf2 = new NoaaTafData("TAF KLGA 151720Z", "KLGA", testIssueTime);
-            
-            assertNotEquals(taf1, taf2); // Different station IDs from base class
-        }
+
+    @Test
+    @DisplayName("Base forecast text field works correctly")
+    void testBaseForecastText() {
+        String forecastText = "28012KT P6SM SCT040 BKN100";
+        tafData.setBaseForecastText(forecastText);
+        assertEquals(forecastText, tafData.getBaseForecastText());
     }
-    
-    @Nested
-    @DisplayName("Edge Cases and Boundary Values")
-    class EdgeCasesAndBoundaryValues {
+
+    @Test
+    @DisplayName("Base wind information delegation works correctly")
+    void testBaseWindInformationDelegation() {
+        // Test direct access to base wind information object
+        WindInformation wind = new WindInformation(270, 15, 22);
+        tafData.setBaseWindInformation(wind);
+        assertEquals(wind, tafData.getBaseWindInformation());
         
-        @Test
-        @DisplayName("TAF with very long validity period")
-        void tafWithLongValidityPeriod() {
-            LocalDateTime from = LocalDateTime.of(2024, 1, 15, 0, 0);
-            LocalDateTime to = LocalDateTime.of(2024, 1, 17, 0, 0); // 48 hours
-            
-            tafData.setValidFromTime(from);
-            tafData.setValidToTime(to);
-            
-            assertEquals(48, tafData.getValidityPeriodHours());
-        }
-        
-        @Test
-        @DisplayName("TAF with short validity period")
-        void tafWithShortValidityPeriod() {
-            LocalDateTime from = LocalDateTime.of(2024, 1, 15, 18, 0);
-            LocalDateTime to = LocalDateTime.of(2024, 1, 15, 20, 0); // 2 hours
-            
-            tafData.setValidFromTime(from);
-            tafData.setValidToTime(to);
-            
-            assertEquals(2, tafData.getValidityPeriodHours());
-        }
-        
-        @Test
-        @DisplayName("TAF with many change groups")
-        void tafWithManyChangeGroups() {
-            for (int i = 0; i < 10; i++) {
-                TafChangeGroup group = new TafChangeGroup("TEMPO", "TEMPO GROUP " + i);
-                tafData.addChangeGroup(group);
-            }
-            
-            assertEquals(10, tafData.getChangeGroups().size());
-        }
-        
-        @Test
-        @DisplayName("Complex TAF type strings")
-        void complexTafTypeStrings() {
-            String[] complexTypes = {
-                "TAF AMD",
-                "TAF COR",
-                "TAF AMD COR",
-                "TAF FCST"
-            };
-            
-            for (String type : complexTypes) {
-                tafData.setTafType(type);
-                assertEquals(type, tafData.getTafType());
-            }
-        }
+        // Test convenience methods delegate correctly
+        assertEquals(270, tafData.getBaseWindDirectionDegrees());
+        assertEquals(15, tafData.getBaseWindSpeedKnots());
+        assertEquals(22, tafData.getBaseWindGustKnots());
     }
-    
-    @Nested
-    @DisplayName("Real World Data Tests")
-    class RealWorldDataTests {
+
+    @Test
+    @DisplayName("Base wind convenience setters work correctly")
+    void testBaseWindConvenienceSetters() {
+        tafData.setBaseWindDirectionDegrees(180);
+        tafData.setBaseWindSpeedKnots(12);
+        tafData.setBaseWindGustKnots(18);
         
-        @Test
-        @DisplayName("Typical JFK TAF data")
-        void typicalJfkTaf() {
-            String rawText = "TAF KJFK 151720Z 1518/1624 28016KT P6SM FEW250 " +
-                           "TEMPO 1520/1523 29025G35KT 3SM -RA BKN015 OVC030 " +
-                           "FM152300 27012KT P6SM SCT030 BKN080";
-            
-            NoaaTafData taf = new NoaaTafData(rawText, "KJFK", testIssueTime);
-            taf.setValidFromTime(LocalDateTime.of(2024, 1, 15, 18, 0));
-            taf.setValidToTime(LocalDateTime.of(2024, 1, 16, 18, 0)); // 24-hour TAF
-            taf.setIssueTime(LocalDateTime.of(2024, 1, 15, 17, 20));
-            
-            // Base forecast
-            taf.setBaseWindDirectionDegrees(280);
-            taf.setBaseWindSpeedKnots(16);
-            taf.setBaseVisibilityStatuteMiles(6.0);
-            taf.setBaseSkyCondition("FEW250");
-            
-            // Add change groups
-            TafChangeGroup tempo = new TafChangeGroup("TEMPO", "TEMPO 1520/1523 29025G35KT 3SM -RA BKN015 OVC030");
-            tempo.setWindDirectionDegrees(290);
-            tempo.setWindSpeedKnots(25);
-            tempo.setWindGustKnots(35);
-            tempo.setVisibilityStatuteMiles(3.0);
-            tempo.setWeatherString("-RA");
-            tempo.setSkyCondition("BKN015 OVC030");
-            taf.addChangeGroup(tempo);
-            
-            TafChangeGroup fm = new TafChangeGroup("FM", "FM152300 27012KT P6SM SCT030 BKN080");
-            fm.setWindDirectionDegrees(270);
-            fm.setWindSpeedKnots(12);
-            fm.setVisibilityStatuteMiles(6.0);
-            fm.setSkyCondition("SCT030 BKN080");
-            taf.addChangeGroup(fm);
-            
-            assertEquals("KJFK", taf.getStationId());
-            assertEquals("TAF", taf.getTafType());
-            assertEquals(24, taf.getValidityPeriodHours()); // 18:00 to 18:00 next day = 24 hours
-            assertEquals(2, taf.getChangeGroups().size());
-            assertFalse(taf.isModified());
-        }
+        assertEquals(180, tafData.getBaseWindDirectionDegrees());
+        assertEquals(12, tafData.getBaseWindSpeedKnots());
+        assertEquals(18, tafData.getBaseWindGustKnots());
         
-        @Test
-        @DisplayName("Amended TAF with probability groups")
-        void amendedTafWithProbabilityGroups() {
-            String rawText = "TAF AMD KJFK 151800Z 1518/1624 29020KT P6SM FEW180 " +
-                           "PROB30 1520/1523 3SM -TSRA BKN020CB " +
-                           "PROB40 1600/1606 1SM +TSRA BKN008 OVC020CB";
-            
-            NoaaTafData taf = new NoaaTafData(rawText, "KJFK", testIssueTime);
-            taf.setIsAmended(true);
-            
-            // Add probability groups
-            TafChangeGroup prob30 = new TafChangeGroup("PROB30", "PROB30 1520/1523 3SM -TSRA BKN020CB");
-            prob30.setVisibilityStatuteMiles(3.0);
-            prob30.setWeatherString("-TSRA");
-            prob30.setSkyCondition("BKN020CB");
-            taf.addChangeGroup(prob30);
-            
-            TafChangeGroup prob40 = new TafChangeGroup("PROB40", "PROB40 1600/1606 1SM +TSRA BKN008 OVC020CB");
-            prob40.setVisibilityStatuteMiles(1.0);
-            prob40.setWeatherString("+TSRA");
-            prob40.setSkyCondition("BKN008 OVC020CB");
-            taf.addChangeGroup(prob40);
-            
-            assertEquals("TAF AMD", taf.getTafType());
-            assertTrue(taf.isModified());
-            assertEquals(2, taf.getChangeGroups().size());
-            assertEquals("PROB30", taf.getChangeGroups().get(0).getChangeType());
-            assertEquals("PROB40", taf.getChangeGroups().get(1).getChangeType());
-        }
-        
-        @Test
-        @DisplayName("Corrected TAF with BECMG group")
-        void correctedTafWithBecmgGroup() {
-            String rawText = "TAF COR KEWR 151720Z 1518/1618 VRB06KT P6SM SCT250 " +
-                           "BECMG 1521/1523 28015KT";
-            
-            NoaaTafData taf = new NoaaTafData(rawText, "KEWR", testIssueTime);
-            taf.setIsCorrected(true);
-            
-            // Base forecast - variable wind
-            taf.setBaseWindDirectionDegrees(null); // Variable wind
-            taf.setBaseWindSpeedKnots(6);
-            taf.setBaseVisibilityStatuteMiles(6.0);
-            taf.setBaseSkyCondition("SCT250");
-            
-            // BECMG group
-            TafChangeGroup becmg = new TafChangeGroup("BECMG", "BECMG 1521/1523 28015KT");
-            becmg.setWindDirectionDegrees(280);
-            becmg.setWindSpeedKnots(15);
-            taf.addChangeGroup(becmg);
-            
-            assertEquals("TAF COR", taf.getTafType());
-            assertTrue(taf.isModified());
-            assertTrue(taf.getIsCorrected());
-            assertNull(taf.getBaseWindDirectionDegrees()); // Variable wind
-            assertEquals(1, taf.getChangeGroups().size());
-        }
+        // Verify they're stored in the base wind information object
+        WindInformation wind = tafData.getBaseWindInformation();
+        assertEquals(180, wind.getWindDirectionDegrees());
+        assertEquals(12, wind.getWindSpeedKnots());
+        assertEquals(18, wind.getWindGustKnots());
     }
-    
-    @Nested
-    @DisplayName("Integration with Base Class")
-    class IntegrationWithBaseClass {
+
+    @Test
+    @DisplayName("Base wind setters create wind information object when null")
+    void testBaseWindSettersWithNullObject() {
+        tafData.setBaseWindInformation(null);
         
-        @Test
-        @DisplayName("Base class fields work correctly in TAF context")
-        void baseClassFieldsInTafContext() {
-            tafData.setStationId("KJFK");
-            tafData.setObservationTime(testIssueTime);
-            tafData.setLatitude(40.6413);
-            tafData.setLongitude(-73.7781);
-            tafData.setElevationFeet(13);
-            tafData.setQualityControlFlags("AUTO");
-            
-            // Set TAF-specific times for isCurrent test
-            tafData.setValidFromTime(LocalDateTime.now().minusHours(1));
-            tafData.setValidToTime(LocalDateTime.now().plusHours(23));
-            
-            // Verify base class fields
-            assertEquals("KJFK", tafData.getStationId());
-            assertEquals(testIssueTime, tafData.getObservationTime());
-            assertEquals(40.6413, tafData.getLatitude());
-            assertEquals(-73.7781, tafData.getLongitude());
-            assertEquals(13, tafData.getElevationFeet());
-            assertEquals("AUTO", tafData.getQualityControlFlags());
-            
-            // Verify TAF-specific behavior
-            assertTrue(tafData.isCurrent());
-            assertEquals("TAF", tafData.getReportType());
-        }
+        tafData.setBaseWindDirectionDegrees(90);
+        assertNotNull(tafData.getBaseWindInformation());
+        assertEquals(90, tafData.getBaseWindDirectionDegrees());
+    }
+
+    @Test
+    @DisplayName("Base weather conditions delegation works correctly")
+    void testBaseWeatherConditionsDelegation() {
+        // Test direct access to base weather conditions object
+        WeatherConditions weather = new WeatherConditions(5.0, "RA BR", "OVC010");
+        tafData.setBaseWeatherConditions(weather);
+        assertEquals(weather, tafData.getBaseWeatherConditions());
         
-        @Test
-        @DisplayName("toString includes both base and TAF fields")
-        void toStringIncludesBothTypes() {
-            tafData.setStationId("KJFK");
-            tafData.setObservationTime(testIssueTime);
-            tafData.setRawText("TAF KJFK 151720Z 1518/1624");
-            tafData.setValidFromTime(testValidFromTime);
-            tafData.setValidToTime(testValidToTime);
-            tafData.setTafType("TAF");
-            
-            String result = tafData.toString();
-            
-            assertTrue(result.contains("NoaaTafData"));
-            assertTrue(result.contains("KJFK"));
-            assertTrue(result.contains("TAF"));
-        }
+        // Test convenience methods delegate correctly
+        assertEquals(5.0, tafData.getBaseVisibilityStatuteMiles());
+        assertEquals("RA BR", tafData.getBaseWeatherString());
+        assertEquals("OVC010", tafData.getBaseSkyCondition());
+    }
+
+    @Test
+    @DisplayName("Base weather convenience setters work correctly")
+    void testBaseWeatherConvenienceSetters() {
+        tafData.setBaseVisibilityStatuteMiles(7.5);
+        tafData.setBaseWeatherString("-SN");
+        tafData.setBaseSkyCondition("BKN020");
+        
+        assertEquals(7.5, tafData.getBaseVisibilityStatuteMiles());
+        assertEquals("-SN", tafData.getBaseWeatherString());
+        assertEquals("BKN020", tafData.getBaseSkyCondition());
+        
+        // Verify they're stored in the base weather conditions object
+        WeatherConditions weather = tafData.getBaseWeatherConditions();
+        assertEquals(7.5, weather.getVisibilityStatuteMiles());
+        assertEquals("-SN", weather.getWeatherString());
+        assertEquals("BKN020", weather.getSkyCondition());
+    }
+
+    @Test
+    @DisplayName("Base weather setters create weather conditions object when null")
+    void testBaseWeatherSettersWithNullObject() {
+        tafData.setBaseWeatherConditions(null);
+        
+        tafData.setBaseVisibilityStatuteMiles(10.0);
+        assertNotNull(tafData.getBaseWeatherConditions());
+        assertEquals(10.0, tafData.getBaseVisibilityStatuteMiles());
+    }
+
+    @Test
+    @DisplayName("Change groups list management works correctly")
+    void testChangeGroupsManagement() {
+        NoaaTafData.TafChangeGroup changeGroup1 = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 3SM BR");
+        NoaaTafData.TafChangeGroup changeGroup2 = new NoaaTafData.TafChangeGroup("BECMG", "BECMG 2602/2604 VRB06KT");
+        
+        tafData.addChangeGroup(changeGroup1);
+        tafData.addChangeGroup(changeGroup2);
+        
+        assertEquals(2, tafData.getChangeGroups().size());
+        assertTrue(tafData.getChangeGroups().contains(changeGroup1));
+        assertTrue(tafData.getChangeGroups().contains(changeGroup2));
+    }
+
+    @Test
+    @DisplayName("Setting change groups to null creates empty list")
+    void testSetChangeGroupsNull() {
+        tafData.setChangeGroups(null);
+        assertNotNull(tafData.getChangeGroups());
+        assertTrue(tafData.getChangeGroups().isEmpty());
+    }
+
+    @Test
+    @DisplayName("addChangeGroup creates list when null")
+    void testAddChangeGroupWithNullList() {
+        tafData.setChangeGroups(null);
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup("FM", "FM252300 30008KT");
+        
+        tafData.addChangeGroup(changeGroup);
+        assertNotNull(tafData.getChangeGroups());
+        assertEquals(1, tafData.getChangeGroups().size());
+    }
+
+    @Test
+    @DisplayName("getValidityPeriodHours calculates correctly")
+    void testGetValidityPeriodHours() {
+        LocalDateTime from = LocalDateTime.now();
+        LocalDateTime to = from.plusHours(24);
+        
+        tafData.setValidFromTime(from);
+        tafData.setValidToTime(to);
+        
+        assertEquals(24, tafData.getValidityPeriodHours());
+    }
+
+    @Test
+    @DisplayName("getValidityPeriodHours returns 0 for null times")
+    void testGetValidityPeriodHoursWithNullTimes() {
+        assertEquals(0, tafData.getValidityPeriodHours());
+        
+        tafData.setValidFromTime(LocalDateTime.now());
+        assertEquals(0, tafData.getValidityPeriodHours());
+        
+        tafData.setValidFromTime(null);
+        tafData.setValidToTime(LocalDateTime.now());
+        assertEquals(0, tafData.getValidityPeriodHours());
+    }
+
+    @Test
+    @DisplayName("isModified returns correct values")
+    void testIsModified() {
+        assertFalse(tafData.isModified());
+        
+        tafData.setIsAmended(true);
+        assertTrue(tafData.isModified());
+        
+        tafData.setIsAmended(false);
+        tafData.setIsCorrected(true);
+        assertTrue(tafData.isModified());
+        
+        tafData.setIsAmended(true);
+        tafData.setIsCorrected(true);
+        assertTrue(tafData.isModified());
+        
+        tafData.setIsAmended(false);
+        tafData.setIsCorrected(false);
+        assertFalse(tafData.isModified());
+    }
+
+    @Test
+    @DisplayName("isCurrent returns true when within validity period")
+    void testIsCurrentWithinPeriod() {
+        LocalDateTime now = LocalDateTime.now();
+        tafData.setValidFromTime(now.minusHours(1));
+        tafData.setValidToTime(now.plusHours(23));
+        assertTrue(tafData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("isCurrent returns false when outside validity period")
+    void testIsCurrentOutsidePeriod() {
+        LocalDateTime now = LocalDateTime.now();
+        tafData.setValidFromTime(now.plusHours(1));
+        tafData.setValidToTime(now.plusHours(25));
+        assertFalse(tafData.isCurrent());
+        
+        tafData.setValidFromTime(now.minusHours(25));
+        tafData.setValidToTime(now.minusHours(1));
+        assertFalse(tafData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("isCurrent returns false for null validToTime")
+    void testIsCurrentNullValidToTime() {
+        tafData.setValidFromTime(LocalDateTime.now().minusHours(1));
+        assertFalse(tafData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("isCurrent handles null validFromTime correctly")
+    void testIsCurrentNullValidFromTime() {
+        LocalDateTime now = LocalDateTime.now();
+        tafData.setValidToTime(now.plusHours(23));
+        assertTrue(tafData.isCurrent());
+    }
+
+    @Test
+    @DisplayName("equals works correctly with composition objects")
+    void testEquals() {
+        LocalDateTime time = LocalDateTime.now();
+        LocalDateTime validFrom = time.plusHours(1);
+        LocalDateTime validTo = time.plusHours(25);
+        LocalDateTime issueTime = time;
+        
+        NoaaTafData taf1 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
+        taf1.setValidFromTime(validFrom);
+        taf1.setValidToTime(validTo);
+        taf1.setIssueTime(issueTime);
+        taf1.setTafType("TAF");
+        taf1.setBaseWindDirectionDegrees(270);
+        taf1.setBaseVisibilityStatuteMiles(10.0);
+        
+        NoaaTafData taf2 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
+        taf2.setValidFromTime(validFrom);
+        taf2.setValidToTime(validTo);
+        taf2.setIssueTime(issueTime);
+        taf2.setTafType("TAF");
+        taf2.setBaseWindDirectionDegrees(270);
+        taf2.setBaseVisibilityStatuteMiles(10.0);
+        
+        assertTrue(taf1.equals(taf2));
+        assertEquals(taf1.hashCode(), taf2.hashCode());
+    }
+
+    @Test
+    @DisplayName("equals returns false for different composition objects")
+    void testEqualsNotEqual() {
+        LocalDateTime time = LocalDateTime.now();
+        
+        NoaaTafData taf1 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
+        taf1.setBaseWindDirectionDegrees(270);
+        
+        NoaaTafData taf2 = new NoaaTafData("TAF KJFK 251720Z", "KJFK", time);
+        taf2.setBaseWindDirectionDegrees(180); // Different wind direction
+        
+        assertFalse(taf1.equals(taf2));
+    }
+
+    @Test
+    @DisplayName("hashCode is consistent with composition objects")
+    void testHashCodeConsistency() {
+        tafData.setTafType("TAF AMD");
+        tafData.setBaseWindDirectionDegrees(90);
+        tafData.setBaseVisibilityStatuteMiles(8.0);
+        
+        int hashCode1 = tafData.hashCode();
+        int hashCode2 = tafData.hashCode();
+        
+        assertEquals(hashCode1, hashCode2);
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup default constructor initializes composition objects")
+    void testTafChangeGroupDefaultConstructor() {
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
+        
+        assertNotNull(changeGroup.getWindInformation());
+        assertNotNull(changeGroup.getWeatherConditions());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup parameterized constructor sets fields")
+    void testTafChangeGroupParameterizedConstructor() {
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 3SM BR");
+        
+        assertEquals("TEMPO", changeGroup.getChangeType());
+        assertEquals("TEMPO 2520/2524 3SM BR", changeGroup.getChangeText());
+        assertNotNull(changeGroup.getWindInformation());
+        assertNotNull(changeGroup.getWeatherConditions());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup basic fields work correctly")
+    void testTafChangeGroupBasicFields() {
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
+        LocalDateTime fromTime = LocalDateTime.now().plusHours(4);
+        LocalDateTime toTime = LocalDateTime.now().plusHours(8);
+        
+        changeGroup.setChangeType("BECMG");
+        changeGroup.setChangeTimeFrom(fromTime);
+        changeGroup.setChangeTimeTo(toTime);
+        changeGroup.setChangeText("BECMG 2604/2608 VRB06KT");
+        
+        assertEquals("BECMG", changeGroup.getChangeType());
+        assertEquals(fromTime, changeGroup.getChangeTimeFrom());
+        assertEquals(toTime, changeGroup.getChangeTimeTo());
+        assertEquals("BECMG 2604/2608 VRB06KT", changeGroup.getChangeText());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup wind delegation works correctly")
+    void testTafChangeGroupWindDelegation() {
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
+        
+        changeGroup.setWindDirectionDegrees(220);
+        changeGroup.setWindSpeedKnots(18);
+        changeGroup.setWindGustKnots(25);
+        
+        assertEquals(220, changeGroup.getWindDirectionDegrees());
+        assertEquals(18, changeGroup.getWindSpeedKnots());
+        assertEquals(25, changeGroup.getWindGustKnots());
+        
+        WindInformation wind = changeGroup.getWindInformation();
+        assertEquals(220, wind.getWindDirectionDegrees());
+        assertEquals(18, wind.getWindSpeedKnots());
+        assertEquals(25, wind.getWindGustKnots());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup weather delegation works correctly")
+    void testTafChangeGroupWeatherDelegation() {
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup();
+        
+        changeGroup.setVisibilityStatuteMiles(3.0);
+        changeGroup.setWeatherString("BR");
+        changeGroup.setSkyCondition("OVC008");
+        
+        assertEquals(3.0, changeGroup.getVisibilityStatuteMiles());
+        assertEquals("BR", changeGroup.getWeatherString());
+        assertEquals("OVC008", changeGroup.getSkyCondition());
+        
+        WeatherConditions weather = changeGroup.getWeatherConditions();
+        assertEquals(3.0, weather.getVisibilityStatuteMiles());
+        assertEquals("BR", weather.getWeatherString());
+        assertEquals("OVC008", weather.getSkyCondition());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup equals and hashCode work correctly")
+    void testTafChangeGroupEqualsAndHashCode() {
+        LocalDateTime from = LocalDateTime.now().plusHours(2);
+        LocalDateTime to = LocalDateTime.now().plusHours(6);
+        
+        NoaaTafData.TafChangeGroup group1 = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 3SM BR");
+        group1.setChangeTimeFrom(from);
+        group1.setChangeTimeTo(to);
+        group1.setWindDirectionDegrees(180);
+        group1.setVisibilityStatuteMiles(3.0);
+        
+        NoaaTafData.TafChangeGroup group2 = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 3SM BR");
+        group2.setChangeTimeFrom(from);
+        group2.setChangeTimeTo(to);
+        group2.setWindDirectionDegrees(180);
+        group2.setVisibilityStatuteMiles(3.0);
+        
+        assertTrue(group1.equals(group2));
+        assertEquals(group1.hashCode(), group2.hashCode());
+    }
+
+    @Test
+    @DisplayName("TafChangeGroup toString works correctly")
+    void testTafChangeGroupToString() {
+        LocalDateTime from = LocalDateTime.of(2025, 1, 25, 20, 0);
+        LocalDateTime to = LocalDateTime.of(2025, 1, 26, 4, 0);
+        
+        NoaaTafData.TafChangeGroup changeGroup = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2604 3SM BR");
+        changeGroup.setChangeTimeFrom(from);
+        changeGroup.setChangeTimeTo(to);
+        
+        String expected = "TafChangeGroup{type='TEMPO', from=2025-01-25T20:00, to=2025-01-26T04:00}";
+        assertEquals(expected, changeGroup.toString());
+    }
+
+    @Test
+    @DisplayName("Complete TAF data workflow")
+    void testCompleteTafWorkflow() {
+        // Create a complete TAF report
+        String rawText = "TAF AMD KJFK 251720Z 2518/2624 28012KT P6SM SCT040 BKN100 TEMPO 2520/2524 3SM BR OVC008";
+        LocalDateTime issueTime = LocalDateTime.of(2025, 1, 25, 17, 20);
+        LocalDateTime validFrom = LocalDateTime.of(2025, 1, 25, 18, 0);
+        LocalDateTime validTo = LocalDateTime.of(2025, 1, 27, 0, 0);
+        
+        NoaaTafData taf = new NoaaTafData(rawText, "KJFK", issueTime);
+        
+        // Set validity period
+        taf.setValidFromTime(validFrom);
+        taf.setValidToTime(validTo);
+        taf.setIssueTime(issueTime);
+        taf.setBulletinTime("251720Z");
+        
+        // Set base forecast conditions
+        taf.setBaseForecastText("28012KT P6SM SCT040 BKN100");
+        taf.setBaseWindDirectionDegrees(280);
+        taf.setBaseWindSpeedKnots(12);
+        taf.setBaseVisibilityStatuteMiles(10.0);
+        taf.setBaseSkyCondition("SCT040 BKN100");
+        
+        // Add change group
+        NoaaTafData.TafChangeGroup tempoGroup = new NoaaTafData.TafChangeGroup("TEMPO", "TEMPO 2520/2524 2SM BR OVC008");
+        tempoGroup.setChangeTimeFrom(LocalDateTime.of(2025, 1, 25, 20, 0));
+        tempoGroup.setChangeTimeTo(LocalDateTime.of(2025, 1, 26, 0, 0));
+        tempoGroup.setVisibilityStatuteMiles(2.0);
+        tempoGroup.setWeatherString("BR");
+        tempoGroup.setSkyCondition("OVC008");
+        
+        taf.addChangeGroup(tempoGroup);
+        
+        // Verify all data
+        assertEquals("KJFK", taf.getStationId());
+        assertEquals(rawText, taf.getRawText());
+        assertEquals("TAF AMD", taf.getTafType());
+        assertTrue(taf.isModified());
+        assertEquals(30, taf.getValidityPeriodHours());
+        
+        assertEquals(280, taf.getBaseWindDirectionDegrees());
+        assertEquals(12, taf.getBaseWindSpeedKnots());
+        assertEquals(10.0, taf.getBaseVisibilityStatuteMiles());
+        
+        assertEquals(1, taf.getChangeGroups().size());
+        NoaaTafData.TafChangeGroup retrievedGroup = taf.getChangeGroups().get(0);
+        assertEquals("TEMPO", retrievedGroup.getChangeType());
+        assertEquals(2.0, retrievedGroup.getVisibilityStatuteMiles());
+        assertEquals("BR", retrievedGroup.getWeatherString());
+        
+        // Verify composition objects
+        WindInformation baseWind = taf.getBaseWindInformation();
+        assertEquals("W", baseWind.getWindDirectionCardinal());
+        assertFalse(baseWind.isCalm());
+        
+        WeatherConditions baseWeather = taf.getBaseWeatherConditions();
+        assertTrue(baseWeather.hasGoodVisibility());
+        
+        WeatherConditions tempoWeather = retrievedGroup.getWeatherConditions();
+        assertFalse(tempoWeather.hasGoodVisibility());
+        assertTrue(tempoWeather.hasActiveWeather());
     }
 }

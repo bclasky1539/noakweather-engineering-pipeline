@@ -49,23 +49,23 @@ public class NoaaTafData extends NoaaAviationWeatherData {
     
     // Base forecast conditions (the primary forecast before any change groups)
     private String baseForecastText;
-    private Integer baseWindDirectionDegrees;
-    private Integer baseWindSpeedKnots;
-    private Integer baseWindGustKnots;
-    private Double baseVisibilityStatuteMiles;
-    private String baseWeatherString;
-    private String baseSkyCondition;
+    private WindInformation baseWindInformation;
+    private WeatherConditions baseWeatherConditions;
     
     // Change groups (TEMPO, BECMG, FM, PROB groups)
     private List<TafChangeGroup> changeGroups;
     
     public NoaaTafData() {
         super();
+        this.baseWindInformation = new WindInformation();
+        this.baseWeatherConditions = new WeatherConditions();
         this.changeGroups = new ArrayList<>();
     }
     
     public NoaaTafData(String rawText, String stationId, LocalDateTime observationTime) {
         super(rawText, stationId, observationTime);
+        this.baseWindInformation = new WindInformation();
+        this.baseWeatherConditions = new WeatherConditions();
         this.changeGroups = new ArrayList<>();
         
         // Parse TAF type from raw text if available
@@ -165,52 +165,90 @@ public class NoaaTafData extends NoaaAviationWeatherData {
         this.baseForecastText = baseForecastText;
     }
     
+    // Base wind information - using composition
+    public WindInformation getBaseWindInformation() {
+        return baseWindInformation;
+    }
+    
+    public void setBaseWindInformation(WindInformation baseWindInformation) {
+        this.baseWindInformation = baseWindInformation != null ? baseWindInformation : new WindInformation();
+    }
+    
+    // Convenience methods for backward compatibility - Base Wind
     public Integer getBaseWindDirectionDegrees() {
-        return baseWindDirectionDegrees;
+        return baseWindInformation != null ? baseWindInformation.getWindDirectionDegrees() : null;
     }
     
     public void setBaseWindDirectionDegrees(Integer baseWindDirectionDegrees) {
-        this.baseWindDirectionDegrees = baseWindDirectionDegrees;
+        if (baseWindInformation == null) {
+            baseWindInformation = new WindInformation();
+        }
+        baseWindInformation.setWindDirectionDegrees(baseWindDirectionDegrees);
     }
     
     public Integer getBaseWindSpeedKnots() {
-        return baseWindSpeedKnots;
+        return baseWindInformation != null ? baseWindInformation.getWindSpeedKnots() : null;
     }
     
     public void setBaseWindSpeedKnots(Integer baseWindSpeedKnots) {
-        this.baseWindSpeedKnots = baseWindSpeedKnots;
+        if (baseWindInformation == null) {
+            baseWindInformation = new WindInformation();
+        }
+        baseWindInformation.setWindSpeedKnots(baseWindSpeedKnots);
     }
     
     public Integer getBaseWindGustKnots() {
-        return baseWindGustKnots;
+        return baseWindInformation != null ? baseWindInformation.getWindGustKnots() : null;
     }
     
     public void setBaseWindGustKnots(Integer baseWindGustKnots) {
-        this.baseWindGustKnots = baseWindGustKnots;
+        if (baseWindInformation == null) {
+            baseWindInformation = new WindInformation();
+        }
+        baseWindInformation.setWindGustKnots(baseWindGustKnots);
     }
     
+    // Base weather conditions - using composition
+    public WeatherConditions getBaseWeatherConditions() {
+        return baseWeatherConditions;
+    }
+    
+    public void setBaseWeatherConditions(WeatherConditions baseWeatherConditions) {
+        this.baseWeatherConditions = baseWeatherConditions != null ? baseWeatherConditions : new WeatherConditions();
+    }
+    
+    // Convenience methods for backward compatibility - Base Weather
     public Double getBaseVisibilityStatuteMiles() {
-        return baseVisibilityStatuteMiles;
+        return baseWeatherConditions != null ? baseWeatherConditions.getVisibilityStatuteMiles() : null;
     }
     
     public void setBaseVisibilityStatuteMiles(Double baseVisibilityStatuteMiles) {
-        this.baseVisibilityStatuteMiles = baseVisibilityStatuteMiles;
+        if (baseWeatherConditions == null) {
+            baseWeatherConditions = new WeatherConditions();
+        }
+        baseWeatherConditions.setVisibilityStatuteMiles(baseVisibilityStatuteMiles);
     }
     
     public String getBaseWeatherString() {
-        return baseWeatherString;
+        return baseWeatherConditions != null ? baseWeatherConditions.getWeatherString() : null;
     }
     
     public void setBaseWeatherString(String baseWeatherString) {
-        this.baseWeatherString = baseWeatherString;
+        if (baseWeatherConditions == null) {
+            baseWeatherConditions = new WeatherConditions();
+        }
+        baseWeatherConditions.setWeatherString(baseWeatherString);
     }
     
     public String getBaseSkyCondition() {
-        return baseSkyCondition;
+        return baseWeatherConditions != null ? baseWeatherConditions.getSkyCondition() : null;
     }
     
     public void setBaseSkyCondition(String baseSkyCondition) {
-        this.baseSkyCondition = baseSkyCondition;
+        if (baseWeatherConditions == null) {
+            baseWeatherConditions = new WeatherConditions();
+        }
+        baseWeatherConditions.setSkyCondition(baseSkyCondition);
     }
     
     // Change groups getters/setters
@@ -231,7 +269,7 @@ public class NoaaTafData extends NoaaAviationWeatherData {
     
     /**
      * Gets the forecast validity period in hours
-     * @return 
+     * @return validity period in hours
      */
     public long getValidityPeriodHours() {
         if (validFromTime == null || validToTime == null) {
@@ -242,7 +280,7 @@ public class NoaaTafData extends NoaaAviationWeatherData {
     
     /**
      * Checks if this TAF has been amended or corrected
-     * @return 
+     * @return true if the TAF has been modified
      */
     public boolean isModified() {
         return Boolean.TRUE.equals(isAmended) || Boolean.TRUE.equals(isCorrected);
@@ -263,12 +301,15 @@ public class NoaaTafData extends NoaaAviationWeatherData {
         return Objects.equals(validFromTime, that.getValidFromTime()) &&
                Objects.equals(validToTime, that.getValidToTime()) &&
                Objects.equals(issueTime, that.getIssueTime()) &&
-               Objects.equals(tafType, that.getTafType());
+               Objects.equals(tafType, that.getTafType()) &&
+               Objects.equals(baseWindInformation, that.getBaseWindInformation()) &&
+               Objects.equals(baseWeatherConditions, that.getBaseWeatherConditions());
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), validFromTime, validToTime, issueTime, tafType);
+        return Objects.hash(super.hashCode(), validFromTime, validToTime, issueTime, tafType, 
+                          baseWindInformation, baseWeatherConditions);
     }
     
     /**
@@ -281,23 +322,24 @@ public class NoaaTafData extends NoaaAviationWeatherData {
         private LocalDateTime changeTimeTo;
         private String changeText; // Raw text of the change group
         
-        // Forecast conditions for this change group
-        private Integer windDirectionDegrees;
-        private Integer windSpeedKnots;
-        private Integer windGustKnots;
-        private Double visibilityStatuteMiles;
-        private String weatherString;
-        private String skyCondition;
+        // Using composition for change group conditions too
+        private WindInformation windInformation;
+        private WeatherConditions weatherConditions;
         
         // Constructors
-        public TafChangeGroup() {}
+        public TafChangeGroup() {
+            this.windInformation = new WindInformation();
+            this.weatherConditions = new WeatherConditions();
+        }
         
         public TafChangeGroup(String changeType, String changeText) {
             this.changeType = changeType;
             this.changeText = changeText;
+            this.windInformation = new WindInformation();
+            this.weatherConditions = new WeatherConditions();
         }
         
-        // Getters and setters
+        // Basic getters and setters
         public String getChangeType() {
             return changeType;
         }
@@ -330,52 +372,90 @@ public class NoaaTafData extends NoaaAviationWeatherData {
             this.changeText = changeText;
         }
         
+        // Wind information using composition
+        public WindInformation getWindInformation() {
+            return windInformation;
+        }
+        
+        public void setWindInformation(WindInformation windInformation) {
+            this.windInformation = windInformation != null ? windInformation : new WindInformation();
+        }
+        
+        // Convenience methods for backward compatibility - Wind
         public Integer getWindDirectionDegrees() {
-            return windDirectionDegrees;
+            return windInformation != null ? windInformation.getWindDirectionDegrees() : null;
         }
         
         public void setWindDirectionDegrees(Integer windDirectionDegrees) {
-            this.windDirectionDegrees = windDirectionDegrees;
+            if (windInformation == null) {
+                windInformation = new WindInformation();
+            }
+            windInformation.setWindDirectionDegrees(windDirectionDegrees);
         }
         
         public Integer getWindSpeedKnots() {
-            return windSpeedKnots;
+            return windInformation != null ? windInformation.getWindSpeedKnots() : null;
         }
         
         public void setWindSpeedKnots(Integer windSpeedKnots) {
-            this.windSpeedKnots = windSpeedKnots;
+            if (windInformation == null) {
+                windInformation = new WindInformation();
+            }
+            windInformation.setWindSpeedKnots(windSpeedKnots);
         }
         
         public Integer getWindGustKnots() {
-            return windGustKnots;
+            return windInformation != null ? windInformation.getWindGustKnots() : null;
         }
         
         public void setWindGustKnots(Integer windGustKnots) {
-            this.windGustKnots = windGustKnots;
+            if (windInformation == null) {
+                windInformation = new WindInformation();
+            }
+            windInformation.setWindGustKnots(windGustKnots);
         }
         
+        // Weather conditions using composition
+        public WeatherConditions getWeatherConditions() {
+            return weatherConditions;
+        }
+        
+        public void setWeatherConditions(WeatherConditions weatherConditions) {
+            this.weatherConditions = weatherConditions != null ? weatherConditions : new WeatherConditions();
+        }
+        
+        // Convenience methods for backward compatibility - Weather
         public Double getVisibilityStatuteMiles() {
-            return visibilityStatuteMiles;
+            return weatherConditions != null ? weatherConditions.getVisibilityStatuteMiles() : null;
         }
         
         public void setVisibilityStatuteMiles(Double visibilityStatuteMiles) {
-            this.visibilityStatuteMiles = visibilityStatuteMiles;
+            if (weatherConditions == null) {
+                weatherConditions = new WeatherConditions();
+            }
+            weatherConditions.setVisibilityStatuteMiles(visibilityStatuteMiles);
         }
         
         public String getWeatherString() {
-            return weatherString;
+            return weatherConditions != null ? weatherConditions.getWeatherString() : null;
         }
         
         public void setWeatherString(String weatherString) {
-            this.weatherString = weatherString;
+            if (weatherConditions == null) {
+                weatherConditions = new WeatherConditions();
+            }
+            weatherConditions.setWeatherString(weatherString);
         }
         
         public String getSkyCondition() {
-            return skyCondition;
+            return weatherConditions != null ? weatherConditions.getSkyCondition() : null;
         }
         
         public void setSkyCondition(String skyCondition) {
-            this.skyCondition = skyCondition;
+            if (weatherConditions == null) {
+                weatherConditions = new WeatherConditions();
+            }
+            weatherConditions.setSkyCondition(skyCondition);
         }
         
         @Override
@@ -390,12 +470,15 @@ public class NoaaTafData extends NoaaAviationWeatherData {
             return Objects.equals(changeType, that.getChangeType()) &&
                    Objects.equals(changeTimeFrom, that.getChangeTimeFrom()) &&
                    Objects.equals(changeTimeTo, that.getChangeTimeTo()) &&
-                   Objects.equals(changeText, that.getChangeText());
+                   Objects.equals(changeText, that.getChangeText()) &&
+                   Objects.equals(windInformation, that.getWindInformation()) &&
+                   Objects.equals(weatherConditions, that.getWeatherConditions());
         }
         
         @Override
         public int hashCode() {
-            return Objects.hash(changeType, changeTimeFrom, changeTimeTo, changeText);
+            return Objects.hash(changeType, changeTimeFrom, changeTimeTo, changeText, 
+                              windInformation, weatherConditions);
         }
         
         @Override
