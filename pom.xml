@@ -6,12 +6,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>noakweather</groupId>
-    <artifactId>noakweather-java</artifactId>
+    <artifactId>noakweather-engineering-pipeline</artifactId>
     <version>0.0.5</version>
     <packaging>jar</packaging>
 
-    <name>NoakWeather Java</name>
-    <description>Wnoakweather-java is a Java library for parsing raw weather data (e.g. METAR, TAF)</description>
+    <name>NoakWeather Engineering Pipeline</name>
+    <description>noakweather-engineering-pipeline is a Java library for parsing raw weather data (e.g. METAR, TAF)</description>
 
     <licenses>
         <license>
@@ -52,7 +52,8 @@
         <!-- SonarQube properties -->
         <sonar.organization>bclasky1539</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.projectKey>bclasky1539_noakweather-java2</sonar.projectKey>
+        <sonar.projectKey>bclasky1539_noakweather-engineering-pipeline</sonar.projectKey>
+        <sonar.projectName>Noakweather Engineering Pipeline</sonar.projectName>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
     </properties>
