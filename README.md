@@ -1,7 +1,6 @@
-# noakweather-java
-noakweather-java project
+# NoakWeather Engineering Pipeline
 
-This Java library provides a METAR and TAF decoder.
+A multi-source weather data engineering platform built on Lambda Architecture principles, designed to collect, process, store, and analyze aviation weather data from multiple sources including NOAA, AWS, and potentially other providers.
 
 ## Build Status
 
@@ -12,73 +11,156 @@ This Java library provides a METAR and TAF decoder.
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-java2&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-java2)
 [![License](https://img.shields.io/github/license/bclasky1539/noakweather-java)](https://github.com/bclasky1539/noakweather-java/blob/main/LICENSE)
 
-## Features
+## Project Structure
 
-- Java 11+ compatibility
-- Comprehensive test coverage with JUnit 5
-- Code quality analysis with SonarQube
-- Enterprise-grade logging with Log4j2
-- Maven-based build system
-- CI/CD pipeline with GitHub Actions
+This project consists of two major components:
+
+### noakweather-platform (New Multi-Module Architecture)
+Source-agnostic weather data platform with Lambda Architecture implementation:
+
+- **weather-common**: Shared models and interfaces (source-agnostic)
+- **weather-ingestion**: Universal data collection and S3 upload (Speed Layer)
+- **weather-processing**: Stream and batch processing (Batch Layer)
+- **weather-storage**: Multi-backend storage (Snowflake, DynamoDB, S3)
+- **weather-analytics**: Universal analytics and reporting (Serving Layer)
+- **weather-infrastructure**: AWS CDK infrastructure as code
+
+### noakweather-legacy
+Original NOAA-specific METAR/TAF decoder (maintained for reference and gradual migration)
+
+## Architecture
+
+The platform implements **Lambda Architecture** to handle both real-time and batch processing:
+
+- **Speed Layer**: Real-time ingestion of weather data from multiple sources → S3
+- **Batch Layer**: Historical data processing and reprocessing
+- **Serving Layer**: Unified query interface combining real-time and batch views
+
+### Technology Stack
+
+- **Java 17+**: Modern Java features and performance
+- **Maven**: Multi-module build management
+- **AWS Services**: S3, Lambda, DynamoDB, CloudWatch
+- **Snowflake**: Data warehouse for analytics
+- **JUnit 5**: Comprehensive testing framework
+- **JaCoCo**: Code coverage analysis
+- **SonarQube**: Code quality and security scanning
+- **Log4j2/Logback**: Enterprise logging
+- **GitHub Actions**: CI/CD pipeline
 
 ## What is METAR?
-METAR (Meteorological Terminal Air Report) is current weather report format used in aviation. Typical METAR report contains information such as location,
-report issue time, wind, visibility, clouds, weather phenomena, temperature, dewpoint and atmospheric pressure.
 
-METAR in raw form is human-readable though it might look cryptic for an untrained person.
+METAR (Meteorological Terminal Air Report) is a current weather report format used in aviation. Typical METAR reports contain information such as location, report issue time, wind, visibility, clouds, weather phenomena, temperature, dewpoint, and atmospheric pressure.
 
-Examples of a METAR report is as follows:
-
+**Example METAR:**
+```
 2021/12/28 01:52 KCLT 280152Z 22006KT 10SM BKN240 17/13 A2989 RMK AO2 SLP116 T01720133
-
-2021/12/28 01:53 KSEG 280153Z AUTO VRB03KT 7SM OVC014 01/00 A2983 RMK AO2 RAB35E50UPB50E53 SLP104 P0002 T00110000
-
+```
 
 ## What is TAF?
-TAF (Terminal Aerodrome Forecast) is a weather forecast report format used in aviation. A TAF report is quite similar to METAR and reports
-trends and changes in visibility, wind, clouds, weather, etc over periods of time.
 
-TAF in raw form is also human-readable but requires training to decode.
+TAF (Terminal Aerodrome Forecast) is a weather forecast report format used in aviation. TAF reports provide trends and changes in visibility, wind, clouds, and weather over periods of time.
 
-Examples of a TAF report is as follows:
-
-2021/12/28 02:52 TAF AMD KCLT 280150Z 2802/2906 21006KT P6SM SCT040 BKN150 FM281100 22005KT P6SM SCT008 BKN015 FM281500 22007KT P6SM BKN020
-FM281700 21012G18KT P6SM BKN040 FM282300 21010G17KT P6SM SCT050 BKN200
-
-2021/12/28 00:00 TAF TAF KDOV 280000Z 2800/2906 08006KT 9999 OVC030 QNH2979INS TEMPO 2800/2804 8000 -SHRA TEMPO 2806/2810 VRB06KT BECMG 2809/2810
-30009KT 9999 BKN020 OVC030 QNH2980INS BECMG 2815/2816 31006KT 9999 BKN120 QNH2989INS BECMG 2819/2820 27006KT 9999 BKN100 QNH2987INS BECMG 2823/2824
-09006KT 8000 -RA OVC080 QNH2985INS BECMG 2903/2904 12006KT 8000 -RA OVC050 QNH2983INS
-
-## Run project
-The decoder can retrieve the METAR and TAF data from either the NOAA website or from a file specified at the command line.
-
-The decoder requires 4 parameters\
-**Type of data:** m - metar or t - taf\
-**Station 4-letter ICAO code or filename where the METAR or TAF data is:** Specify the full path of the file.\
-&nbsp;&nbsp;&nbsp;&nbsp;For 4-letter ICAO code an example can be KCLT or kclt\
-&nbsp;&nbsp;&nbsp;&nbsp;For a filename an example can be weather_data_metar.txt or weather_data_taf.txt. An example of each are included.\
-&nbsp;&nbsp;&nbsp;&nbsp;Make sure when using a filename that the phrase **file:** precedes the filename. For example **file:weather_data_metar.txt**\
-**Print results:** N or Y\
-**Logging of run:** I - Info, W - Warnings (includes info), D - Debug (includes info and warnings)
-
-A shell script is provided named weth.sh. To run normally run logging as I for info. If there is any error or there is unparsed data found run logging
-as D for debug to see why the error or unparsed data is occurring.
+**Example TAF:**
+```
+2021/12/28 02:52 TAF AMD KCLT 280150Z 2802/2906 21006KT P6SM SCT040 BKN150 FM281100 22005KT P6SM SCT008
+```
 
 ## Getting Started
 
+### Prerequisites
+
+- Java 17 or higher
+- Maven 3.8+
+- AWS CLI configured (for deployment)
+- Snowflake account (for data warehouse features)
+
+### Building the Project
+
 ```bash
 # Clone the repository
-git clone https://github.com/bclasky1539/noakweather-java.git
+git clone https://github.com/bclasky1539/noakweather-engineering-pipeline.git
+cd noakweather-engineering-pipeline
 
-# Navigate to project directory
-cd noakweather-java
+# Build and test legacy module
+cd noakweather-legacy
+./wethb.sh    # Build
+./wetht.sh    # Test with coverage
+mvn clean install
 
-# Build the project
-mvn clean compile
+# Build and test platform modules
+cd ../noakweather-platform
+./wethb.sh    # Build
+./wetht.sh    # Test with coverage
+mvn clean install
 
-# Run tests
-mvn test
+# Build entire project from root
+cd ..
+mvn clean install
+```
 
-# Generate coverage report
+### Running Tests
+
+```bash
+# Run tests with coverage
 mvn test jacoco:report
 
+# View coverage report
+open target/site/jacoco/index.html
+```
+
+### Code Quality
+
+```bash
+# Run SonarQube analysis
+mvn clean verify sonar:sonar \
+  -Dsonar.organization=bclasky1539 \
+  -Dsonar.host.url=https://sonarcloud.io \
+  -Dsonar.login=$SONAR_TOKEN
+```
+
+## Development Workflow
+
+This project follows a phased migration approach:
+
+1. **Phase 1** (Current): Multi-module structure with empty platform modules
+2. **Phase 2**: Migrate NOAA models to source-agnostic models in weather-common
+3. **Phase 3**: Build universal ingestion layer
+4. **Phase 4**: Implement storage and processing layers
+5. **Phase 5**: Add analytics and serving layer
+6. **Phase 6**: Deprecate legacy module
+
+## Running Legacy METAR/TAF Decoder
+
+The legacy decoder retrieves METAR and TAF data from NOAA or local files.
+
+**Parameters:**
+- **Type**: `m` (METAR) or `t` (TAF)
+- **Source**: 4-letter ICAO code (e.g., `KCLT`) or `file:filename.txt`
+- **Print**: `Y` or `N`
+- **Logging**: `I` (Info), `W` (Warnings), `D` (Debug)
+
+**Example:**
+```bash
+cd noakweather-legacy
+./weth.sh m KCLT Y I
+```
+
+## Contributing
+
+1. Create a feature branch from `main`
+2. Make your changes following the code standards
+3. Ensure all tests pass and coverage meets requirements
+4. Submit a pull request
+
+## License
+
+Apache License 2.0 - See [LICENSE](LICENSE) for details
+
+## Project Status
+
+**Active Development** - Currently in Phase 1 of platform migration
+
+---
+
+**Maintainer**: Brian Clasky (quark95cos@noayok.com)
