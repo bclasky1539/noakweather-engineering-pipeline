@@ -1,4 +1,4 @@
-name: Sonar verify
+name: Sonar verify / SonarCloud Analysis
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   sonarcloud:
-    name: SonarCloud Analysis
+    name: SonarCloud Analysis (Java ${{ matrix.java-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -68,18 +68,14 @@ jobs:
 
     # Only run SonarCloud analysis on Java 17 (required minimum)
     - name: SonarCloud Analysis
-      if: matrix.java-version == 17
-      uses: SonarSource/sonarcloud-github-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      with:
-        projectBaseDir: noakweather-platform
-        args: >
-          -Dsonar.projectKey=bclasky1539_noakweather-engineering-pipeline
-          -Dsonar.organization=bclasky1539
-          -Dsonar.host.url=https://sonarcloud.io
-          -Dsonar.projectName="Noakweather Engineering Pipeline"
-          -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
-          -Dsonar.java.source=17
-
+        run: |
+          cd noakweather-platform
+          mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=bclasky1539_noakweather-engineering-pipeline \
+            -Dsonar.organization=bclasky1539 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.projectName="Noakweather Engineering Pipeline" \
+            -Dsonar.java.source=${{ matrix.java-version }}
