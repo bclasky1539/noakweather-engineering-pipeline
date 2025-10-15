@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.weather</groupId>
+    <artifactId>noakweather-engineering-pipeline</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>NoakWeather Engineering Pipeline Root</name>
+    <description>Root aggregator for NoakWeather multi-module project</description>
+
+    <!-- Module Declarations -->
+    <modules>
+        <module>noakweather-legacy</module>
+        <module>noakweather-platform</module>
+    </modules>
+
+    <!-- Common Properties -->
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        
+        <!-- SonarQube properties -->
+        <sonar.organization>bclasky1539</sonar.organization>
+        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
+        <sonar.projectKey>bclasky1539_noakweather-engineering-pipeline</sonar.projectKey>
+        <sonar.projectName>Noakweather Engineering Pipeline</sonar.projectName>
+        <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- JaCoCo for aggregated coverage across all modules -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>report-aggregate</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report-aggregate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
