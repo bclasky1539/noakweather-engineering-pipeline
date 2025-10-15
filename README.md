@@ -50,7 +50,7 @@ The platform implements **Lambda Architecture** to handle both real-time and bat
 
 ## What is METAR?
 
-METAR (Meteorological Terminal Air Report) is a current weather report format used in aviation. Typical METAR reports contain information such as location, report issue time, wind, visibility, clouds, weather phenomena, temperature, dewpoint, and atmospheric pressure.
+METAR (Meteorological Aerodrome Report) is a current weather report format used in aviation. Typical METAR reports contain information such as location, report issue time, wind, visibility, clouds, weather phenomena, temperature, dewpoint, and atmospheric pressure.
 
 **Example METAR:**
 ```
