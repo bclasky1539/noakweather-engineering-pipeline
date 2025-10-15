@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.weather</groupId>
+        <artifactId>noakweather-engineering-pipeline</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>weather-analytics</artifactId>
+    <packaging>jar</packaging>
+    <name>Weather Analytics</name>
+    <description>Universal analytics bridge</description>
+
+    <dependencies>
+        <!-- Internal Dependencies -->
+        <dependency>
+            <groupId>com.weather</groupId>
+            <artifactId>weather-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.weather</groupId>
+            <artifactId>weather-storage</artifactId>
+        </dependency>
+    </dependencies>
+</project>
