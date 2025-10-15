@@ -79,7 +79,7 @@ jobs:
           -Dsonar.projectKey=bclasky1539_noakweather-engineering-pipeline
           -Dsonar.organization=bclasky1539
           -Dsonar.host.url=https://sonarcloud.io
-          -Dsonar.projectName=Noakweather Engineering Pipeline
+          -Dsonar.projectName="Noakweather Engineering Pipeline"
           -Dsonar.coverage.jacoco.xmlReportPaths=**/target/site/jacoco/jacoco.xml
           -Dsonar.java.source=17
 
