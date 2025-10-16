@@ -66,16 +66,16 @@ jobs:
         cd noakweather-platform
         mvn clean verify
 
-    # Only run SonarCloud analysis on Java 17 (required minimum)
+    # Run SonarCloud analysis for both Java 17 and 21
     - name: SonarCloud Analysis
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          cd noakweather-platform
-          mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=bclasky1539_noakweather-engineering-pipeline \
-            -Dsonar.organization=bclasky1539 \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.projectName="Noakweather Engineering Pipeline" \
-            -Dsonar.java.source=${{ matrix.java-version }}
+      run: |
+        cd noakweather-platform
+        mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          -Dsonar.projectKey=bclasky1539_noakweather-engineering-pipeline \
+          -Dsonar.organization=bclasky1539 \
+          -Dsonar.host.url=https://sonarcloud.io \
+          -Dsonar.projectName="Noakweather Engineering Pipeline" \
+          -Dsonar.java.source=${{ matrix.java-version }}
