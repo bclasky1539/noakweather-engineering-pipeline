@@ -91,3 +91,4 @@ jacoco-it.exec
 application-local.properties
 
 /nbproject/
+/noakweather-platform/weather-common/nbproject/
