@@ -164,9 +164,10 @@ class ValidationResultTest {
         List<String> errors = Arrays.asList("Error 1");
         ValidationResult result = ValidationResult.failure(errors);
         
+        List<String> errorList = result.getErrors();
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class, 
-            () -> result.getErrors().add("Error 2")
+            () -> errorList.add("Error 2")
         );
         assertNotNull(exception);
     }
@@ -177,9 +178,10 @@ class ValidationResultTest {
         List<String> warnings = Arrays.asList("Warning 1");
         ValidationResult result = ValidationResult.withWarnings(warnings);
         
+        List<String> warningList = result.getWarnings();
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class, 
-            () -> result.getWarnings().add("Warning 2")
+            () -> warningList.add("Warning 2")
         );
         assertNotNull(exception);
     }

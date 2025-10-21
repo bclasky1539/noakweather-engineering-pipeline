@@ -19,6 +19,7 @@ package weather.model;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Platform-native NOAA weather data implementation.
@@ -77,5 +78,24 @@ public non-sealed class NoaaWeatherData extends WeatherData {
             getStationId(),
             getObservationTime()
         );
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof NoaaWeatherData that)) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        return Objects.equals(reportType, that.getReportType());
+    }
+    
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), reportType);
     }
 }
