@@ -17,7 +17,6 @@
 package weather.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Immutable geographic location representation using Java 17 record.

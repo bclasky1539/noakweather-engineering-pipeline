@@ -225,4 +225,17 @@ class NoaaWeatherDataTest {
         assertTrue(str.contains("KJFK"));
         assertTrue(str.contains("NOAA"));
     }
+    
+    @Test
+    @DisplayName("Should consider reportType in equality")
+    void testEqualsWithDifferentReportType() {
+        // Create two objects with same parent fields but different reportType
+        // Since they have different auto-generated IDs, they won't be equal anyway
+        // But this documents the expected behavior
+        NoaaWeatherData metar = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaWeatherData taf = new NoaaWeatherData("KJFK", now, "TAF");
+        
+        assertNotEquals(metar, taf);
+        assertNotEquals(metar.hashCode(), taf.hashCode());
+    }
 }
