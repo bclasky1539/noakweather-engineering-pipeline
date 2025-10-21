@@ -238,4 +238,40 @@ class NoaaWeatherDataTest {
         assertNotEquals(metar, taf);
         assertNotEquals(metar.hashCode(), taf.hashCode());
     }
+
+    @Test
+    @DisplayName("Should implement equals correctly with same reportType")
+    void testEqualsWithSameReportType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        
+        // Same object
+        assertEquals(data, data);
+        
+        // Not equal to null
+        assertNotEquals(data, null);
+        
+        // Not equal to different type
+        assertNotEquals(data, "not a NoaaWeatherData");
+    }
+    
+    @Test
+    @DisplayName("Should maintain consistent hashCode")
+    void testHashCodeConsistency() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        
+        int hash1 = data.hashCode();
+        int hash2 = data.hashCode();
+        
+        assertEquals(hash1, hash2, "hashCode should be consistent");
+    }
+    
+    @Test
+    @DisplayName("Should handle equals with null reportType")
+    void testEqualsWithNullReportType() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, null);
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, null);
+        
+        // Both have null reportType - they differ by ID though
+        assertNotEquals(data1, data2);
+    }
 }
