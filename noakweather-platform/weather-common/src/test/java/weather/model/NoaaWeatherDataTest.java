@@ -248,10 +248,12 @@ class NoaaWeatherDataTest {
         assertEquals(data, data);
         
         // Not equal to null
-        assertNotEquals(data, null);
+        // FIXED: Swapped arguments to put expected value first
+        assertNotEquals(null, data);
         
         // Not equal to different type
-        assertNotEquals(data, "not a NoaaWeatherData");
+        // FIXED: Swapped arguments to put expected value first
+        assertNotEquals("not a NoaaWeatherData", data);
     }
     
     @Test
