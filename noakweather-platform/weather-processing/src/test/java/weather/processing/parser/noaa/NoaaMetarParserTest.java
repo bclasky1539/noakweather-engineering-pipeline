@@ -21,7 +21,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import weather.model.NoaaWeatherData;
 import weather.processing.parser.common.ParseResult;
-
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -118,29 +121,13 @@ class NoaaMetarParserTest {
         }
     }
     
-    @Test
-    @DisplayName("Should fail when parsing null data")
-    void testParseNullData() {
-        ParseResult<NoaaWeatherData> result = parser.parse(null);
-        
-        assertTrue(result.isFailure());
-        assertEquals("Raw data cannot be null or empty", result.getErrorMessage());
-    }
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "  \t  ", "\n", "\r\n"})
+    @DisplayName("Should fail when parsing invalid input")
+    void testParseInvalidInput(String invalidInput) {
+        ParseResult<NoaaWeatherData> result = parser.parse(invalidInput);
     
-    @Test
-    @DisplayName("Should fail when parsing empty data")
-    void testParseEmptyData() {
-        ParseResult<NoaaWeatherData> result = parser.parse("");
-        
-        assertTrue(result.isFailure());
-        assertEquals("Raw data cannot be null or empty", result.getErrorMessage());
-    }
-    
-    @Test
-    @DisplayName("Should fail when parsing whitespace only")
-    void testParseWhitespaceData() {
-        ParseResult<NoaaWeatherData> result = parser.parse("   ");
-        
         assertTrue(result.isFailure());
         assertEquals("Raw data cannot be null or empty", result.getErrorMessage());
     }
@@ -177,16 +164,19 @@ class NoaaMetarParserTest {
         assertTrue(result.isFailure());
         assertEquals("Could not extract station ID from METAR", result.getErrorMessage());
     }
-    
-    @Test
-    @DisplayName("Should handle METAR with extra whitespace")
-    void testParseWithExtraWhitespace() {
-        String metar = "METAR  KJFK  251651Z  28016KT  10SM";
-        
+
+    @ParameterizedTest
+    @CsvSource({
+        "'METAR  KJFK  251651Z  28016KT  10SM', KJFK",
+        "'METAR KORD 251651Z VRB03KT 10SM FEW250', KORD",
+        "'METAR PANC 251651Z 28016KT 10SM M05/M12 A3015', PANC"
+    })
+    @DisplayName("Should parse METAR with various formats and extract correct station ID")
+    void testParseMetarVariousFormats(String metar, String expectedStationId) {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+    
         assertTrue(result.isSuccess());
-        assertEquals("KJFK", result.getData().get().getStationId());
+        assertEquals(expectedStationId, result.getData().get().getStationId());
     }
     
     @Test
@@ -224,29 +214,7 @@ class NoaaMetarParserTest {
         NoaaWeatherData data = result.getData().get();
         assertEquals("KLAX", data.getStationId());
     }
-    
-    @Test
-    @DisplayName("Should parse METAR with variable wind")
-    void testParseVariableWind() {
-        String metar = "METAR KORD 251651Z VRB03KT 10SM FEW250";
-        
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
-        assertTrue(result.isSuccess());
-        assertEquals("KORD", result.getData().get().getStationId());
-    }
-    
-    @Test
-    @DisplayName("Should parse METAR with negative temperature")
-    void testParseNegativeTemperature() {
-        String metar = "METAR PANC 251651Z 28016KT 10SM M05/M12 A3015";
-        
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
-        assertTrue(result.isSuccess());
-        assertEquals("PANC", result.getData().get().getStationId());
-    }
-    
+ 
     @Test
     @DisplayName("Should parse METAR with remarks section")
     void testParseWithRemarks() {
