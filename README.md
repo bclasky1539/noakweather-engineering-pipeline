@@ -4,12 +4,12 @@ A multi-source weather data engineering platform built on Lambda Architecture pr
 
 ## Build Status
 
-[![Java CI with Maven](https://github.com/bclasky1539/noakweather-java/actions/workflows/maven.yml/badge.svg)](https://github.com/bclasky1539/noakweather-java/actions/workflows/maven.yml)
-[![Sonar verify](https://github.com/bclasky1539/noakweather-java/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/bclasky1539/noakweather-java/actions/workflows/sonarcloud.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-java2&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-java2)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-java2&metric=coverage&branch=main)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-java2)
-[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-java2&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-java2)
-[![License](https://img.shields.io/github/license/bclasky1539/noakweather-java)](https://github.com/bclasky1539/noakweather-java/blob/main/LICENSE)
+[![Java CI with Maven](https://github.com/bclasky1539/noakweather-engineering-pipeline/actions/workflows/maven.yml/badge.svg)](https://github.com/bclasky1539/noakweather-engineering-pipeline/actions/workflows/maven.yml)
+[![Sonar verify](https://github.com/bclasky1539/noakweather-engineering-pipeline/actions/workflows/sonarcloud.yml/badge.svg)](https://github.com/bclasky1539/noakweather-engineering-pipeline/actions/workflows/sonarcloud.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-engineering-pipeline&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-engineering-pipeline)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-engineering-pipeline&metric=coverage&branch=main)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-engineering-pipeline)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-engineering-pipeline&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-engineering-pipeline)
+[![License](https://img.shields.io/github/license/bclasky1539/noakweather-engineering-pipeline)](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/LICENSE)
 
 ## Project Structure
 
