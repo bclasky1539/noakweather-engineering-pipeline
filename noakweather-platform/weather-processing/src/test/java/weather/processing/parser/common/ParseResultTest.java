@@ -127,7 +127,7 @@ class ParseResultTest {
         ParseResult<String> result = ParseResult.success("test");
         
         StringBuilder builder = new StringBuilder();
-        result.ifSuccess(data -> builder.append(data));
+        result.ifSuccess(builder::append);
         
         assertEquals("test", builder.toString());
     }
@@ -138,7 +138,7 @@ class ParseResultTest {
         ParseResult<String> result = ParseResult.failure("error");
         
         StringBuilder builder = new StringBuilder();
-        result.ifSuccess(data -> builder.append(data));
+        result.ifSuccess(builder::append);
         
         assertEquals("", builder.toString());
     }
@@ -149,7 +149,7 @@ class ParseResultTest {
         ParseResult<String> result = ParseResult.failure("error message");
         
         StringBuilder builder = new StringBuilder();
-        result.ifFailure(error -> builder.append(error));
+        result.ifFailure(builder::append);
         
         assertEquals("error message", builder.toString());
     }
@@ -160,7 +160,7 @@ class ParseResultTest {
         ParseResult<String> result = ParseResult.success("test");
         
         StringBuilder builder = new StringBuilder();
-        result.ifFailure(error -> builder.append(error));
+        result.ifFailure(builder::append);
         
         assertEquals("", builder.toString());
     }
@@ -172,8 +172,8 @@ class ParseResultTest {
         StringBuilder failureBuilder = new StringBuilder();
         
         ParseResult<String> success = ParseResult.success("data");
-        success.ifSuccess(data -> successBuilder.append(data))
-               .ifFailure(error -> failureBuilder.append(error));
+        success.ifSuccess(successBuilder::append)
+           .ifFailure(failureBuilder::append);
         
         assertEquals("data", successBuilder.toString());
         assertEquals("", failureBuilder.toString());
