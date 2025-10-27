@@ -136,10 +136,8 @@ public class S3UploadService {
             return s3Key;
         
         } catch (S3Exception e) {
-            logger.error("Failed to upload weather data to S3: {}", e.getMessage());
             throw new IOException("S3 upload failed: " + e.awsErrorDetails().errorMessage(), e);
         } catch (RuntimeException e) {
-            logger.error("Failed to upload weather data to S3: {}", e.getMessage());
             throw new IOException("Failed to upload weather data to S3", e);
         }
     }
@@ -230,6 +228,19 @@ public class S3UploadService {
      * @throws IOException if upload fails
      */
     public String uploadRawData(String source, String rawData, String stationId) throws IOException {
+        // Add null checks FIRST
+        if (source == null || source.isEmpty()) {
+            throw new IOException("Source cannot be null or empty");
+        }
+        
+        if (rawData == null || rawData.isEmpty()) {
+            throw new IOException("Raw data cannot be null or empty");
+        }
+        
+        if (stationId == null || stationId.isEmpty()) {
+            throw new IOException("Station ID cannot be null or empty");
+        }
+    
         String timestamp = java.time.LocalDateTime.now().format(TIMESTAMP_FORMAT);
         String s3Key = String.format("raw-data/%s/%s_%s.txt", 
                 source.toLowerCase(), stationId, timestamp);
@@ -248,6 +259,8 @@ public class S3UploadService {
             
         } catch (S3Exception e) {
             throw new IOException("Failed to upload raw data: " + e.awsErrorDetails().errorMessage(), e);
+        } catch (RuntimeException e) {
+            throw new IOException("Failed to upload raw data to S3", e);
         }
     }
     
@@ -259,9 +272,16 @@ public class S3UploadService {
     public boolean isBucketAccessible() {
         try {
             s3Client.headBucket(builder -> builder.bucket(bucketName));
+            if (logger.isInfoEnabled()) {
+                logger.info("S3 bucket {} is accessible", bucketName);
+            }
             return true;
         } catch (S3Exception e) {
             logger.error("S3 bucket {} is not accessible: {}", bucketName, e.getMessage());
+            return false;
+        } catch (RuntimeException e) {
+            // Catch runtime exceptions (network errors, connection failures, etc.)
+            logger.error("Error checking S3 bucket {} accessibility: {}", bucketName, e.getMessage());
             return false;
         }
     }

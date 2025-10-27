@@ -137,7 +137,9 @@ public class NoaaAviationWeatherClient {
         }
         
         String url = config.buildMetarUrl(stationIds);
-        logger.info("Fetching METAR reports for stations: {}", String.join(",", stationIds));
+        if (logger.isInfoEnabled()) {
+            logger.info("Fetching METAR reports for stations: {}", String.join(",", stationIds));
+        }
         
         try {
             return fetchWeatherData(url, "METAR", stationIds);
@@ -186,7 +188,9 @@ public class NoaaAviationWeatherClient {
         }
         
         String url = config.buildTafUrl(stationIds);
-        logger.info("Fetching TAF reports for stations: {}", String.join(",", stationIds));
+        if (logger.isInfoEnabled()) {
+            logger.info("Fetching TAF reports for stations: {}", String.join(",", stationIds));
+        }
         
         try {
             return fetchWeatherData(url, "TAF", stationIds);
