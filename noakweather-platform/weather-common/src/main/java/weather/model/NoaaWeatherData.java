@@ -38,7 +38,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     
     private String reportType; // METAR, TAF, PIREP, etc.
     
-    protected NoaaWeatherData() {
+    public NoaaWeatherData() {
         super();
     }
     
