@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.3.0-SNAPSHOT - Date: October 26, 2025
+
+#### weather-ingestion Module - Comprehensive Unit Test Coverage
+
+**Added:**
+- **NoaaConfiguration Test Suite** (21 tests, 94% coverage)
+  - Configuration loading and defaults testing
+  - URL building for single/multiple stations
+  - Bounding box URL generation
+  - Custom properties override validation
+  - Edge case handling (invalid timeout, empty arrays, partial overrides)
+
+- **S3UploadService Test Suite** (11 tests) using Mockito
+  - Weather data upload validation
+  - Batch upload functionality
+  - Null data and missing station ID handling
+  - S3 exception handling and wrapping
+  - S3 key format generation
+  - Metadata attachment validation
+
+- **SpeedLayerProcessor Test Suite** (14 tests) using Mockito
+  - Single station processing with validation
+  - Batch station processing
+  - Regional (bounding box) processing
+  - Error handling (no data, network errors, S3 failures)
+  - Metadata enrichment verification
+  - Statistics and shutdown functionality
+
+**weather-common Module - Exception Test Coverage**
+- **ErrorType Test Suite** (11 tests, 100% coverage)
+  - Enum value validation
+  - Severity level checks
+  - HTTP status code mapping
+  - String representation
+  - Invalid valueOf handling
+
+- **WeatherServiceException Test Suite** (10 tests, 100% coverage)
+  - Constructor variations
+  - Error type association
+  - Cause chain handling
+  - Context preservation
+  - getMessage formatting
+
+**Testing:**
+- Total Tests: 169 comprehensive tests (+63 from Day 3)
+- weather-common Coverage: 100% (up from ~85%)
+- weather-ingestion Coverage: 75% (up from 35%)
+- Build Status: All tests passing (0 failures, 0 errors, 0 skipped)
+- Test Framework: JUnit 5 with Mockito for mocking
+- Integration Tests: 7 skipped (require AWS credentials)
+
+**Technical Details:**
+- Mockito 5.14.2 added for unit testing
+- All Sonar quality rules satisfied (no unused imports, proper exception handling)
+- Test methods properly declare checked exceptions
+
 ### Version 1.2.0-SNAPSHOT - Date: October 23, 2025
 
 #### weather-processing Module - Weather Processing Module

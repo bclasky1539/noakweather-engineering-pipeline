@@ -7,7 +7,7 @@
 
     <groupId>com.weather</groupId>
     <artifactId>noakweather-platform</artifactId>
-    <version>1.2.0-SNAPSHOT</version>
+    <version>1.3.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>NoakWeather Engineering Pipeline</name>
@@ -59,6 +59,7 @@
         <jackson.version>2.18.2</jackson.version>
         <slf4j.version>2.0.7</slf4j.version>
         <logback.version>1.4.11</logback.version>
+        <wiremock.version>3.13.1</wiremock.version>
         
         <!-- Plugin versions -->
         <maven.compiler.version>3.13.0</maven.compiler.version>
@@ -116,6 +117,12 @@
                 <artifactId>log4j-api</artifactId>
                 <version>${log4j.version}</version>
             </dependency>
+            <!-- ADD THIS: SLF4J to Log4j 2 bridge -->
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-slf4j2-impl</artifactId>
+                <version>${log4j.version}</version>
+            </dependency>
 
             <!-- JSON Processing -->
             <dependency>
@@ -151,6 +158,13 @@
                 <version>${junit.version}</version>
                 <scope>test</scope>
             </dependency>
+            <!-- WireMock for HTTP testing -->
+            <dependency>
+                <groupId>org.wiremock</groupId>
+                <artifactId>wiremock</artifactId>
+                <version>${wiremock.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -162,13 +176,26 @@
             <version>${slf4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>${logback.version}</version>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-slf4j2-impl</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- WireMock for HTTP testing (available to all modules) -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
