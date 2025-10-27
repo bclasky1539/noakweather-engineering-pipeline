@@ -319,4 +319,121 @@ class NoaaAviationWeatherClientTest {
             exception.getErrorType() == ErrorType.NETWORK_ERROR
         );
     }
+    
+    // ===== Tests for fetchTafReports =====
+    @Test
+    void testFetchTafReportsMultipleStations() throws WeatherServiceException {
+        // Arrange
+        String mockResponse = "[{\"icaoId\": \"KJFK\"}, {\"icaoId\": \"KLGA\"}]";
+        
+        stubFor(get(urlPathEqualTo("/taf"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(mockResponse)));
+        
+        // Act
+        List<WeatherData> result = client.fetchTafReports("KJFK", "KLGA");
+        
+        // Assert
+        assertNotNull(result);
+        assertEquals(2, result.size());
+    }
+    
+    @Test
+    void testFetchTafReportsNullStationIds() {
+        // Act & Assert
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
+            client.fetchTafReports((String[]) null);
+        });
+        
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+        assertTrue(exception.getMessage().contains("At least one station ID"));
+    }
+    
+    @Test
+    void testFetchTafReportsEmptyArray() {
+        // Act & Assert
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
+            client.fetchTafReports();
+        });
+        
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+    }
+    
+    @Test
+    void testFetchTafReportsInvalidStationCode() {
+        // Act & Assert - test with invalid station code (numbers)
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
+            client.fetchTafReports("123");
+        });
+        
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+        assertTrue(exception.getMessage().contains("3-4 alphabetic characters"));
+    }
+    
+    @Test
+    void testFetchTafReportsNetworkError() {
+        // Arrange
+        stubFor(get(urlPathEqualTo("/taf"))
+                .willReturn(aResponse()
+                        .withStatus(500)));
+        
+        // Act & Assert
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
+            client.fetchTafReports("KJFK");
+        });
+        
+        assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
+    }
+    
+    // ===== Tests for fetchMetarByBoundingBox =====
+    
+    @Test
+    void testFetchMetarByBoundingBoxSuccess() throws WeatherServiceException {
+        // Arrange
+        String mockResponse = "[{\"icaoId\": \"KJFK\", \"lat\": 40.6, \"lon\": -73.8}]";
+        
+        stubFor(get(urlPathEqualTo("/metar"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(mockResponse)));
+        
+        // Act
+        List<WeatherData> result = client.fetchMetarByBoundingBox(40.0, -74.0, 41.0, -73.0);
+        
+        // Assert
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+    }
+    
+    @Test
+    void testFetchMetarByBoundingBoxEmptyResult() throws WeatherServiceException {
+        // Arrange
+        stubFor(get(urlPathEqualTo("/metar"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("[]")));
+        
+        // Act
+        List<WeatherData> result = client.fetchMetarByBoundingBox(40.0, -74.0, 41.0, -73.0);
+        
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+    
+    @Test
+    void testFetchMetarByBoundingBoxNetworkError() {
+        // Arrange
+        stubFor(get(urlPathEqualTo("/metar"))
+                .willReturn(aResponse()
+                        .withStatus(500)));
+        
+        // Act & Assert
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
+            client.fetchMetarByBoundingBox(40.0, -74.0, 41.0, -73.0);
+        });
+        
+        assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
+    }
 }

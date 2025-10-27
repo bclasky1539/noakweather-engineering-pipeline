@@ -249,10 +249,8 @@ class SpeedLayerProcessorTest {
     
     @Test
     void testShutdown() {
-        // Act
-        processor.shutdown();
-        
-        // No assertion needed - just verify it doesn't throw
+        // Act & Assert - verify shutdown completes without throwing
+        assertDoesNotThrow(() -> processor.shutdown());
     }
     
     @Test

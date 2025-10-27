@@ -108,7 +108,7 @@ class S3UploadServiceTest {
     }
     
     @Test
-    void testUploadWeatherDataNullData() throws IOException {
+    void testUploadWeatherDataNullData() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadWeatherData(null);
@@ -252,6 +252,124 @@ class S3UploadServiceTest {
         assertNotEquals(s3Key2, s3Key3);
         
         verify(s3Client, times(3)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+    
+    @Test
+    void testUploadRawData() throws IOException {
+        // Arrange
+        String source = "noaa";
+        String rawData = "METAR KJFK 251651Z 28016KT 10SM FEW250 22/12 A3015";
+        String stationId = "KJFK";
+        
+        PutObjectResponse response = PutObjectResponse.builder()
+                .eTag("test-etag")
+                .build();
+        
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(response);
+        
+        // Act
+        String s3Key = uploadService.uploadRawData(source, rawData, stationId);
+        
+        // Assert
+        assertNotNull(s3Key);
+        assertTrue(s3Key.contains(stationId));
+        assertTrue(s3Key.contains("raw"));
+        
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+    
+    @Test
+    void testUploadRawDataNullSource() throws IOException {
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData(null, "some data", "KJFK");
+        });
+        
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Source"));
+    }
+    
+    @Test
+    void testUploadRawDataNullRawData() throws IOException {
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData("noaa", null, "KJFK");
+        });
+        
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Raw data"));
+    }
+    
+    @Test
+    void testUploadRawDataNullStationId() throws IOException {
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData("noaa", "some data", null);
+        });
+        
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Station ID"));
+    }
+    
+    @Test
+    void testUploadRawDataS3Exception() throws IOException {
+        // Arrange
+        String source = "noaa";
+        String rawData = "test data";
+        String stationId = "KJFK";
+        
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(new RuntimeException("S3 connection failed"));
+        
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData(source, rawData, stationId);
+        });
+            
+        assertNotNull(exception);
+    }
+    
+    @Test
+    void testIsBucketAccessible() {
+        // Arrange
+        when(s3Client.headBucket(any(java.util.function.Consumer.class)))
+                .thenReturn(software.amazon.awssdk.services.s3.model.HeadBucketResponse.builder().build());
+        
+        // Act
+        boolean accessible = uploadService.isBucketAccessible();
+        
+        // Assert
+        assertTrue(accessible);
+        verify(s3Client, times(1)).headBucket(any(java.util.function.Consumer.class));
+    }
+    
+    @Test
+    void testIsBucketNotAccessible() {
+        // Arrange
+        when(s3Client.headBucket(any(java.util.function.Consumer.class)))
+                .thenThrow(software.amazon.awssdk.services.s3.model.NoSuchBucketException.builder()
+                        .message("Bucket not found").build());
+        
+        // Act
+        boolean accessible = uploadService.isBucketAccessible();
+        
+        // Assert
+        assertFalse(accessible);
+        verify(s3Client, times(1)).headBucket(any(java.util.function.Consumer.class));
+    }
+    
+    @Test
+    void testIsBucketAccessibleS3Exception() {
+        // Arrange
+        when(s3Client.headBucket(any(java.util.function.Consumer.class)))
+                .thenThrow(new RuntimeException("S3 connection error"));
+        
+        // Act
+        boolean accessible = uploadService.isBucketAccessible();
+        
+        // Assert
+        assertFalse(accessible);
     }
     
     private WeatherData createTestWeatherData(String stationId) throws IOException {
