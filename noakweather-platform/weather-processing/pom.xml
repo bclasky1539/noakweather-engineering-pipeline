@@ -6,9 +6,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.weather</groupId>
+        <groupId>weather</groupId>
         <artifactId>noakweather-platform</artifactId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.4.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>weather-processing</artifactId>
@@ -19,8 +19,9 @@
     <dependencies>
         <!-- Internal Dependencies -->
         <dependency>
-            <groupId>com.weather</groupId>
+            <groupId>weather</groupId>
             <artifactId>weather-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>

@@ -37,7 +37,7 @@ import java.util.UUID;
  * This is analogous to a universal "fact table" in a data warehouse that can
  * accept data from any source system.
  * 
- * Sealed class (Java 17+): Only permits known weather data types
+ * Sealed class: Only permits known weather data types
  * 
  * @author bclasky1539
  *
@@ -52,7 +52,7 @@ import java.util.UUID;
 })
 @JsonIgnoreProperties(ignoreUnknown = true)
 public abstract sealed class WeatherData 
-    permits NoaaWeatherData {  // We'll add more permits as we create subclasses
+    permits NoaaWeatherData, TestWeatherData {  // We'll add more permits as we create subclasses
     
     /**
      * Unique identifier for this weather data record.

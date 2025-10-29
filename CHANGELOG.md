@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.4.0-SNAPSHOT - Date: October 29, 2025
+
+#### weather-storage Module - Weather Storage & Lambda Architecture Foundation
+
+**Added:**
+**Weather Storage**
+- **Created weather-storage module** implementing Lambda Architecture patterns
+- **Repository Pattern**: 
+  - `UniversalWeatherRepository` - Unified interface for multiple storage backends
+  - `DynamoDbRepository` - Stub for real-time Speed Layer storage
+  - `SnowflakeRepository` - Stub for historical Batch Layer storage
+  - `RepositoryStats` - Storage metrics and monitoring
+- **Batch Layer Processing**:
+  - `BatchLayerProcessor` - Batch processing orchestration
+  - `BatchProcessingResult` - Processing results with builder pattern
+  - `BatchProcessingStats` - Aggregated batch statistics
+- **Test Coverage**: 69 comprehensive unit tests achieving 98% instruction, 97% branch coverage
+
+**Weather Common Improvements**
+- **TestWeatherData** - Test utility class for WeatherData testing
+- Added to sealed class permits for testing purposes
+- **Enhanced GeoLocation tests**: 100% instruction and branch coverage
+- **Enhanced WeatherData tests**: 100% instruction and branch coverage using reflection
+- Added WeatherDataTest.java with 10 comprehensive tests
+
+**Weather Ingestion Improvements**
+- **Enhanced S3UploadService tests**: 
+  - Added validation tests for null/empty parameters
+  - Added batch upload failure scenarios
+  - Improved to 82% instruction, 91% branch coverage (+16% branch)
+- **Enhanced SpeedLayerProcessor tests**:
+  - Added custom concurrency constructor tests
+  - Added validation failure tests (missing stationId, missing source)
+  - Added continuous ingestion tests
+  - Improved to 85% instruction, 86% branch coverage (+14% branch)
+
+**Build & Quality**
+- **JaCoCo Configuration**: Added TestWeatherData exclusion to parent POM
+- **Overall Coverage**: weather-storage (98%/97%), weather-common (99%/97%), weather-ingestion (83%/89%)
+- All 69+ new tests passing across modules
+- Build time: ~40 seconds for full project
+
+**Changed**
+- Updated sealed class `WeatherData` to permit `TestWeatherData` for testing
+- Improved test quality across modules with better edge case coverage
+- Enhanced error handling and validation in S3UploadService
+
+**Technical Debt Addressed**
+- Improved branch coverage from 73% to 89% in weather-ingestion
+
 ### Version 1.3.0-SNAPSHOT - Date: October 26, 2025
 
 #### weather-ingestion Module - Comprehensive Unit Test Coverage

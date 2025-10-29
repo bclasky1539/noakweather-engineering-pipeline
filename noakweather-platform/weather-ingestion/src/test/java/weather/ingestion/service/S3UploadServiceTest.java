@@ -372,6 +372,58 @@ class S3UploadServiceTest {
         assertFalse(accessible);
     }
     
+    @Test
+    void testUploadRawDataEmptySource() throws IOException {
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData("", "some data", "KJFK");
+        });
+        
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Source"));
+    }
+    
+    @Test
+    void testUploadRawDataEmptyRawData() throws IOException {
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData("noaa", "", "KJFK");
+        });
+        
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Raw data"));
+    }
+    
+    @Test
+    void testUploadRawDataEmptyStationId() throws IOException {
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadRawData("noaa", "some data", "");
+        });
+        
+        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Station ID"));
+    }
+
+    @Test
+    void testUploadWeatherDataBatchAllFailures() throws IOException {
+        // Arrange
+        List<WeatherData> weatherDataList = Arrays.asList(
+                createTestWeatherData("KJFK"),
+                createTestWeatherData("KLGA")
+        );
+        
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(new RuntimeException("S3 error"));
+        
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            uploadService.uploadWeatherDataBatch(weatherDataList);
+        });
+        
+        assertTrue(exception.getMessage().contains("All uploads in batch failed"));
+    }
+
     private WeatherData createTestWeatherData(String stationId) throws IOException {
         NoaaWeatherData data = new NoaaWeatherData(stationId, Instant.now(), "METAR");
         data.setRawData("{\"test\": \"data\"}");
