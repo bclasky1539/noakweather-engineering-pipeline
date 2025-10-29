@@ -272,6 +272,70 @@ class SpeedLayerProcessorTest {
         assertEquals("SpeedLayerProcessor", result.getMetadata().get("processor"));
     }
     
+    @Test
+    void testConstructorWithCustomConcurrency() {
+        // Act
+        SpeedLayerProcessor customProcessor = new SpeedLayerProcessor(
+                noaaClient, s3Service, 10
+        );
+        
+        // Assert
+        assertNotNull(customProcessor);
+        var stats = customProcessor.getStatistics();
+        assertEquals(10, stats.get("max_concurrent_requests"));
+        
+        customProcessor.shutdown();
+    }
+    
+    @Test
+    void testProcessStationMissingStationId() throws IOException, WeatherServiceException {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData(null); // null station ID
+        when(noaaClient.fetchLatestMetar("TEST")).thenReturn(weatherData);
+        
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            processor.processStation("TEST");
+        });
+        
+        assertTrue(exception.getMessage().contains("stationId"));
+    }
+    
+    @Test
+    void testProcessStationMissingSource() throws IOException, WeatherServiceException {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KJFK");
+        weatherData.setSource(null);
+        when(noaaClient.fetchLatestMetar("KJFK")).thenReturn(weatherData);
+        
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class, () -> {
+            processor.processStation("KJFK");
+        });
+        
+        assertTrue(exception.getMessage().contains("dataSource"));
+    }
+
+    @Test
+    void testRunContinuousIngestionShortDuration() {
+        // Arrange
+        List<String> stationIds = Arrays.asList("KJFK");
+        
+        // Act - run for 0 minutes (exits immediately, no mocks needed)
+        assertDoesNotThrow(() -> {
+            processor.runContinuousIngestion(stationIds, 2, 0);
+        });
+    }
+
+     @Test
+    void testProcessStationsBatchWithEmptyList() {
+        // Act
+        List<WeatherData> results = processor.processStationsBatch(Arrays.asList());
+        
+        // Assert
+        assertTrue(results.isEmpty());
+    }
+
     private WeatherData createTestWeatherData(String stationId) {
         NoaaWeatherData data = new NoaaWeatherData(stationId, Instant.now(), "METAR");
         data.setRawData("{\"test\": \"data\"}");

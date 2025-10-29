@@ -160,4 +160,48 @@ class GeoLocationTest {
         assertTrue(str.contains("-74.0060"));
         assertFalse(str.contains("elev"));
     }
+    
+    @Test
+    @DisplayName("Should create from feet with null elevation")
+    void testFromFeetWithNullElevation() {
+        GeoLocation location = GeoLocation.fromFeet(40.7128, -74.0060, null);
+        
+        assertEquals(40.7128, location.latitude());
+        assertEquals(-74.0060, location.longitude());
+        assertNull(location.elevationMeters(), "Elevation should be null when input is null");
+    }
+    
+    @Test
+    @DisplayName("Should return null from elevationFeet when elevation is null")
+    void testElevationFeetWithNullElevation() {
+        GeoLocation location = new GeoLocation(40.7128, -74.0060, null);
+        
+        assertNull(location.elevationFeet(), "Should return null when elevation is null");
+    }
+    
+    @Test
+    @DisplayName("Should handle zero elevation in fromFeet")
+    void testFromFeetWithZeroElevation() {
+        GeoLocation location = GeoLocation.fromFeet(40.7128, -74.0060, 0);
+        
+        assertEquals(0, location.elevationMeters());
+    }
+    
+    @Test
+    @DisplayName("Should handle zero elevation in elevationFeet")
+    void testElevationFeetWithZeroElevation() {
+        GeoLocation location = new GeoLocation(40.7128, -74.0060, 0);
+        
+        assertEquals(0, location.elevationFeet());
+    }
+    
+    @Test
+    @DisplayName("Should handle negative elevation")
+    void testNegativeElevation() {
+        // Death Valley is below sea level: -282 feet ≈ -86 meters
+        GeoLocation location = GeoLocation.fromFeet(36.5323, -116.9325, -282);
+        
+        assertTrue(location.elevationMeters() < 0);
+        assertTrue(location.elevationFeet() < 0);
+    }
 }
