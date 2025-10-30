@@ -96,6 +96,7 @@ class WeatherDataTest {
     
     @Test
     @DisplayName("Should return false when comparing with null")
+    @SuppressWarnings("java:S5838") // Intentional: argument order needed to test equals() implementation
     void testEqualsWithNull() {
         TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
         

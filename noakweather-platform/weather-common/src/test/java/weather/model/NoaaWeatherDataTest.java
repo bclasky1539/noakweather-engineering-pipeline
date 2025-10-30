@@ -370,7 +370,7 @@ class NoaaWeatherDataTest {
     void testEqualsWithNull() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertNotEquals(data, null);
+        assertNotEquals(null, data);
     }
     
     @Test
@@ -444,7 +444,7 @@ class NoaaWeatherDataTest {
         Object notWeatherData = new Object();
         
         assertNotEquals(data, notWeatherData);
-        assertFalse(data.equals(notWeatherData));
+        assertNotEquals(notWeatherData, data);
     }
     
     @Test
@@ -452,7 +452,7 @@ class NoaaWeatherDataTest {
     void testEqualsSameReference() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertTrue(data.equals(data));
+        assertEquals(data, data);
         assertEquals(data, data);
     }
 
@@ -463,8 +463,8 @@ class NoaaWeatherDataTest {
         NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "TAF");
         
         // If x.equals(y) == false, then y.equals(x) should also == false
-        assertFalse(data1.equals(data2));
-        assertFalse(data2.equals(data1));
+        assertNotEquals(data1, data2);
+        assertNotEquals(data2, data1);
     }
     
     @Test
@@ -473,9 +473,9 @@ class NoaaWeatherDataTest {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
         // For same reference: if x.equals(x) and x.equals(x), then x.equals(x)
-        assertTrue(data.equals(data));
-        assertTrue(data.equals(data));
-        assertTrue(data.equals(data));
+        assertEquals(data, data);
+        assertEquals(data, data);
+        assertEquals(data, data);
     }
     
     @Test
@@ -500,8 +500,8 @@ class NoaaWeatherDataTest {
         WeatherData data2 = new NoaaWeatherData("KLGA", now, "TAF");
         
         // Test polymorphic comparison
-        assertFalse(data1.equals(data2));
-        assertFalse(data2.equals(data1));
+        assertNotEquals(data1, data2);
+        assertNotEquals(data2, data1);
     }
     
     @Test

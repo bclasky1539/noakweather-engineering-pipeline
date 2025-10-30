@@ -349,10 +349,11 @@ class BatchLayerProcessorTest {
             .recordsProcessed(100L)
             .build();
         
-        assertNotEquals(result, null, "Result should not equal null");
+        assertNotEquals(null, result, "Result should not equal null");
     }
     
     @Test
+    @SuppressWarnings("java:S5838") // Intentional: tests equals() implementation
     void testBatchProcessingResultEqualsDifferentType() {
         BatchProcessingResult result = BatchProcessingResult.success()
             .source(WeatherDataSource.NOAA)
@@ -534,10 +535,11 @@ class BatchLayerProcessorTest {
             10, 1000L, 50L, LocalDateTime.now(), 5000L
         );
         
-        assertNotEquals(stats, null, "Stats should not equal null");
+        assertNotEquals(null, stats, "Stats should not equal null");
     }
 
     @Test
+    @SuppressWarnings("java:S5838") // Intentional: tests equals() implementation
     void testBatchProcessingStatsEqualsDifferentType() {
         BatchProcessingStats stats = new BatchProcessingStats(
             10, 1000L, 50L, LocalDateTime.now(), 5000L

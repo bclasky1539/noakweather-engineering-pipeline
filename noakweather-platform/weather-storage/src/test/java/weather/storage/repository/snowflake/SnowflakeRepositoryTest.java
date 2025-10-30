@@ -96,8 +96,9 @@ class SnowflakeRepositoryTest {
             UnsupportedOperationException.class, 
             () -> repository.saveBatch(Collections.emptyList())
         );
-        
-        assertNotNull(exception, "Exception should not be null");
+    
+        // assertThrows guarantees non-null, optionally verify message:
+        assertTrue(exception.getMessage().contains("not yet implemented"));
     }
     
     @Test
@@ -106,7 +107,8 @@ class SnowflakeRepositoryTest {
             UnsupportedOperationException.class, 
             () -> repository.deleteOlderThan(LocalDateTime.now())
         );
-        
-        assertNotNull(exception, "Exception should not be null");
+    
+        // Optionally verify message contains expected text
+        assertTrue(exception.getMessage().contains("not yet implemented"));
     }
 }

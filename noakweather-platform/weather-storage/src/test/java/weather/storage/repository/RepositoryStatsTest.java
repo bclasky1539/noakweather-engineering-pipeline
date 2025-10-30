@@ -46,10 +46,11 @@ class RepositoryStatsTest {
             10L, 50L, 5, 1024L
         );
         
-        assertNotEquals(stats, null, "Stats should not equal null");
+        assertNotEquals(null, stats, "Stats should not equal null");
     }
     
     @Test
+    @SuppressWarnings("java:S5838") // Intentional: tests equals() implementation
     void testEqualsDifferentType() {
         RepositoryStats stats = new RepositoryStats(
             100L, LocalDateTime.now(), LocalDateTime.now(), 
@@ -58,6 +59,7 @@ class RepositoryStatsTest {
         
         assertNotEquals(stats, "not a RepositoryStats", 
                        "Stats should not equal different type");
+        
     }
     
     @Test

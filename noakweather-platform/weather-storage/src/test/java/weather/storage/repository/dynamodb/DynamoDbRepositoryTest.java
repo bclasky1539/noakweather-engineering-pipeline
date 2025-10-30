@@ -133,8 +133,9 @@ class DynamoDbRepositoryTest {
             UnsupportedOperationException.class, 
             () -> repository.saveBatch(Collections.emptyList())
         );
-        
-        assertNotNull(exception);
+    
+        assertTrue(exception.getMessage().contains("not yet implemented"),
+                   "Exception should indicate feature not implemented");
     }
     
     @Test
@@ -144,7 +145,6 @@ class DynamoDbRepositoryTest {
             () -> repository.deleteOlderThan(LocalDateTime.now().minusMonths(6))
         );
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("TTL"), 
                   "Message should mention TTL as alternative");
     }
