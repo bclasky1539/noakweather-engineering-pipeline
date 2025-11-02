@@ -16,6 +16,7 @@
  */
 package weather.storage.repository.snowflake;
 
+import weather.model.WeatherData;
 import weather.model.WeatherDataSource;
 import weather.storage.repository.RepositoryStats;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -92,9 +94,11 @@ class SnowflakeRepositoryTest {
     
     @Test
     void testSaveBatchThrowsException() {
+        List<WeatherData> emptyList = Collections.emptyList();
+    
         UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> repository.saveBatch(Collections.emptyList())
+            UnsupportedOperationException.class,
+            () -> repository.saveBatch(emptyList)
         );
     
         // assertThrows guarantees non-null, optionally verify message:

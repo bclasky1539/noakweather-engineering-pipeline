@@ -129,9 +129,11 @@ class DynamoDbRepositoryTest {
     
     @Test
     void testSaveBatchThrowsUnsupportedOperation() {
+        List<WeatherData> emptyList = Collections.emptyList();
+    
         UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> repository.saveBatch(Collections.emptyList())
+            UnsupportedOperationException.class,
+            () -> repository.saveBatch(emptyList)
         );
     
         assertTrue(exception.getMessage().contains("not yet implemented"),
