@@ -280,40 +280,37 @@ class S3UploadServiceTest {
     }
     
     @Test
-    void testUploadRawDataNullSource() throws IOException {
+    void testUploadRawDataNullSource() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadRawData(null, "some data", "KJFK");
         });
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("Source"));
     }
     
     @Test
-    void testUploadRawDataNullRawData() throws IOException {
+    void testUploadRawDataNullRawData() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadRawData("noaa", null, "KJFK");
         });
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("Raw data"));
     }
     
     @Test
-    void testUploadRawDataNullStationId() throws IOException {
+    void testUploadRawDataNullStationId() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadRawData("noaa", "some data", null);
         });
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("Station ID"));
     }
     
     @Test
-    void testUploadRawDataS3Exception() throws IOException {
+    void testUploadRawDataS3Exception() {
         // Arrange
         String source = "noaa";
         String rawData = "test data";
@@ -327,7 +324,7 @@ class S3UploadServiceTest {
             uploadService.uploadRawData(source, rawData, stationId);
         });
             
-        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("Failed to upload"));
     }
     
     @Test
@@ -373,35 +370,32 @@ class S3UploadServiceTest {
     }
     
     @Test
-    void testUploadRawDataEmptySource() throws IOException {
+    void testUploadRawDataEmptySource() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadRawData("", "some data", "KJFK");
         });
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("Source"));
     }
     
     @Test
-    void testUploadRawDataEmptyRawData() throws IOException {
+    void testUploadRawDataEmptyRawData() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadRawData("noaa", "", "KJFK");
         });
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("Raw data"));
     }
     
     @Test
-    void testUploadRawDataEmptyStationId() throws IOException {
+    void testUploadRawDataEmptyStationId() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class, () -> {
             uploadService.uploadRawData("noaa", "some data", "");
         });
         
-        assertNotNull(exception);
         assertTrue(exception.getMessage().contains("Station ID"));
     }
 

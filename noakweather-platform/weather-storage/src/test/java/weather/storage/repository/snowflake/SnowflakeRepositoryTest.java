@@ -87,7 +87,7 @@ class SnowflakeRepositoryTest {
             () -> repository.save(null)
         );
         
-        assertNotNull(exception, "Exception should not be null");
+        assertTrue(exception.getMessage().contains("not yet implemented"));
     }
     
     @Test
@@ -103,9 +103,11 @@ class SnowflakeRepositoryTest {
     
     @Test
     void testDeleteOlderThanThrowsException() {
+        LocalDateTime cutoffDate = LocalDateTime.now();
+        
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class, 
-            () -> repository.deleteOlderThan(LocalDateTime.now())
+            () -> repository.deleteOlderThan(cutoffDate)
         );
     
         // Optionally verify message contains expected text
