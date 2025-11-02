@@ -124,7 +124,7 @@ class DynamoDbRepositoryTest {
             () -> repository.save(null)
         );
         
-        assertNotNull(exception);
+        assertTrue(exception.getMessage().contains("not yet implemented"));
     }
     
     @Test
@@ -140,9 +140,11 @@ class DynamoDbRepositoryTest {
     
     @Test
     void testDeleteOlderThanThrowsUnsupportedOperation() {
+        LocalDateTime cutoffDate = LocalDateTime.now().minusMonths(6);
+        
         UnsupportedOperationException exception = assertThrows(
             UnsupportedOperationException.class, 
-            () -> repository.deleteOlderThan(LocalDateTime.now().minusMonths(6))
+            () -> repository.deleteOlderThan(cutoffDate)
         );
         
         assertTrue(exception.getMessage().contains("TTL"), 

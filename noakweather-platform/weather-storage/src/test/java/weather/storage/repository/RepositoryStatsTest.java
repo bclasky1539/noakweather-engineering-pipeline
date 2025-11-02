@@ -50,7 +50,7 @@ class RepositoryStatsTest {
     }
     
     @Test
-    @SuppressWarnings("java:S5838") // Intentional: tests equals() implementation
+    @SuppressWarnings({"java:S5838", "java:S3415"}) // Intentional: tests equals() implementation
     void testEqualsDifferentType() {
         RepositoryStats stats = new RepositoryStats(
             100L, LocalDateTime.now(), LocalDateTime.now(), 

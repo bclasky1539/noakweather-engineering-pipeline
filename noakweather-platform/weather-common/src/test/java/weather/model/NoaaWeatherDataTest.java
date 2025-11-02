@@ -506,7 +506,7 @@ class NoaaWeatherDataTest {
     
     @Test
     @DisplayName("Should handle equals when IDs are compared")
-    void testEqualsIdComparison() throws Exception {
+    void testEqualsIdComparison() {
         NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
         NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
         

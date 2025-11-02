@@ -353,7 +353,7 @@ class BatchLayerProcessorTest {
     }
     
     @Test
-    @SuppressWarnings("java:S5838") // Intentional: tests equals() implementation
+    @SuppressWarnings({"java:S5838", "java:S3415"}) // Intentional: tests equals() implementation
     void testBatchProcessingResultEqualsDifferentType() {
         BatchProcessingResult result = BatchProcessingResult.success()
             .source(WeatherDataSource.NOAA)
@@ -539,7 +539,7 @@ class BatchLayerProcessorTest {
     }
 
     @Test
-    @SuppressWarnings("java:S5838") // Intentional: tests equals() implementation
+    @SuppressWarnings({"java:S5838", "java:S3415"}) // Intentional: tests equals() implementation
     void testBatchProcessingStatsEqualsDifferentType() {
         BatchProcessingStats stats = new BatchProcessingStats(
             10, 1000L, 50L, LocalDateTime.now(), 5000L
@@ -788,7 +788,7 @@ class BatchLayerProcessorTest {
         // Execute the future and verify it throws the expected exception
         ExecutionException exception = assertThrows(
             ExecutionException.class,
-            () -> future.get(),
+            future::get,
             "Future should complete exceptionally"
         );
         
