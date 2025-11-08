@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.4.0-SNAPSHOT Additional - November 8, 2025
+
+#### Domain Model Foundation
+
+**Added:**
+**New Domain Model Components**
+- **Value Objects (Records)**
+  - `Wind` - Wind data with direction, speed, gusts, variability
+  - `Visibility` - Visibility measurements with prevailing and runway visual range support
+  - `Temperature` - Temperature and dewpoint data
+  - `Pressure` - Pressure readings with multiple unit support (in/Hg, hPa, mb)
+  - `SkyCondition` - Sky coverage layers with ceiling heights
+  - `PeakWind` - Peak wind data from remarks section
+  - `WindShift` - Wind shift timing and frontal passage indicators
+  - `GeoLocation` - Geographic coordinates with elevation
+
+**Core Data Classes**
+- **`WeatherData`** (sealed abstract base)
+  - Universal base for all weather data sources
+  - Lambda architecture layer tracking
+  - Immutable ID and ingestion timestamps
+  - Source-agnostic design (NOAA, OpenWeatherMap, etc.)
+  
+- **`NoaaWeatherData`** (extends WeatherData)
+  - NOAA Aviation Weather Center specific implementation
+  - Report type support (METAR, TAF, PIREP)
+  - Station metadata (coordinates, elevation)
+  - Quality control flags
+
+- **`NoaaMetarData`** (extends NoaaWeatherData)
+  - Complete METAR observation support
+  - Main body: wind, visibility, weather, sky conditions, temperature, pressure
+  - Remarks: peak wind, wind shift, automated station, sea level pressure
+  - Precipitation and temperature extremes
+  - Flight category data support
+
+- **`Enums`**
+  - SkyCoverage - CLR, FEW, SCT, BKN, OVC, VV with descriptions
+  - PressureUnit - INCHES_HG, HECTOPASCAL, MILLIBAR with conversions
+  - WeatherDataSource - NOAA, OPENWEATHERMAP, WEATHERAPI, INTERNAL
+  - ProcessingLayer - SPEED_LAYER, BATCH_LAYER, SERVING_LAYER
+
+**Notes**
+- Domain model is complete and tested, ready for parser integration
+- Parser implementation deferred to next iteration
+
 ### Version 1.4.0-SNAPSHOT - Date: October 29, 2025
 
 #### weather-storage Module - Weather Storage & Lambda Architecture Foundation

@@ -36,7 +36,40 @@ import java.util.Objects;
 @JsonTypeName("NOAA")
 public non-sealed class NoaaWeatherData extends WeatherData {
     
-    private String reportType; // METAR, TAF, PIREP, etc.
+    /**
+     * Type of report (METAR, TAF, PIREP, etc.)
+     */
+    private String reportType;
+    
+    /**
+     * Raw text of the weather report as received from NOAA
+     */
+    private String rawText;
+    
+    /**
+     * Report modifier (AUTO, COR, AMD, etc.)
+     */
+    private String reportModifier;
+    
+    /**
+     * Station latitude in decimal degrees
+     */
+    private Double latitude;
+    
+    /**
+     * Station longitude in decimal degrees
+     */
+    private Double longitude;
+    
+    /**
+     * Station elevation in feet above mean sea level
+     */
+    private Integer elevationFeet;
+    
+    /**
+     * Quality control flags from NOAA
+     */
+    private String qualityControlFlags;
     
     public NoaaWeatherData() {
         super();
@@ -53,6 +86,54 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     
     public void setReportType(String reportType) {
         this.reportType = reportType;
+    }
+    
+    public String getRawText() {
+        return rawText;
+    }
+    
+    public void setRawText(String rawText) {
+        this.rawText = rawText;
+    }
+    
+    public String getReportModifier() {
+        return reportModifier;
+    }
+    
+    public void setReportModifier(String reportModifier) {
+        this.reportModifier = reportModifier;
+    }
+    
+    public Double getLatitude() {
+        return latitude;
+    }
+    
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+    
+    public Double getLongitude() {
+        return longitude;
+    }
+    
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+    
+    public Integer getElevationFeet() {
+        return elevationFeet;
+    }
+    
+    public void setElevationFeet(Integer elevationFeet) {
+        this.elevationFeet = elevationFeet;
+    }
+    
+    public String getQualityControlFlags() {
+        return qualityControlFlags;
+    }
+    
+    public void setQualityControlFlags(String qualityControlFlags) {
+        this.qualityControlFlags = qualityControlFlags;
     }
     
     @Override

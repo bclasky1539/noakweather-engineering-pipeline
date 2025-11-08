@@ -25,7 +25,7 @@ import java.time.Instant;
  * @author bclasky1539
  *
  */
-final class TestWeatherData extends WeatherData {
+public final class TestWeatherData extends WeatherData {
     
     public TestWeatherData() {
         super();
