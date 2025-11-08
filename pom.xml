@@ -29,7 +29,7 @@
         <sonar.projectKey>bclasky1539_noakweather-engineering-pipeline</sonar.projectKey>
         <sonar.projectName>Noakweather Engineering Pipeline</sonar.projectName>
         <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
-        <maven.compiler.release>8</maven.compiler.release>
+        <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <build>

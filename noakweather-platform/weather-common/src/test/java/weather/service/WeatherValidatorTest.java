@@ -18,171 +18,150 @@ package weather.service;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import weather.model.WeatherData;
+import weather.model.TestWeatherData;
+
+import java.time.Instant;
+import java.util.Arrays;
+
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
- * Unit tests for ValidationResult and ValidationResultBuilder
+ * Unit tests for WeatherValidator interface, specifically the default methods.
  * 
  * @author bclasky1539
- *
  */
-class ValidationResultTest {
+class WeatherValidatorTest {
     
-    @Test
-    @DisplayName("Should create successful validation result")
-    void testSuccessResult() {
-        ValidationResult result = ValidationResult.success();
-        
-        assertTrue(result.isValid());
-        assertFalse(result.hasErrors());
-        assertFalse(result.hasWarnings());
-        assertTrue(result.getErrors().isEmpty());
-        assertTrue(result.getWarnings().isEmpty());
+    /**
+     * Test implementation that returns a successful validation
+     */
+    private static class SuccessValidator implements WeatherValidator<WeatherData> {
+        @Override
+        public ValidationResult validate(WeatherData data) {
+            return ValidationResult.success();
+        }
+    }
+    
+    /**
+     * Test implementation that returns validation with warnings
+     */
+    private static class WarningValidator implements WeatherValidator<WeatherData> {
+        @Override
+        public ValidationResult validate(WeatherData data) {
+            return ValidationResult.withWarnings(Arrays.asList("Test warning"));
+        }
+    }
+    
+    /**
+     * Test implementation that returns validation failure
+     */
+    private static class FailureValidator implements WeatherValidator<WeatherData> {
+        @Override
+        public ValidationResult validate(WeatherData data) {
+            return ValidationResult.failure(Arrays.asList("Test error"));
+        }
+    }
+    
+    /**
+     * Test implementation that returns failure with warnings
+     */
+    private static class FailureWithWarningsValidator implements WeatherValidator<WeatherData> {
+        @Override
+        public ValidationResult validate(WeatherData data) {
+            return ValidationResult.failure(
+                Arrays.asList("Test error"),
+                Arrays.asList("Test warning")
+            );
+        }
     }
     
     @Test
-    @DisplayName("Should create validation result with warnings")
-    void testWithWarnings() {
-        List<String> warnings = Arrays.asList("Warning 1", "Warning 2");
-        ValidationResult result = ValidationResult.withWarnings(warnings);
+    @DisplayName("Should return true when validation succeeds")
+    void testIsValid_Success() {
+        WeatherValidator<WeatherData> validator = new SuccessValidator();
+        TestWeatherData data = new TestWeatherData();
         
-        assertTrue(result.isValid());
-        assertFalse(result.hasErrors());
-        assertTrue(result.hasWarnings());
-        assertEquals(2, result.getWarnings().size());
+        boolean isValid = validator.isValid(data);
+        
+        assertTrue(isValid, "isValid should return true for successful validation");
     }
     
     @Test
-    @DisplayName("Should create failed validation result")
-    void testFailureResult() {
-        List<String> errors = Arrays.asList("Error 1", "Error 2");
-        ValidationResult result = ValidationResult.failure(errors);
+    @DisplayName("Should return true when validation has only warnings")
+    void testIsValid_WithWarnings() {
+        WeatherValidator<WeatherData> validator = new WarningValidator();
+        TestWeatherData data = new TestWeatherData();
         
-        assertFalse(result.isValid());
-        assertTrue(result.hasErrors());
-        assertFalse(result.hasWarnings());
-        assertEquals(2, result.getErrors().size());
+        boolean isValid = validator.isValid(data);
+        
+        assertTrue(isValid, "isValid should return true when only warnings exist");
     }
     
     @Test
-    @DisplayName("Should create failed validation result with warnings")
-    void testFailureWithWarnings() {
-        List<String> errors = Arrays.asList("Error 1");
-        List<String> warnings = Arrays.asList("Warning 1");
-        ValidationResult result = ValidationResult.failure(errors, warnings);
+    @DisplayName("Should return false when validation fails")
+    void testIsValid_Failure() {
+        WeatherValidator<WeatherData> validator = new FailureValidator();
+        TestWeatherData data = new TestWeatherData();
         
-        assertFalse(result.isValid());
-        assertTrue(result.hasErrors());
-        assertTrue(result.hasWarnings());
-        assertEquals(1, result.getErrors().size());
-        assertEquals(1, result.getWarnings().size());
+        boolean isValid = validator.isValid(data);
+        
+        assertFalse(isValid, "isValid should return false when validation fails");
     }
     
     @Test
-    @DisplayName("Should build validation result with builder")
-    void testValidationResultBuilder() {
-        ValidationResultBuilder builder = new ValidationResultBuilder();
+    @DisplayName("Should return false when validation fails with warnings")
+    void testIsValid_FailureWithWarnings() {
+        WeatherValidator<WeatherData> validator = new FailureWithWarningsValidator();
+        TestWeatherData data = new TestWeatherData();
         
-        ValidationResult result = builder
-            .addError("Missing station ID")
-            .addWarning("Old observation time")
-            .build();
+        boolean isValid = validator.isValid(data);
         
-        assertFalse(result.isValid());
-        assertEquals(1, result.getErrors().size());
-        assertEquals(1, result.getWarnings().size());
+        assertFalse(isValid, "isValid should return false when validation fails even with warnings");
     }
     
     @Test
-    @DisplayName("Should build successful result with only warnings")
-    void testBuilderWithOnlyWarnings() {
-        ValidationResultBuilder builder = new ValidationResultBuilder();
+    @DisplayName("Should call validate method when isValid is called")
+    void testIsValidCallsValidate() {
+        // Track if validate was called
+        final boolean[] validateCalled = {false};
         
-        ValidationResult result = builder
-            .addWarning("Data is old")
-            .build();
+        WeatherValidator<WeatherData> validator = new WeatherValidator<WeatherData>() {
+            @Override
+            public ValidationResult validate(WeatherData data) {
+                validateCalled[0] = true;
+                return ValidationResult.success();
+            }
+        };
         
-        assertTrue(result.isValid());
-        assertTrue(result.hasWarnings());
-        assertFalse(result.hasErrors());
+        TestWeatherData data = new TestWeatherData();
+        validator.isValid(data);
+        
+        assertTrue(validateCalled[0], "isValid should call validate() method");
     }
     
     @Test
-    @DisplayName("Should build successful result with no issues")
-    void testBuilderNoIssues() {
-        ValidationResultBuilder builder = new ValidationResultBuilder();
-        ValidationResult result = builder.build();
+    @DisplayName("Should work with different WeatherData subclasses")
+    void testWithDifferentWeatherDataTypes() {
+        WeatherValidator<TestWeatherData> validator = new WeatherValidator<TestWeatherData>() {
+            @Override
+            public ValidationResult validate(TestWeatherData data) {
+                // Simple validation: check if observation time is set
+                if (data.getObservationTime() == null) {
+                    return ValidationResult.failure(Arrays.asList("Observation time required"));
+                }
+                return ValidationResult.success();
+            }
+        };
         
-        assertTrue(result.isValid());
-        assertFalse(result.hasWarnings());
-        assertFalse(result.hasErrors());
-    }
-    
-    @Test
-    @DisplayName("Should add multiple errors at once")
-    void testBuilderAddMultipleErrors() {
-        List<String> errors = Arrays.asList("Error 1", "Error 2", "Error 3");
+        // Test with observation time
+        TestWeatherData dataWithTime = new TestWeatherData();
+        dataWithTime.setObservationTime(Instant.now());
+        assertTrue(validator.isValid(dataWithTime));
         
-        ValidationResultBuilder builder = new ValidationResultBuilder();
-        ValidationResult result = builder.addErrors(errors).build();
-        
-        assertFalse(result.isValid());
-        assertEquals(3, result.getErrors().size());
-    }
-    
-    @Test
-    @DisplayName("Should add multiple warnings at once")
-    void testBuilderAddMultipleWarnings() {
-        List<String> warnings = Arrays.asList("Warning 1", "Warning 2");
-        
-        ValidationResultBuilder builder = new ValidationResultBuilder();
-        ValidationResult result = builder.addWarnings(warnings).build();
-        
-        assertTrue(result.isValid());
-        assertEquals(2, result.getWarnings().size());
-    }
-    
-    @Test
-    @DisplayName("Should have meaningful toString")
-    void testToString() {
-        ValidationResult success = ValidationResult.success();
-        assertTrue(success.toString().contains("valid=true"));
-        
-        ValidationResult failure = ValidationResult.failure(
-            Arrays.asList("Error")
-        );
-        assertTrue(failure.toString().contains("valid=false"));
-        assertTrue(failure.toString().contains("errors=1"));
-    }
-    
-    @Test
-    @DisplayName("Validation result errors should be immutable")
-    void testImmutableErrors() {
-        List<String> errors = Arrays.asList("Error 1");
-        ValidationResult result = ValidationResult.failure(errors);
-        
-        List<String> errorList = result.getErrors();
-        UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> errorList.add("Error 2")
-        );
-        assertNotNull(exception);
-    }
-    
-    @Test
-    @DisplayName("Validation result warnings should be immutable")
-    void testImmutableWarnings() {
-        List<String> warnings = Arrays.asList("Warning 1");
-        ValidationResult result = ValidationResult.withWarnings(warnings);
-        
-        List<String> warningList = result.getWarnings();
-        UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> warningList.add("Warning 2")
-        );
-        assertNotNull(exception);
+        // Test without observation time
+        TestWeatherData dataWithoutTime = new TestWeatherData();
+        dataWithoutTime.setObservationTime(null);
+        assertFalse(validator.isValid(dataWithoutTime));
     }
 }

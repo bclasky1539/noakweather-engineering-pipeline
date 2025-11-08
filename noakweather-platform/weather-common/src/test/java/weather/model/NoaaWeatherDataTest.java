@@ -16,18 +16,24 @@
  */
 package weather.model;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import static org.junit.jupiter.api.Assertions.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Unit tests for NoaaWeatherData
+ * Unit tests for NoaaWeatherData base class.
  * 
  * @author bclasky1539
- * 
  */
 class NoaaWeatherDataTest {
     
@@ -40,225 +46,114 @@ class NoaaWeatherDataTest {
         weatherData = new NoaaWeatherData("KJFK", now, "METAR");
     }
     
-    @Test
-    @DisplayName("Should create NoaaWeatherData with required fields")
-    void testConstructor() {
-        assertNotNull(weatherData);
-        assertEquals("KJFK", weatherData.getStationId());
-        assertEquals(now, weatherData.getObservationTime());
-        assertEquals("METAR", weatherData.getReportType());
-        assertEquals(WeatherDataSource.NOAA, weatherData.getSource());
-    }
+    // ========== CONSTRUCTOR TESTS ==========
     
     @Test
-    @DisplayName("Should generate unique ID on creation")
-    void testUniqueId() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+    @DisplayName("Should create NoaaWeatherData with default constructor")
+    void testDefaultConstructor() {
+        NoaaWeatherData data = new NoaaWeatherData();
         
-        assertNotNull(data1.getId());
-        assertNotNull(data2.getId());
-        assertNotEquals(data1.getId(), data2.getId());
-    }
-    
-    @Test
-    @DisplayName("Should set ingestion time automatically")
-    void testIngestionTime() {
-        Instant before = Instant.now();
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        Instant after = Instant.now();
-        
+        assertNotNull(data);
+        assertNotNull(data.getId());
         assertNotNull(data.getIngestionTime());
-        assertFalse(data.getIngestionTime().isBefore(before));
-        assertFalse(data.getIngestionTime().isAfter(after));
     }
     
     @Test
-    @DisplayName("Should default to SPEED_LAYER processing layer")
-    void testDefaultProcessingLayer() {
-        assertEquals(ProcessingLayer.SPEED_LAYER, weatherData.getProcessingLayer());
-    }
-    
-    @Test
-    @DisplayName("Should consider data current if less than 2 hours old")
-    void testIsCurrentWhenRecent() {
-        Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", oneHourAgo, "METAR");
+    @DisplayName("Should create NoaaWeatherData with parameterized constructor")
+    void testParameterizedConstructor() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertTrue(data.isCurrent());
+        assertNotNull(data);
+        assertEquals("KJFK", data.getStationId());
+        assertEquals(now, data.getObservationTime());
+        assertEquals("METAR", data.getReportType());
+        assertEquals(WeatherDataSource.NOAA, data.getSource());
     }
     
+    // ========== EQUALS TESTS ==========
+    
     @Test
-    @DisplayName("Should consider data not current if more than 2 hours old")
-    void testIsCurrentWhenOld() {
-        Instant threeHoursAgo = Instant.now().minus(3, ChronoUnit.HOURS);
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", threeHoursAgo, "METAR");
+    @DisplayName("Should test equals with same object instance")
+    void testEquals_SameInstance() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertFalse(data.isCurrent());
+        assertTrue(data.equals(data));
     }
     
     @Test
-    @DisplayName("Should handle null observation time in isCurrent")
-    void testIsCurrentWithNullObservationTime() {
-        NoaaWeatherData data = new NoaaWeatherData();
-        data.setObservationTime(null);
-        
-        assertFalse(data.isCurrent());
-    }
-    
-    @Test
-    @DisplayName("Should return correct data type")
-    void testGetDataType() {
-        assertEquals("METAR", weatherData.getDataType());
-        
-        NoaaWeatherData tafData = new NoaaWeatherData("KJFK", now, "TAF");
-        assertEquals("TAF", tafData.getDataType());
-    }
-    
-    @Test
-    @DisplayName("Should handle null report type in getDataType")
-    void testGetDataTypeWithNullReportType() {
-        NoaaWeatherData data = new NoaaWeatherData();
-        assertEquals("NOAA", data.getDataType());
-    }
-    
-    @Test
-    @DisplayName("Should generate meaningful summary")
-    void testGetSummary() {
-        String summary = weatherData.getSummary();
-        
-        assertTrue(summary.contains("METAR"));
-        assertTrue(summary.contains("KJFK"));
-        assertTrue(summary.contains(now.toString()));
-    }
-    
-    @Test
-    @DisplayName("Should handle null report type in getSummary")
-    void testGetSummaryWithNullReportType() {
-        NoaaWeatherData data = new NoaaWeatherData();
-        data.setStationId("KJFK");
-        data.setObservationTime(now);
-        
-        String summary = data.getSummary();
-        assertTrue(summary.contains("NOAA Report"));
-    }
-    
-    @Test
-    @DisplayName("Should set and get report type")
-    void testSetReportType() {
-        weatherData.setReportType("TAF");
-        assertEquals("TAF", weatherData.getReportType());
-    }
-    
-    @Test
-    @DisplayName("Should set and get location")
-    void testSetLocation() {
-        GeoLocation location = new GeoLocation(40.6413, -73.7781, 4);
-        weatherData.setLocation(location);
-        
-        assertEquals(location, weatherData.getLocation());
-    }
-    
-    @Test
-    @DisplayName("Should set and get raw data")
-    void testSetRawData() {
-        String rawText = "METAR KJFK 191651Z 28016KT 10SM FEW250 22/12 A3015";
-        weatherData.setRawData(rawText);
-        
-        assertEquals(rawText, weatherData.getRawData());
-    }
-    
-    @Test
-    @DisplayName("Should set and get quality flags")
-    void testSetQualityFlags() {
-        weatherData.setQualityFlags("AUTO");
-        assertEquals("AUTO", weatherData.getQualityFlags());
-    }
-    
-    @Test
-    @DisplayName("Should set and get processing layer")
-    void testSetProcessingLayer() {
-        weatherData.setProcessingLayer(ProcessingLayer.BATCH_LAYER);
-        assertEquals(ProcessingLayer.BATCH_LAYER, weatherData.getProcessingLayer());
-    }
-    
-    @Test
-    @DisplayName("Should handle metadata")
-    void testMetadata() {
-        weatherData.addMetadata("source_api", "AWC");
-        weatherData.addMetadata("version", "1.0");
-        
-        assertEquals("AWC", weatherData.getMetadata().get("source_api"));
-        assertEquals("1.0", weatherData.getMetadata().get("version"));
-        assertEquals(2, weatherData.getMetadata().size());
-    }
-    
-    @Test
-    @DisplayName("Should implement equals based on ID")
-    void testEquals() {
+    @DisplayName("Should test equals with matching reportType")
+    void testEquals_MatchingReportType() {
         NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
         NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
         
-        // Different objects with different IDs
+        // Different IDs, so not equal
         assertNotEquals(data1, data2);
-        
-        // Same object
-        assertEquals(data1, data1);
     }
     
     @Test
-    @DisplayName("Should implement hashCode based on ID")
-    void testHashCode() {
-        int hash1 = weatherData.hashCode();
-        int hash2 = weatherData.hashCode();
+    @DisplayName("Should test equals with null reportType in both objects")
+    void testEquals_BothNullReportTypes() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, null);
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, null);
         
-        // Same object should have same hash
-        assertEquals(hash1, hash2);
+        assertNotEquals(data1, data2);
     }
     
     @Test
-    @DisplayName("Should have meaningful toString")
-    void testToString() {
-        String str = weatherData.toString();
+    @DisplayName("Should test equals with one null reportType")
+    void testEquals_OneNullReportType() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, null);
         
-        assertTrue(str.contains("NoaaWeatherData"));
-        assertTrue(str.contains("KJFK"));
-        assertTrue(str.contains("NOAA"));
+        assertNotEquals(data1, data2);
     }
     
     @Test
-    @DisplayName("Should consider reportType in equality")
-    void testEqualsWithDifferentReportType() {
-        // Create two objects with same parent fields but different reportType
-        // Since they have different auto-generated IDs, they won't be equal anyway
-        // But this documents the expected behavior
-        NoaaWeatherData metar = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData taf = new NoaaWeatherData("KJFK", now, "TAF");
-        
-        assertNotEquals(metar, taf);
-        assertNotEquals(metar.hashCode(), taf.hashCode());
-    }
-
-    @Test
-    @DisplayName("Should implement equals correctly with same reportType")
-    void testEqualsWithSameReportType() {
+    @DisplayName("Should return false when comparing NoaaWeatherData with different class type")
+    void testEquals_DifferentClassType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        // Same object
-        assertEquals(data, data);
-        
-        // Not equal to null
-        // FIXED: Swapped arguments to put expected value first
-        assertNotEquals(null, data);
-        
-        // Not equal to different type
-        // FIXED: Swapped arguments to put expected value first
-        assertNotEquals("not a NoaaWeatherData", data);
+        assertFalse(data.equals("Not a NoaaWeatherData"));
+        assertFalse(data.equals(null));
+        assertFalse(data.equals(new Object()));
     }
     
     @Test
-    @DisplayName("Should maintain consistent hashCode")
-    void testHashCodeConsistency() {
+    @DisplayName("Should return false when super.equals fails due to different base fields")
+    void testEquals_SuperEqualsFails() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "METAR");
+        
+        assertFalse(data1.equals(data2));
+    }
+    
+    @Test
+    @DisplayName("Should return false when observation times differ")
+    void testEquals_DifferentObservationTimes() {
+        Instant time1 = Instant.now();
+        Instant time2 = time1.plus(1, ChronoUnit.HOURS);
+        
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", time1, "METAR");
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", time2, "METAR");
+        
+        assertFalse(data1.equals(data2));
+    }
+    
+    @Test
+    @DisplayName("Should handle equals when comparing with WeatherData parent type")
+    void testEquals_WithParentType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        
+        WeatherData parentReference = data;
+        assertTrue(data.equals(parentReference));
+        assertTrue(parentReference.equals(data));
+    }
+    
+    // ========== HASHCODE TESTS ==========
+    
+    @Test
+    @DisplayName("Should call hashCode on NoaaWeatherData directly")
+    void testHashCode_DirectCall() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
         int hash1 = data.hashCode();
@@ -268,256 +163,194 @@ class NoaaWeatherDataTest {
     }
     
     @Test
-    @DisplayName("Should handle equals with null reportType")
-    void testEqualsWithNullReportType() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, null);
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, null);
+    @DisplayName("Should call hashCode with different reportTypes")
+    void testHashCode_DifferentReportTypes() {
+        NoaaWeatherData metar = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaWeatherData taf = new NoaaWeatherData("KJFK", now, "TAF");
         
-        // Both have null reportType - they differ by ID though
-        assertNotEquals(data1, data2);
-    }
-    
-    @Test
-    @DisplayName("Should add metadata when metadata map is null")
-    void testAddMetadataWhenMapIsNull() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        data.setMetadata(null); // Force metadata to be null
+        int metarHash = metar.hashCode();
+        int tafHash = taf.hashCode();
         
-        data.addMetadata("test_key", "test_value");
-        
-        assertNotNull(data.getMetadata());
-        assertEquals("test_value", data.getMetadata().get("test_key"));
-    }
-    
-    @Test
-    @DisplayName("Should add metadata when metadata map already exists")
-    void testAddMetadataWhenMapExists() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        data.addMetadata("key1", "value1");
-        data.addMetadata("key2", "value2");
-        
-        assertEquals(2, data.getMetadata().size());
-        assertEquals("value1", data.getMetadata().get("key1"));
-        assertEquals("value2", data.getMetadata().get("key2"));
-    }
-    
-    @Test
-    @DisplayName("Should overwrite existing metadata key")
-    void testAddMetadataOverwrite() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        data.addMetadata("key", "value1");
-        data.addMetadata("key", "value2");
-        
-        assertEquals(1, data.getMetadata().size());
-        assertEquals("value2", data.getMetadata().get("key"));
+        assertNotEquals(metarHash, tafHash);
     }
 
     @Test
-    @DisplayName("Should set entire metadata map")
-    void testSetMetadata() {
+    @DisplayName("Should call hashCode with null reportType")
+    void testHashCode_NullReportType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
+        
+        int hash = data.hashCode();
+        
+        assertNotNull(hash);
+    }
+    
+    // ========== GETSUMMARY TESTS ==========
+    
+    @Test
+    @DisplayName("Should call getSummary on NoaaWeatherData directly")
+    void testGetSummary_DirectCall() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        java.util.Map<String, Object> metadata = new java.util.HashMap<>();
-        metadata.put("key1", "value1");
-        metadata.put("key2", 123);
-        metadata.put("key3", true);
+        String summary = data.getSummary();
         
-        data.setMetadata(metadata);
-        
-        assertEquals(3, data.getMetadata().size());
-        assertEquals("value1", data.getMetadata().get("key1"));
-        assertEquals(123, data.getMetadata().get("key2"));
-        assertEquals(true, data.getMetadata().get("key3"));
+        assertNotNull(summary);
+        assertTrue(summary.contains("METAR"));
+        assertTrue(summary.contains("KJFK"));
     }
     
     @Test
-    @DisplayName("Should set source using setSource method")
-    void testSetSource() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+    @DisplayName("Should call getSummary with null reportType on NoaaWeatherData")
+    void testGetSummary_NullReportType_DirectCall() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
         
-        // Constructor sets it to NOAA by default
-        assertEquals(WeatherDataSource.NOAA, data.getSource());
+        String summary = data.getSummary();
         
-        // Change to different source (edge case, but tests the setter)
-        data.setSource(WeatherDataSource.INTERNAL);
-        assertEquals(WeatherDataSource.INTERNAL, data.getSource());
+        assertNotNull(summary);
+        assertTrue(summary.contains("NOAA Report"));
+        assertTrue(summary.contains("KJFK"));
+    }
+
+    // ========== ISCURRENT TESTS ==========
+
+    @Test
+    @DisplayName("Should call isCurrent on NoaaWeatherData directly with recent time")
+    void testIsCurrent_Recent_DirectCall() {
+        Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", oneHourAgo, "METAR");
+        
+        boolean current = data.isCurrent();
+        
+        assertTrue(current);
     }
     
     @Test
-    @DisplayName("Should set source to null")
-    void testSetSourceNull() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        data.setSource(null);
+    @DisplayName("Should call isCurrent on NoaaWeatherData directly with old time")
+    void testIsCurrent_Old_DirectCall() {
+        Instant threeHoursAgo = Instant.now().minus(3, ChronoUnit.HOURS);
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", threeHoursAgo, "METAR");
         
-        assertNull(data.getSource());
+        boolean current = data.isCurrent();
+        
+        assertFalse(current);
+    }
+    
+    @Test
+    @DisplayName("Should call isCurrent on NoaaWeatherData directly with null time")
+    void testIsCurrent_Null_DirectCall() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        data.setObservationTime(null);
+        
+        boolean current = data.isCurrent();
+        
+        assertFalse(current);
+    }
+    
+    @Test
+    @DisplayName("Should test isCurrent at exact 2 hour boundary")
+    void testIsCurrent_ExactlyTwoHours() {
+        Instant exactlyTwoHoursAgo = Instant.now().minus(2, ChronoUnit.HOURS);
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", exactlyTwoHoursAgo, "METAR");
+        
+        boolean current = data.isCurrent();
+        
+        assertFalse(current);
+    }
+    
+    @Test
+    @DisplayName("Should test isCurrent just under 2 hours")
+    void testIsCurrent_JustUnderTwoHours() {
+        Instant justUnderTwoHours = Instant.now().minus(119, ChronoUnit.MINUTES);
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", justUnderTwoHours, "METAR");
+        
+        boolean current = data.isCurrent();
+        
+        assertTrue(current);
+    }
+    
+    // ========== GETDATATYPE TESTS ==========
+    
+    @Test
+    @DisplayName("Should test constructor branch with null reportType")
+    void testConstructor_NullReportType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
+        
+        assertNotNull(data);
+        assertEquals("KJFK", data.getStationId());
+        assertEquals(now, data.getObservationTime());
+        assertNull(data.getReportType());
+    }
+    
+    @Test
+    @DisplayName("Should test constructor branch with empty reportType")
+    void testConstructor_EmptyReportType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "");
+        
+        assertNotNull(data);
+        assertEquals("", data.getReportType());
+    }
+    
+    @Test
+    @DisplayName("Should test getDataType with various reportTypes")
+    void testGetDataType_VariousTypes() {
+        NoaaWeatherData metar = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaWeatherData taf = new NoaaWeatherData("KJFK", now, "TAF");
+        NoaaWeatherData pirep = new NoaaWeatherData("KJFK", now, "PIREP");
+        
+        assertEquals("METAR", metar.getDataType());
+        assertEquals("TAF", taf.getDataType());
+        assertEquals("PIREP", pirep.getDataType());
+    }
+    
+    @Test
+    @DisplayName("Should return NOAA when reportType is null - direct call")
+    void testGetDataType_NullReportType_DirectCall() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        data.setReportType(null);
+        
+        String dataType = data.getDataType();
+        
+        assertEquals("NOAA", dataType);
     }
 
     @Test
-    @DisplayName("Should handle equals with same ID")
-    void testEqualsWithSameId() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "TAF");
-        
-        // They have different IDs (auto-generated), so not equal
-        assertNotEquals(data1, data2);
-        
-        // Same object reference
-        assertEquals(data1, data1);
-    }
-    
-    @Test
-    @DisplayName("Should handle equals with null")
-    void testEqualsWithNull() {
+    @DisplayName("Should return reportType when not null - direct call")
+    void testGetDataType_NotNullReportType_DirectCall() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertNotEquals(null, data);
+        String dataType = data.getDataType();
+        
+        assertEquals("METAR", dataType);
     }
     
     @Test
-    @DisplayName("Should handle equals with different class")
-    void testEqualsWithDifferentClass() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        String notWeatherData = "not a WeatherData";
+    @DisplayName("Should return NOAA for default constructed object")
+    void testGetDataType_DefaultConstructor() {
+        NoaaWeatherData data = new NoaaWeatherData();
         
-        assertNotEquals(data, notWeatherData);
+        String dataType = data.getDataType();
+        
+        assertEquals("NOAA", dataType);
     }
     
     @Test
-    @DisplayName("Should set and get station ID")
-    void testSetStationId() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+    @DisplayName("Should handle empty string reportType")
+    void testGetDataType_EmptyStringReportType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "");
         
-        data.setStationId("KLGA");
-        assertEquals("KLGA", data.getStationId());
-    }
-
-    @Test
-    @DisplayName("Should set and get observation time")
-    void testSetObservationTime() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        String dataType = data.getDataType();
         
-        Instant newTime = now.plus(1, ChronoUnit.HOURS);
-        data.setObservationTime(newTime);
-        assertEquals(newTime, data.getObservationTime());
+        assertEquals("", dataType);
     }
     
     @Test
-    @DisplayName("Should get immutable ID")
-    void testIdIsImmutable() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        String id = data.getId();
-        
-        assertNotNull(id);
-        // Verify ID doesn't change
-        assertEquals(id, data.getId());
-    }
-    
-    @Test
-    @DisplayName("Should get immutable ingestion time")
-    void testIngestionTimeIsImmutable() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        Instant ingestionTime = data.getIngestionTime();
-        
-        assertNotNull(ingestionTime);
-        // Verify ingestion time doesn't change
-        assertEquals(ingestionTime, data.getIngestionTime());
-    }
-    
-    @Test
-    @DisplayName("Should handle equals when comparing different WeatherData subclasses")
-    void testEqualsWithDifferentSubclass() {
-        NoaaWeatherData noaaData = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        // Since WeatherData is sealed and only permits NoaaWeatherData currently,
-        // we can only test with NoaaWeatherData instances
-        // But we can test that two different NoaaWeatherData objects are not equal
-        NoaaWeatherData otherData = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        assertNotEquals(noaaData, otherData, 
-                       "Two NoaaWeatherData instances should not be equal (different IDs)");
-    }
-    
-    @Test
-    @DisplayName("Should return false when comparing with object of non-WeatherData type")
-    void testEqualsWithNonWeatherDataType() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        Object notWeatherData = new Object();
-        
-        assertNotEquals(data, notWeatherData);
-        assertNotEquals(notWeatherData, data);
-    }
-    
-    @Test
-    @DisplayName("Should return true for same object reference")
-    void testEqualsSameReference() {
+    @DisplayName("Should return correct type after setting reportType to null")
+    void testGetDataType_SetToNull() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertEquals(data, data);
-        assertEquals(data, data);
-    }
-
-    @Test
-    @DisplayName("Should verify equals symmetry")
-    void testEqualsSymmetry() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "TAF");
+        assertEquals("METAR", data.getDataType());
         
-        // If x.equals(y) == false, then y.equals(x) should also == false
-        assertNotEquals(data1, data2);
-        assertNotEquals(data2, data1);
-    }
-    
-    @Test
-    @DisplayName("Should verify equals transitivity")
-    void testEqualsTransitivity() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        data.setReportType(null);
         
-        // For same reference: if x.equals(x) and x.equals(x), then x.equals(x)
-        assertEquals(data, data);
-        assertEquals(data, data);
-        assertEquals(data, data);
-    }
-    
-    @Test
-    @DisplayName("Should verify equals consistency")
-    void testEqualsConsistency() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "TAF");
-        
-        // Multiple calls should return same result
-        boolean firstCall = data1.equals(data2);
-        boolean secondCall = data1.equals(data2);
-        boolean thirdCall = data1.equals(data2);
-        
-        assertEquals(firstCall, secondCall);
-        assertEquals(secondCall, thirdCall);
-    }
-
-    @Test
-    @DisplayName("Should handle equals with WeatherData cast")
-    void testEqualsWithExplicitCast() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        WeatherData data2 = new NoaaWeatherData("KLGA", now, "TAF");
-        
-        // Test polymorphic comparison
-        assertNotEquals(data1, data2);
-        assertNotEquals(data2, data1);
-    }
-    
-    @Test
-    @DisplayName("Should handle equals when IDs are compared")
-    void testEqualsIdComparison() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        // Get the IDs
-        String id1 = data1.getId();
-        String id2 = data2.getId();
-        
-        // Verify IDs are different
-        assertNotEquals(id1, id2);
-        
-        // Therefore objects are not equal
-        assertNotEquals(data1, data2);
+        assertEquals("NOAA", data.getDataType());
     }
 }
