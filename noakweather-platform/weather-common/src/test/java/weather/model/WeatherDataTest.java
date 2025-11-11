@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for WeatherData base class.
@@ -360,8 +361,8 @@ class WeatherDataTest {
     void testEqualsWithDifferentClass() {
         TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
         
-        assertNotEquals(data, "Not a WeatherData object");
-        assertNotEquals(data, Integer.valueOf(42));
+        assertThat(data).isNotEqualTo("Not a WeatherData object");
+        assertThat(data).isNotEqualTo(42);
     }
 
     @Test

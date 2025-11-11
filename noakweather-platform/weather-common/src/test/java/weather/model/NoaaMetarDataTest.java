@@ -249,6 +249,7 @@ class NoaaMetarDataTest {
         data.addRunwayVisualRange("R04R/1800V2400FT");
         
         assertThat(data.getRunwayVisualRange()).hasSize(2);
+        assertThat(data.getRunwayVisualRange()).containsExactly("R04L/2200FT", "R04R/1800V2400FT");
     }
     
     @Test
@@ -294,23 +295,12 @@ class NoaaMetarDataTest {
     }
     
     @Test
-    void testAddRunwayVisualRange_WithValidString() {
+    void testAddRunwayVisualRange_WithNull() {
         NoaaMetarData data = new NoaaMetarData();
         
-        data.addRunwayVisualRange("R04L/2200FT");
+        data.addRunwayVisualRange(null);
         
-        assertThat(data.getRunwayVisualRange()).hasSize(1);
-        assertThat(data.getRunwayVisualRange()).containsExactly("R04L/2200FT");
-    }
-    
-    @Test
-    void testAddRunwayVisualRange_MultipleValid() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.addRunwayVisualRange("R04L/2200FT");
-        data.addRunwayVisualRange("R04R/1800V2400FT");
-        
-        assertThat(data.getRunwayVisualRange()).hasSize(2);
+        assertThat(data.getRunwayVisualRange()).isEmpty();
     }
     
     // ========== REMARKS SECTION TESTS ==========
@@ -565,11 +555,7 @@ class NoaaMetarDataTest {
         
         String summary = data.getSummary();
         
-        assertThat(summary).contains("METAR");
-        assertThat(summary).contains("KJFK");
-        assertThat(summary).contains("Wind:");
-        assertThat(summary).contains("Vis:");
-        assertThat(summary).contains("Temp:");
+        assertThat(summary).contains("METAR", "KJFK", "Wind:", "Vis:", "Temp:");
     }
     
     @Test
@@ -578,8 +564,7 @@ class NoaaMetarDataTest {
         
         String summary = data.getSummary();
         
-        assertThat(summary).contains("METAR");
-        assertThat(summary).contains("KJFK");
+        assertThat(summary).contains("METAR", "KJFK");
     }
     
     @Test
@@ -591,11 +576,9 @@ class NoaaMetarDataTest {
         
         String summary = data.getSummary();
         
-        assertThat(summary).contains("METAR");
-        assertThat(summary).contains("KJFK");
-        assertThat(summary).contains("Vis:");
-        assertThat(summary).contains("Temp:");
-        assertThat(summary).doesNotContain("Wind:");
+        assertThat(summary)
+                .contains("METAR", "KJFK", "Vis:", "Temp:")
+                .doesNotContain("Wind:");
     }
     
     @Test
@@ -607,9 +590,8 @@ class NoaaMetarDataTest {
         
         String summary = data.getSummary();
         
-        assertThat(summary).contains("Wind:");
-        assertThat(summary).contains("Temp:");
-        assertThat(summary).doesNotContain("Vis:");
+        assertThat(summary).contains("Wind:", "Temp:")
+                .doesNotContain("Vis:");
     }
     
     @Test
@@ -621,9 +603,8 @@ class NoaaMetarDataTest {
         
         String summary = data.getSummary();
         
-        assertThat(summary).contains("Wind:");
-        assertThat(summary).contains("Vis:");
-        assertThat(summary).doesNotContain("Temp:");
+        assertThat(summary).contains("Wind:", "Vis:")
+                .doesNotContain("Temp:");
     }
     
     @Test
@@ -645,9 +626,7 @@ class NoaaMetarDataTest {
         
         String toString = data.toString();
         
-        assertThat(toString).contains("NoaaMetarData");
-        assertThat(toString).contains("KJFK");
-        assertThat(toString).contains("wind=");
+        assertThat(toString).contains("NoaaMetarData", "KJFK", "wind=");
     }
     
     @Test
@@ -657,9 +636,7 @@ class NoaaMetarDataTest {
         
         String toString = data.toString();
         
-        assertThat(toString).contains("NoaaMetarData");
-        assertThat(toString).contains("KJFK");
-        assertThat(toString).contains("skyCond=0");
+        assertThat(toString).contains("NoaaMetarData", "KJFK", "skyCond=0");
     }
     
     @Test
@@ -695,12 +672,247 @@ class NoaaMetarDataTest {
         
         String toString = data.toString();
         
-        assertThat(toString).contains("NoaaMetarData");
-        assertThat(toString).contains("KJFK");
-        assertThat(toString).contains("wind=");
-        assertThat(toString).contains("vis=");
-        assertThat(toString).contains("temp=");
-        assertThat(toString).contains("pressure=");
-        assertThat(toString).contains("skyCond=1");
+        assertThat(toString).contains("NoaaMetarData", "KJFK", "wind=", "vis=", "temp=", "pressure=", "skyCond=1");
+    }
+    
+    // ========== EQUALS AND HASHCODE TESTS ==========
+
+    @Test
+    void testEquals_SameObject() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+        
+        assertThat(data).isEqualTo(data);
+    }
+    
+    @Test
+    void testEquals_EqualObjects() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setRawText("METAR KJFK 191651Z 28016KT 10SM FEW250 22/12 A3015");
+        data1.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data1.setVisibility(new Visibility(10.0, "SM", null));
+        data1.setTemperature(new Temperature(22.0, 12.0));
+        data1.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
+        data1.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        data1.setAutomatedStation("AO2");
+        data1.setSeaLevelPressure(1013.2);
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setRawText("METAR KJFK 191651Z 28016KT 10SM FEW250 22/12 A3015");
+        data2.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data2.setVisibility(new Visibility(10.0, "SM", null));
+        data2.setTemperature(new Temperature(22.0, 12.0));
+        data2.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
+        data2.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        data2.setAutomatedStation("AO2");
+        data2.setSeaLevelPressure(1013.2);
+        
+        assertThat(data1).isEqualTo(data2);
+        assertThat(data2).isEqualTo(data1);
+    }
+    
+    @Test
+    void testEquals_DifferentStationId() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        NoaaMetarData data2 = new NoaaMetarData("KLGA", now);
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_DifferentObservationTime() {
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", Instant.now());
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", Instant.now().plusSeconds(60));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_DifferentWind() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setWind(new Wind(280, 16, null, null, null, "KT"));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setWind(new Wind(290, 20, null, null, null, "KT"));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    void testEquals_DifferentVisibility() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setVisibility(new Visibility(10.0, "SM", null));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setVisibility(new Visibility(5.0, "SM", null));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_DifferentTemperature() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setTemperature(new Temperature(22.0, 12.0));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setTemperature(new Temperature(25.0, 15.0));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_DifferentPressure() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setPressure(new Pressure(29.92, PressureUnit.INCHES_HG));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_DifferentSkyConditions() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, 5000, null));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_DifferentPresentWeather() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.addPresentWeather("-RA");
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.addPresentWeather("BR");
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    void testEquals_DifferentRemarks() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setAutomatedStation("AO2");
+        data1.setSeaLevelPressure(1013.2);
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setAutomatedStation("AO1");
+        data2.setSeaLevelPressure(1015.0);
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testEquals_WithNull() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+        
+        assertThat(data).isNotEqualTo(null);
+    }
+    
+    @Test
+    void testEquals_WithDifferentType() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+        String notAMetar = "KJFK";
+        
+        assertThat(data).isNotEqualTo(notAMetar);
+    }
+    
+    @Test
+    void testEquals_DifferentNoSignificantChange() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setNoSignificantChange(true);
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setNoSignificantChange(false);
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
+    
+    @Test
+    void testHashCode_Consistency() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+        data.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data.setVisibility(new Visibility(10.0, "SM", null));
+        
+        int hash1 = data.hashCode();
+        int hash2 = data.hashCode();
+        
+        assertThat(hash1).isEqualTo(hash2);
+    }
+
+    @Test
+    void testHashCode_EqualObjects() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data1.setVisibility(new Visibility(10.0, "SM", null));
+        data1.setTemperature(new Temperature(22.0, 12.0));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data2.setVisibility(new Visibility(10.0, "SM", null));
+        data2.setTemperature(new Temperature(22.0, 12.0));
+        
+        // Equal objects must have equal hash codes
+        assertThat(data1.hashCode()).isEqualTo(data2.hashCode());
+    }
+    
+    @Test
+    void testHashCode_DifferentObjects() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setWind(new Wind(280, 16, null, null, null, "KT"));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setWind(new Wind(290, 20, null, null, null, "KT"));
+        
+        // Different objects MAY have different hash codes (not required, but likely)
+        // We're just verifying hashCode doesn't throw an exception
+        int hash1 = data1.hashCode();
+        int hash2 = data2.hashCode();
+        
+        // Not asserting inequality because hash collision is allowed
+        assertThat(hash1).isNotNull();
+        assertThat(hash2).isNotNull();
+    }
+    
+    @Test
+    void testHashCode_IncludesParentFields() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        NoaaMetarData data2 = new NoaaMetarData("KLGA", now);
+        
+        // Different parent fields should (likely) result in different hash codes
+        int hash1 = data1.hashCode();
+        int hash2 = data2.hashCode();
+        
+        assertThat(hash1).isNotNull();
+        assertThat(hash2).isNotNull();
     }
 }

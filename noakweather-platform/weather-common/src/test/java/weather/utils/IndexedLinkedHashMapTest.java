@@ -23,7 +23,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.LinkedHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -65,7 +64,7 @@ class IndexedLinkedHashMapTest {
         map.put("key1", "value1");
         
         assertThat(map).hasSize(1);
-        assertThat(map.get("key1")).isEqualTo("value1");
+        assertThat(map).containsEntry("key1", "value1");
         assertThat(map.getValueAtIndex(0)).isEqualTo("value1");
         assertThat(map.getKeyAtIndex(0)).isEqualTo("key1");
     }
@@ -89,11 +88,11 @@ class IndexedLinkedHashMapTest {
         
         // Should still have only one entry
         assertThat(map).hasSize(1);
-        assertThat(map.get("key1")).isEqualTo("value2");
+        assertThat(map).containsEntry("key1", "value2");
         assertThat(map.getValueAtIndex(0)).isEqualTo("value2");
         
         // Index should not change when updating existing key
-        assertThat(map.getIndexOf("key1")).isEqualTo(0);
+        assertThat(map.getIndexOf("key1")).isZero();
     }
     
     @Test
@@ -101,7 +100,7 @@ class IndexedLinkedHashMapTest {
         map.put(null, "value1");
         
         assertThat(map).hasSize(1);
-        assertThat(map.get(null)).isEqualTo("value1");
+        assertThat(map).containsEntry(null, "value1");
         assertThat(map.getValueAtIndex(0)).isEqualTo("value1");
         assertThat(map.getKeyAtIndex(0)).isNull();
     }
@@ -186,7 +185,7 @@ class IndexedLinkedHashMapTest {
         map.put("key2", "value2");
         map.put("key3", "value3");
         
-        assertThat(map.getIndexOf("key1")).isEqualTo(0);
+        assertThat(map.getIndexOf("key1")).isZero();
         assertThat(map.getIndexOf("key2")).isEqualTo(1);
         assertThat(map.getIndexOf("key3")).isEqualTo(2);
     }
@@ -203,7 +202,7 @@ class IndexedLinkedHashMapTest {
         map.put(null, "value1");
         map.put("key1", "value2");
         
-        assertThat(map.getIndexOf(null)).isEqualTo(0);
+        assertThat(map.getIndexOf(null)).isZero();
     }
     
     // ========== INSERTION ORDER PRESERVATION TESTS ==========
@@ -290,7 +289,7 @@ class IndexedLinkedHashMapTest {
         assertThat(map).hasSize(2);
         
         // Verify existing keys still have correct indices
-        assertThat(map.getIndexOf("key1")).isEqualTo(0);
+        assertThat(map.getIndexOf("key1")).isZero();
         assertThat(map.getIndexOf("key2")).isEqualTo(1);
     }
     
@@ -343,7 +342,7 @@ class IndexedLinkedHashMapTest {
         // key1 should now be at the end (index 1)
         assertThat(map.getKeyAtIndex(0)).isEqualTo("key2");
         assertThat(map.getKeyAtIndex(1)).isEqualTo("key1");
-        assertThat(map.get("key1")).isEqualTo("value1_new");
+        assertThat(map).containsEntry("key1", "value1_new");
     }
     
     @Test
@@ -376,7 +375,7 @@ class IndexedLinkedHashMapTest {
         
         assertThat(map).hasSize(1);
         assertThat(map.getKeyAtIndex(0)).isEqualTo("key2");
-        assertThat(map.getIndexOf("key2")).isEqualTo(0);
+        assertThat(map.getIndexOf("key2")).isZero();
     }
     
     // ========== EQUALS AND HASHCODE TESTS ==========
@@ -533,7 +532,7 @@ class IndexedLinkedHashMapTest {
         map1.put("key1", "value1");
         map2.put("key1", "value1");
         
-        assertThat(map1.hashCode()).isEqualTo(map2.hashCode());
+        assertThat(map1.hashCode()).hasSameHashCodeAs(map2.hashCode());
     }
     
     // ========== SERIALIZATION TESTS ==========
@@ -560,9 +559,9 @@ class IndexedLinkedHashMapTest {
         
         // Verify
         assertThat(deserializedMap).hasSize(3);
-        assertThat(deserializedMap.get("key1")).isEqualTo("value1");
-        assertThat(deserializedMap.get("key2")).isEqualTo("value2");
-        assertThat(deserializedMap.get("key3")).isEqualTo("value3");
+        assertThat(deserializedMap).containsEntry("key1", "value1");
+        assertThat(deserializedMap).containsEntry("key2", "value2");
+        assertThat(deserializedMap).containsEntry("key3", "value3");
         
         // Verify index-based access still works
         assertThat(deserializedMap.getKeyAtIndex(0)).isEqualTo("key1");
@@ -675,6 +674,6 @@ class IndexedLinkedHashMapTest {
         
         assertThat(personMap.getKeyAtIndex(0)).isEqualTo(person1);
         assertThat(personMap.getValueAtIndex(1)).isEqualTo("Designer");
-        assertThat(personMap.getIndexOf(person1)).isEqualTo(0);
+        assertThat(personMap.getIndexOf(person1)).isZero();
     }
 }

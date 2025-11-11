@@ -26,6 +26,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests for Wind record.
  * 
+ * Coverage Note: isVariable() achieves 75% branch coverage because constructor
+ * validation prevents the case where only one variability value is null,
+ * making that branch unreachable in normal execution.
+ * 
  * @author bclasky1539
  *
  */
@@ -61,6 +65,13 @@ class WindTest {
     }
     
     @Test
+    void testIsVariable_False_BothNull() {
+        Wind wind = new Wind(280, 16, null, null, null, "KT");
+        
+        assertThat(wind.isVariable()).isFalse();
+    }
+    
+    @Test
     void testVariableWind() {
         Wind wind = new Wind(null, 3, null, null, null, "KT");
         
@@ -74,7 +85,7 @@ class WindTest {
         
         assertThat(wind.isCalm()).isTrue();
         assertThat(wind.directionDegrees()).isNull();
-        assertThat(wind.speedValue()).isEqualTo(0);
+        assertThat(wind.speedValue()).isZero();
     }
     
     @Test

@@ -172,8 +172,9 @@ class TemperatureTest {
         
         // Basic sanity check - should be between 0 and 100
         Double rh = temp.getRelativeHumidity();
-        assertThat(rh).isNotNull();
-        assertThat(rh).isBetween(0.0, 100.0);
+        assertThat(rh)
+                .isNotNull()
+                .isBetween(0.0, 100.0);
     }
     
     @Test

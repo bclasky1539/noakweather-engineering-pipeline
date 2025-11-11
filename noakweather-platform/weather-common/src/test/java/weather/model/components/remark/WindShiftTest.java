@@ -96,7 +96,7 @@ class WindShiftTest {
     void testValidWindShift_BoundaryHour_Zero() {
         WindShift windShift = new WindShift(0, 30, false);
         
-        assertThat(windShift.hour()).isEqualTo(0);
+        assertThat(windShift.hour()).isZero();
     }
     
     @Test
@@ -110,7 +110,7 @@ class WindShiftTest {
     void testValidWindShift_BoundaryMinute_Zero() {
         WindShift windShift = new WindShift(15, 0, false);
         
-        assertThat(windShift.minute()).isEqualTo(0);
+        assertThat(windShift.minute()).isZero();
     }
     
     @Test
@@ -138,8 +138,8 @@ class WindShiftTest {
     void testWindShift_Midnight() {
         WindShift windShift = new WindShift(0, 0, false);
         
-        assertThat(windShift.hour()).isEqualTo(0);
-        assertThat(windShift.minute()).isEqualTo(0);
+        assertThat(windShift.hour()).isZero();
+        assertThat(windShift.minute()).isZero();
     }
     
     @Test
@@ -156,7 +156,7 @@ class WindShiftTest {
         WindShift ws2 = new WindShift(15, 30, true);
         
         assertThat(ws1).isEqualTo(ws2);
-        assertThat(ws1.hashCode()).isEqualTo(ws2.hashCode());
+        assertThat(ws1.hashCode()).hasSameHashCodeAs(ws2.hashCode());
     }
     
     @Test

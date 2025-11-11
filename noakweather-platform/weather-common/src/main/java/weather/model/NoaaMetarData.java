@@ -381,4 +381,79 @@ public class NoaaMetarData extends NoaaWeatherData {
             getStationId(), getObservationTime(), wind, visibility, temperature, pressure,
             skyConditions != null ? skyConditions.size() : 0);
     }
+    
+    @Override
+    @SuppressWarnings("AccessingNonPublicFieldOfAnotherObject")
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof NoaaMetarData that)) {
+            return false;
+        }
+        
+        // Compare parent fields manually (skip auto-generated id and ingestionTimestamp)
+        if (!Objects.equals(getStationId(), that.getStationId())) {
+            return false;
+        }
+        if (!Objects.equals(getObservationTime(), that.getObservationTime())) {
+            return false;
+        }
+        if (!Objects.equals(getReportType(), that.getReportType())) {
+            return false;
+        }
+        if (!Objects.equals(getRawText(), that.getRawText())) {
+            return false;
+        }
+        
+        // Compare NoaaMetarData-specific fields
+        return noSignificantChange == that.noSignificantChange &&
+               Objects.equals(wind, that.wind) &&
+               Objects.equals(visibility, that.visibility) &&
+               Objects.equals(temperature, that.temperature) &&
+               Objects.equals(pressure, that.pressure) &&
+               Objects.equals(skyConditions, that.skyConditions) &&
+               Objects.equals(presentWeather, that.presentWeather) &&
+               Objects.equals(runwayVisualRange, that.runwayVisualRange) &&
+               Objects.equals(peakWind, that.peakWind) &&
+               Objects.equals(windShift, that.windShift) &&
+               Objects.equals(automatedStation, that.automatedStation) &&
+               Objects.equals(seaLevelPressure, that.seaLevelPressure) &&
+               Objects.equals(hourlyPrecipitation, that.hourlyPrecipitation) &&
+               Objects.equals(sixHourMaxTemp, that.sixHourMaxTemp) &&
+               Objects.equals(sixHourMinTemp, that.sixHourMinTemp) &&
+               Objects.equals(twentyFourHourMaxTemp, that.twentyFourHourMaxTemp) &&
+               Objects.equals(twentyFourHourMinTemp, that.twentyFourHourMinTemp) &&
+               Objects.equals(threeHourPressureTendency, that.threeHourPressureTendency);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+            // Parent business fields (NOT id or ingestionTimestamp)
+            getStationId(),
+            getObservationTime(),
+            getReportType(),
+            getRawText(),
+            // NoaaMetarData fields
+            wind,
+            visibility,
+            temperature,
+            pressure,
+            skyConditions,
+            presentWeather,
+            runwayVisualRange,
+            peakWind,
+            windShift,
+            automatedStation,
+            seaLevelPressure,
+            hourlyPrecipitation,
+            sixHourMaxTemp,
+            sixHourMinTemp,
+            twentyFourHourMaxTemp,
+            twentyFourHourMinTemp,
+            threeHourPressureTendency,
+            noSignificantChange
+        );
+    }
 }
