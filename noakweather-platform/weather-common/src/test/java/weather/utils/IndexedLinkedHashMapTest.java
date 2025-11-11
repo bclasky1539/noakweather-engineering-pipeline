@@ -63,8 +63,9 @@ class IndexedLinkedHashMapTest {
     void testPut_SingleEntry() {
         map.put("key1", "value1");
         
-        assertThat(map).hasSize(1);
-        assertThat(map).containsEntry("key1", "value1");
+        assertThat(map)
+                .hasSize(1)
+                .containsEntry("key1", "value1");
         assertThat(map.getValueAtIndex(0)).isEqualTo("value1");
         assertThat(map.getKeyAtIndex(0)).isEqualTo("key1");
     }
@@ -87,8 +88,9 @@ class IndexedLinkedHashMapTest {
         map.put("key1", "value2");
         
         // Should still have only one entry
-        assertThat(map).hasSize(1);
-        assertThat(map).containsEntry("key1", "value2");
+        assertThat(map)
+                .hasSize(1)
+                .containsEntry("key1", "value2");
         assertThat(map.getValueAtIndex(0)).isEqualTo("value2");
         
         // Index should not change when updating existing key
@@ -99,8 +101,9 @@ class IndexedLinkedHashMapTest {
     void testPut_NullKey() {
         map.put(null, "value1");
         
-        assertThat(map).hasSize(1);
-        assertThat(map).containsEntry(null, "value1");
+        assertThat(map)
+                .hasSize(1)
+                .containsEntry(null, "value1");
         assertThat(map.getValueAtIndex(0)).isEqualTo("value1");
         assertThat(map.getKeyAtIndex(0)).isNull();
     }
@@ -558,10 +561,11 @@ class IndexedLinkedHashMapTest {
         ois.close();
         
         // Verify
-        assertThat(deserializedMap).hasSize(3);
-        assertThat(deserializedMap).containsEntry("key1", "value1");
-        assertThat(deserializedMap).containsEntry("key2", "value2");
-        assertThat(deserializedMap).containsEntry("key3", "value3");
+        assertThat(deserializedMap)
+                .hasSize(3)
+                .containsEntry("key1", "value1")
+                .containsEntry("key2", "value2")
+                .containsEntry("key3", "value3");
         
         // Verify index-based access still works
         assertThat(deserializedMap.getKeyAtIndex(0)).isEqualTo("key1");

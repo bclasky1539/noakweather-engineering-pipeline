@@ -109,9 +109,10 @@ class NoaaWeatherDataTest {
     void testEquals_DifferentClassType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertThat(data).isNotEqualTo("Not a NoaaWeatherData");
-        assertThat(data).isNotEqualTo(null);
-        assertThat(data).isNotEqualTo(new Object());
+        assertThat(data)
+                .isNotEqualTo("Not a NoaaWeatherData")
+                .isNotEqualTo(null)
+                .isNotEqualTo(new Object());
     }
     
     @Test

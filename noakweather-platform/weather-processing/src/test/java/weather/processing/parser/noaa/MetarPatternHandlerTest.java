@@ -49,8 +49,9 @@ class MetarPatternHandlerTest {
         MetarPatternHandler handler2 = MetarPatternHandler.single("test");
         MetarPatternHandler handler3 = MetarPatternHandler.repeating("test");
         
-        assertThat(handler1).isEqualTo(handler2);
-        assertThat(handler1).isNotEqualTo(handler3);
+        assertThat(handler1)
+                .isEqualTo(handler2)
+                .isNotEqualTo(handler3);
     }
     
     @Test
@@ -58,7 +59,8 @@ class MetarPatternHandlerTest {
         MetarPatternHandler handler = MetarPatternHandler.single("windHandler");
         
         String str = handler.toString();
-        assertThat(str).contains("windHandler");
-        assertThat(str).contains("false");
+        assertThat(str)
+                .contains("windHandler")
+                .contains("false");
     }
 }

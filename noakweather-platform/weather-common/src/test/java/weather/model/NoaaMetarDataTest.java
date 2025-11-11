@@ -878,7 +878,7 @@ class NoaaMetarDataTest {
         data2.setTemperature(new Temperature(22.0, 12.0));
         
         // Equal objects must have equal hash codes
-        assertThat(data1.hashCode()).isEqualTo(data2.hashCode());
+        assertThat(data1).hasSameHashCodeAs(data2);
     }
     
     @Test
@@ -893,12 +893,8 @@ class NoaaMetarDataTest {
         
         // Different objects MAY have different hash codes (not required, but likely)
         // We're just verifying hashCode doesn't throw an exception
-        int hash1 = data1.hashCode();
-        int hash2 = data2.hashCode();
-        
-        // Not asserting inequality because hash collision is allowed
-        assertThat(hash1).isNotNull();
-        assertThat(hash2).isNotNull();
+        data1.hashCode();
+        data2.hashCode();
     }
     
     @Test
@@ -909,10 +905,7 @@ class NoaaMetarDataTest {
         NoaaMetarData data2 = new NoaaMetarData("KLGA", now);
         
         // Different parent fields should (likely) result in different hash codes
-        int hash1 = data1.hashCode();
-        int hash2 = data2.hashCode();
-        
-        assertThat(hash1).isNotNull();
-        assertThat(hash2).isNotNull();
+        data1.hashCode();
+        data2.hashCode();
     }
 }
