@@ -212,10 +212,11 @@ class LightningMatcherTest {
         assertThat(matcher.find()).isTrue();
         // group() with no argument returns entire match
         String entireMatch = matcher.group();
-        assertThat(entireMatch).isNotNull();
-        assertThat(entireMatch).contains("OCNL");
-        assertThat(entireMatch).contains("LTG");
-        assertThat(entireMatch).contains("VC");
+        assertThat(entireMatch)
+                .isNotNull()
+                .contains("OCNL")
+                .contains("LTG")
+                .contains("VC");
     }
     
     @Test
@@ -225,8 +226,9 @@ class LightningMatcherTest {
         assertThat(matcher.find()).isTrue();
         // group(0) returns entire match (same as group())
         String group0 = matcher.group(0);
-        assertThat(group0).isNotNull();
-        assertThat(group0).isEqualTo(matcher.group());
+        assertThat(group0)
+                .isNotNull()
+                .isEqualTo(matcher.group());
     }
     
     @Test

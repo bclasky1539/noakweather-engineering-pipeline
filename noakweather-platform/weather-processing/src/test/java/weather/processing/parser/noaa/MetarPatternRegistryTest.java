@@ -122,10 +122,10 @@ class MetarPatternRegistryTest {
         assertThat(handlers.size()).isGreaterThan(0);
         
         Pattern firstPattern = handlers.getKeyAtIndex(0);
-        assertThat(firstPattern).isNotNull();
-        
-        // First remarks pattern should be AUTO (AO1/AO2)
-        assertThat(firstPattern).isEqualTo(RegExprConst.AUTO_PATTERN);
+        assertThat(firstPattern)
+                .isNotNull()
+                // First remarks pattern should be AUTO (AO1/AO2)
+                .isEqualTo(RegExprConst.AUTO_PATTERN);
     }
     
     @Test
