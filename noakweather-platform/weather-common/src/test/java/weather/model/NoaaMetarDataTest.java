@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
  * Tests for NoaaMetarData class.
@@ -892,9 +893,9 @@ class NoaaMetarDataTest {
         data2.setWind(new Wind(290, 20, null, null, null, "KT"));
         
         // Different objects MAY have different hash codes (not required, but likely)
-        // We're just verifying hashCode doesn't throw an exception
-        data1.hashCode();
-        data2.hashCode();
+        // We are just verifying hashCode does not throw an exception
+        assertThatCode(() -> data1.hashCode()).doesNotThrowAnyException();
+        assertThatCode(() -> data2.hashCode()).doesNotThrowAnyException();
     }
     
     @Test
@@ -905,7 +906,8 @@ class NoaaMetarDataTest {
         NoaaMetarData data2 = new NoaaMetarData("KLGA", now);
         
         // Different parent fields should (likely) result in different hash codes
-        data1.hashCode();
-        data2.hashCode();
+        // Verify hashCode() executes without throwing exception
+        assertThatCode(() -> data1.hashCode()).doesNotThrowAnyException();
+        assertThatCode(() -> data2.hashCode()).doesNotThrowAnyException();
     }
 }
