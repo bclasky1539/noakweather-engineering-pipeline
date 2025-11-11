@@ -102,7 +102,7 @@ class PeakWindTest {
     void testValidPeakWind_BoundaryDirection_Zero() {
         PeakWind peakWind = new PeakWind(0, 32, 15, 30);
         
-        assertThat(peakWind.directionDegrees()).isEqualTo(0);
+        assertThat(peakWind.directionDegrees()).isZero();
     }
     
     @Test
@@ -116,7 +116,7 @@ class PeakWindTest {
     void testValidPeakWind_BoundaryHour_Zero() {
         PeakWind peakWind = new PeakWind(280, 32, 0, 30);
         
-        assertThat(peakWind.hour()).isEqualTo(0);
+        assertThat(peakWind.hour()).isZero();
     }
     
     @Test
@@ -130,7 +130,7 @@ class PeakWindTest {
     void testValidPeakWind_BoundaryMinute_Zero() {
         PeakWind peakWind = new PeakWind(280, 32, 15, 0);
         
-        assertThat(peakWind.minute()).isEqualTo(0);
+        assertThat(peakWind.minute()).isZero();
     }
     
     @Test

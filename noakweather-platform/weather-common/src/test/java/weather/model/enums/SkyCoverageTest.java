@@ -75,9 +75,9 @@ class SkyCoverageTest {
     
     @Test
     void testClearSkyOktas() {
-        assertThat(SkyCoverage.SKC.getOktas()).isEqualTo(0);
-        assertThat(SkyCoverage.CLR.getOktas()).isEqualTo(0);
-        assertThat(SkyCoverage.NSC.getOktas()).isEqualTo(0);
+        assertThat(SkyCoverage.SKC.getOktas()).isZero();
+        assertThat(SkyCoverage.CLR.getOktas()).isZero();
+        assertThat(SkyCoverage.NSC.getOktas()).isZero();
     }
     
     @Test

@@ -23,12 +23,18 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.stream.Stream;
 
 /**
  * Unit tests for NoaaWeatherData base class.
@@ -37,13 +43,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class NoaaWeatherDataTest {
     
-    private NoaaWeatherData weatherData;
     private Instant now;
     
     @BeforeEach
     void setUp() {
         now = Instant.now();
-        weatherData = new NoaaWeatherData("KJFK", now, "METAR");
     }
     
     // ========== CONSTRUCTOR TESTS ==========
@@ -77,35 +81,27 @@ class NoaaWeatherDataTest {
     void testEquals_SameInstance() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertTrue(data.equals(data));
+        assertThat(data).isEqualTo(data);
     }
     
-    @Test
-    @DisplayName("Should test equals with matching reportType")
-    void testEquals_MatchingReportType() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+    @ParameterizedTest
+    @MethodSource("provideReportTypesForEqualityTest")
+    @DisplayName("Should test equals with different reportType combinations")
+    void testEquals_DifferentReportTypes(String reportType1, String reportType2) {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, reportType1);
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, reportType2);
         
-        // Different IDs, so not equal
-        assertNotEquals(data1, data2);
+        // Objects have different auto-generated IDs, so should not be equal
+        assertThat(data1).isNotEqualTo(data2);
     }
-    
-    @Test
-    @DisplayName("Should test equals with null reportType in both objects")
-    void testEquals_BothNullReportTypes() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, null);
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, null);
-        
-        assertNotEquals(data1, data2);
-    }
-    
-    @Test
-    @DisplayName("Should test equals with one null reportType")
-    void testEquals_OneNullReportType() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, null);
-        
-        assertNotEquals(data1, data2);
+
+    @SuppressWarnings("unused")
+    private static Stream<Arguments> provideReportTypesForEqualityTest() {
+        return Stream.of(
+            Arguments.of("METAR", "METAR"),    // Both have same reportType
+            Arguments.of(null, null),           // Both have null reportType
+            Arguments.of("METAR", null)         // One has reportType, one is null
+        );
     }
     
     @Test
@@ -113,9 +109,9 @@ class NoaaWeatherDataTest {
     void testEquals_DifferentClassType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
-        assertFalse(data.equals("Not a NoaaWeatherData"));
-        assertFalse(data.equals(null));
-        assertFalse(data.equals(new Object()));
+        assertThat(data).isNotEqualTo("Not a NoaaWeatherData");
+        assertThat(data).isNotEqualTo(null);
+        assertThat(data).isNotEqualTo(new Object());
     }
     
     @Test
@@ -124,7 +120,7 @@ class NoaaWeatherDataTest {
         NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
         NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "METAR");
         
-        assertFalse(data1.equals(data2));
+        assertThat(data1).isNotEqualTo(data2);
     }
     
     @Test
@@ -136,7 +132,7 @@ class NoaaWeatherDataTest {
         NoaaWeatherData data1 = new NoaaWeatherData("KJFK", time1, "METAR");
         NoaaWeatherData data2 = new NoaaWeatherData("KJFK", time2, "METAR");
         
-        assertFalse(data1.equals(data2));
+        assertThat(data1).isNotEqualTo(data2);
     }
     
     @Test
@@ -145,8 +141,8 @@ class NoaaWeatherDataTest {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         
         WeatherData parentReference = data;
-        assertTrue(data.equals(parentReference));
-        assertTrue(parentReference.equals(data));
+        assertThat(data).isEqualTo(parentReference);
+        assertThat(parentReference).isEqualTo(data);
     }
     
     // ========== HASHCODE TESTS ==========
@@ -179,9 +175,11 @@ class NoaaWeatherDataTest {
     void testHashCode_NullReportType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
         
-        int hash = data.hashCode();
+        int hash1 = data.hashCode();
+        int hash2 = data.hashCode();
         
-        assertNotNull(hash);
+        // Verify hashCode is consistent
+        assertEquals(hash1, hash2, "hashCode should be consistent across multiple calls");
     }
     
     // ========== GETSUMMARY TESTS ==========
