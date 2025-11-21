@@ -86,7 +86,7 @@ class NoaaMetarDataTest {
     @Test
     void testSetAndGetVisibility() {
         NoaaMetarData data = new NoaaMetarData();
-        Visibility visibility = new Visibility(10.0, "SM", null);
+        Visibility visibility = new Visibility(10.0, "SM", false, false, null);
         
         data.setVisibility(visibility);
         
@@ -240,17 +240,40 @@ class NoaaMetarDataTest {
         assertThat(data.getPresentWeather()).isEmpty();
     }
     
-    // ========== RUNWAY VISUAL RANGE TESTS ==========
+    // ========== RUNWAY VISUAL RANGE TESTS (UPDATED FOR RunwayVisualRange OBJECTS) ==========
     
     @Test
     void testAddRunwayVisualRange() {
         NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr1 = RunwayVisualRange.of("04L", 2200);
+        RunwayVisualRange rvr2 = RunwayVisualRange.variable("04R", 1800, 2400);
         
-        data.addRunwayVisualRange("R04L/2200FT");
-        data.addRunwayVisualRange("R04R/1800V2400FT");
+        data.addRunwayVisualRange(rvr1);
+        data.addRunwayVisualRange(rvr2);
         
         assertThat(data.getRunwayVisualRange()).hasSize(2);
-        assertThat(data.getRunwayVisualRange()).containsExactly("R04L/2200FT", "R04R/1800V2400FT");
+        assertThat(data.getRunwayVisualRange()).containsExactly(rvr1, rvr2);
+    }
+    
+    @Test
+    void testAddRunwayVisualRange_Null() {
+        NoaaMetarData data = new NoaaMetarData();
+        
+        data.addRunwayVisualRange(null);
+        
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+    }
+    
+    @Test
+    void testGetRunwayVisualRange_ReturnsImmutableCopy() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr = RunwayVisualRange.of("04L", 2200);
+        data.addRunwayVisualRange(rvr);
+        
+        var rvrList = data.getRunwayVisualRange();
+        
+        // List.copyOf() returns immutable list
+        assertThat(rvrList).hasSize(1);
     }
     
     @Test
@@ -259,6 +282,7 @@ class NoaaMetarDataTest {
         
         data.setRunwayVisualRange(null);
         
+        // Should create empty list, not null
         assertThat(data.getRunwayVisualRange()).isNotNull().isEmpty();
     }
     
@@ -266,15 +290,18 @@ class NoaaMetarDataTest {
     void testSetRunwayVisualRange_WithNonNullList() {
         NoaaMetarData data = new NoaaMetarData();
         
-        List<String> rvrList = new ArrayList<>();
-        rvrList.add("R04L/2200FT");
-        rvrList.add("R04R/1800V2400FT");
-        rvrList.add("R22L/P6000FT");
+        List<RunwayVisualRange> rvrList = new ArrayList<>();
+        rvrList.add(RunwayVisualRange.of("04L", 2200));
+        rvrList.add(RunwayVisualRange.variable("04R", 1800, 2400));
+        rvrList.add(new RunwayVisualRange("22L", 6000, null, null, "P", null));
         
         data.setRunwayVisualRange(rvrList);
         
         assertThat(data.getRunwayVisualRange()).hasSize(3);
-        assertThat(data.getRunwayVisualRange()).containsExactly("R04L/2200FT", "R04R/1800V2400FT", "R22L/P6000FT");
+        assertThat(data.getRunwayVisualRange().get(0).runway()).isEqualTo("04L");
+        assertThat(data.getRunwayVisualRange().get(0).visualRangeFeet()).isEqualTo(2200);
+        assertThat(data.getRunwayVisualRange().get(1).isVariable()).isTrue();
+        assertThat(data.getRunwayVisualRange().get(2).isGreaterThan()).isTrue();
     }
     
     @Test
@@ -287,21 +314,122 @@ class NoaaMetarDataTest {
     }
     
     @Test
-    void testAddRunwayVisualRange_WithBlankString() {
+    void testAddRunwayVisualRange_WithVariableRange() {
         NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr = RunwayVisualRange.variable("18", 1200, 1800);
         
-        data.addRunwayVisualRange("   "); // Blank string (only whitespace)
+        data.addRunwayVisualRange(rvr);
         
-        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getRunwayVisualRange()).hasSize(1);
+        assertThat(data.getRunwayVisualRange().get(0).isVariable()).isTrue();
+        assertThat(data.getRunwayVisualRange().get(0).variableLow()).isEqualTo(1200);
+        assertThat(data.getRunwayVisualRange().get(0).variableHigh()).isEqualTo(1800);
     }
     
     @Test
-    void testAddRunwayVisualRange_WithNull() {
+    void testAddRunwayVisualRange_WithPrefixAndTrend() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr = new RunwayVisualRange("04L", 600, null, null, "M", "D");
+        
+        data.addRunwayVisualRange(rvr);
+        
+        assertThat(data.getRunwayVisualRange()).hasSize(1);
+        assertThat(data.getRunwayVisualRange().get(0).isLessThan()).isTrue();
+        assertThat(data.getRunwayVisualRange().get(0).getTrendDescription()).isEqualTo("Decreasing");
+    }
+    
+    // ========== NEW RVR UTILITY METHOD TESTS ==========
+    
+    @Test
+    void testGetMinimumRvrFeet_WithMultipleRunways() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04R", 1800));
+        data.addRunwayVisualRange(RunwayVisualRange.of("22L", 3000));
+        
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(1800);
+    }
+    
+    @Test
+    void testGetMinimumRvrFeet_WithVariableRange() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(RunwayVisualRange.variable("04R", 1200, 1800));
+        
+        // Should use the low end of variable range
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(1200);
+    }
+    
+    @Test
+    void testGetMinimumRvrFeet_ExcludesLessThanValues() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(new RunwayVisualRange("04R", 600, null, null, "M", null));
+        
+        // Should exclude the "less than" value and return 2200
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(2200);
+    }
+    
+    @Test
+    void testGetMinimumRvrFeet_EmptyList() {
         NoaaMetarData data = new NoaaMetarData();
         
-        data.addRunwayVisualRange(null);
+        assertThat(data.getMinimumRvrFeet()).isNull();
+    }
+    
+    @Test
+    void testGetMinimumRvrFeet_NullList() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.setRunwayVisualRange(null);
         
-        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getMinimumRvrFeet()).isNull();
+    }
+    
+    @Test
+    void testGetRvrForRunway_Found() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr04L = RunwayVisualRange.of("04L", 2200);
+        RunwayVisualRange rvr04R = RunwayVisualRange.of("04R", 1800);
+        
+        data.addRunwayVisualRange(rvr04L);
+        data.addRunwayVisualRange(rvr04R);
+        
+        assertThat(data.getRvrForRunway("04L")).isEqualTo(rvr04L);
+        assertThat(data.getRvrForRunway("04R")).isEqualTo(rvr04R);
+    }
+    
+    @Test
+    void testGetRvrForRunway_NotFound() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        assertThat(data.getRvrForRunway("22R")).isNull();
+    }
+    
+    @Test
+    void testGetRvrForRunway_CaseInsensitive() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr = RunwayVisualRange.of("04L", 2200);
+        data.addRunwayVisualRange(rvr);
+        
+        assertThat(data.getRvrForRunway("04l")).isEqualTo(rvr);
+        assertThat(data.getRvrForRunway("04L")).isEqualTo(rvr);
+    }
+    
+    @Test
+    void testGetRvrForRunway_NullRunwayId() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        assertThat(data.getRvrForRunway(null)).isNull();
+    }
+    
+    @Test
+    void testGetRvrForRunway_NullRvrList() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.setRunwayVisualRange(null);
+        
+        assertThat(data.getRvrForRunway("04L")).isNull();
     }
     
     // ========== REMARKS SECTION TESTS ==========
@@ -516,7 +644,7 @@ class NoaaMetarDataTest {
     @Test
     void testHasFlightCategoryData_True() {
         NoaaMetarData data = new NoaaMetarData();
-        data.setVisibility(new Visibility(10.0, "SM", null));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
         
         assertThat(data.hasFlightCategoryData()).isTrue();
@@ -533,7 +661,7 @@ class NoaaMetarDataTest {
     @Test
     void testHasFlightCategoryData_False_NoSkyConditions() {
         NoaaMetarData data = new NoaaMetarData();
-        data.setVisibility(new Visibility(10.0, "SM", null));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
         
         assertThat(data.hasFlightCategoryData()).isFalse();
     }
@@ -551,7 +679,7 @@ class NoaaMetarDataTest {
     void testGetSummary_Complete() {
         NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
         data.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data.setVisibility(new Visibility(10.0, "SM", null));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data.setTemperature(new Temperature(22.0, 12.0));
         
         String summary = data.getSummary();
@@ -572,7 +700,7 @@ class NoaaMetarDataTest {
     void testGetSummary_WithNullWind() {
         NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
         data.setWind(null);
-        data.setVisibility(new Visibility(10.0, "SM", null));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data.setTemperature(new Temperature(22.0, 12.0));
         
         String summary = data.getSummary();
@@ -599,7 +727,7 @@ class NoaaMetarDataTest {
     void testGetSummary_WithNullTemperature() {
         NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
         data.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data.setVisibility(new Visibility(10.0, "SM", null));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data.setTemperature(null);
         
         String summary = data.getSummary();
@@ -663,17 +791,29 @@ class NoaaMetarDataTest {
     }
     
     @Test
-    void testToString_WithAllFields() {
+    void testToString_WithRunwayVisualRange() {
         NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
-        data.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data.setVisibility(new Visibility(10.0, "SM", null));
-        data.setTemperature(new Temperature(22.0, 12.0));
-        data.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
-        data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04R", 1800));
         
         String toString = data.toString();
         
-        assertThat(toString).contains("NoaaMetarData", "KJFK", "wind=", "vis=", "temp=", "pressure=", "skyCond=1");
+        assertThat(toString).contains("rvr=2");
+    }
+    
+    @Test
+    void testToString_WithAllFields() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+        data.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
+        data.setTemperature(new Temperature(22.0, 12.0));
+        data.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
+        data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        String toString = data.toString();
+        
+        assertThat(toString).contains("NoaaMetarData", "KJFK", "wind=", "vis=", "temp=", "pressure=", "skyCond=1", "rvr=1");
     }
     
     // ========== EQUALS AND HASHCODE TESTS ==========
@@ -692,22 +832,24 @@ class NoaaMetarDataTest {
         NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
         data1.setRawText("METAR KJFK 191651Z 28016KT 10SM FEW250 22/12 A3015");
         data1.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data1.setVisibility(new Visibility(10.0, "SM", null));
+        data1.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data1.setTemperature(new Temperature(22.0, 12.0));
         data1.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
         data1.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
         data1.setAutomatedStation("AO2");
         data1.setSeaLevelPressure(1013.2);
+        data1.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
         
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
         data2.setRawText("METAR KJFK 191651Z 28016KT 10SM FEW250 22/12 A3015");
         data2.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data2.setVisibility(new Visibility(10.0, "SM", null));
+        data2.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data2.setTemperature(new Temperature(22.0, 12.0));
         data2.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
         data2.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
         data2.setAutomatedStation("AO2");
         data2.setSeaLevelPressure(1013.2);
+        data2.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
         
         assertThat(data1).isEqualTo(data2);
         assertThat(data2).isEqualTo(data1);
@@ -749,10 +891,10 @@ class NoaaMetarDataTest {
         Instant now = Instant.now();
         
         NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
-        data1.setVisibility(new Visibility(10.0, "SM", null));
+        data1.setVisibility(new Visibility(10.0, "SM", false, false, null));
         
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
-        data2.setVisibility(new Visibility(5.0, "SM", null));
+        data2.setVisibility(new Visibility(5.0, "SM", false, false, null));
         
         assertThat(data1).isNotEqualTo(data2);
     }
@@ -808,6 +950,19 @@ class NoaaMetarDataTest {
         
         assertThat(data1).isNotEqualTo(data2);
     }
+    
+    @Test
+    void testEquals_DifferentRunwayVisualRange() {
+        Instant now = Instant.now();
+        
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.addRunwayVisualRange(RunwayVisualRange.of("04L", 1800));
+        
+        assertThat(data1).isNotEqualTo(data2);
+    }
 
     @Test
     void testEquals_DifferentRemarks() {
@@ -856,7 +1011,7 @@ class NoaaMetarDataTest {
     void testHashCode_Consistency() {
         NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
         data.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data.setVisibility(new Visibility(10.0, "SM", null));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
         
         int hash1 = data.hashCode();
         int hash2 = data.hashCode();
@@ -870,13 +1025,15 @@ class NoaaMetarDataTest {
         
         NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
         data1.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data1.setVisibility(new Visibility(10.0, "SM", null));
+        data1.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data1.setTemperature(new Temperature(22.0, 12.0));
+        data1.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
         
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
         data2.setWind(new Wind(280, 16, null, null, null, "KT"));
-        data2.setVisibility(new Visibility(10.0, "SM", null));
+        data2.setVisibility(new Visibility(10.0, "SM", false, false, null));
         data2.setTemperature(new Temperature(22.0, 12.0));
+        data2.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
         
         // Equal objects must have equal hash codes
         assertThat(data1).hasSameHashCodeAs(data2);
@@ -894,8 +1051,8 @@ class NoaaMetarDataTest {
         
         // Different objects MAY have different hash codes (not required, but likely)
         // We are just verifying hashCode does not throw an exception
-        assertThatCode(() -> data1.hashCode()).doesNotThrowAnyException();
-        assertThatCode(() -> data2.hashCode()).doesNotThrowAnyException();
+        assertThatCode(data1::hashCode).doesNotThrowAnyException();
+        assertThatCode(data2::hashCode).doesNotThrowAnyException();
     }
     
     @Test
@@ -907,7 +1064,434 @@ class NoaaMetarDataTest {
         
         // Different parent fields should (likely) result in different hash codes
         // Verify hashCode() executes without throwing exception
-        assertThatCode(() -> data1.hashCode()).doesNotThrowAnyException();
-        assertThatCode(() -> data2.hashCode()).doesNotThrowAnyException();
+        assertThatCode(data1::hashCode).doesNotThrowAnyException();
+        assertThatCode(data2::hashCode).doesNotThrowAnyException();
     }
+    
+    // ========== ADDITIONAL TESTS FOR getCeilingFeet() ==========
+    
+    /**
+     * Tests the branch where skyConditions has ceiling layers but all have null heights.
+     * This covers the .filter(Objects::nonNull) branch followed by .orElse(null).
+     */
+    @Test
+    void testGetCeilingFeet_AllCeilingLayersHaveNullHeights() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Add ceiling layers (BKN/OVC) but with null heights
+        data.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, null, null));
+        data.addSkyCondition(new SkyCondition(SkyCoverage.OVERCAST, null, null));
+        
+        // Should return null since all ceiling heights are null
+        assertThat(data.getCeilingFeet()).isNull();
+    }
+    
+    /**
+     * Tests the branch where there are non-ceiling layers with heights and 
+     * ceiling layers with null heights mixed together.
+     */
+    @Test
+    void testGetCeilingFeet_MixedNullAndValidHeights() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 10000, null));  // Not a ceiling
+        data.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, null, null)); // Ceiling but null height
+        data.addSkyCondition(new SkyCondition(SkyCoverage.OVERCAST, 5000, null)); // Valid ceiling
+        
+        // Should return 5000, the only valid ceiling height
+        assertThat(data.getCeilingFeet()).isEqualTo(5000);
+    }
+
+    /**
+     * Tests when sky conditions list exists but contains only non-ceiling layers.
+     * This ensures the stream filter works correctly.
+     */
+    @Test
+    void testGetCeilingFeet_OnlyNonCeilingLayers() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 5000, null));
+        data.addSkyCondition(new SkyCondition(SkyCoverage.SCATTERED, 8000, null));
+        data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 12000, null));
+        
+        // No ceiling layers, should return null
+        assertThat(data.getCeilingFeet()).isNull();
+    }
+    
+    // ========== ADDITIONAL TESTS FOR getMinimumRvrFeet() ==========
+    
+    /**
+     * Tests when all RVRs are "less than" values.
+     * This covers the branch where .filter(rvr -> !rvr.isLessThan()) removes all items,
+     * then .orElse(null) is reached.
+     */
+    @Test
+    void testGetMinimumRvrFeet_AllLessThanValues() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(new RunwayVisualRange("04L", 600, null, null, "M", null));
+        data.addRunwayVisualRange(new RunwayVisualRange("04R", 400, null, null, "M", null));
+        data.addRunwayVisualRange(new RunwayVisualRange("22L", 500, null, null, "M", null));
+        
+        // All are "less than" values, should be excluded, returning null
+        assertThat(data.getMinimumRvrFeet()).isNull();
+    }
+
+    /**
+     * Tests when RVRs have null visualRangeFeet after filtering.
+     * This covers the .filter(Objects::nonNull) branch after the map operation.
+     */
+    @Test
+    void testGetMinimumRvrFeet_WithNullRangeValues() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Variable range RVR (visualRangeFeet is null, but variableLow is used)
+        data.addRunwayVisualRange(RunwayVisualRange.variable("04L", 1200, 1800));
+        // Regular RVR with value
+        data.addRunwayVisualRange(RunwayVisualRange.of("04R", 2000));
+        
+        // Should use variableLow (1200) as minimum
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(1200);
+    }
+    
+    /**
+     * Tests with only variable range RVRs to ensure variableLow is properly used.
+     */
+    @Test
+    void testGetMinimumRvrFeet_OnlyVariableRanges() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.variable("04L", 1500, 2000));
+        data.addRunwayVisualRange(RunwayVisualRange.variable("04R", 1200, 1800));
+        data.addRunwayVisualRange(RunwayVisualRange.variable("22L", 1800, 2400));
+        
+        // Should use the lowest variableLow value (1200)
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(1200);
+    }
+
+    /**
+     * Tests mixed "greater than" and regular values.
+     * "Greater than" values are not filtered out, only "less than" values are.
+     */
+    @Test
+    void testGetMinimumRvrFeet_WithGreaterThanValues() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(new RunwayVisualRange("04R", 6000, null, null, "P", null)); // Greater than
+        
+        // Should include both values, minimum is 2200
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(2200);
+    }
+    
+    /**
+     * Tests single RVR that is "less than" - ensures null is returned.
+     */
+    @Test
+    void testGetMinimumRvrFeet_SingleLessThanValue() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(new RunwayVisualRange("04L", 600, null, null, "M", null));
+        
+        // Only RVR is "less than", should be filtered out
+        assertThat(data.getMinimumRvrFeet()).isNull();
+    }
+    
+    // ========== ADDITIONAL TESTS FOR getRvrForRunway() ==========
+    
+    /**
+     * Tests with empty runway list to ensure early return with null.
+     */
+    @Test
+    void testGetRvrForRunway_EmptyList() {
+        NoaaMetarData data = new NoaaMetarData();
+        // List is empty (not null)
+        
+        assertThat(data.getRvrForRunway("04L")).isNull();
+    }
+
+    /**
+     * Tests case sensitivity more thoroughly with different case combinations.
+     */
+    @Test
+    void testGetRvrForRunway_VariousCaseCombinations() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr = RunwayVisualRange.of("04L", 2200);
+        data.addRunwayVisualRange(rvr);
+        
+        // Test all case variations
+        assertThat(data.getRvrForRunway("04l")).isEqualTo(rvr);  // lowercase L
+        assertThat(data.getRvrForRunway("04L")).isEqualTo(rvr);  // uppercase L
+        assertThat(data.getRvrForRunway("04l")).isEqualTo(rvr);  // mixed case
+    }
+    
+    /**
+     * Tests with multiple RVRs to ensure correct one is found.
+     */
+    @Test
+    void testGetRvrForRunway_MultipleRunways() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr04L = RunwayVisualRange.of("04L", 2200);
+        RunwayVisualRange rvr04R = RunwayVisualRange.of("04R", 1800);
+        RunwayVisualRange rvr22L = RunwayVisualRange.of("22L", 3000);
+        RunwayVisualRange rvr22R = RunwayVisualRange.of("22R", 2500);
+        
+        data.addRunwayVisualRange(rvr04L);
+        data.addRunwayVisualRange(rvr04R);
+        data.addRunwayVisualRange(rvr22L);
+        data.addRunwayVisualRange(rvr22R);
+        
+        // Test each runway
+        assertThat(data.getRvrForRunway("04L")).isEqualTo(rvr04L);
+        assertThat(data.getRvrForRunway("04R")).isEqualTo(rvr04R);
+        assertThat(data.getRvrForRunway("22L")).isEqualTo(rvr22L);
+        assertThat(data.getRvrForRunway("22R")).isEqualTo(rvr22R);
+        
+        // Test non-existent runway
+        assertThat(data.getRvrForRunway("09")).isNull();
+    }
+
+    /**
+     * Tests with runway without L/C/R suffix.
+     */
+    @Test
+    void testGetRvrForRunway_NoSuffix() {
+        NoaaMetarData data = new NoaaMetarData();
+        RunwayVisualRange rvr = RunwayVisualRange.of("18", 2200);
+        data.addRunwayVisualRange(rvr);
+        
+        assertThat(data.getRvrForRunway("18")).isEqualTo(rvr);
+        assertThat(data.getRvrForRunway("18L")).isNull(); // Different runway
+    }
+    
+    /**
+     * Tests empty string as runway ID.
+     */
+    @Test
+    void testGetRvrForRunway_EmptyString() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        // Empty string should not match
+        assertThat(data.getRvrForRunway("")).isNull();
+    }
+
+    // ========== INTEGRATION TESTS FOR EDGE CASES ==========
+    
+    /**
+     * Integration test combining all three methods with edge case data.
+     */
+    @Test
+    void testUtilityMethods_IntegrationWithEdgeCases() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+        
+        // Add sky conditions with mix of ceiling and non-ceiling
+        data.addSkyCondition(new SkyCondition(SkyCoverage.SCATTERED, 3000, null));
+        data.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, null, null)); // Ceiling but null height
+        data.addSkyCondition(new SkyCondition(SkyCoverage.OVERCAST, 8000, null));
+        
+        // Add RVRs with various conditions
+        data.addRunwayVisualRange(RunwayVisualRange.variable("04L", 1200, 1800));
+        data.addRunwayVisualRange(new RunwayVisualRange("04R", 600, null, null, "M", null));
+        data.addRunwayVisualRange(new RunwayVisualRange("22L", 6000, null, null, "P", null));
+        
+        // Test ceiling - should find lowest valid ceiling
+        assertThat(data.getCeilingFeet()).isEqualTo(8000);
+        
+        // Test minimum RVR - should exclude "less than" and use variable low
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(1200);
+        
+        // Test specific runway lookup
+        assertThat(data.getRvrForRunway("04L")).isNotNull();
+        assertThat(data.getRvrForRunway("04L").isVariable()).isTrue();
+        assertThat(data.getRvrForRunway("09")).isNull();
+    }
+
+    /**
+     * Test with data set to null after initial population.
+     */
+    @Test
+    void testUtilityMethods_AfterSettingToNull() {
+        NoaaMetarData data = new NoaaMetarData();
+        
+        // Add initial data
+        data.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, 5000, null));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        // Verify data exists
+        assertThat(data.getCeilingFeet()).isEqualTo(5000);
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(2200);
+        assertThat(data.getRvrForRunway("04L")).isNotNull();
+        
+        // Set to null
+        data.setSkyConditions(null);
+        data.setRunwayVisualRange(null);
+        
+        // All should return null
+        assertThat(data.getCeilingFeet()).isNull();
+        assertThat(data.getMinimumRvrFeet()).isNull();
+        assertThat(data.getRvrForRunway("04L")).isNull();
+    }
+    
+    // ========== ADDITIONAL TESTS FOR getCeilingFeet() TO REACH 100% COVERAGE ==========
+    
+    /**
+     * Explicitly tests the skyConditions == null branch (first part of OR condition).
+     * Ensures the short-circuit evaluation path is covered.
+     */
+    @Test
+    void testGetCeilingFeet_ExplicitNullSkyConditions() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Explicitly set skyConditions to null
+        data.setSkyConditions(null);
+        
+        Integer ceiling = data.getCeilingFeet();
+        
+        assertThat(ceiling).isNull();
+    }
+    
+    /**
+     * Explicitly tests the isEmpty() == true branch (second part of OR condition).
+     * The list is not null, but it is empty.
+     */
+    @Test
+    void testGetCeilingFeet_ExplicitEmptyList() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Create an explicitly empty (but non-null) list
+        data.setSkyConditions(new ArrayList<>());
+        
+        Integer ceiling = data.getCeilingFeet();
+        
+        assertThat(ceiling).isNull();
+    }
+    
+    // ========== ADDITIONAL TESTS FOR getMinimumRvrFeet() TO REACH 100% COVERAGE ==========
+    
+    /**
+     * Explicitly tests the runwayVisualRange == null branch (first part of OR condition).
+     * Ensures the short-circuit evaluation path is covered.
+     */
+    @Test
+    void testGetMinimumRvrFeet_ExplicitNullList() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Explicitly set runwayVisualRange to null
+        data.setRunwayVisualRange(null);
+        
+        Integer minRvr = data.getMinimumRvrFeet();
+        
+        assertThat(minRvr).isNull();
+    }
+
+    /**
+     * Explicitly tests the isEmpty() == true branch (second part of OR condition).
+     * The list is not null, but it is empty.
+     */
+    @Test
+    void testGetMinimumRvrFeet_ExplicitEmptyList() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Create an explicitly empty (but non-null) list
+        data.setRunwayVisualRange(new ArrayList<>());
+        
+        Integer minRvr = data.getMinimumRvrFeet();
+        
+        assertThat(minRvr).isNull();
+    }
+
+    /**
+     * Tests the ternary operator's TRUE branch: isVariable() returns true.
+     * This test uses only variable RVRs to ensure the variableLow() path is taken.
+     */
+    @Test
+    void testGetMinimumRvrFeet_OnlyVariableRvrs() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Add only variable range RVRs (forces isVariable() == true in ternary)
+        data.addRunwayVisualRange(RunwayVisualRange.variable("04L", 1200, 1800));
+        data.addRunwayVisualRange(RunwayVisualRange.variable("22R", 1500, 2000));
+        
+        Integer minRvr = data.getMinimumRvrFeet();
+        
+        // Should use variableLow values, minimum is 1200
+        assertThat(minRvr).isEqualTo(1200);
+    }
+    
+    /**
+     * Tests the ternary operator's FALSE branch: isVariable() returns false.
+     * This test uses only non-variable RVRs to ensure the visualRangeFeet() path is taken.
+     */
+    @Test
+    void testGetMinimumRvrFeet_OnlyNonVariableRvrs() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Add only regular (non-variable) RVRs (forces isVariable() == false in ternary)
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(RunwayVisualRange.of("22R", 1800));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04R", 2500));
+        
+        Integer minRvr = data.getMinimumRvrFeet();
+        
+        // Should use visualRangeFeet values, minimum is 1800
+        assertThat(minRvr).isEqualTo(1800);
+    }
+
+    // ========== ADDITIONAL TESTS FOR getRvrForRunway() TO REACH 100% COVERAGE ==========
+    
+    /**
+     * Explicitly tests the runwayVisualRange == null branch (first part of OR condition).
+     * Ensures the short-circuit evaluation path is covered.
+     */
+    @Test
+    void testGetRvrForRunway_ExplicitNullRvrList() {
+        NoaaMetarData data = new NoaaMetarData();
+        // Explicitly set runwayVisualRange to null
+        data.setRunwayVisualRange(null);
+        
+        RunwayVisualRange rvr = data.getRvrForRunway("04L");
+        
+        assertThat(rvr).isNull();
+    }
+    
+    /**
+     * Explicitly tests the runwayId == null branch (second part of OR condition).
+     * The list exists, but the runway ID parameter is null.
+     */
+    @Test
+    void testGetRvrForRunway_ExplicitNullRunway() {
+        NoaaMetarData data = new NoaaMetarData();
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        
+        // Pass null as runway ID
+        RunwayVisualRange rvr = data.getRvrForRunway(null);
+        
+        assertThat(rvr).isNull();
+    }
+
+// ===========================================================================================
+// EXPLANATION OF WHY THESE TESTS ARE NEEDED
+// ===========================================================================================
+/*
+ * The compound boolean condition "if (x == null || y.isEmpty())" creates multiple branches
+ * in JaCoCo's coverage analysis:
+ *
+ * 1. x == null → TRUE (short-circuit, method returns early)
+ * 2. x == null → FALSE, y.isEmpty() → TRUE (second condition triggers return)
+ * 3. Both false, processing succeeds (returns value)
+ * 4. Both false, processing fails (returns null via orElse)
+ *
+ * Your existing tests likely cover scenarios where the object is initialized (and collections
+ * are automatically initialized to empty lists in constructors), but may not explicitly test:
+ * - The case where collections are explicitly set to NULL after creation
+ * - The case where collections are explicitly set to EMPTY (non-null) lists
+ *
+ * By adding these explicit tests, we ensure JaCoCo recognizes that all branch paths through
+ * the compound conditions are covered, resulting in 100% branch coverage.
+ *
+ * For getMinimumRvrFeet(), the additional ternary operator inside the .map() call creates
+ * two more branches that must be explicitly covered by testing:
+ * - A scenario with ONLY variable RVRs (ternary true branch)
+ * - A scenario with ONLY non-variable RVRs (ternary false branch)
+ */
+
+// ===========================================================================================
+// AFTER ADDING THESE TESTS
+// ===========================================================================================
+/*
+ * 1. Run your test suite: mvn test
+ * 2. Generate coverage report: mvn jacoco:report
+ * 3. Verify coverage:
+ *    - getCeilingFeet(): should show 100% (4/4 branches)
+ *    - getMinimumRvrFeet(): should show 100% (4/4 branches)
+ *    - getRvrForRunway(): should show 100% (4/4 branches)
+ * 4. Overall branch coverage should increase from 82% toward 90%
+ */
 }

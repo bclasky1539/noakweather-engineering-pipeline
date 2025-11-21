@@ -16,6 +16,8 @@
  */
 package weather.model.components;
 
+import weather.utils.ValidationPatterns;
+
 /**
  * Immutable value object representing wind conditions.
  * 
@@ -23,10 +25,10 @@ package weather.model.components;
  * and variability range. This replaces the legacy HashMap-based wind storage.
  * 
  * Examples:
- * - "28016KT" → Wind(280, 16, null, null, null, "KT")
- * - "18016G28KT" → Wind(180, 16, 28, null, null, "KT")
- * - "VRB03KT" → Wind(null, 3, null, null, null, "KT") with variable direction
- * - "28016KT 240V320" → Wind(280, 16, null, 240, 320, "KT")
+ *   "28016KT" → Wind(280, 16, null, null, null, "KT")
+ *   "18016G28KT" → Wind(180, 16, 28, null, null, "KT")
+ *   "VRB03KT" → Wind(null, 3, null, null, null, "KT") with variable direction
+ *   "28016KT 240V320" → Wind(280, 16, null, 240, 320, "KT")
  * 
  * @param directionDegrees Wind direction in degrees (0-360), null if variable or calm
  * @param speedValue Wind speed value
@@ -47,6 +49,24 @@ public record Wind(
     String unit
 ) {
     
+    /** Minimum valid wind direction in degrees */
+    private static final int MIN_DIRECTION_DEGREES = 0;
+    
+    /** Maximum valid wind direction in degrees */
+    private static final int MAX_DIRECTION_DEGREES = 360;
+    
+    /** Minimum valid wind speed */
+    private static final int MIN_SPEED = 0;
+    
+    /** Strong wind threshold in knots (22+ KT, Beaufort 6) */
+    private static final int STRONG_WIND_THRESHOLD_KT = 22;
+    
+    /** Gale force threshold in knots (34+ KT, Beaufort 8) */
+    private static final int GALE_THRESHOLD_KT = 34;
+    
+    /** Beaufort scale upper thresholds in knots for scales 1-11 (scale 12 is 64+) */
+    private static final int[] BEAUFORT_THRESHOLDS = {3, 6, 10, 16, 21, 27, 33, 40, 47, 55, 63};
+    
     /**
      * Compact constructor with validation.
      */
@@ -55,15 +75,30 @@ public record Wind(
         validateSpeed(speedValue);
         validateGust(gustValue);
         validateVariability(variabilityFrom, variabilityTo);
+        validateUnit(unit);
+        validateGustVsSpeed(speedValue, gustValue);
+    }
+    
+    /**
+     * Generate a range validation error message.
+     * 
+     * @param fieldName the name of the field being validated
+     * @param min minimum valid value
+     * @param max maximum valid value
+     * @return formatted error message base
+     */
+    private static String rangeErrorMessage(String fieldName, int min, int max) {
+        return fieldName + " must be between " + min + " and " + max;
     }
     
     /**
      * Validate wind direction is in valid range.
      */
     private static void validateDirection(Integer direction) {
-        if (direction != null && (direction < 0 || direction > 360)) {
+        if (direction != null && (direction < MIN_DIRECTION_DEGREES || direction > MAX_DIRECTION_DEGREES)) {
             throw new IllegalArgumentException(
-                "Wind direction must be between 0 and 360 degrees, got: " + direction
+                rangeErrorMessage("Wind direction", MIN_DIRECTION_DEGREES, MAX_DIRECTION_DEGREES) +
+                " degrees, got: " + direction
             );
         }
     }
@@ -72,7 +107,7 @@ public record Wind(
      * Validate wind speed is non-negative.
      */
     private static void validateSpeed(Integer speed) {
-        if (speed != null && speed < 0) {
+        if (speed != null && speed < MIN_SPEED) {
             throw new IllegalArgumentException("Wind speed cannot be negative: " + speed);
         }
     }
@@ -81,8 +116,19 @@ public record Wind(
      * Validate gust speed is non-negative.
      */
     private static void validateGust(Integer gust) {
-        if (gust != null && gust < 0) {
+        if (gust != null && gust < MIN_SPEED) {
             throw new IllegalArgumentException("Gust speed cannot be negative: " + gust);
+        }
+    }
+    
+    /**
+     * Validate that gust speed is greater than sustained wind speed.
+     */
+    private static void validateGustVsSpeed(Integer speed, Integer gust) {
+        if (gust != null && speed != null && gust <= speed) {
+            throw new IllegalArgumentException(
+                "Gust speed (" + gust + ") must be greater than sustained wind speed (" + speed + ")"
+            );
         }
     }
     
@@ -111,17 +157,37 @@ public record Wind(
      * Validate variability bounds are in valid range.
      */
     private static void validateVariabilityRange(Integer from, Integer to) {
-        if (from < 0 || from > 360) {
+        if (from < MIN_DIRECTION_DEGREES || from > MAX_DIRECTION_DEGREES) {
             throw new IllegalArgumentException(
-                "Variability from must be between 0 and 360: " + from
+                rangeErrorMessage("Variability from", MIN_DIRECTION_DEGREES, MAX_DIRECTION_DEGREES) +
+                ": " + from
             );
         }
-        if (to < 0 || to > 360) {
+        if (to < MIN_DIRECTION_DEGREES || to > MAX_DIRECTION_DEGREES) {
             throw new IllegalArgumentException(
-                "Variability to must be between 0 and 360: " + to
+                rangeErrorMessage("Variability to", MIN_DIRECTION_DEGREES, MAX_DIRECTION_DEGREES) +
+                ": " + to
             );
         }
     }
+    
+    /**
+     * Validate wind speed unit.
+     */
+    private static void validateUnit(String unit) {
+        if (unit == null || unit.isBlank()) {
+            throw new IllegalArgumentException("Wind speed unit cannot be null or blank");
+        }
+        
+        String trimmed = unit.trim();
+        if (!ValidationPatterns.WIND_UNIT.matcher(trimmed).matches()) {
+            throw new IllegalArgumentException(
+                "Invalid wind speed unit: " + unit + " (valid units: KT, MPS, KMH)"
+            );
+        }
+    }
+    
+    // ==================== Query Methods ====================
     
     /**
      * Check if wind direction is variable.
@@ -151,6 +217,28 @@ public record Wind(
     }
     
     /**
+     * Check if wind speed exceeds strong wind threshold (25+ knots).
+     * 
+     * @return true if wind is strong
+     */
+    public boolean isStrongWind() {
+        Integer speedKt = getSpeedKnots();
+        return speedKt != null && speedKt >= STRONG_WIND_THRESHOLD_KT;
+    }
+    
+    /**
+     * Check if wind speed exceeds gale force threshold (34+ knots, Beaufort 8).
+     * 
+     * @return true if wind is gale force or higher
+     */
+    public boolean isGale() {
+        Integer speedKt = getSpeedKnots();
+        return speedKt != null && speedKt >= GALE_THRESHOLD_KT;
+    }
+    
+    // ==================== Conversion Methods ====================
+    
+    /**
      * Get wind direction as a cardinal direction (N, NE, E, etc.).
      * 
      * @return cardinal direction string, "VRB" if variable, "CALM" if calm
@@ -163,12 +251,145 @@ public record Wind(
             return "VRB";
         }
         
-        // Convert degrees to cardinal direction
+        // Convert degrees to cardinal direction (16 points)
         String[] directions = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
                                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
         int index = (int) Math.round(directionDegrees / 22.5) % 16;
         return directions[index];
     }
+    
+    /**
+     * Get wind speed in knots.
+     * 
+     * @return speed in knots, or null if speed is null
+     */
+    public Integer getSpeedKnots() {
+        if (speedValue == null) {
+            return null;
+        }
+        
+        return switch (unit.toUpperCase()) {
+            case "KT" -> speedValue;
+            case "MPS" -> (int) Math.round(speedValue * 1.94384);  // m/s to knots
+            case "KMH" -> (int) Math.round(speedValue * 0.539957); // km/h to knots
+            default -> speedValue; // Should not happen due to validation
+        };
+    }
+    
+    /**
+     * Get wind speed in meters per second.
+     * 
+     * @return speed in m/s, or null if speed is null
+     */
+    public Integer getSpeedMps() {
+        if (speedValue == null) {
+            return null;
+        }
+        
+        return switch (unit.toUpperCase()) {
+            case "KT" -> (int) Math.round(speedValue * 0.514444);  // knots to m/s
+            case "MPS" -> speedValue;
+            case "KMH" -> (int) Math.round(speedValue * 0.277778); // km/h to m/s
+            default -> speedValue; // Should not happen due to validation
+        };
+    }
+    
+    /**
+     * Get wind speed in kilometers per hour.
+     * 
+     * @return speed in km/h, or null if speed is null
+     */
+    public Double getSpeedKmh() {
+        if (speedValue == null) {
+            return null;
+        }
+        
+        return switch (unit.toUpperCase()) {
+            case "KT" -> speedValue * 1.852;      // knots to km/h
+            case "MPS" -> speedValue * 3.6;       // m/s to km/h
+            case "KMH" -> speedValue.doubleValue();
+            default -> speedValue.doubleValue(); // Should not happen due to validation
+        };
+    }
+    
+    /**
+     * Get Beaufort scale value (0-12) based on wind speed.
+     * 
+     * Beaufort scale classifies wind speeds:
+     *   0 - Calm (0-1 kt)
+     *   1 - Light air (1-3 kt)
+     *   2 - Light breeze (4-6 kt)
+     *   3 - Gentle breeze (7-10 kt)
+     *   4 - Moderate breeze (11-16 kt)
+     *   5 - Fresh breeze (17-21 kt)
+     *   6 - Strong breeze (22-27 kt)
+     *   7 - Near gale (28-33 kt)
+     *   8 - Gale (34-40 kt)
+     *   9 - Strong gale (41-47 kt)
+     *   10 - Storm (48-55 kt)
+     *   11 - Violent storm (56-63 kt)
+     *   12 - Hurricane (64+ kt)
+     * 
+     * @return Beaufort scale value (0-12)
+     */
+    public int getBeaufortScale() {
+        Integer speedKt = getSpeedKnots();
+        if (speedKt == null || speedKt < 1) {
+            return 0;
+        }
+        
+        for (int i = 0; i < BEAUFORT_THRESHOLDS.length; i++) {
+            if (speedKt <= BEAUFORT_THRESHOLDS[i]) {
+                return i + 1;
+            }
+        }
+        
+        return 12; // Hurricane force (64+ kt)
+    }
+    
+    /**
+     * Get a human-readable summary of the wind conditions.
+     * 
+     * Examples:
+     *   "280° at 16 KT"
+     *   "VRB at 3 KT"
+     *   "CALM"
+     *   "180° at 16 KT gusting 28 KT"
+     *   "280° at 16 KT (variable 240°-320°)"
+     * 
+     * @return formatted string describing the wind conditions
+     */
+    public String getSummary() {
+        if (isCalm()) {
+            return "CALM";
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        
+        // Direction
+        if (directionDegrees != null) {
+            sb.append(directionDegrees).append("°");
+        } else {
+            sb.append("VRB");
+        }
+        
+        // Speed
+        sb.append(" at ").append(speedValue).append(" ").append(unit);
+        
+        // Gusts
+        if (hasGusts()) {
+            sb.append(" gusting ").append(gustValue).append(" ").append(unit);
+        }
+        
+        // Variability
+        if (isVariable()) {
+            sb.append(" (variable ").append(variabilityFrom).append("°-").append(variabilityTo).append("°)");
+        }
+        
+        return sb.toString();
+    }
+    
+    // ==================== Factory Methods ====================
     
     /**
      * Factory method for calm wind conditions.
@@ -188,5 +409,30 @@ public record Wind(
      */
     public static Wind variable(int speed, String unit) {
         return new Wind(null, speed, null, null, null, unit);
+    }
+    
+    /**
+     * Factory method for steady wind without gusts.
+     * 
+     * @param direction Wind direction in degrees
+     * @param speed Wind speed
+     * @param unit Speed unit
+     * @return Wind instance
+     */
+    public static Wind of(int direction, int speed, String unit) {
+        return new Wind(direction, speed, null, null, null, unit);
+    }
+    
+    /**
+     * Factory method for wind with gusts.
+     * 
+     * @param direction Wind direction in degrees
+     * @param speed Wind speed
+     * @param gust Gust speed
+     * @param unit Speed unit
+     * @return Wind instance with gusts
+     */
+    public static Wind ofWithGusts(int direction, int speed, int gust, String unit) {
+        return new Wind(direction, speed, gust, null, null, unit);
     }
 }

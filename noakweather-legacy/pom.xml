@@ -6,12 +6,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>noakweather</groupId>
-    <artifactId>noakweather-engineering-pipeline</artifactId>
+    <artifactId>noakweather-legacy</artifactId>
     <version>0.0.5</version>
     <packaging>jar</packaging>
 
-    <name>NoakWeather Engineering Pipeline</name>
-    <description>noakweather-engineering-pipeline is a Java library for parsing raw weather data (e.g. METAR, TAF)</description>
+    <name>NoakWeather Legacy</name>
+    <description>Legacy noakweather library for parsing raw weather data (e.g. METAR, TAF)</description>
 
     <licenses>
         <license>
