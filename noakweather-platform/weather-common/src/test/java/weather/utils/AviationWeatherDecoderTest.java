@@ -16,6 +16,7 @@
  */
 package weather.utils;
 
+import java.lang.reflect.InvocationTargetException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -352,13 +353,12 @@ class AviationWeatherDecoderTest {
     // ==================== Utility Class Tests ====================
     
     @Test
-    void testConstructor_ThrowsAssertionError() {
-        assertThatThrownBy(() -> {
-            var constructor = AviationWeatherDecoder.class.getDeclaredConstructor();
-            constructor.setAccessible(true);
-            constructor.newInstance();
-        })
-            .isInstanceOf(Exception.class)
+    void testConstructor_ThrowsAssertionError() throws NoSuchMethodException {
+        var constructor = AviationWeatherDecoder.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        
+        assertThatThrownBy(constructor::newInstance)
+            .isInstanceOf(InvocationTargetException.class)
             .hasCauseInstanceOf(AssertionError.class)
             .hasRootCauseMessage("Utility class should not be instantiated");
     }
