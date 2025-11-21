@@ -73,7 +73,7 @@ public class NoaaMetarData extends NoaaWeatherData {
     /**
      * Runway visual range information
      */
-    private List<String> runwayVisualRange;
+    private List<RunwayVisualRange> runwayVisualRange;
     
     // ========== REMARKS SECTION COMPONENTS ==========
     
@@ -226,16 +226,16 @@ public class NoaaMetarData extends NoaaWeatherData {
      * 
      * @return immutable copy of runway visual range list
      */
-    public List<String> getRunwayVisualRange() {
+    public List<RunwayVisualRange> getRunwayVisualRange() {
         return List.copyOf(runwayVisualRange);
     }
     
-    public void setRunwayVisualRange(List<String> runwayVisualRange) {
+    public void setRunwayVisualRange(List<RunwayVisualRange> runwayVisualRange) {
         this.runwayVisualRange = runwayVisualRange != null ? runwayVisualRange : new ArrayList<>();
     }
     
-    public void addRunwayVisualRange(String rvr) {
-        if (rvr != null && !rvr.isBlank()) {
+    public void addRunwayVisualRange(RunwayVisualRange rvr) {
+        if (rvr != null) {
             this.runwayVisualRange.add(rvr);
         }
     }
@@ -357,6 +357,41 @@ public class NoaaMetarData extends NoaaWeatherData {
         return visibility != null && !skyConditions.isEmpty();
     }
     
+    /**
+     * Get minimum RVR value across all runways (useful for operational decisions).
+     * 
+     * @return minimum RVR in feet, or null if no RVR data
+     */
+    public Integer getMinimumRvrFeet() {
+        if (runwayVisualRange == null || runwayVisualRange.isEmpty()) {
+            return null;
+        }
+        
+        return runwayVisualRange.stream()
+            .filter(rvr -> !rvr.isLessThan()) // Exclude "less than" values for conservative estimate
+            .map(rvr -> rvr.isVariable() ? rvr.variableLow() : rvr.visualRangeFeet())
+            .filter(Objects::nonNull)
+            .min(Integer::compareTo)
+            .orElse(null);
+    }
+    
+    /**
+     * Get RVR for a specific runway.
+     * 
+     * @param runwayId runway identifier (e.g., "04L", "22R")
+     * @return RVR for the runway, or null if not found
+     */
+    public RunwayVisualRange getRvrForRunway(String runwayId) {
+        if (runwayVisualRange == null || runwayId == null) {
+            return null;
+        }
+        
+        return runwayVisualRange.stream()
+            .filter(rvr -> rvr.runway().equalsIgnoreCase(runwayId))
+            .findFirst()
+            .orElse(null);
+    }
+    
     @Override
     public String getSummary() {
         StringBuilder sb = new StringBuilder("METAR ");
@@ -377,9 +412,12 @@ public class NoaaMetarData extends NoaaWeatherData {
     
     @Override
     public String toString() {
-        return String.format("NoaaMetarData{station=%s, time=%s, wind=%s, vis=%s, temp=%s, pressure=%s, skyCond=%d}", 
+        return String.format(
+            "NoaaMetarData{station=%s, time=%s, wind=%s, vis=%s, temp=%s, pressure=%s, skyCond=%d, rvr=%d}", 
             getStationId(), getObservationTime(), wind, visibility, temperature, pressure,
-            skyConditions != null ? skyConditions.size() : 0);
+            skyConditions != null ? skyConditions.size() : 0,
+            runwayVisualRange != null ? runwayVisualRange.size() : 0  // ← ADD THIS LINE
+        );
     }
     
     @Override

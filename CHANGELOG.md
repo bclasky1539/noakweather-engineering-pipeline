@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.5.0-SNAPSHOT - November 21, 2025
+
+#### Domain Model Refinement & Test Coverage Excellence
+
+**Enhanced:**
+- **NoaaMetarData Domain Model**
+  - Migrated from `LocalDateTime` to `Instant` for observation timestamps
+  - Improved immutability with `List.copyOf()` for collection getters
+  - Enhanced utility methods: `getCeilingFeet()`, `getMinimumRvrFeet()`, `getRvrForRunway()`
+  - Added flight category support with `hasFlightCategoryData()`
+  - Comprehensive `equals()` and `hashCode()` implementations
+  - Business-focused equality (excludes auto-generated fields)
+
+- **RunwayVisualRange Value Object**
+  - Converted to immutable record with factory methods
+  - Static factories: `of()`, `variable()`, `lessThan()`, `greaterThan()`
+  - Support for variable range (low/high), prefix indicators (M/P), trend information
+  - Helper methods: `isVariable()`, `isLessThan()`, `isGreaterThan()`
+  - Comprehensive trend descriptions (Upward, Downward, No Change)
+  - Full test coverage with edge case handling
+
+- **NoaaWeatherData Base Class**
+  - Abstract base with sealed class hierarchy
+  - Added `getSummary()` and `getDataType()` abstract methods
+  - Improved field organization and documentation
+  - Quality control flags support
+  - Report modifier tracking (AUTO, COR, etc.)
+
+**Testing:**
+- **Comprehensive Test Suite** (99% instruction coverage, 82% branch coverage)
+  - NoaaMetarDataTest: 95 tests covering all functionality
+  
+**Build & Quality:**
+- All 95+ tests passing (0 failures, 0 errors, 0 skipped)
+- Build time: ~8 seconds for weather-common module
+- Maven build: clean install successful
+- Ready for Day 7: Enhanced METAR Parser Implementation
+
 ### Version 1.4.0-SNAPSHOT Additional - November 8, 2025
 
 #### Domain Model Foundation
