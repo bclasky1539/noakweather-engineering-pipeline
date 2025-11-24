@@ -25,6 +25,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import org.junit.jupiter.api.DisplayName;
 
 /**
  * Tests for RunwayVisualRange record.
@@ -272,9 +273,13 @@ class RunwayVisualRangeTest {
         "N, No Change",
         "n, No Change",
         "U, Increasing",
-        "u, Increasing"
+        "u, Increasing",
+        " D , Decreasing",
+        "  N  , No Change",
+        "\tU\t, Increasing"
     })
-    void testGetTrendDescription_ValidTrends(String trend, String expected) {
+    @DisplayName("getTrendDescription handles valid trends and trims whitespace")
+    void testGetTrendDescription_ValidTrendsAndWhitespace(String trend, String expected) {
         RunwayVisualRange rvr = new RunwayVisualRange("04L", 2200, null, null, null, trend);
         assertThat(rvr.getTrendDescription()).isEqualTo(expected);
     }
@@ -290,17 +295,6 @@ class RunwayVisualRangeTest {
     void testGetTrendDescription_BlankTrend(String trend) {
         RunwayVisualRange rvr = new RunwayVisualRange("04L", 2200, null, null, null, trend);
         assertThat(rvr.getTrendDescription()).isEqualTo("Unknown");
-    }
-    
-    @ParameterizedTest
-    @CsvSource({
-        " D , Decreasing",
-        "  N  , No Change",
-        "\tU\t, Increasing"
-    })
-    void testGetTrendDescription_TrimWhitespace(String trend, String expected) {
-        RunwayVisualRange rvr = new RunwayVisualRange("04L", 2200, null, null, null, trend);
-        assertThat(rvr.getTrendDescription()).isEqualTo(expected);
     }
     
     // ==================== Conversion Tests ====================

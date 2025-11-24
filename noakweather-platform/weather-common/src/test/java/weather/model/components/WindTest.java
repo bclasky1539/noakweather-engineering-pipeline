@@ -115,7 +115,7 @@ class WindTest {
     @Test
     void testValidSpeed_Zero() {
         Wind wind = new Wind(null, 0, null, null, null, "KT");
-        assertThat(wind.speedValue()).isEqualTo(0);
+        assertThat(wind.speedValue()).isZero();
     }
     
     // ==================== Validation Tests - Gusts ====================
@@ -548,7 +548,7 @@ class WindTest {
     @Test
     void testGetBeaufortScale_NullSpeed() {
         Wind wind = new Wind(280, null, null, null, null, "KT");
-        assertThat(wind.getBeaufortScale()).isEqualTo(0);
+        assertThat(wind.getBeaufortScale()).isZero();
     }
     
     @Test
@@ -710,7 +710,7 @@ class WindTest {
         Wind wind2 = Wind.of(280, 16, "KT");
         
         assertThat(wind1).isEqualTo(wind2);
-        assertThat(wind1.hashCode()).isEqualTo(wind2.hashCode());
+        assertThat(wind1.hashCode()).hasSameHashCodeAs(wind2.hashCode());
     }
     
     @Test
@@ -726,9 +726,9 @@ class WindTest {
         Wind wind = Wind.ofWithGusts(280, 16, 28, "KT");
         String str = wind.toString();
         
-        assertThat(str).contains("280");
-        assertThat(str).contains("16");
-        assertThat(str).contains("28");
-        assertThat(str).contains("KT");
+        assertThat(str).contains("280")
+                .contains("16")
+                .contains("28")
+                .contains("KT");
     }
 }

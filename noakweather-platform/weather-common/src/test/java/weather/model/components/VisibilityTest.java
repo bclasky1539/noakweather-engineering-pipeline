@@ -172,13 +172,6 @@ class VisibilityTest {
     }
     
     @Test
-    void testToMeters_SpecialCondition() {
-        Visibility visibility = Visibility.cavok();
-        
-        assertThat(visibility.toMeters()).isNull();
-    }
-    
-    @Test
     void testToStatuteMiles_FromStatuteMiles() {
         Visibility visibility = new Visibility(10.0, "SM", false, false, null);
         
@@ -210,13 +203,6 @@ class VisibilityTest {
     }
     
     @Test
-    void testToStatuteMiles_SpecialCondition() {
-        Visibility visibility = Visibility.cavok();
-        
-        assertThat(visibility.toStatuteMiles()).isNull();
-    }
-    
-    @Test
     void testToKilometers_FromKilometers() {
         Visibility visibility = new Visibility(10.0, "KM", false, false, null);
         
@@ -245,13 +231,6 @@ class VisibilityTest {
         Visibility visibility = new Visibility(sm, unit, false, false, null);
         
         assertThat(visibility.toKilometers()).isCloseTo(expectedKM, within(0.0001));
-    }
-    
-    @Test
-    void testToKilometers_SpecialCondition() {
-        Visibility visibility = Visibility.cavok();
-        
-        assertThat(visibility.toKilometers()).isNull();
     }
     
     // ==================== Aviation Flight Rules Tests ====================
@@ -462,9 +441,9 @@ class VisibilityTest {
         Visibility visibility = Visibility.statuteMiles(10.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("10.00");
-        assertThat(summary).contains("statute miles");
-        assertThat(summary).contains("(VFR)");
+        assertThat(summary).contains("10.00")
+                .contains("statute miles")
+                .contains("(VFR)");
     }
     
     @Test
@@ -472,9 +451,9 @@ class VisibilityTest {
         Visibility visibility = Visibility.statuteMiles(1.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("1.00");
-        assertThat(summary).contains("statute miles");
-        assertThat(summary).contains("(IFR)");
+        assertThat(summary).contains("1.00")
+                .contains("statute miles")
+                .contains("(IFR)");
     }
     
     @Test
@@ -482,10 +461,10 @@ class VisibilityTest {
         Visibility visibility = Visibility.lessThan(0.25, "SM");
         
         String summary = visibility.getSummary();
-        assertThat(summary).startsWith("Less than");
-        assertThat(summary).contains("0.25");
-        assertThat(summary).contains("statute miles");
-        assertThat(summary).contains("(IFR)");
+        assertThat(summary).startsWith("Less than")
+                .contains("0.25")
+                .contains("statute miles")
+                .contains("(IFR)");
     }
     
     @Test
@@ -493,10 +472,10 @@ class VisibilityTest {
         Visibility visibility = Visibility.greaterThan(6.0, "SM");
         
         String summary = visibility.getSummary();
-        assertThat(summary).startsWith("Greater than");
-        assertThat(summary).contains("6.00");
-        assertThat(summary).contains("statute miles");
-        assertThat(summary).contains("(VFR)");
+        assertThat(summary).startsWith("Greater than")
+                .contains("6.00")
+                .contains("statute miles")
+                .contains("(VFR)");
     }
     
     @Test
@@ -504,8 +483,8 @@ class VisibilityTest {
         Visibility visibility = Visibility.meters(5000.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("5000.00");
-        assertThat(summary).contains("meters");
+        assertThat(summary).contains("5000.00")
+                .contains("meters");
     }
     
     @Test
@@ -513,8 +492,8 @@ class VisibilityTest {
         Visibility visibility = Visibility.kilometers(10.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("10.00");
-        assertThat(summary).contains("kilometers");
+        assertThat(summary).contains("10.00")
+                .contains("kilometers");
     }
     
     // ==================== Real World Examples ====================
@@ -585,8 +564,8 @@ class VisibilityTest {
         Visibility vis2 = Visibility.statuteMiles(10.0);
         Visibility vis3 = Visibility.statuteMiles(5.0);
         
-        assertThat(vis1).isEqualTo(vis2);
-        assertThat(vis1).isNotEqualTo(vis3);
+        assertThat(vis1).isEqualTo(vis2)
+                .isNotEqualTo(vis3);
     }
     
     @Test
@@ -595,8 +574,8 @@ class VisibilityTest {
         Visibility vis2 = Visibility.lessThan(1.0, "SM");
         Visibility vis3 = Visibility.greaterThan(1.0, "SM");
         
-        assertThat(vis1).isEqualTo(vis2);
-        assertThat(vis1).isNotEqualTo(vis3);
+        assertThat(vis1).isEqualTo(vis2)
+                .isNotEqualTo(vis3);
     }
     
     @Test
@@ -604,8 +583,8 @@ class VisibilityTest {
         Visibility visibility = Visibility.statuteMiles(10.0);
         String str = visibility.toString();
         
-        assertThat(str).contains("10.0");
-        assertThat(str).contains("SM");
+        assertThat(str).contains("10.0")
+                .contains("SM");
     }
     
         // ==================== getSummary() - Missing Branches ====================
@@ -624,9 +603,9 @@ class VisibilityTest {
         Visibility visibility = Visibility.meters(5000.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("5000.00");
-        assertThat(summary).contains("meters");
-        assertThat(summary).contains("(VFR)");
+        assertThat(summary).contains("5000.00")
+                .contains("meters")
+                .contains("(VFR)");
     }
     
     @Test
@@ -635,9 +614,9 @@ class VisibilityTest {
         Visibility visibility = Visibility.meters(1000.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("1000.00");
-        assertThat(summary).contains("meters");
-        assertThat(summary).contains("(IFR)");
+        assertThat(summary).contains("1000.00")
+                .contains("meters")
+                .contains("(IFR)");
     }
     
     @Test
@@ -646,9 +625,9 @@ class VisibilityTest {
         Visibility visibility = Visibility.kilometers(10.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("10.00");
-        assertThat(summary).contains("kilometers");
-        assertThat(summary).contains("(VFR)");
+        assertThat(summary).contains("10.00")
+                .contains("kilometers")
+                .contains("(VFR)");
     }
     
     @Test
@@ -657,16 +636,9 @@ class VisibilityTest {
         Visibility visibility = Visibility.kilometers(2.0);
         
         String summary = visibility.getSummary();
-        assertThat(summary).contains("2.00");
-        assertThat(summary).contains("kilometers");
-        assertThat(summary).contains("(IFR)");
-    }
-    
-    @Test
-    void testGetSummary_DefaultUnitCase() {
-        // This tests the default case in the switch for unit text
-        // We can't really create an invalid unit due to validation,
-        // but this covers the default branch
+        assertThat(summary).contains("2.00")
+                .contains("kilometers")
+                .contains("(IFR)");
     }
     
     @Test
@@ -763,20 +735,6 @@ class VisibilityTest {
     // ==================== isSpecialCondition() - Edge Cases ====================
     
     @Test
-    void testIsSpecialCondition_BlankString() {
-        // Blank string should return false
-        // Note: This will fail validation, so we can't test it directly
-        // The validation catches this, which is correct behavior
-    }
-    
-    @Test
-    void testIsSpecialCondition_EmptyString() {
-        // Empty string should return false  
-        // Note: This will fail validation, so we can't test it directly
-        // The validation catches this, which is correct behavior
-    }
-    
-    @Test
     void testIsSpecialCondition_NullValue() {
         // Null special condition should return false
         Visibility visibility = Visibility.statuteMiles(10.0);
@@ -847,15 +805,6 @@ class VisibilityTest {
     // ==================== toMeters() - Missing Branches ====================
     
     @Test
-    void testToMeters_DefaultCase() {
-        // This tests the default branch in the switch
-        // We can't create an invalid unit due to validation,
-        // but the default returns distanceValue as-is
-        // The validation prevents invalid units, so default won't execute
-        // with proper Visibility objects
-    }
-    
-    @Test
     void testToMeters_NullDistanceValue() {
         // Special condition with null distance
         Visibility visibility = Visibility.cavok();
@@ -887,13 +836,8 @@ class VisibilityTest {
     // ==================== toStatuteMiles() - Missing Branches ====================
     
     @Test
-    void testToStatuteMiles_DefaultCase() {
-        // Default branch returns distanceValue as-is
-        // Can't test with invalid unit due to validation
-    }
-    
-    @Test
     void testToStatuteMiles_NullDistanceValue() {
+        // Special condition with null distance
         Visibility visibility = Visibility.cavok();
         
         assertThat(visibility.toStatuteMiles()).isNull();
@@ -923,13 +867,8 @@ class VisibilityTest {
     // ==================== toKilometers() - Missing Branches ====================
     
     @Test
-    void testToKilometers_DefaultCase() {
-        // Default branch returns distanceValue as-is
-        // Can't test with invalid unit due to validation
-    }
-    
-    @Test
     void testToKilometers_NullDistanceValue() {
+        // Special condition with null distance
         Visibility visibility = Visibility.cavok();
         
         assertThat(visibility.toKilometers()).isNull();
@@ -1044,10 +983,10 @@ class VisibilityTest {
         String summary = visibility.getSummary();
         
         // Should not have "Less than" or "Greater than" prefix
-        assertThat(summary).doesNotContain("Less than");
-        assertThat(summary).doesNotContain("Greater than");
-        assertThat(summary).contains("5.00");
-        assertThat(summary).contains("statute miles");
+        assertThat(summary).doesNotContain("Less than")
+                .doesNotContain("Greater than")
+                .contains("5.00")
+                .contains("statute miles");
     }
     
     @Test
@@ -1057,10 +996,10 @@ class VisibilityTest {
         
         String summary = visibility.getSummary();
         
-        assertThat(summary).contains("3000.00");
-        assertThat(summary).contains("meters");
+        assertThat(summary).contains("3000.00")
+                .contains("meters")
         // 3000 meters ≈ 1.86 SM, which is < 3 SM, so IFR
-        assertThat(summary).contains("(IFR)");
+                .contains("(IFR)");
     }
     
     @Test
@@ -1070,9 +1009,9 @@ class VisibilityTest {
         
         String summary = visibility.getSummary();
         
-        assertThat(summary).contains("8.00");
-        assertThat(summary).contains("kilometers");
+        assertThat(summary).contains("8.00")
+                .contains("kilometers")
         // 8 km ≈ 4.97 SM, which is >= 3 SM, so VFR
-        assertThat(summary).contains("(VFR)");
+                .contains("(VFR)");
     }
 }

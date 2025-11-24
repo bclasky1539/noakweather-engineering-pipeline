@@ -335,39 +335,70 @@ public record Pressure(
      * @return likely weather condition description
      */
     public String getWeatherCondition(Pressure previousPressure) {
-        double pressureHpa = toHectopascals();
-        
         if (previousPressure == null) {
-            // Base assessment only on current pressure
-            if (pressureHpa < 980.0) {
-                return "Stormy conditions likely";
-            } else if (pressureHpa < 1000.0) {
-                return "Unsettled weather likely";
-            } else if (pressureHpa > 1030.0) {
-                return "Fair weather likely";
-            } else {
-                return "Generally fair conditions";
-            }
+            return getBaseWeatherCondition();
         }
         
+        return getWeatherConditionWithTendency(previousPressure);
+    }
+    
+    private String getBaseWeatherCondition() {
+        double pressureHpa = toHectopascals();
+
+        // Base assessment only on current pressure
+        if (pressureHpa < 980.0) {
+            return "Stormy conditions likely";
+        } else if (pressureHpa < 1000.0) {
+            return "Unsettled weather likely";
+        } else if (pressureHpa > 1030.0) {
+            return "Fair weather likely";
+        } else {
+            return "Generally fair conditions";
+        }
+    }
+    
+    private String getWeatherConditionWithTendency(Pressure previousPressure) {
+        double pressureHpa = toHectopascals();
         double tendency = getPressureTendency(previousPressure);
         
         // Analyze combination of pressure and tendency
-        if (pressureHpa < 1000.0 && tendency < -2.0) {
-            return "Deteriorating weather, storm approaching";
-        } else if (pressureHpa < 1000.0 && tendency > 2.0) {
-            return "Improving weather, storm clearing";
-        } else if (pressureHpa > 1020.0 && tendency > 1.0) {
-            return "Fair weather, becoming more settled";
-        } else if (pressureHpa > 1020.0 && tendency < -1.0) {
-            return "Fair weather, may deteriorate";
-        } else if (tendency < -3.0) {
-            return "Weather deteriorating";
-        } else if (tendency > 3.0) {
-            return "Weather improving";
-        } else {
-            return "Weather conditions stable";
+        if (pressureHpa < 1000.0) {
+            return getLowPressureCondition(tendency);
         }
+        if (pressureHpa > 1020.0) {
+            return getHighPressureCondition(tendency);
+        }
+        return getTendencyOnlyCondition(tendency);
+    }
+    
+    private String getLowPressureCondition(double tendency) {
+        if (tendency < -2.0) {
+            return "Deteriorating weather, storm approaching";
+        }
+        if (tendency > 2.0) {
+            return "Improving weather, storm clearing";
+        }
+        return getTendencyOnlyCondition(tendency);
+    }
+    
+    private String getHighPressureCondition(double tendency) {
+        if (tendency > 1.0) {
+            return "Fair weather, becoming more settled";
+        }
+        if (tendency < -1.0) {
+            return "Fair weather, may deteriorate";
+        }
+        return getTendencyOnlyCondition(tendency);
+    }
+    
+    private String getTendencyOnlyCondition(double tendency) {
+        if (tendency < -3.0) {
+            return "Weather deteriorating";
+        }
+        if (tendency > 3.0) {
+            return "Weather improving";
+        }
+        return "Weather conditions stable";
     }
     
     // ==================== Formatting Methods ====================
