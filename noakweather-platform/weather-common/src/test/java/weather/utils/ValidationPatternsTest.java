@@ -16,6 +16,8 @@
  */
 package weather.utils;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -64,20 +66,20 @@ class ValidationPatternsTest {
     }
     
     @Test
-    void testAllPatternsAreCompiled() {
-        // Verify all patterns are instances of Pattern (i.e., compiled)
-        assertThat(ValidationPatterns.RUNWAY_IDENTIFIER).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.CLOUD_TYPE).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.WIND_UNIT).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.TEMPERATURE_VALUE).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.WIND_DIRECTION).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.WIND_SPEED).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.ALTITUDE_HUNDREDS_FEET).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.PRESSURE_VALUE).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.VISIBILITY_UNIT).isInstanceOf(Pattern.class);
-        assertThat(ValidationPatterns.VISIBILITY_SPECIAL_CONDITION).isInstanceOf(Pattern.class);
+    void testAllPatternsAreCompiled() throws IllegalAccessException {
+        Field[] fields = ValidationPatterns.class.getDeclaredFields();
+        
+        for (Field field : fields) {
+            if (Modifier.isStatic(field.getModifiers()) && 
+                Modifier.isFinal(field.getModifiers()) &&
+                field.getType().equals(Pattern.class)) {
+                
+                Object value = field.get(null);
+                assertThat(value).isInstanceOf(Pattern.class);
+            }
+        }
     }
-    
+
     // ==================== RUNWAY_IDENTIFIER Tests ====================
     
     @ParameterizedTest

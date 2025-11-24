@@ -27,6 +27,9 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * Tests for NoaaMetarData class.
@@ -398,12 +401,18 @@ class NoaaMetarDataTest {
         assertThat(data.getRvrForRunway("04R")).isEqualTo(rvr04R);
     }
     
-    @Test
-    void testGetRvrForRunway_NotFound() {
+    @ParameterizedTest
+    @CsvSource(value = {
+        "NULL, null runway ID",
+        "'', empty runway ID",
+        "22R, not found runway ID"
+    }, nullValues = "NULL")
+    @DisplayName("getRvrForRunway returns null for invalid runway IDs")
+    void testGetRvrForRunway_InvalidRunwayIds(String runwayId, String description) {
         NoaaMetarData data = new NoaaMetarData();
         data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
         
-        assertThat(data.getRvrForRunway("22R")).isNull();
+        assertThat(data.getRvrForRunway(runwayId)).isNull();
     }
     
     @Test
@@ -414,14 +423,6 @@ class NoaaMetarDataTest {
         
         assertThat(data.getRvrForRunway("04l")).isEqualTo(rvr);
         assertThat(data.getRvrForRunway("04L")).isEqualTo(rvr);
-    }
-    
-    @Test
-    void testGetRvrForRunway_NullRunwayId() {
-        NoaaMetarData data = new NoaaMetarData();
-        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
-        
-        assertThat(data.getRvrForRunway(null)).isNull();
     }
     
     @Test
@@ -603,12 +604,18 @@ class NoaaMetarDataTest {
         assertThat(data.getCeilingFeet()).isNull();
     }
     
+    /**
+     * Tests the branch where skyConditions has ceiling layers but all have null heights.
+     * This covers the .filter(Objects::nonNull) branch followed by .orElse(null).
+     */
     @Test
     void testGetCeilingFeet_WithSkyConditionsButNoHeights() {
         NoaaMetarData data = new NoaaMetarData();
+        // Add ceiling layers (BKN/OVC) but with null heights
         data.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, null, null));
         data.addSkyCondition(new SkyCondition(SkyCoverage.OVERCAST, null, null));
         
+        // Should return null since all ceiling heights are null
         assertThat(data.getCeilingFeet()).isNull();
     }
     
@@ -1071,21 +1078,6 @@ class NoaaMetarDataTest {
     // ========== ADDITIONAL TESTS FOR getCeilingFeet() ==========
     
     /**
-     * Tests the branch where skyConditions has ceiling layers but all have null heights.
-     * This covers the .filter(Objects::nonNull) branch followed by .orElse(null).
-     */
-    @Test
-    void testGetCeilingFeet_AllCeilingLayersHaveNullHeights() {
-        NoaaMetarData data = new NoaaMetarData();
-        // Add ceiling layers (BKN/OVC) but with null heights
-        data.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, null, null));
-        data.addSkyCondition(new SkyCondition(SkyCoverage.OVERCAST, null, null));
-        
-        // Should return null since all ceiling heights are null
-        assertThat(data.getCeilingFeet()).isNull();
-    }
-    
-    /**
      * Tests the branch where there are non-ceiling layers with heights and 
      * ceiling layers with null heights mixed together.
      */
@@ -1256,18 +1248,6 @@ class NoaaMetarDataTest {
         assertThat(data.getRvrForRunway("18L")).isNull(); // Different runway
     }
     
-    /**
-     * Tests empty string as runway ID.
-     */
-    @Test
-    void testGetRvrForRunway_EmptyString() {
-        NoaaMetarData data = new NoaaMetarData();
-        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
-        
-        // Empty string should not match
-        assertThat(data.getRvrForRunway("")).isNull();
-    }
-
     // ========== INTEGRATION TESTS FOR EDGE CASES ==========
     
     /**
@@ -1455,43 +1435,4 @@ class NoaaMetarDataTest {
         
         assertThat(rvr).isNull();
     }
-
-// ===========================================================================================
-// EXPLANATION OF WHY THESE TESTS ARE NEEDED
-// ===========================================================================================
-/*
- * The compound boolean condition "if (x == null || y.isEmpty())" creates multiple branches
- * in JaCoCo's coverage analysis:
- *
- * 1. x == null → TRUE (short-circuit, method returns early)
- * 2. x == null → FALSE, y.isEmpty() → TRUE (second condition triggers return)
- * 3. Both false, processing succeeds (returns value)
- * 4. Both false, processing fails (returns null via orElse)
- *
- * Your existing tests likely cover scenarios where the object is initialized (and collections
- * are automatically initialized to empty lists in constructors), but may not explicitly test:
- * - The case where collections are explicitly set to NULL after creation
- * - The case where collections are explicitly set to EMPTY (non-null) lists
- *
- * By adding these explicit tests, we ensure JaCoCo recognizes that all branch paths through
- * the compound conditions are covered, resulting in 100% branch coverage.
- *
- * For getMinimumRvrFeet(), the additional ternary operator inside the .map() call creates
- * two more branches that must be explicitly covered by testing:
- * - A scenario with ONLY variable RVRs (ternary true branch)
- * - A scenario with ONLY non-variable RVRs (ternary false branch)
- */
-
-// ===========================================================================================
-// AFTER ADDING THESE TESTS
-// ===========================================================================================
-/*
- * 1. Run your test suite: mvn test
- * 2. Generate coverage report: mvn jacoco:report
- * 3. Verify coverage:
- *    - getCeilingFeet(): should show 100% (4/4 branches)
- *    - getMinimumRvrFeet(): should show 100% (4/4 branches)
- *    - getRvrForRunway(): should show 100% (4/4 branches)
- * 4. Overall branch coverage should increase from 82% toward 90%
- */
 }

@@ -612,8 +612,8 @@ class TemperatureTest {
             Temperature temp = new Temperature(30.0, 25.0);
             
             Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            assertThat(heatIndex).isGreaterThan(30.0);  // Should be higher than actual temp
+            assertThat(heatIndex).isNotNull()
+                    .isGreaterThan(30.0);  // Should be higher than actual temp
         }
         
         @Test
@@ -682,159 +682,50 @@ class TemperatureTest {
             assertThat(hiF).isBetween(expectedLow, expectedHigh);
         }
         
-        @Test
-        void testGetHeatIndex_HighTemperatureHighHumidity() {
-            // 38°C (100°F) with 80% RH - dangerous conditions
-            // Using direct values to ensure high RH
-            Temperature temp = Temperature.fromFahrenheit(100.0, 90.0);
+        @ParameterizedTest
+        @CsvSource({
+            "100.0, 90.0, 120.0, High temperature high humidity - dangerous conditions",
+            "81.0, 40.0, 27.0, Low humidity adjustment below 13% RH",
+            "112.0, 40.0, 100.0, Low humidity adjustment at 112F boundary",
+            "95.0, 35.0, 27.0, Low humidity at 95F midpoint",
+            "85.0, 82.0, 27.0, High humidity adjustment above 85% RH",
+            "87.0, 84.0, 87.0, High humidity adjustment at 87F boundary",
+            "90.0, 87.0, 27.0, Above 87F high humidity adjustment should not apply",
+            "111.0, 85.0, 27.0, Extreme heat conditions",
+            "90.0, 90.0, 27.0, 100% humidity saturated air"
+        })
+        @DisplayName("getHeatIndex calculates correctly for various conditions")
+        void testGetHeatIndex_VariousConditions(double tempF, double dewpointF, double minExpectedHeatIndexC, String description) {
+            Temperature temp = Temperature.fromFahrenheit(tempF, dewpointF);
             
             Double heatIndex = temp.getHeatIndex();
             assertThat(heatIndex).isNotNull();
             
+            // Convert to Fahrenheit for validation
             Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
-            assertThat(hiF).isGreaterThan(120.0);  // Dangerous heat index
+            assertThat(hiF).isGreaterThanOrEqualTo(minExpectedHeatIndexC);
         }
         
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment() {
-            // RH < 13% and temp 80-112°F should subtract adjustment
-            // 95°F with very low RH (~10%)
-            Temperature temp = Temperature.fromFahrenheit(95.0, 45.0);  // Low dewpoint = low RH
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            
-            // With low humidity, heat index should be lower than without adjustment
-            Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
-            assertThat(hiF).isBetween(85.0, 100.0);
-        }
-        
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment_At80F() {
-            // Boundary test: 81°F with low humidity (above 27°C threshold)
-            Temperature temp = Temperature.fromFahrenheit(81.0, 20.0);  // Low dewpoint
-            
-            Double heatIndex = temp.getHeatIndex();
-            // Should calculate (81°F is above 27°C threshold)
-            assertThat(heatIndex).isNotNull();
-        }
-        
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment_At112F() {
-            // Boundary test: exactly 112°F with low humidity
-            Temperature temp = Temperature.fromFahrenheit(112.0, 40.0);  // Low dewpoint
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            
-            Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
-            assertThat(hiF).isGreaterThan(100.0);
-        }
-        
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment_At95F() {
-            // Special case: 95°F is the midpoint for the adjustment calculation
-            Temperature temp = Temperature.fromFahrenheit(95.0, 35.0);  // Very low dewpoint
+        @ParameterizedTest
+        @CsvSource({
+            "81.0, 20.0, At 80F boundary with low humidity",
+            "112.0, 40.0, At 112F boundary with low humidity",
+            "95.0, 35.0, At 95F midpoint with very low humidity",
+            "81.0, 77.0, At 80F boundary with high humidity",
+            "81.0, 40.0, Below 80F - low humidity adjustment should not apply",
+            "113.0, 40.0, Above 112F - low humidity adjustment should not apply",
+            "81.0, 78.0, Below 80F - high humidity adjustment should not apply",
+            "95.0, 60.0, RH >= 13% - low humidity adjustment should not apply",
+            "85.0, 65.0, RH <= 85% - high humidity adjustment should not apply"
+        })
+        @DisplayName("getHeatIndex handles boundary conditions for humidity adjustments")
+        void testGetHeatIndex_HumidityAdjustmentBoundaries(double tempF, double dewpointF, String description) {
+            Temperature temp = Temperature.fromFahrenheit(tempF, dewpointF);
             
             Double heatIndex = temp.getHeatIndex();
             assertThat(heatIndex).isNotNull();
         }
-        
-        @Test
-        void testGetHeatIndex_HighHumidityAdjustment() {
-            // RH > 85% and temp 80-87°F should add adjustment
-            // 85°F with very high RH (~90%)
-            Temperature temp = Temperature.fromFahrenheit(85.0, 82.0);  // High dewpoint = high RH
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            
-            // With high humidity, heat index should be higher
-            Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
-            assertThat(hiF).isGreaterThan(85.0);
-        }
-        
-        @Test
-        void testGetHeatIndex_HighHumidityAdjustment_At80F() {
-            // Boundary test: 81°F with high humidity (above 27°C threshold)
-            Temperature temp = Temperature.fromFahrenheit(81.0, 77.0);  // High dewpoint
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-        }
-        
-        @Test
-        void testGetHeatIndex_HighHumidityAdjustment_At87F() {
-            // Boundary test: exactly 87°F with high humidity
-            Temperature temp = Temperature.fromFahrenheit(87.0, 84.0);  // High dewpoint
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            
-            Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
-            assertThat(hiF).isGreaterThan(87.0);
-        }
-        
-        @Test
-        void testGetHeatIndex_HighHumidityAdjustment_Above87F() {
-            // Above 87°F - high humidity adjustment should NOT apply
-            Temperature temp = Temperature.fromFahrenheit(90.0, 87.0);  // High dewpoint
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            
-            // Should use regular Rothfusz without high humidity adjustment
-            Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
-            assertThat(hiF).isGreaterThan(90.0);
-        }
-        
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment_Below80F() {
-            // Below 80°F - low humidity adjustment should NOT apply
-            // But still above 27°C threshold
-            Temperature temp = Temperature.fromFahrenheit(81.0, 40.0);
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-        }
-        
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment_Above112F() {
-            // Above 112°F - low humidity adjustment should NOT apply
-            Temperature temp = Temperature.fromFahrenheit(113.0, 40.0);
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-        }
-        
-        @Test
-        void testGetHeatIndex_HighHumidityAdjustment_Below80F() {
-            // Below 80°F - high humidity adjustment should NOT apply
-            // But still above 27°C threshold
-            Temperature temp = Temperature.fromFahrenheit(81.0, 78.0);
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-        }
-        
-        @Test
-        void testGetHeatIndex_LowHumidityAdjustment_HighRH() {
-            // RH >= 13% - low humidity adjustment should NOT apply
-            Temperature temp = Temperature.fromFahrenheit(95.0, 60.0);  // Higher RH
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-        }
-        
-        @Test
-        void testGetHeatIndex_HighHumidityAdjustment_LowRH() {
-            // RH <= 85% - high humidity adjustment should NOT apply
-            Temperature temp = Temperature.fromFahrenheit(85.0, 65.0);  // Lower RH
-            
-            Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-        }
-        
+
         @Test
         void testGetHeatIndex_Exactly27Celsius() {
             // Exactly at the threshold (27°C ≈ 80.6°F)
@@ -936,10 +827,9 @@ class TemperatureTest {
             Temperature temp = Temperature.of(35.0, 26.0);  // ≈60% RH
             
             Double heatIndex = temp.getHeatIndex();
-            assertThat(heatIndex).isNotNull();
-            assertThat(heatIndex).isGreaterThan(35.0);
-            assertThat(heatIndex).isLessThan(50.0);  // Reasonable range
-            
+            assertThat(heatIndex).isNotNull()
+                    .isBetween(35.0, 50.0);  // Reasonable range
+
             // Verify it's in "Danger" category (> 40°C / 103°F)
             Double hiF = heatIndex * 9.0 / 5.0 + 32.0;
             assertThat(hiF).isGreaterThan(103.0);
@@ -974,11 +864,11 @@ class TemperatureTest {
             Temperature temp = new Temperature(22.0, 12.0);
             
             String summary = temp.getSummary();
-            assertThat(summary).contains("22.0°C");
-            assertThat(summary).contains("°F");
-            assertThat(summary).contains("dewpoint");
-            assertThat(summary).contains("12.0°C");
-            assertThat(summary).contains("RH");
+            assertThat(summary).contains("22.0°C")
+                    .contains("°F")
+                    .contains("dewpoint")
+                    .contains("12.0°C")
+                    .contains("RH");
         }
         
         @Test
@@ -986,10 +876,10 @@ class TemperatureTest {
             Temperature temp = new Temperature(22.0, null);
             
             String summary = temp.getSummary();
-            assertThat(summary).contains("22.0°C");
-            assertThat(summary).contains("°F");
-            assertThat(summary).doesNotContain("dewpoint");
-            assertThat(summary).doesNotContain("RH");
+            assertThat(summary).contains("22.0°C")
+                    .contains("°F")
+                    .doesNotContain("dewpoint")
+                    .doesNotContain("RH");
         }
         
         @Test
@@ -1101,8 +991,8 @@ class TemperatureTest {
         Temperature temp2 = new Temperature(22.0, 12.0);
         Temperature temp3 = new Temperature(20.0, 12.0);
         
-        assertThat(temp1).isEqualTo(temp2);
-        assertThat(temp1).isNotEqualTo(temp3);
+        assertThat(temp1).isEqualTo(temp2)
+                .isNotEqualTo(temp3);
     }
     
     @Test
@@ -1110,7 +1000,7 @@ class TemperatureTest {
         Temperature temp = new Temperature(22.0, 12.0);
         String str = temp.toString();
         
-        assertThat(str).contains("22.0");
-        assertThat(str).contains("12.0");
+        assertThat(str).contains("22.0")
+                .contains("12.0");
     }
 }

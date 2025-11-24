@@ -148,7 +148,7 @@ class SkyConditionTest {
     void testBoundary_MinHeight() {
         SkyCondition sky = new SkyCondition(SkyCoverage.OVERCAST, 0, null);
         
-        assertThat(sky.heightFeet()).isEqualTo(0);
+        assertThat(sky.heightFeet()).isZero();
     }
     
     @Test
@@ -543,7 +543,7 @@ class SkyConditionTest {
         SkyCondition sky2 = SkyCondition.of(SkyCoverage.BROKEN, 5000, "CB");
         
         assertThat(sky1).isEqualTo(sky2);
-        assertThat(sky1.hashCode()).isEqualTo(sky2.hashCode());
+        assertThat(sky1.hashCode()).hasSameHashCodeAs(sky2.hashCode());
     }
     
     @Test
@@ -575,9 +575,9 @@ class SkyConditionTest {
         SkyCondition sky = SkyCondition.of(SkyCoverage.BROKEN, 5000, "CB");
         String str = sky.toString();
         
-        assertThat(str).contains("BROKEN");
-        assertThat(str).contains("5000");
-        assertThat(str).contains("CB");
+        assertThat(str).contains("BROKEN")
+                .contains("5000")
+                .contains("CB");
     }
     
     @Test
@@ -585,7 +585,7 @@ class SkyConditionTest {
         SkyCondition sky = SkyCondition.of(SkyCoverage.SCATTERED, 10000);
         String str = sky.toString();
         
-        assertThat(str).contains("SCATTERED");
-        assertThat(str).contains("10000");
+        assertThat(str).contains("SCATTERED")
+                .contains("10000");
     }
 }
