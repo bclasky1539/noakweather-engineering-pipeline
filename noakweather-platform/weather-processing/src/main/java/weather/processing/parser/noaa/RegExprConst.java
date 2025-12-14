@@ -99,7 +99,7 @@ public final class RegExprConst {
     // ^(RVRNO|R(?<name>\\d\\d(?<inden>RLC)?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d\\d\\d\\d))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for runway visual range format
     public static final Pattern RUNWAY_PATTERN = Pattern.compile(
-        "^(RVRNO|R(?<name>\\d{2}(?<inden>RLC)?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)\\s+"
+        "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?\\s+"
     );
 
     /**

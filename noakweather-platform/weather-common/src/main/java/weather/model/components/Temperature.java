@@ -333,7 +333,12 @@ public record Temperature(
         }
         
         // Convert to Fahrenheit for calculation (NOAA formula uses °F)
-        double tf = toFahrenheit();
+        Double tf = toFahrenheit();  // ← Changed from double to Double
+
+        // Add null check for extra safety
+        if (tf == null) {
+            return null;
+        }
         
         // Step 1: Calculate simple heat index (Steadman)
         double simpleHI = 0.5 * (tf + 61.0 + ((tf - 68.0) * 1.2) + (rh * 0.094));

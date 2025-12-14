@@ -186,7 +186,81 @@ class RegExprConstTest {
         assertThat(matcher.group("name")).isEqualTo("06");
         assertThat(matcher.group("lvalue")).isEqualTo("1200");
     }
-    
+
+    @Test
+    void testRunwayPattern_BasicRvr() {
+        String input = "R06/1200FT ";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("06");
+        assertThat(matcher.group("lvalue")).isEqualTo("1200");
+        assertThat(matcher.group("unit")).isEqualTo("FT");
+    }
+
+    @Test
+    void testRunwayPattern_RvrWithTrend() {
+        String input = "R22R/0400N ";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("22R"); // Includes suffix
+        assertThat(matcher.group("inden")).isEqualTo("R");
+        assertThat(matcher.group("lvalue")).isEqualTo("0400");
+        assertThat(matcher.group("unit")).isEqualTo("N");
+    }
+
+    @Test
+    void testRunwayPattern_RvrVariable() {
+        String input = "R23L/0900V6000FT ";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("23L"); // Includes suffix
+        assertThat(matcher.group("inden")).isEqualTo("L");
+        assertThat(matcher.group("lvalue")).isEqualTo("0900");
+        assertThat(matcher.group("high")).isEqualTo("6000");
+        assertThat(matcher.group("unit")).isEqualTo("FT");
+    }
+
+    @Test
+    void testRunwayPattern_RvrWithPrefix() {
+        String input = "R24/P2000N ";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("24");
+        assertThat(matcher.group("low")).startsWith("P");
+        assertThat(matcher.group("lvalue")).isEqualTo("2000");
+        assertThat(matcher.group("unit")).isEqualTo("N");
+    }
+
+    @Test
+    void testRunwayPattern_ClrdStandalone() {
+        // CLRD without any suffix (the case we just fixed!)
+        String input = "R22R/CLRD ";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("22R"); // Includes suffix
+        assertThat(matcher.group("inden")).isEqualTo("R");
+        assertThat(matcher.group("lvalue")).isEqualTo("CLRD");
+        assertThat(matcher.group("unit")).isNull(); // No unit for standalone CLRD
+    }
+
+    @Test
+    void testRunwayPattern_ClrdWithSuffix() {
+        // CLRD with numeric suffix
+        String input = "R34L/CLRD70 ";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("34L"); // Includes suffix
+        assertThat(matcher.group("inden")).isEqualTo("L");
+        assertThat(matcher.group("lvalue")).isEqualTo("CLRD");
+        assertThat(matcher.group("unit")).isEqualTo("70");
+    }
+
     // ========== REMARKS PATTERNS ==========
     
     @Test

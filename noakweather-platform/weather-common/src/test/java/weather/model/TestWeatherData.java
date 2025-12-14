@@ -16,6 +16,8 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
+
 import java.time.Instant;
 
 /**
@@ -25,6 +27,7 @@ import java.time.Instant;
  * @author bclasky1539
  *
  */
+@JsonTypeName("TEST")
 public final class TestWeatherData extends WeatherData {
     
     public TestWeatherData() {

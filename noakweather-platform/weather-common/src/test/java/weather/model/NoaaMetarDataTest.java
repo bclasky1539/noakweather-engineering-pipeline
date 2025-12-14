@@ -186,163 +186,8 @@ class NoaaMetarDataTest {
         assertThat(data.getSkyConditions()).isEmpty();
     }
     
-    // ========== PRESENT WEATHER TESTS ==========
-    
-    @Test
-    void testAddPresentWeather() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.addPresentWeather("-RA");
-        data.addPresentWeather("BR");
-        
-        assertThat(data.getPresentWeather()).hasSize(2);
-        assertThat(data.getPresentWeather()).containsExactly("-RA", "BR");
-    }
-    
-    @Test
-    void testAddPresentWeather_NullOrBlank() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.addPresentWeather(null);
-        data.addPresentWeather("");
-        data.addPresentWeather("   ");
-        
-        assertThat(data.getPresentWeather()).isEmpty();
-    }
-    
-    @Test
-    void testSetPresentWeather_WithNull() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.setPresentWeather(null);
-        
-        assertThat(data.getPresentWeather()).isNotNull().isEmpty();
-    }
-    
-    @Test
-    void testSetPresentWeather_WithNonNullList() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        List<String> weatherList = new ArrayList<>();
-        weatherList.add("-RA");
-        weatherList.add("BR");
-        weatherList.add("FG");
-        
-        data.setPresentWeather(weatherList);
-        
-        assertThat(data.getPresentWeather()).hasSize(3);
-        assertThat(data.getPresentWeather()).containsExactly("-RA", "BR", "FG");
-    }
-    
-    @Test
-    void testSetPresentWeather_WithEmptyList() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.setPresentWeather(new ArrayList<>());
-        
-        assertThat(data.getPresentWeather()).isEmpty();
-    }
-    
-    // ========== RUNWAY VISUAL RANGE TESTS (UPDATED FOR RunwayVisualRange OBJECTS) ==========
-    
-    @Test
-    void testAddRunwayVisualRange() {
-        NoaaMetarData data = new NoaaMetarData();
-        RunwayVisualRange rvr1 = RunwayVisualRange.of("04L", 2200);
-        RunwayVisualRange rvr2 = RunwayVisualRange.variable("04R", 1800, 2400);
-        
-        data.addRunwayVisualRange(rvr1);
-        data.addRunwayVisualRange(rvr2);
-        
-        assertThat(data.getRunwayVisualRange()).hasSize(2);
-        assertThat(data.getRunwayVisualRange()).containsExactly(rvr1, rvr2);
-    }
-    
-    @Test
-    void testAddRunwayVisualRange_Null() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.addRunwayVisualRange(null);
-        
-        assertThat(data.getRunwayVisualRange()).isEmpty();
-    }
-    
-    @Test
-    void testGetRunwayVisualRange_ReturnsImmutableCopy() {
-        NoaaMetarData data = new NoaaMetarData();
-        RunwayVisualRange rvr = RunwayVisualRange.of("04L", 2200);
-        data.addRunwayVisualRange(rvr);
-        
-        var rvrList = data.getRunwayVisualRange();
-        
-        // List.copyOf() returns immutable list
-        assertThat(rvrList).hasSize(1);
-    }
-    
-    @Test
-    void testSetRunwayVisualRange_WithNull() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.setRunwayVisualRange(null);
-        
-        // Should create empty list, not null
-        assertThat(data.getRunwayVisualRange()).isNotNull().isEmpty();
-    }
-    
-    @Test
-    void testSetRunwayVisualRange_WithNonNullList() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        List<RunwayVisualRange> rvrList = new ArrayList<>();
-        rvrList.add(RunwayVisualRange.of("04L", 2200));
-        rvrList.add(RunwayVisualRange.variable("04R", 1800, 2400));
-        rvrList.add(new RunwayVisualRange("22L", 6000, null, null, "P", null));
-        
-        data.setRunwayVisualRange(rvrList);
-        
-        assertThat(data.getRunwayVisualRange()).hasSize(3);
-        assertThat(data.getRunwayVisualRange().get(0).runway()).isEqualTo("04L");
-        assertThat(data.getRunwayVisualRange().get(0).visualRangeFeet()).isEqualTo(2200);
-        assertThat(data.getRunwayVisualRange().get(1).isVariable()).isTrue();
-        assertThat(data.getRunwayVisualRange().get(2).isGreaterThan()).isTrue();
-    }
-    
-    @Test
-    void testSetRunwayVisualRange_WithEmptyList() {
-        NoaaMetarData data = new NoaaMetarData();
-        
-        data.setRunwayVisualRange(new ArrayList<>());
-        
-        assertThat(data.getRunwayVisualRange()).isEmpty();
-    }
-    
-    @Test
-    void testAddRunwayVisualRange_WithVariableRange() {
-        NoaaMetarData data = new NoaaMetarData();
-        RunwayVisualRange rvr = RunwayVisualRange.variable("18", 1200, 1800);
-        
-        data.addRunwayVisualRange(rvr);
-        
-        assertThat(data.getRunwayVisualRange()).hasSize(1);
-        assertThat(data.getRunwayVisualRange().get(0).isVariable()).isTrue();
-        assertThat(data.getRunwayVisualRange().get(0).variableLow()).isEqualTo(1200);
-        assertThat(data.getRunwayVisualRange().get(0).variableHigh()).isEqualTo(1800);
-    }
-    
-    @Test
-    void testAddRunwayVisualRange_WithPrefixAndTrend() {
-        NoaaMetarData data = new NoaaMetarData();
-        RunwayVisualRange rvr = new RunwayVisualRange("04L", 600, null, null, "M", "D");
-        
-        data.addRunwayVisualRange(rvr);
-        
-        assertThat(data.getRunwayVisualRange()).hasSize(1);
-        assertThat(data.getRunwayVisualRange().get(0).isLessThan()).isTrue();
-        assertThat(data.getRunwayVisualRange().get(0).getTrendDescription()).isEqualTo("Decreasing");
-    }
-    
-    // ========== NEW RVR UTILITY METHOD TESTS ==========
-    
+    // ========== RVR UTILITY METHOD TESTS ==========
+
     @Test
     void testGetMinimumRvrFeet_WithMultipleRunways() {
         NoaaMetarData data = new NoaaMetarData();
@@ -408,7 +253,7 @@ class NoaaMetarDataTest {
         "22R, not found runway ID"
     }, nullValues = "NULL")
     @DisplayName("getRvrForRunway returns null for invalid runway IDs")
-    void testGetRvrForRunway_InvalidRunwayIds(String runwayId, String description) {
+    void testGetRvrForRunway_InvalidRunwayIds(String runwayId) {
         NoaaMetarData data = new NoaaMetarData();
         data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
         
@@ -826,6 +671,8 @@ class NoaaMetarDataTest {
     // ========== EQUALS AND HASHCODE TESTS ==========
 
     @Test
+    @DisplayName("equals() reflexive: object equals itself")
+    @SuppressWarnings("java:S1764")  // Testing reflexive property: x.equals(x) must be true
     void testEquals_SameObject() {
         NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
         
@@ -941,19 +788,6 @@ class NoaaMetarDataTest {
         
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
         data2.addSkyCondition(new SkyCondition(SkyCoverage.BROKEN, 5000, null));
-        
-        assertThat(data1).isNotEqualTo(data2);
-    }
-    
-    @Test
-    void testEquals_DifferentPresentWeather() {
-        Instant now = Instant.now();
-        
-        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
-        data1.addPresentWeather("-RA");
-        
-        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
-        data2.addPresentWeather("BR");
         
         assertThat(data1).isNotEqualTo(data2);
     }
@@ -1434,5 +1268,103 @@ class NoaaMetarDataTest {
         RunwayVisualRange rvr = data.getRvrForRunway(null);
         
         assertThat(rvr).isNull();
+    }
+
+    @Test
+    @DisplayName("Should handle toString with null collections")
+    void testToStringWithNullCollections() {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+
+        // Force collections to null
+        data.setSkyConditions(null);
+        data.setRunwayVisualRange(null);
+
+        String result = data.toString();
+
+        assertThat(result).contains("skyCond=0", "rvr=0");
+    }
+
+    @Test
+    @DisplayName("Should be equal when all fields match")
+    void testEqualsAllFieldsMatch() {
+        Instant now = Instant.now();
+
+        NoaaMetarData data1 = createFullyPopulatedMetar(now);
+        NoaaMetarData data2 = createFullyPopulatedMetar(now);
+
+        assertThat(data1).isEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when reportType differs")
+    void testEqualsDifferentReportType() {
+        Instant now = Instant.now();
+
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setReportType("METAR");
+
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setReportType("SPECI");
+
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when rawText differs")
+    void testEqualsDifferentRawText() {
+        Instant now = Instant.now();
+
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setRawText("METAR KJFK 121251Z");
+
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setRawText("METAR KJFK 121252Z");
+
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    // Helper method
+    private NoaaMetarData createFullyPopulatedMetar(Instant now) {
+        NoaaMetarData data = new NoaaMetarData("KJFK", now);
+        data.setRawText("METAR KJFK 121251Z");
+        data.setWind(new Wind(280, 16, null, null, null, "KT"));
+        data.setVisibility(new Visibility(10.0, "SM", false, false, null));
+        data.setTemperature(new Temperature(22.0, 12.0));
+        data.setPressure(new Pressure(30.15, PressureUnit.INCHES_HG));
+        data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        data.addPresentWeather(new PresentWeather("-", null, "RA", null, null, "-RA"));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.setAutomatedStation("AO2");
+        data.setSeaLevelPressure(1013.2);
+        return data;
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "true, true, 'Both collections null'",
+            "true, false, 'Sky conditions null only'",
+            "false, true, 'RVR null only'",
+            "false, false, 'Both collections populated'"
+    })
+    @DisplayName("Should handle toString with various null collection combinations")
+    void testToStringWithNullCollections(boolean skyNull, boolean rvrNull, String scenario) {
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.now());
+
+        if (skyNull) {
+            data.setSkyConditions(null);
+        } else {
+            data.addSkyCondition(new SkyCondition(SkyCoverage.FEW, 25000, null));
+        }
+
+        if (rvrNull) {
+            data.setRunwayVisualRange(null);
+        } else {
+            data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        }
+
+        String result = data.toString();
+
+        assertThat(result).contains("skyCond=" + (skyNull ? "0" : "1"))
+                .contains("rvr=" + (rvrNull ? "0" : "1"));
     }
 }

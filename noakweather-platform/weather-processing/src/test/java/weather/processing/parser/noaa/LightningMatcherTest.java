@@ -16,6 +16,7 @@
  */
 package weather.processing.parser.noaa;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -186,6 +187,7 @@ class LightningMatcherTest {
     }
     
     @Test
+    @DisplayName("hasType should return false for all types when types is null")
     void testHasType_WithNullTypes() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
         
@@ -193,8 +195,38 @@ class LightningMatcherTest {
         // types is null, so hasType should return false
         assertThat(matcher.hasType("IC")).isFalse();
         assertThat(matcher.hasType("CC")).isFalse();
+        assertThat(matcher.hasType("CG")).isFalse();
+        assertThat(matcher.hasType("CA")).isFalse();
+        assertThat(matcher.hasType("CW")).isFalse();
     }
-    
+
+    @Test
+    @DisplayName("All type groups should return null when types is null")
+    void testAllTypeGroups_WhenTypesIsNull() {
+        LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
+
+        assertThat(matcher.find()).isTrue();
+
+        // All virtual type groups should return null
+        assertThat(matcher.group("typeic")).isNull();
+        assertThat(matcher.group("typecc")).isNull();
+        assertThat(matcher.group("typecg")).isNull();
+        assertThat(matcher.group("typeca")).isNull();
+        assertThat(matcher.group("typecw")).isNull();
+    }
+
+    @Test
+    @DisplayName("hasAnyTypes should return false when no match is found")
+    void testHasAnyTypes_NoMatchFound() {
+        LightningMatcher matcher = new LightningMatcher("NO LIGHTNING HERE");
+
+        // find() returns false, types remains null
+        assertThat(matcher.find()).isFalse();
+
+        // hasAnyTypes should return false
+        assertThat(matcher.hasAnyTypes()).isFalse();
+    }
+
     @Test
     void testHasType_PartialMatch() {
         LightningMatcher matcher = new LightningMatcher("LTGCG OHD ");
