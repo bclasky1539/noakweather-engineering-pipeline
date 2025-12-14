@@ -17,8 +17,13 @@
 package weather.model;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import weather.model.components.SkyCondition;
+import weather.model.components.Visibility;
+
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -40,7 +45,12 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      * Type of report (METAR, TAF, PIREP, etc.)
      */
     private String reportType;
-    
+
+    /**
+     * Sky conditions (cloud layers)
+     */
+    private List<SkyCondition> skyConditions = new ArrayList<>();
+
     /**
      * Raw text of the weather report as received from NOAA
      */
@@ -73,11 +83,13 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     
     public NoaaWeatherData() {
         super();
+        this.skyConditions = new ArrayList<>();
     }
     
     public NoaaWeatherData(String stationId, Instant observationTime, String reportType) {
         super(WeatherDataSource.NOAA, stationId, observationTime);
         this.reportType = reportType;
+        this.skyConditions = new ArrayList<>();
     }
     
     public String getReportType() {
@@ -86,6 +98,33 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     
     public void setReportType(String reportType) {
         this.reportType = reportType;
+    }
+
+    /**
+     * Factory method for CAVOK visibility.
+     * CAVOK (Ceiling And Visibility OK) is an ICAO aviation-specific term.
+     */
+    public void setVisibilityCavok() {
+        this.setVisibility(Visibility.cavok());
+    }
+
+    /**
+     * Get sky conditions as an immutable copy.
+     *
+     * @return immutable copy of sky conditions list
+     */
+    public List<SkyCondition> getSkyConditions() {
+        return List.copyOf(skyConditions);
+    }
+
+    public void setSkyConditions(List<SkyCondition> skyConditions) {
+        this.skyConditions = skyConditions != null ? skyConditions : new ArrayList<>();
+    }
+
+    public void addSkyCondition(SkyCondition skyCondition) {
+        if (skyCondition != null) {
+            this.skyConditions.add(skyCondition);
+        }
     }
     
     public String getRawText() {

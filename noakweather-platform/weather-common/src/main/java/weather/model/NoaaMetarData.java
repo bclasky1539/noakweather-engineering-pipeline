@@ -20,8 +20,6 @@ import weather.model.components.*;
 import weather.model.components.remark.*;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 /**
@@ -37,43 +35,6 @@ import java.util.Objects;
  * 
  */
 public class NoaaMetarData extends NoaaWeatherData {
-    
-    // ========== MAIN BODY WEATHER COMPONENTS ==========
-    
-    /**
-     * Wind information (direction, speed, gusts, variability)
-     */
-    private Wind wind;
-    
-    /**
-     * Visibility information (distance, unit, special conditions)
-     */
-    private Visibility visibility;
-    
-    /**
-     * Temperature and dewpoint information
-     */
-    private Temperature temperature;
-    
-    /**
-     * Atmospheric pressure information
-     */
-    private Pressure pressure;
-    
-    /**
-     * Sky condition layers (cloud coverage, height, type)
-     */
-    private List<SkyCondition> skyConditions;
-    
-    /**
-     * Present weather phenomena (rain, snow, fog, etc.)
-     */
-    private List<String> presentWeather;
-    
-    /**
-     * Runway visual range information
-     */
-    private List<RunwayVisualRange> runwayVisualRange;
     
     // ========== REMARKS SECTION COMPONENTS ==========
     
@@ -137,107 +98,12 @@ public class NoaaMetarData extends NoaaWeatherData {
     public NoaaMetarData() {
         super();
         setReportType("METAR");
-        this.skyConditions = new ArrayList<>();
-        this.presentWeather = new ArrayList<>();
-        this.runwayVisualRange = new ArrayList<>();
         this.noSignificantChange = false;
     }
     
     public NoaaMetarData(String stationId, Instant observationTime) {
         super(stationId, observationTime, "METAR");
-        this.skyConditions = new ArrayList<>();
-        this.presentWeather = new ArrayList<>();
-        this.runwayVisualRange = new ArrayList<>();
         this.noSignificantChange = false;
-    }
-    
-    public Wind getWind() {
-        return wind;
-    }
-    
-    public void setWind(Wind wind) {
-        this.wind = wind;
-    }
-    
-    public Visibility getVisibility() {
-        return visibility;
-    }
-    
-    public void setVisibility(Visibility visibility) {
-        this.visibility = visibility;
-    }
-    
-    public Temperature getTemperature() {
-        return temperature;
-    }
-    
-    public void setTemperature(Temperature temperature) {
-        this.temperature = temperature;
-    }
-    
-    public Pressure getPressure() {
-        return pressure;
-    }
-    
-    public void setPressure(Pressure pressure) {
-        this.pressure = pressure;
-    }
-    
-    /**
-     * Get sky conditions as an immutable copy.
-     * 
-     * @return immutable copy of sky conditions list
-     */
-    public List<SkyCondition> getSkyConditions() {
-        return List.copyOf(skyConditions);
-    }
-    
-    public void setSkyConditions(List<SkyCondition> skyConditions) {
-        this.skyConditions = skyConditions != null ? skyConditions : new ArrayList<>();
-    }
-    
-    public void addSkyCondition(SkyCondition skyCondition) {
-        if (skyCondition != null) {
-            this.skyConditions.add(skyCondition);
-        }
-    }
-    
-    /**
-     * Get present weather as an immutable copy.
-     * 
-     * @return immutable copy of present weather list
-     */
-    public List<String> getPresentWeather() {
-        return List.copyOf(presentWeather);
-    }
-    
-    public void setPresentWeather(List<String> presentWeather) {
-        this.presentWeather = presentWeather != null ? presentWeather : new ArrayList<>();
-    }
-    
-    public void addPresentWeather(String weather) {
-        if (weather != null && !weather.isBlank()) {
-            this.presentWeather.add(weather);
-        }
-    }
-    
-    /**
-     * Get runway visual range as an immutable copy.
-     * 
-     * @return immutable copy of runway visual range list
-     */
-    public List<RunwayVisualRange> getRunwayVisualRange() {
-        return List.copyOf(runwayVisualRange);
-    }
-    
-    public void setRunwayVisualRange(List<RunwayVisualRange> runwayVisualRange) {
-        this.runwayVisualRange = runwayVisualRange != null ? runwayVisualRange : new ArrayList<>();
-    }
-    
-    public void addRunwayVisualRange(RunwayVisualRange rvr) {
-        if (rvr != null) {
-            this.runwayVisualRange.add(rvr);
-        }
     }
     
     public PeakWind getPeakWind() {
@@ -336,11 +202,11 @@ public class NoaaMetarData extends NoaaWeatherData {
      * @return ceiling in feet, or null if no ceiling
      */
     public Integer getCeilingFeet() {
-        if (skyConditions == null || skyConditions.isEmpty()) {
+        if (getSkyConditions() == null || getSkyConditions().isEmpty()) {
             return null;
         }
         
-        return skyConditions.stream()
+        return getSkyConditions().stream()
             .filter(SkyCondition::isCeiling)
             .map(SkyCondition::heightFeet)
             .filter(Objects::nonNull)
@@ -354,7 +220,7 @@ public class NoaaMetarData extends NoaaWeatherData {
      * @return true if can determine flight category
      */
     public boolean hasFlightCategoryData() {
-        return visibility != null && !skyConditions.isEmpty();
+        return getVisibility() != null && !getSkyConditions().isEmpty();
     }
     
     /**
@@ -363,11 +229,11 @@ public class NoaaMetarData extends NoaaWeatherData {
      * @return minimum RVR in feet, or null if no RVR data
      */
     public Integer getMinimumRvrFeet() {
-        if (runwayVisualRange == null || runwayVisualRange.isEmpty()) {
+        if (getRunwayVisualRange() == null || getRunwayVisualRange().isEmpty()) {
             return null;
         }
         
-        return runwayVisualRange.stream()
+        return getRunwayVisualRange().stream()
             .filter(rvr -> !rvr.isLessThan()) // Exclude "less than" values for conservative estimate
             .map(rvr -> rvr.isVariable() ? rvr.variableLow() : rvr.visualRangeFeet())
             .filter(Objects::nonNull)
@@ -382,11 +248,11 @@ public class NoaaMetarData extends NoaaWeatherData {
      * @return RVR for the runway, or null if not found
      */
     public RunwayVisualRange getRvrForRunway(String runwayId) {
-        if (runwayVisualRange == null || runwayId == null) {
+        if (getRunwayVisualRange() == null || runwayId == null) {
             return null;
         }
         
-        return runwayVisualRange.stream()
+        return getRunwayVisualRange().stream()
             .filter(rvr -> rvr.runway().equalsIgnoreCase(runwayId))
             .findFirst()
             .orElse(null);
@@ -397,14 +263,14 @@ public class NoaaMetarData extends NoaaWeatherData {
         StringBuilder sb = new StringBuilder("METAR ");
         sb.append(getStationId()).append(" ");
         
-        if (wind != null) {
-            sb.append("Wind: ").append(wind.getCardinalDirection()).append(" ");
+        if (getWind() != null) {
+            sb.append("Wind: ").append(getWind().getCardinalDirection()).append(" ");
         }
-        if (visibility != null) {
-            sb.append("Vis: ").append(visibility.distanceValue()).append(visibility.unit()).append(" ");
+        if (getVisibility() != null) {
+            sb.append("Vis: ").append(getVisibility().distanceValue()).append(getVisibility().unit()).append(" ");
         }
-        if (temperature != null) {
-            sb.append("Temp: ").append(temperature.celsius()).append("°C ");
+        if (getTemperature() != null) {
+            sb.append("Temp: ").append(getTemperature().celsius()).append("°C ");
         }
         
         return sb.toString().trim();
@@ -413,10 +279,10 @@ public class NoaaMetarData extends NoaaWeatherData {
     @Override
     public String toString() {
         return String.format(
-            "NoaaMetarData{station=%s, time=%s, wind=%s, vis=%s, temp=%s, pressure=%s, skyCond=%d, rvr=%d}", 
-            getStationId(), getObservationTime(), wind, visibility, temperature, pressure,
-            skyConditions != null ? skyConditions.size() : 0,
-            runwayVisualRange != null ? runwayVisualRange.size() : 0  // ← ADD THIS LINE
+            "NoaaMetarData{station=%s, time=%s, wind=%s, vis=%s, temp=%s, pressure=%s, skyCond=%d, rvr=%d}",
+            getStationId(), getObservationTime(), getWind(), getVisibility(), getTemperature(), getPressure(),
+            getSkyConditions() != null ? getSkyConditions().size() : 0,
+            getRunwayVisualRange() != null ? getRunwayVisualRange().size() : 0
         );
     }
     
@@ -446,13 +312,13 @@ public class NoaaMetarData extends NoaaWeatherData {
         
         // Compare NoaaMetarData-specific fields
         return noSignificantChange == that.noSignificantChange &&
-               Objects.equals(wind, that.wind) &&
-               Objects.equals(visibility, that.visibility) &&
-               Objects.equals(temperature, that.temperature) &&
-               Objects.equals(pressure, that.pressure) &&
-               Objects.equals(skyConditions, that.skyConditions) &&
-               Objects.equals(presentWeather, that.presentWeather) &&
-               Objects.equals(runwayVisualRange, that.runwayVisualRange) &&
+               Objects.equals(getWind(), that.getWind()) &&
+               Objects.equals(getVisibility(), that.getVisibility()) &&
+               Objects.equals(getTemperature(), that.getTemperature()) &&
+               Objects.equals(getPressure(), that.getPressure()) &&
+               Objects.equals(getSkyConditions(), that.getSkyConditions()) &&
+               Objects.equals(getPresentWeather(), that.getPresentWeather()) &&
+               Objects.equals(getRunwayVisualRange(), that.getRunwayVisualRange()) &&
                Objects.equals(peakWind, that.peakWind) &&
                Objects.equals(windShift, that.windShift) &&
                Objects.equals(automatedStation, that.automatedStation) &&
@@ -474,13 +340,13 @@ public class NoaaMetarData extends NoaaWeatherData {
             getReportType(),
             getRawText(),
             // NoaaMetarData fields
-            wind,
-            visibility,
-            temperature,
-            pressure,
-            skyConditions,
-            presentWeather,
-            runwayVisualRange,
+            getWind(),
+            getVisibility(),
+            getTemperature(),
+            getPressure(),
+            getSkyConditions(),
+            getPresentWeather(),
+            getRunwayVisualRange(),
             peakWind,
             windShift,
             automatedStation,

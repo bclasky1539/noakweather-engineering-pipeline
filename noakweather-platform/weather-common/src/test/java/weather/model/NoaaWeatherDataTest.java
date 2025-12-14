@@ -24,16 +24,16 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import weather.model.components.SkyCondition;
+import weather.model.enums.SkyCoverage;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -351,5 +351,207 @@ class NoaaWeatherDataTest {
         data.setReportType(null);
         
         assertEquals("NOAA", data.getDataType());
+    }
+
+    @Test
+    @DisplayName("Should set CAVOK visibility")
+    void testSetVisibilityCavok() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", Instant.now(), "METAR");
+
+        data.setVisibilityCavok();
+
+        assertNotNull(data.getVisibility());
+        assertTrue(data.getVisibility().isCavok());
+        assertEquals("CAVOK", data.getVisibility().specialCondition());
+    }
+
+    // ========== SKY CONDITION TESTS ==========
+
+    @Test
+    @DisplayName("Should add sky condition")
+    void testAddSkyCondition() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        SkyCondition skyCondition = SkyCondition.of(SkyCoverage.BROKEN, 5000);
+
+        data.addSkyCondition(skyCondition);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(1);
+        assertThat(skyConditions.get(0)).isEqualTo(skyCondition);
+    }
+
+    @Test
+    @DisplayName("Should add multiple sky conditions")
+    void testAddMultipleSkyConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        SkyCondition few = SkyCondition.of(SkyCoverage.FEW, 1500);
+        SkyCondition sct = SkyCondition.of(SkyCoverage.SCATTERED, 4000);
+        SkyCondition bkn = SkyCondition.of(SkyCoverage.BROKEN, 8000);
+
+        data.addSkyCondition(few);
+        data.addSkyCondition(sct);
+        data.addSkyCondition(bkn);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(3);
+        assertThat(skyConditions.get(0)).isEqualTo(few);
+        assertThat(skyConditions.get(1)).isEqualTo(sct);
+        assertThat(skyConditions.get(2)).isEqualTo(bkn);
+    }
+
+    @Test
+    @DisplayName("Should not add null sky condition")
+    void testAddNullSkyCondition() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        data.addSkyCondition(null);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should get sky conditions as immutable copy")
+    void testGetSkyConditionsImmutable() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        SkyCondition skyCondition = SkyCondition.of(SkyCoverage.BROKEN, 5000);
+        data.addSkyCondition(skyCondition);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+
+        // Verify it's an immutable copy
+        SkyCondition additionalCondition = SkyCondition.of(SkyCoverage.OVERCAST, 2000);
+        assertThrows(UnsupportedOperationException.class, () ->
+                        skyConditions.add(additionalCondition)
+        );
+    }
+
+    @Test
+    @DisplayName("Should set sky conditions with valid list")
+    void testSetSkyConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        List<SkyCondition> newConditions = List.of(
+                SkyCondition.of(SkyCoverage.FEW, 2500),
+                SkyCondition.of(SkyCoverage.SCATTERED, 6000)
+        );
+
+        data.setSkyConditions(newConditions);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(2);
+        assertThat(skyConditions.get(0).coverage()).isEqualTo(SkyCoverage.FEW);
+        assertThat(skyConditions.get(1).coverage()).isEqualTo(SkyCoverage.SCATTERED);
+    }
+
+    @Test
+    @DisplayName("Should set sky conditions with null list")
+    void testSetSkyConditionsNull() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        // First add some conditions
+        data.addSkyCondition(SkyCondition.of(SkyCoverage.BROKEN, 5000));
+
+        // Then set to null (should clear the list)
+        data.setSkyConditions(null);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should set sky conditions with empty list")
+    void testSetSkyConditionsEmpty() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        // First add some conditions
+        data.addSkyCondition(SkyCondition.of(SkyCoverage.BROKEN, 5000));
+
+        // Then set to empty list
+        data.setSkyConditions(new ArrayList<>());
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should handle sky conditions with cloud types")
+    void testAddSkyConditionWithCloudType() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        SkyCondition cb = SkyCondition.of(SkyCoverage.BROKEN, 3000, "CB");
+
+        data.addSkyCondition(cb);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(1);
+        assertThat(skyConditions.get(0).cloudType()).isEqualTo("CB");
+        assertThat(skyConditions.get(0).isCumulonimbus()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should handle clear sky conditions")
+    void testAddClearSkyCondition() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        SkyCondition clear = SkyCondition.clear();
+
+        data.addSkyCondition(clear);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(1);
+        assertThat(skyConditions.get(0).isClear()).isTrue();
+        assertThat(skyConditions.get(0).heightFeet()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should handle vertical visibility")
+    void testAddVerticalVisibility() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        SkyCondition vv = SkyCondition.verticalVisibility(800);
+
+        data.addSkyCondition(vv);
+
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(1);
+        assertThat(skyConditions.get(0).coverage()).isEqualTo(SkyCoverage.VERTICAL_VISIBILITY);
+        assertThat(skyConditions.get(0).heightFeet()).isEqualTo(800);
+        assertThat(skyConditions.get(0).isCeiling()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should add sky conditions after construction")
+    void testAddSkyConditionsAfterConstruction() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        // Initially empty
+        assertThat(data.getSkyConditions()).isEmpty();
+
+        // Add conditions
+        data.addSkyCondition(SkyCondition.of(SkyCoverage.FEW, 2000));
+        data.addSkyCondition(SkyCondition.of(SkyCoverage.BROKEN, 6000));
+
+        assertThat(data.getSkyConditions()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Should replace sky conditions when setting new list")
+    void testReplaceSkyConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        // Add initial conditions
+        data.addSkyCondition(SkyCondition.of(SkyCoverage.FEW, 1000));
+        data.addSkyCondition(SkyCondition.of(SkyCoverage.SCATTERED, 3000));
+        assertThat(data.getSkyConditions()).hasSize(2);
+
+        // Replace with new list
+        List<SkyCondition> newConditions = List.of(
+                SkyCondition.of(SkyCoverage.BROKEN, 5000),
+                SkyCondition.of(SkyCoverage.OVERCAST, 8000),
+                SkyCondition.of(SkyCoverage.VERTICAL_VISIBILITY, 400)
+        );
+        data.setSkyConditions(newConditions);
+
+        // Should have new conditions only
+        List<SkyCondition> skyConditions = data.getSkyConditions();
+        assertThat(skyConditions).hasSize(3);
+        assertThat(skyConditions.get(0).coverage()).isEqualTo(SkyCoverage.BROKEN);
+        assertThat(skyConditions.get(1).coverage()).isEqualTo(SkyCoverage.OVERCAST);
+        assertThat(skyConditions.get(2).coverage()).isEqualTo(SkyCoverage.VERTICAL_VISIBILITY);
     }
 }

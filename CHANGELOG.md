@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.6.0-SNAPSHOT - December 13, 2025
+
+#### Enhanced METAR Parser Implementation - Main Body Components Complete
+
+**Added:**
+- **METAR Parser Components** (5 major handlers implemented)
+    - `handlePresentWeather()` - Complete present weather parsing
+    - `handleSkyCondition()` - Cloud layer parsing
+    - `handleTempDewpoint()` - Temperature and dewpoint parsing
+    - `handleAltimeter()` - Pressure/altimeter parsing
+    - `RunwayVisualRange` - Enhanced parsing support
+
+- **Value Object Components** (weather-common)
+    - `PresentWeather` record - Immutable weather phenomenon representation
+        - Parse from METAR code (e.g., "-SHRA", "BCFG")
+        - Comprehensive query methods (isPrecipitation, isObscuration, etc.)
+        - Human-readable descriptions
+        - Primary phenomenon identification
+
+    - `SkyCondition` record - Immutable cloud layer representation
+        - Coverage types with descriptions
+        - Height in feet above ground level
+        - Optional cloud type (CB/TCU)
+        - Ceiling identification
+        - Query methods (isCeiling, isCumulonimbus, etc.)
+
+**Enhanced:**
+- **Architecture Refactoring** (improved inheritance hierarchy)
+    - Moved `Temperature` from `NoaaMetarData` → `WeatherData` (universal)
+    - Moved `Pressure` from `NoaaMetarData` → `WeatherData` (universal)
+    - Moved `SkyCondition` list from `NoaaMetarData` → `NoaaWeatherData` (NOAA-specific)
+    - Fixed duplicate `presentWeather` field bug in `NoaaMetarData`
+    - Consistent pattern: universal components in `WeatherData`, NOAA-specific in `NoaaWeatherData`
+
+- **Pressure Component** (weather-common)
+    - Fixed null pointer dereference in `getHeatIndex()` method
+    - Improved type safety (Double vs double for conversions)
+    - Added explicit null checks for safety
+
+- **Temperature Component** (weather-common)
+    - Heat index calculation with NOAA's official algorithm
+    - Relative humidity using August-Roche-Magnus approximation
+    - Icing condition detection
+    - Fog likelihood assessment
+    - Comprehensive aviation and meteorological query methods
+
+**Testing:**
+- **weather-common**: 1,625 tests (+21 tests for Pressure, +16 for Temperature)
+    - 100% instruction coverage for new components
+    - All architectural changes validated
+
+- **weather-processing**: 186 tests (+23 new METAR component tests)
+    - PresentWeather: 20 parameterized scenarios + edge cases
+    - SkyCondition: 15 parameterized scenarios + OCR errors
+    - Temperature: 14 parameterized scenarios + conversions + query methods
+    - Altimeter: 13 parameterized scenarios + edge cases
+    - Overall parser coverage: 84% instruction / 73% branch
+    - All missing coverage is defensive code (null checks, exception handlers)
+
+**METAR Components Now Supported:**
+1. Station ID & observation time (existing)
+2. Report type & modifiers (existing)
+3. Wind (direction, speed, gusts, variability) (existing)
+4. Visibility (statute miles, meters, special conditions) (existing)
+5. Runway Visual Range with CLRD flag (enhanced)
+6. **Present Weather** - intensity, descriptor, precipitation, obscuration (NEW)
+7. **Sky Conditions** - FEW/SCT/BKN/OVC/VV with heights and cloud types (NEW)
+8. **Temperature/Dewpoint** - with negative sign handling (NEW)
+9. **Altimeter** - multiple formats (A/Q/QNH/INS) (NEW)
+
+**Technical Details:**
+- Real-world METAR parsing validated with production examples
+- All handlers follow consistent architecture pattern
+
+**Notes:**
+- Main METAR body parsing complete and production-ready
+- Remarks section parsing deferred to next iteration
+- Build time: ~3 seconds for weather-common, ~2.5 seconds for weather-processing
+- Zero test failures across all modules
+
 ### Version 1.5.0-SNAPSHOT - November 21, 2025
 
 #### Domain Model Refinement & Test Coverage Excellence

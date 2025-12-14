@@ -35,8 +35,9 @@ class MetarPatternRegistryTest {
     void testGetMainHandlersReturnsIndexedLinkedHashMap() {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
         
-        assertThat(handlers).isNotNull();
-        assertThat(handlers).isInstanceOf(IndexedLinkedHashMap.class);
+        assertThat(handlers)
+                .isNotNull()
+                .isInstanceOf(IndexedLinkedHashMap.class);
     }
     
     @Test
@@ -44,11 +45,12 @@ class MetarPatternRegistryTest {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
         
         // Should contain key patterns
-        assertThat(handlers).containsKey(RegExprConst.STATION_DAY_TIME_VALTMPER_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.WIND_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.VISIBILITY_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.TEMP_DEWPOINT_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.ALTIMETER_PATTERN);
+        assertThat(handlers)
+                .containsKey(RegExprConst.STATION_DAY_TIME_VALTMPER_PATTERN)
+                .containsKey(RegExprConst.WIND_PATTERN)
+                .containsKey(RegExprConst.VISIBILITY_PATTERN)
+                .containsKey(RegExprConst.TEMP_DEWPOINT_PATTERN)
+                .containsKey(RegExprConst.ALTIMETER_PATTERN);
     }
     
     @Test
@@ -70,16 +72,24 @@ class MetarPatternRegistryTest {
     @Test
     void testGetMainHandlersIndexAccess() {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
-        
+
         // Test index-based access (unique feature of IndexedLinkedHashMap)
         Pattern firstPattern = handlers.getKeyAtIndex(0);
         assertThat(firstPattern).isNotNull();
-        
+
         MetarPatternHandler firstHandler = handlers.getValueAtIndex(0);
         assertThat(firstHandler).isNotNull();
-        
-        // First pattern should be month/day/year (optional)
-        assertThat(firstPattern).isEqualTo(RegExprConst.MONTH_DAY_YEAR_PATTERN);
+
+        // First pattern should be reportType (METAR|SPECI)
+        assertThat(firstPattern.pattern()).isEqualTo("^(METAR|SPECI)\\s+");
+        assertThat(firstHandler.handlerName()).isEqualTo("reportType");
+        assertThat(firstHandler.canRepeat()).isFalse();
+
+        // Second pattern should be month/day/year (what used to be first)
+        Pattern secondPattern = handlers.getKeyAtIndex(1);
+        assertThat(secondPattern).isEqualTo(RegExprConst.MONTH_DAY_YEAR_PATTERN);
+        MetarPatternHandler secondHandler = handlers.getValueAtIndex(1);
+        assertThat(secondHandler.handlerName()).isEqualTo("monthDayYear");
     }
     
     @Test
@@ -99,8 +109,9 @@ class MetarPatternRegistryTest {
     void testGetRemarksHandlersReturnsIndexedLinkedHashMap() {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
         
-        assertThat(handlers).isNotNull();
-        assertThat(handlers).isInstanceOf(IndexedLinkedHashMap.class);
+        assertThat(handlers)
+                .isNotNull()
+                .isInstanceOf(IndexedLinkedHashMap.class);
     }
     
     @Test
@@ -108,10 +119,11 @@ class MetarPatternRegistryTest {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
         
         // Should contain key remarks patterns
-        assertThat(handlers).containsKey(RegExprConst.AUTO_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.SEALVL_PRESS_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.PEAK_WIND_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.TEMP_1HR_PATTERN);
+        assertThat(handlers)
+                .containsKey(RegExprConst.AUTO_PATTERN)
+                .containsKey(RegExprConst.SEALVL_PRESS_PATTERN)
+                .containsKey(RegExprConst.PEAK_WIND_PATTERN)
+                .containsKey(RegExprConst.TEMP_1HR_PATTERN);
     }
     
     @Test
@@ -119,7 +131,7 @@ class MetarPatternRegistryTest {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
         
         // Test that we can access by index
-        assertThat(handlers.size()).isGreaterThan(0);
+        assertThat(handlers).hasSizeGreaterThan(0);
         
         Pattern firstPattern = handlers.getKeyAtIndex(0);
         assertThat(firstPattern)
@@ -132,8 +144,9 @@ class MetarPatternRegistryTest {
     void testGetGroupHandlersReturnsIndexedLinkedHashMap() {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getGroupHandlers();
         
-        assertThat(handlers).isNotNull();
-        assertThat(handlers).isInstanceOf(IndexedLinkedHashMap.class);
+        assertThat(handlers)
+                .isNotNull()
+                .isInstanceOf(IndexedLinkedHashMap.class);
     }
     
     @Test
@@ -141,9 +154,10 @@ class MetarPatternRegistryTest {
         IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getGroupHandlers();
         
         // Should contain TAF group patterns
-        assertThat(handlers).containsKey(RegExprConst.TAF_STR_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.GROUP_BECMG_TEMPO_PROB_PATTERN);
-        assertThat(handlers).containsKey(RegExprConst.GROUP_FM_PATTERN);
+        assertThat(handlers)
+                .containsKey(RegExprConst.TAF_STR_PATTERN)
+                .containsKey(RegExprConst.GROUP_BECMG_TEMPO_PROB_PATTERN)
+                .containsKey(RegExprConst.GROUP_FM_PATTERN);
     }
     
     @Test
@@ -186,7 +200,7 @@ class MetarPatternRegistryTest {
             assertThat(handler).isNotNull();
             
             // Verify consistency: getting by key should match getting by index
-            assertThat(handlers.get(pattern)).isEqualTo(handler);
+            assertThat(handlers).containsEntry(pattern, handler);
         }
     }
 }
