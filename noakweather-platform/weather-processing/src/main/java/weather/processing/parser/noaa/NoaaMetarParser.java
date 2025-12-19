@@ -19,6 +19,8 @@ package weather.processing.parser.noaa;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.*;
+import weather.model.components.remark.*;
+import weather.model.enums.AutomatedStationType;
 import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.WeatherParser;
@@ -32,6 +34,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static weather.processing.parser.noaa.RegExprConst.*;
 
 /**
  * Parser for NOAA METAR (Meteorological Aerodrome Report) data.
@@ -108,7 +112,14 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             
             // Process remark handlers if present
             if (!remarks.isEmpty()) {
+                String originalRemarks = remarks;
                 remarks = parseWithHandlers(remarks, remarkHandlers, "REMARK");
+                //System.out.println("\n=== DEBUG INFO ===");
+                //System.out.println("Remarks: " + remarks);
+                //System.out.println("originalRemarks: " + originalRemarks);
+                //System.out.println("=== DEBUG INFO ===");
+                // Also do sequential parsing of remarks for components not in registry
+                handleRemarks(originalRemarks, (NoaaMetarData) weatherData);
             }
             
             // Validate that we extracted minimum required data
@@ -122,11 +133,11 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             // Log any unparsed tokens
             if (LOGGER.isDebugEnabled() && !mainBody.trim().isEmpty()) {
                     LOGGER.debug("Unparsed main body tokens: '{}'", mainBody.trim());
-                }
+            }
 
             if (LOGGER.isDebugEnabled() && !remarks.trim().isEmpty()) {
                     LOGGER.debug("Unparsed remark tokens: '{}'", remarks.trim());
-                }
+            }
 
             return ParseResult.success(weatherData);
             
@@ -314,8 +325,15 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
                 case "unparsed" -> handleUnparsed(matcher);
                 // Remarks handlers
                 case "autoType" -> handleAutoType(matcher);
-                case "seaLevelPressure" -> handleSeaLevelPressure(matcher);
-                case "peakWind" -> handlePeakWind(matcher);
+                case "seaLevelPressure" -> handleRemarkRegistry(matcher, "Sea level pressure");
+                case "hourlyTemperature" -> handleRemarkRegistry(matcher, "Hourly temperature");
+                case "peakWind" -> handleRemarkRegistry(matcher, "Peak wind");
+                case "windShift" -> handleRemarkRegistry(matcher, "Wind shift");
+                case "variableVis" -> handleRemarkRegistry(matcher, "Variable visibility");
+                case "towerSurfaceVis" -> handleRemarkRegistry(matcher, "Tower/Surface visibility");
+                case "precip1Hour" -> handleRemarkRegistry(matcher, "Hourly precipitation");
+                case "precip3Hr24Hr" -> handleRemarkRegistry(matcher, "Multi-hour precipitation");
+                case "hailSize" -> handleRemarkRegistry(matcher, "Hail size");
                 default -> LOGGER.debug("No handler implemented for: {}", handlerName);
             }
         } catch (Exception e) {
@@ -941,7 +959,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
      * Parse cloud height from METAR format.
      * Heights are encoded as hundreds of feet (e.g., "050" = 5000 feet).
      *
-     * @param heightStr the height string from METAR (may be null)
+     * @param heightStr the height string from METAR (could be null)
      * @param coverage the sky coverage (used for validation)
      * @return height in feet, or null if not applicable
      */
@@ -979,7 +997,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
      * Parse cloud type from METAR format.
      * Common types: CB (cumulonimbus), TCU (towering cumulus).
      *
-     * @param cloudTypeStr the cloud type string from METAR (may be null)
+     * @param cloudTypeStr the cloud type string from METAR (could be null)
      * @return cloud type, or null if not present
      */
     private String parseCloudType(String cloudTypeStr) {
@@ -1223,6 +1241,809 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         return parseHectopascals(value);
     }
 
+    /**
+     * Generic handler for registry-based remark patterns.
+     * This is a stub that logs when a pattern is matched by the registry.
+     * The actual parsing is done by sequential handlers in handleRemarks().
+     *
+     * @param matcher The regex matcher with captured groups
+     * @param remarkType The type of remark for logging
+     */
+    private void handleRemarkRegistry(Matcher matcher, String remarkType) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("{} pattern matched: {}", remarkType, matcher.group(0));
+        }
+    }
+
+    /**
+     * Handle automated station type from remarks (AO1 or AO2).
+     *
+     * This is called by the pattern registry when AUTO_PATTERN matches.
+     * The actual work is delegated to handleAutomatedStationType which
+     * can be called standalone for sequential parsing.
+     *
+     * @param matcher The regex matcher with captured groups
+     */
+    private void handleAutoType(Matcher matcher) {
+        if (weatherData == null) {
+            return;
+        }
+
+        try {
+            String typeDigit = matcher.group("type");
+            AutomatedStationType stationType = AutomatedStationType.fromDigit(typeDigit);
+
+            // For now, just log it - full integration will store in remarks
+            logAutomatedStationType(stationType);
+
+            // Future: Store in NoaaMetarRemarks once sequential parsing is implemented
+
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid automated station type: {}", matcher.group(0), e);
+        }
+    }
+
+    /**
+     * Handle the remarks section of the METAR using sequential parsing.
+     *
+     * This method processes remarks in order and stores any unparsed content
+     * as free text. Called after the main body has been parsed.
+     *
+     * @param remarksText the remarks text (everything after RMK)
+     * @param metarData the METAR data object to populate
+     */
+    private void handleRemarks(String remarksText, NoaaMetarData metarData) {
+        if (remarksText == null || remarksText.isBlank()) {
+            return;
+        }
+
+        NoaaMetarRemarks.Builder remarksBuilder = NoaaMetarRemarks.builder();
+        String remaining = remarksText.trim();
+        String previous;
+
+        // Multi-pass parsing to handle any order
+        do {
+            previous = remaining;
+
+            // Try each handler in sequence
+            remaining = handleAutomatedStationType(remaining, remarksBuilder);
+            remaining = handleSeaLevelPressureSequential(remaining, remarksBuilder);
+            remaining = handleHourlyTemperatureSequential(remaining, remarksBuilder);
+            remaining = handlePeakWindSequential(remaining, remarksBuilder);
+            remaining = handleWindShiftSequential(remaining, remarksBuilder);
+            remaining = handleVariableVisibilitySequential(remaining, remarksBuilder);
+            remaining = handleTowerSurfaceVisibilitySequential(remaining, remarksBuilder);
+            remaining = handleHourlyPrecipitationSequential(remaining, remarksBuilder);
+            remaining = handleMultiHourPrecipitationSequential(remaining, remarksBuilder);
+            remaining = handleHailSizeSequential(remaining, remarksBuilder);
+
+            // Continue while we're making progress
+        } while (!remaining.equals(previous));
+
+        // Store any unparsed remarks as free text
+        if (remaining != null && !remaining.isBlank()) {
+            remarksBuilder.freeText(remaining.trim());
+        }
+
+        metarData.setRemarks(remarksBuilder.build());
+    }
+
+    /**
+     * Handle automated station type remark for sequential parsing.
+     *
+     * Format: AO1 or AO2
+     * - AO1 = Automated station WITHOUT precipitation discriminator
+     * - AO2 = Automated station WITH precipitation discriminator
+     * - A01/A02 = OCR error variants (O misread as 0)
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleAutomatedStationType(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Use the AUTO_PATTERN from the registry
+        Pattern autoPattern = Pattern.compile("^A[O0](?<type>\\d)\\s*");
+        Matcher matcher = autoPattern.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            String typeDigit = matcher.group("type");
+            AutomatedStationType stationType = AutomatedStationType.fromDigit(typeDigit);
+
+            remarks.automatedStationType(stationType);
+
+            logAutomatedStationType(stationType);
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid automated station type in remarks: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    private void logAutomatedStationType(AutomatedStationType stationType) {
+        LOGGER.debug("Automated Station Type: {} ({})",
+                stationType.getCode(),
+                stationType.getDescription());
+    }
+
+    /**
+     * Handle sea level pressure remark for sequential parsing.
+     *
+     * Format: SLPppp where ppp is pressure in tenths of hectopascals
+     *
+     * Examples:
+     * - SLP210 → 1021.0 hPa (ppp=210 < 500, so 1000 + 21.0)
+     * - SLP982 → 998.2 hPa (ppp=982 >= 500, so 900 + 98.2)
+     * - SLP145 → 1014.5 hPa
+     * - SLPNO → Sea level pressure not available
+     *
+     * Decoding rules per Federal Meteorological Handbook No. 1:
+     * - If ppp >= 500: Sea level pressure = 900 + (ppp / 10) hPa
+     * - If ppp < 500: Sea level pressure = 1000 + (ppp / 10) hPa
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleSeaLevelPressureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank (validated by handleRemarks())
+
+        Matcher matcher = SEALVL_PRESS_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            String pressureStr = matcher.group("press");
+
+            // Handle SLPNO (pressure not available)
+            if ("NO".equals(pressureStr)) {
+                LOGGER.debug("Sea level pressure: Not available (SLPNO)");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Parse pressure value
+            if (pressureStr != null && !pressureStr.isEmpty()) {
+                int ppp = Integer.parseInt(pressureStr);
+
+                // Apply decoding rules
+                double pressureHPa;
+                if (ppp >= 500) {
+                    // High values (500-999): add 900
+                    pressureHPa = 900.0 + (ppp / 10.0);
+                } else {
+                    // Low values (000-499): add 1000
+                    pressureHPa = 1000.0 + (ppp / 10.0);
+                }
+
+                // Create Pressure object using factory method
+                Pressure seaLevelPressure = Pressure.hectopascals(pressureHPa);
+
+                // Store in remarks builder
+                remarks.seaLevelPressure(seaLevelPressure);
+
+                LOGGER.debug("Sea level pressure: {} hPa (from SLP{})", pressureHPa, ppp);
+            }
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid sea level pressure format in remarks: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle hourly temperature and dewpoint remark for sequential parsing.
+     *
+     * Format: TsnT'T'T'snT'dT'dT'd
+     * - sn = sign (0=positive, 1=negative)
+     * - T'T'T' = temperature in tenths of degrees (e.g., 233 = 23.3°C)
+     * - snT'dT'dT'd = optional dewpoint with sign and tenths
+     *
+     * Examples:
+     * - T02330139 → temp=+23.3°C, dewpoint=+13.9°C
+     * - T10281015 → temp=-2.8°C, dewpoint=-1.5°C
+     * - T0233 → temp=+23.3°C, dewpoint=not reported
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleHourlyTemperatureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = TEMP_1HR_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            // Parse temperature
+            String tempSign = matcher.group("tsign");
+            String tempStr = matcher.group("temp");
+
+            if (tempStr != null && !tempStr.isEmpty()) {
+                int tempTenths = Integer.parseInt(tempStr);
+                double tempCelsius = tempTenths / 10.0;
+
+                // Apply sign (0=positive, 1=negative)
+                if ("1".equals(tempSign)) {
+                    tempCelsius = -tempCelsius;
+                }
+
+                // Parse dewpoint (optional)
+                String dewptSign = matcher.group("dsign");
+                String dewptStr = matcher.group("dewpt");
+
+                if (dewptStr != null && !dewptStr.isEmpty()) {
+                    // Both temperature and dewpoint present
+                    int dewptTenths = Integer.parseInt(dewptStr);
+                    double dewptCelsius = dewptTenths / 10.0;
+
+                    // Apply sign
+                    if ("1".equals(dewptSign)) {
+                        dewptCelsius = -dewptCelsius;
+                    }
+
+                    // Create Temperature with both values
+                    Temperature preciseTemp = Temperature.of(tempCelsius, dewptCelsius);
+                    remarks.preciseTemperature(preciseTemp);
+                    remarks.preciseDewpoint(preciseTemp); // Store the same object for dewpoint access
+
+                    LOGGER.debug("Precise temperature: {}°C, dewpoint: {}°C",
+                            tempCelsius, dewptCelsius);
+
+                } else {
+                    // Only temperature present, no dewpoint
+                    Temperature preciseTemp = Temperature.of(tempCelsius);
+                    remarks.preciseTemperature(preciseTemp);
+
+                    LOGGER.debug("Precise temperature: {}°C (no dewpoint)", tempCelsius);
+                }
+            }
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid hourly temperature format in remarks: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle peak wind remark for sequential parsing.
+     *
+     * Format: PK WND dddff(f)/(hh)mm
+     * - ddd = wind direction in degrees (optional)
+     * - ff(f) = wind speed in knots, 2-3 digits (P prefix for speeds >99 knots)
+     * - hh = hour of occurrence (optional)
+     * - mm = minute of occurrence (optional)
+     *
+     * Examples:
+     * - PK WND 28032/1530 → dir=280°, speed=32kt, time=15:30 UTC
+     * - PK WND 32035/15 → dir=320°, speed=35kt, time=XX:15 UTC (hour missing)
+     * - PK WND P100/2145 → dir=unknown, speed=100kt, time=21:45 UTC
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handlePeakWindSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = PEAK_WIND_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            // Parse direction (optional)
+            String dirStr = matcher.group("dir");
+            Integer direction = null;
+            if (dirStr != null && !dirStr.isEmpty()) {
+                direction = Integer.parseInt(dirStr);
+            }
+
+            // Parse speed (required, but handle P prefix for >99 knots)
+            String speedStr = matcher.group("speed");
+            Integer speed = null;
+            if (speedStr != null && !speedStr.isEmpty()) {
+                // Remove 'P' prefix if present (indicates speed >99 knots)
+                speedStr = speedStr.replace("P", "");
+                speed = Integer.parseInt(speedStr);
+            }
+
+            // Parse hour (optional)
+            String hourStr = matcher.group("hour");
+            Integer hour = null;
+            if (hourStr != null && !hourStr.isEmpty()) {
+                hour = Integer.parseInt(hourStr);
+            }
+
+            // Parse minute (optional)
+            String minStr = matcher.group("min");
+            Integer minute = null;
+            if (minStr != null && !minStr.isEmpty()) {
+                minute = Integer.parseInt(minStr);
+            }
+
+            // Create PeakWind object
+            PeakWind peakWind = new PeakWind(direction, speed, hour, minute);
+            remarks.peakWind(peakWind);
+
+            LOGGER.debug("Peak wind: dir={}°, speed={}kt, time={}:{}",
+                    direction, speed,
+                    hour != null ? String.format("%02d", hour) : "XX",
+                    minute != null ? String.format("%02d", minute) : "XX");
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid peak wind format in remarks: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle wind shift remark for sequential parsing.
+     *
+     * Format: WSHFT (hh)mm [FROPA]
+     * - hh = hour of wind shift (optional)
+     * - mm = minute of wind shift (required)
+     * - FROPA = frontal passage indicator (optional)
+     *
+     * A wind shift is reported when wind direction changes by 45° or more
+     * in less than 15 minutes, with sustained winds of 10 knots or more.
+     *
+     * Examples:
+     * - WSHFT 1530 → hour=15, minute=30, no frontal passage
+     * - WSHFT 1530 FROPA → hour=15, minute=30, with frontal passage
+     * - WSHFT 30 → hour=null, minute=30, no frontal passage
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleWindShiftSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = WIND_SHIFT_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            // Parse hour (optional)
+            String hourStr = matcher.group("hour");
+            Integer hour = null;
+            if (hourStr != null && !hourStr.isEmpty()) {
+                hour = Integer.parseInt(hourStr);
+            }
+
+            // Parse minute (required)
+            String minStr = matcher.group("min");
+            Integer minute = null;
+            if (minStr != null && !minStr.isEmpty()) {
+                minute = Integer.parseInt(minStr);
+            }
+
+            // Check for frontal passage (FROPA)
+            String frontStr = matcher.group("front");
+            boolean frontalPassage = "FROPA".equals(frontStr);
+
+            // Create WindShift object
+            WindShift windShift = new WindShift(hour, minute, frontalPassage);
+            remarks.windShift(windShift);
+
+            LOGGER.debug("Wind shift: time={}:{}, frontal passage={}",
+                    hour != null ? String.format("%02d", hour) : "XX",
+                    minute != null ? String.format("%02d", minute) : "XX",
+                    frontalPassage);
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid wind shift format in remarks: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle variable visibility remark for sequential parsing.
+     *
+     * Format: VIS [DIR] minVmax [RWY]
+     * - DIR = Optional direction (N, NE, E, SE, S, SW, W, NW)
+     * - min = Minimum visibility (fraction, mixed, or whole number)
+     * - V = "V" separator
+     * - max = Maximum visibility (same formats as min)
+     * - RWY = Optional runway/location qualifier
+     *
+     * Examples:
+     * - VIS 1/2V2 → min=1/2 SM, max=2 SM
+     * - VIS NE 2V4 → Northeast, min=2 SM, max=4 SM
+     * - VIS 1 1/4V3 → min=1.25 SM, max=3 SM
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleVariableVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = VPV_SV_VSL_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            // Extract direction (optional)
+            String direction = matcher.group("dir");
+
+            // Extract minimum visibility
+            String dist1Str = matcher.group("dist1");
+            if (dist1Str == null || dist1Str.isBlank()) {
+                LOGGER.debug("Variable visibility missing minimum distance, skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Extract maximum visibility indicator and value
+            String addStr = matcher.group("add");
+            String dist2Str = matcher.group("dist2");
+
+            // "V" indicates variable visibility, "RWY" is for runway
+            if (!"V".equals(addStr)) {
+                LOGGER.debug("Variable visibility not marked with 'V', skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            if (dist2Str == null || dist2Str.isBlank()) {
+                LOGGER.debug("Variable visibility missing maximum distance, skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Parse minimum visibility
+            Visibility minVisibility = parseVisibilityDistance(dist1Str);
+            if (minVisibility == null) {
+                LOGGER.warn("Failed to parse minimum visibility: {}", dist1Str);
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Parse maximum visibility
+            Visibility maxVisibility = parseVisibilityDistance(dist2Str);
+            if (maxVisibility == null) {
+                LOGGER.warn("Failed to parse maximum visibility: {}", dist2Str);
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Determine location (currently not used in pattern, but keeping for future)
+            String location = null; // Pattern doesn't capture RWY separately in current regex
+
+            // Create VariableVisibility object
+            VariableVisibility variableVisibility = new VariableVisibility(
+                    minVisibility,
+                    maxVisibility,
+                    direction,
+                    location
+            );
+
+            remarks.variableVisibility(variableVisibility);
+
+            LOGGER.debug("Variable visibility: {} varying to {}{}",
+                    dist1Str,
+                    dist2Str,
+                    direction != null ? " (" + direction + ")" : "");
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid variable visibility in remarks: {}",
+                    remarksText.substring(0, Math.min(30, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Parse a visibility distance string into a Visibility object.
+     *
+     * Handles formats:
+     * - Fractions: "1/2", "3/4"
+     * - Mixed: "1 1/2", "2 1/4"
+     * - Whole numbers: "1", "10"
+     *
+     * @param distStr the distance string
+     * @return Visibility object, or null if parsing fails
+     */
+    private Visibility parseVisibilityDistance(String distStr) {
+        if (distStr == null || distStr.isBlank()) {
+            return null;
+        }
+
+        try {
+            distStr = distStr.trim();
+
+            // Check for fraction: "1/2"
+            if (distStr.contains("/")) {
+                // Could be mixed: "1 1/2" or simple: "1/2"
+                String[] parts = distStr.split("\\s+");
+
+                if (parts.length == 2) {
+                    // Mixed fraction: "1 1/2"
+                    int wholePart = Integer.parseInt(parts[0]);
+                    String[] fractionParts = parts[1].split("/");
+                    int numerator = Integer.parseInt(fractionParts[0]);
+                    int denominator = Integer.parseInt(fractionParts[1]);
+                    double value = wholePart + ((double) numerator / denominator);
+                    return Visibility.statuteMiles(value);
+
+                } else {
+                    // Simple fraction: "1/2"
+                    String[] fractionParts = distStr.split("/");
+                    int numerator = Integer.parseInt(fractionParts[0]);
+                    int denominator = Integer.parseInt(fractionParts[1]);
+                    double value = (double) numerator / denominator;
+                    return Visibility.statuteMiles(value);
+                }
+
+            } else {
+                // Whole number: "10"
+                double value = Double.parseDouble(distStr);
+                return Visibility.statuteMiles(value);
+            }
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Failed to parse visibility distance: {}", distStr, e);
+            return null;
+        }
+    }
+
+    /**
+     * Handle tower or surface visibility remark for sequential parsing.
+     *
+     * Format: TWR VIS value OR SFC VIS value
+     * - TWR VIS = Tower visibility
+     * - SFC VIS = Surface visibility
+     * - value = Visibility distance (fraction, mixed, or whole number)
+     *
+     * Examples:
+     * - TWR VIS 1 1/2 → Tower visibility 1.5 SM
+     * - SFC VIS 1/4 → Surface visibility 0.25 SM
+     * - TWR VIS 2 → Tower visibility 2 SM
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleTowerSurfaceVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = TWR_SFC_VIS_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            // Extract type (TWR VIS or SFC VIS)
+            String type = matcher.group("type");
+
+            // Extract distance
+            String distStr = matcher.group("dist");
+            if (distStr == null || distStr.isBlank()) {
+                LOGGER.debug("Tower/Surface visibility missing distance, skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Parse visibility distance (reuse existing helper!)
+            Visibility visibility = parseVisibilityDistance(distStr);
+            if (visibility == null) {
+                LOGGER.warn("Failed to parse tower/surface visibility: {}", distStr);
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Determine which type and set appropriately
+            if ("TWR VIS".equals(type)) {
+                remarks.towerVisibility(visibility);
+                LOGGER.debug("Tower visibility: {}", distStr);
+            } else if ("SFC VIS".equals(type)) {
+                remarks.surfaceVisibility(visibility);
+                LOGGER.debug("Surface visibility: {}", distStr);
+            }
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (Exception e) {
+            LOGGER.warn("Invalid tower/surface visibility in remarks: {}",
+                    remarksText.substring(0, Math.min(30, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle hourly precipitation amount remark.
+     *
+     * Format: P0015 = 0.15 inches in last hour
+     * - P = Hourly precipitation indicator
+     * - 4 digits = Amount in hundredths of inches
+     * - //// = Trace precipitation
+     *
+     * Examples:
+     * - P0015 → 0.15 inches
+     * - P0009 → 0.09 inches
+     * - P//// → Trace
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleHourlyPrecipitationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = PRECIP_1HR_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            String precipStr = matcher.group("precip");
+
+            if (precipStr == null || precipStr.isBlank()) {
+                LOGGER.debug("Hourly precipitation missing value, skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            PrecipitationAmount precip = PrecipitationAmount.fromEncoded(precipStr, 1);
+            remarks.hourlyPrecipitation(precip);
+
+            LOGGER.debug("Hourly precipitation: {}",
+                    precip.isTrace() ? "trace" : String.format("%.2f inches", precip.inches()));
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (Exception e) {
+            LOGGER.warn("Invalid hourly precipitation: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle 6-hour or 24-hour precipitation amount remark.
+     *
+     * Format: 60009 (6-hour) or 70125 (24-hour)
+     * - 6 = 6-hour precipitation indicator
+     * - 7 = 24-hour precipitation indicator
+     * - 4-5 digits = Amount in hundredths of inches
+     * - //// or ///// = Trace precipitation
+     *
+     * Examples:
+     * - 60009 → 0.09 inches (6-hour)
+     * - 70125 → 1.25 inches (24-hour)
+     * - 6//// → Trace (6-hour)
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleMultiHourPrecipitationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = PRECIP_3HR_24HR_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            String type = matcher.group("type");
+            String precipStr = matcher.group("precip");
+
+            if (precipStr == null || precipStr.isBlank()) {
+                LOGGER.debug("Multi-hour precipitation missing value, skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Determine period: 6 = 6-hour, 7 = 24-hour
+            int periodHours = "6".equals(type) ? 6 : 24;
+
+            PrecipitationAmount precip = PrecipitationAmount.fromEncoded(precipStr, periodHours);
+
+            if (periodHours == 6) {
+                remarks.sixHourPrecipitation(precip);
+                LOGGER.debug("6-hour precipitation: {}", precip.getDescription());
+            } else {
+                remarks.twentyFourHourPrecipitation(precip);
+                LOGGER.debug("24-hour precipitation: {}", precip.getDescription());
+            }
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (Exception e) {
+            LOGGER.warn("Invalid multi-hour precipitation: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
+    /**
+     * Handle hail size remark for sequential parsing.
+     *
+     * Format: GR followed by size in inches
+     * Examples:
+     * - GR 1/2 → 0.5 inch hail
+     * - GR 1 3/4 → 1.75 inch hail
+     * - GR 2 → 2 inch hail
+     *
+     * Uses parseVisibilityDistance() to parse the size value since
+     * the format is identical (fractions, mixed numbers, whole numbers).
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after this remark is processed
+     */
+    private String handleHailSizeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+
+        Matcher matcher = HAIL_SIZE_PATTERN.matcher(remarksText);
+
+        if (!matcher.find()) {
+            return remarksText;
+        }
+
+        try {
+            String sizeStr = matcher.group("size");
+
+            if (sizeStr == null || sizeStr.isBlank()) {
+                LOGGER.debug("Hail size missing value, skipping");
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Reuse parseVisibilityDistance - same format!
+            Visibility visibility = parseVisibilityDistance(sizeStr);
+
+            if (visibility == null) {
+                LOGGER.warn("Failed to parse hail size: {}", sizeStr);
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            // Convert visibility to hail size
+            Double sizeInches = visibility.toStatuteMiles();
+            if (sizeInches == null) {
+                LOGGER.warn("Hail size conversion failed: {}", sizeStr);
+                return remarksText.substring(matcher.end()).trim();
+            }
+
+            HailSize hailSize = HailSize.inches(sizeInches);
+            remarks.hailSize(hailSize);
+
+            LOGGER.debug("Hail size: {} inches ({})",
+                    sizeInches, hailSize.getSizeCategory());
+
+            return remarksText.substring(matcher.end()).trim();
+
+        } catch (Exception e) {
+            LOGGER.warn("Invalid hail size: {}",
+                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
+            return remarksText.substring(matcher.end()).trim();
+        }
+    }
+
     // ==================== STUB HANDLERS (to be implemented) ====================
 
     private void handleNoSigChange(Matcher matcher) {
@@ -1231,17 +2052,5 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
     
     private void handleUnparsed(Matcher matcher) {
         LOGGER.debug("Unparsed token: '{}'", matcher);
-    }
-    
-    private void handleAutoType(Matcher matcher) {
-        LOGGER.debug("TODO: Implement auto type handler {}", matcher);
-    }
-    
-    private void handleSeaLevelPressure(Matcher matcher) {
-        LOGGER.debug("TODO: Implement sea level pressure handler {}", matcher);
-    }
-    
-    private void handlePeakWind(Matcher matcher) {
-        LOGGER.debug("TODO: Implement peak wind handler {}", matcher);
     }
 }

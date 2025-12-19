@@ -185,7 +185,11 @@ public class MetarPatternRegistry {
         // Automated maintenance indicators
         handlers.put(RegExprConst.AUTOMATED_MAINTENANCE_PATTERN, 
                 MetarPatternHandler.single("automatedMaintenance"));
-        
+
+        // Hail size
+        handlers.put(RegExprConst.HAIL_SIZE_PATTERN,
+                MetarPatternHandler.single("hailSize"));
+
         // Catch unparsed remarks
         handlers.put(RegExprConst.UNPARSED_PATTERN, 
                 MetarPatternHandler.single("unparsedRemark"));

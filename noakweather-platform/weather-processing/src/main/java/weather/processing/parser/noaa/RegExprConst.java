@@ -182,7 +182,7 @@ public final class RegExprConst {
      * Example: "SLP210" = 1021.0 hPa
      */
     public static final Pattern SEALVL_PRESS_PATTERN = Pattern.compile(
-            "^(?<type>SLP)(?<press>\\d{3}|NO)?\\s+"
+            "^(?<type>SLP)(?<press>\\d{3}|NO)?\\s*"
     );
 
     /**
@@ -192,7 +192,7 @@ public final class RegExprConst {
      * Complexity is required to capture direction, speed, and time
      */
     public static final Pattern PEAK_WIND_PATTERN = Pattern.compile(
-            "^PK\\s+WND\\s+(?<dir>\\d{3})?(?<speed>P?\\d{2,3})/(?<hour>[01]\\d|2[0-3])?(?<min>\\d{2})?\\s+"
+            "^PK\\s+WND\\s+(?<dir>\\d{3})?(?<speed>P?\\d{2,3})/(?<hour>[01]\\d|2[0-3])?(?<min>\\d{2})?\\s*"
     );
 
     /**
@@ -201,7 +201,7 @@ public final class RegExprConst {
      * Example: "WSHFT 15 FROPA"
      */
     public static final Pattern WIND_SHIFT_PATTERN = Pattern.compile(
-            "^WSHFT (?<hour>\\d{2})?(?<min>\\d{2})(\\s+(?<front>FROPA))?\\s+"
+            "^WSHFT (?<hour>\\d{2})?(?<min>\\d{2})(\\s+(?<front>FROPA))?\\s*"
             
     );
 
@@ -213,13 +213,13 @@ public final class RegExprConst {
      */
     // ^(?<type>TWR VIS|SFC VIS) (?<dist>\\d+\\s\\d/\\d|\\d\\d?/\\d\\d?|\\d{1,2})?\\s+
     public static final Pattern TWR_SFC_VIS_PATTERN = Pattern.compile(
-            "^(?<type>TWR VIS|SFC VIS)\\s+(?<dist>\\d+\\s\\d/\\d|\\d{1,2}/\\d{1,2}|\\d{1,2})?\\s+"
+            "^(?<type>TWR VIS|SFC VIS)\\s+(?<dist>\\d+\\s\\d/\\d|\\d{1,2}/\\d{1,2}|\\d{1,2})?\\s*"
     );
     
     /**
      * Variable Prevailing Visibility (VIS_vnvn vnvnVvxvxvx vxvx). Variable
      * prevailing visibility shall be coded in the format VIS_vn vnvnvnVvxvx
-     * vxvxvx Sector Visibility (VIS_[DIR]_vvvvv){Plain Language]. The sector
+     * vxvxvx Sector Visibility (VIS_[DIR]_vvvvv){Plain Language}. The sector
      * visibility shall be coded in the format VIS_[DIR]_vvvvv Visibility At
      * Second Location (VIS_vvvvv_[LOC]). At designated automated stations, the
      * visibility at a second location shall be coded in the format
@@ -229,7 +229,7 @@ public final class RegExprConst {
     // ^(?<vis>VIS) (?<dir>([NSEW][EW]))?\\s*(?<dist1>\\d\\d?/\\d\\d?|\\d+\\s+\\d\\d?/\\d\\d?|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d\\d?/\\d\\d?|\\d+\\s+\\d\\d?/\\d\\d?|\\d+))?\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for variable visibility formats
     public static final Pattern VPV_SV_VSL_PATTERN = Pattern.compile(
-            "^(?<vis>VIS)\\s+(?<dir>([NSEW][EW]))?\\s*(?<dist1>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+))?\\s+"
+            "^(?<vis>VIS)\\s+(?<dir>([NSEW]([EW])?))?\\s*(?<dist1>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+))?\\s*"
     );
     
     /**
@@ -287,8 +287,9 @@ public final class RegExprConst {
      * the hourly precipitation amount shall be coded in the format, Prrrr
      * Example: "P0015" = 0.15 inches
      */
+    //"^(?<type>P)(?<precip>\\d\\d\\d\\d)\\s*"
     public static final Pattern PRECIP_1HR_PATTERN = Pattern.compile(
-            "^(?<type>P)(?<precip>\\d\\d\\d\\d)\\s+"
+            "^(?<type>P)(?<precip>\\d{4}|/{4})\\s*"
     );
 
     /**
@@ -308,7 +309,7 @@ public final class RegExprConst {
      * Example: "60015" or "70123"
      */
     public static final Pattern PRECIP_3HR_24HR_PATTERN = Pattern.compile(
-            "^(?<type>[67])(?<precip>\\d{1,5}|/{1,5})\\s+"
+            "^(?<type>[67])(?<precip>\\d{1,5}|/{1,5})\\s*"
     );
 
     /**
@@ -318,7 +319,7 @@ public final class RegExprConst {
      * Example: "T02330139" = temp 23.3°C, dewpoint 13.9°C
      */
     public static final Pattern TEMP_1HR_PATTERN = Pattern.compile(
-            "^(?<type>T)(?<tsign>[01])(?<temp>\\d{3})((?<dsign>[01])(?<dewpt>\\d{3}))?\\s+"
+            "^(?<type>T)(?<tsign>[01])(?<temp>\\d{3})((?<dsign>[01])(?<dewpt>\\d{3}))?\\s*"
     );
 
     /**
@@ -430,6 +431,19 @@ public final class RegExprConst {
      */
     public static final Pattern SNOW_ON_GRND_PATTERN = Pattern.compile(
             "^(?<type>SOG) (?<amt>\\d{1,3})\\s+"
+    );
+
+    /**
+     * Hail size (GR followed by size in inches).
+     * Format: GR 1/2, GR 3/4, GR 1, GR 1 3/4
+     *
+     * Examples:
+     * - "GR 1/2" → 0.5 inch hail
+     * - "GR 1 3/4" → 1.75 inch hail
+     * - "GR 2" → 2 inch hail
+     */
+    public static final Pattern HAIL_SIZE_PATTERN = Pattern.compile(
+            "^GR\\s+(?<size>\\d+\\s+\\d/\\d|\\d+/\\d+|\\d+)\\s*"
     );
 
     /**
