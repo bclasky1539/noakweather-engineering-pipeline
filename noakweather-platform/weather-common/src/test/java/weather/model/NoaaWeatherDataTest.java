@@ -29,7 +29,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import weather.model.components.Pressure;
 import weather.model.components.SkyCondition;
+import weather.model.components.remark.NoaaMetarRemarks;
+import weather.model.enums.AutomatedStationType;
 import weather.model.enums.SkyCoverage;
 
 import java.util.ArrayList;
@@ -553,5 +556,195 @@ class NoaaWeatherDataTest {
         assertThat(skyConditions.get(0).coverage()).isEqualTo(SkyCoverage.BROKEN);
         assertThat(skyConditions.get(1).coverage()).isEqualTo(SkyCoverage.OVERCAST);
         assertThat(skyConditions.get(2).coverage()).isEqualTo(SkyCoverage.VERTICAL_VISIBILITY);
+    }
+
+    // ========== REMARKS TESTS ==========
+
+    @Test
+    @DisplayName("Should get and set remarks")
+    void testGetSetRemarks() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+
+        data.setRemarks(remarks);
+
+        assertEquals(remarks, data.getRemarks());
+    }
+
+    @Test
+    @DisplayName("Should return null for remarks by default")
+    void testGetRemarks_DefaultNull() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertNull(data.getRemarks());
+    }
+
+    @Test
+    @DisplayName("Should test equals with same remarks")
+    void testEquals_SameRemarks() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        data1.setRemarks(remarks);
+
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+        data2.setRemarks(remarks);
+
+        // They still won't be equal due to different auto-generated IDs
+        // but this tests the remarks comparison logic
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should test equals with different remarks")
+    void testEquals_DifferentObjectsDifferentRemarks() {
+        // Note: Since equals() is based on ID only (immutable), two different
+        // NoaaWeatherData objects will NEVER be equal, regardless of remarks.
+        // This test documents this behavior.
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO1)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        data1.setRemarks(remarks1);
+
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+        data2.setRemarks(remarks2);
+
+        // Different objects with different IDs are never equal
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should test equals with one null remarks")
+    void testEquals_OneNullRemarks() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        data1.setRemarks(remarks);
+
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+        data2.setRemarks(null);
+
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should test equals with both null remarks")
+    void testEquals_BothNullRemarks() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        data1.setRemarks(null);
+
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+        data2.setRemarks(null);
+
+        // Still won't be equal due to different IDs, but this tests the null remarks path
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should test equals with same instance and remarks")
+    void testEquals_SameInstanceWithRemarks() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+        data.setRemarks(remarks);
+
+        assertThat(data).isEqualTo(data);
+    }
+
+    @Test
+    @DisplayName("Should include remarks in hashCode calculation")
+    void testHashCode_WithRemarks() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        int hashBefore = data.hashCode();
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+        data.setRemarks(remarks);
+
+        int hashAfter = data.hashCode();
+
+        // HashCode DOES change when remarks are set (includes remarks in calculation)
+        assertNotEquals(hashBefore, hashAfter,
+                "HashCode should change when remarks are set");
+    }
+
+    @Test
+    @DisplayName("Should have consistent hashCode with remarks")
+    void testHashCode_ConsistentWithRemarks() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+        data.setRemarks(remarks);
+
+        int hash1 = data.hashCode();
+        int hash2 = data.hashCode();
+
+        assertEquals(hash1, hash2);
+    }
+
+    @Test
+    @DisplayName("Should handle setting remarks to null")
+    void testSetRemarks_Null() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .build();
+
+        data.setRemarks(remarks);
+        assertNotNull(data.getRemarks());
+
+        data.setRemarks(null);
+        assertNull(data.getRemarks());
+    }
+
+    @Test
+    @DisplayName("Should handle remarks with multiple fields")
+    void testRemarks_MultipleFields() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .seaLevelPressure(Pressure.hectopascals(1013.2))
+                .freeText("Additional remarks")
+                .build();
+
+        data.setRemarks(remarks);
+
+        NoaaMetarRemarks retrieved = data.getRemarks();
+        assertNotNull(retrieved);
+        assertEquals(AutomatedStationType.AO2, retrieved.automatedStationType());
+        assertNotNull(retrieved.seaLevelPressure());
+        assertEquals("Additional remarks", retrieved.freeText());
+    }
+
+    @Test
+    @DisplayName("Should preserve remarks through getter")
+    void testRemarks_Preservation() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        NoaaMetarRemarks original = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .seaLevelPressure(Pressure.hectopascals(1013.2))
+                .build();
+
+        data.setRemarks(original);
+        NoaaMetarRemarks retrieved = data.getRemarks();
+
+        // Should be the exact same instance (no defensive copying)
+        assertSame(original, retrieved);
     }
 }

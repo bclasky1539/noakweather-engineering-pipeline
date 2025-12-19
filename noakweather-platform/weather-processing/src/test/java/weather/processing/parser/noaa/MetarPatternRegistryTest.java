@@ -123,7 +123,8 @@ class MetarPatternRegistryTest {
                 .containsKey(RegExprConst.AUTO_PATTERN)
                 .containsKey(RegExprConst.SEALVL_PRESS_PATTERN)
                 .containsKey(RegExprConst.PEAK_WIND_PATTERN)
-                .containsKey(RegExprConst.TEMP_1HR_PATTERN);
+                .containsKey(RegExprConst.TEMP_1HR_PATTERN)
+                .containsKey(RegExprConst.HAIL_SIZE_PATTERN);
     }
     
     @Test
@@ -202,5 +203,20 @@ class MetarPatternRegistryTest {
             // Verify consistency: getting by key should match getting by index
             assertThat(handlers).containsEntry(pattern, handler);
         }
+    }
+
+    @Test
+    void testGetRemarksHandlersHasHailSizePattern() {
+        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+
+        // Should contain hail size pattern
+        assertThat(handlers)
+                .containsKey(RegExprConst.HAIL_SIZE_PATTERN);
+
+        // Verify handler details
+        MetarPatternHandler hailSizeHandler = handlers.get(RegExprConst.HAIL_SIZE_PATTERN);
+        assertThat(hailSizeHandler).isNotNull();
+        assertThat(hailSizeHandler.handlerName()).isEqualTo("hailSize");
+        assertThat(hailSizeHandler.canRepeat()).isFalse();
     }
 }

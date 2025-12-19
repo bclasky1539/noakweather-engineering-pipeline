@@ -19,6 +19,7 @@ package weather.model;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import weather.model.components.SkyCondition;
 import weather.model.components.Visibility;
+import weather.model.components.remark.NoaaMetarRemarks;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -80,6 +81,12 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      * Quality control flags from NOAA
      */
     private String qualityControlFlags;
+
+    /**
+     * Remarks section containing supplemental weather information.
+     * Shared across NOAA weather products (METAR, SPECI, TAF).
+     */
+    private NoaaMetarRemarks remarks;
     
     public NoaaWeatherData() {
         super();
@@ -174,6 +181,14 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     public void setQualityControlFlags(String qualityControlFlags) {
         this.qualityControlFlags = qualityControlFlags;
     }
+
+    public NoaaMetarRemarks getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(NoaaMetarRemarks remarks) {
+        this.remarks = remarks;
+    }
     
     @Override
     public boolean isCurrent() {
@@ -205,17 +220,14 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof NoaaWeatherData that)) {
+        if (!(o instanceof NoaaWeatherData)) {
             return false;
         }
-        if (!super.equals(o)) {
-            return false;
-        }
-        return Objects.equals(reportType, that.getReportType());
+        return super.equals(o);  // ID-based equality from WeatherData
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), reportType);
+        return Objects.hash(super.hashCode(), remarks, reportType);
     }
 }

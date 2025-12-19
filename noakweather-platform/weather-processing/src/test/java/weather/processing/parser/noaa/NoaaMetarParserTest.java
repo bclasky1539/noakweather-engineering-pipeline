@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Test;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.*;
+import weather.model.components.remark.*;
+import weather.model.enums.AutomatedStationType;
 import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.ParseResult;
@@ -1999,5 +2001,2429 @@ class NoaaMetarParserTest {
             NoaaMetarData data = extractMetarData(result);
             assertNotNull(data.getPressure(), "Should have pressure for: " + metar);
         }
+    }
+
+    // ========== REMARKS PARSING TESTS ==========
+
+    @Test
+    @DisplayName("Should parse METAR with AO1 remark")
+    void testParseMetarWithAO1Remark() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK AO1 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        assertEquals(AutomatedStationType.AO1, data.getRemarks().automatedStationType());
+        assertFalse(data.getRemarks().hasPrecipitationDiscriminator());
+    }
+
+    @Test
+    @DisplayName("Should parse METAR with AO2 remark")
+    void testParseMetarWithAO2Remark() {
+        String metar = "METAR KORD 121856Z 09014G20KT 10SM FEW055 SCT250 23/14 A2990 RMK AO2 SLP121";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertTrue(data.getRemarks().hasPrecipitationDiscriminator());
+    }
+
+    @Test
+    @DisplayName("Should parse METAR with AO2 and SLP, storing unparsed T-group as free text")
+    void testParseMetarWithAO2AndFreeText() {
+        String metar = "METAR KORD 121856Z 09014G20KT 10SM FEW055 SCT250 23/14 A2990 RMK AO2 SLP121 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+
+        // AO2 should be parsed
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+
+        // SLP121 should be parsed
+        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertEquals(1012.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
+                "SLP121 should decode to 1012.1 hPa");
+
+        // T-group should be parsed
+        assertNotNull(data.getRemarks().preciseTemperature(), "Precise temperature should be parsed");
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+
+        // No unparsed free text should remain (all remarks parsed)
+        if (data.getRemarks().freeText() != null) {
+            assertTrue(data.getRemarks().freeText().isBlank(),
+                    "All remarks should be parsed");
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015', 'No RMK section'",
+            "'METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK', 'Empty RMK section'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK   ', 'RMK with only whitespace'"
+    })
+    @DisplayName("Should handle METARs with missing or empty remarks")
+    void testParseMetarWithMissingOrEmptyRemarks(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        // Remarks should be null or empty
+        if (data.getRemarks() != null) {
+            assertTrue(data.getRemarks().isEmpty(),
+                    "Remarks should be empty for: " + scenario);
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle OCR error A01 (corrected to AO1)")
+    void testParseMetarWithOcrErrorA01() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK A01 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        // A01 should be corrected to AO1 by the enum
+        assertEquals(AutomatedStationType.AO1, data.getRemarks().automatedStationType());
+    }
+
+    @Test
+    @DisplayName("Should parse METAR with only AO2 remark")
+    void testParseMetarWithOnlyAO2() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        // Free text should be null or blank since AO2 was the only remark
+        if (data.getRemarks().freeText() != null) {
+            assertTrue(data.getRemarks().freeText().isBlank(),
+                    "Free text should be blank when only AO2 present");
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle remarks without automated station type but with SLP")
+    void testParseMetarRemarksWithNoAutomatedStationType() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK SLP210 T02220117";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+
+        // No AO type
+        assertNull(data.getRemarks().automatedStationType(),"Automated station type should be null");
+
+        // SLP210 should be parsed
+        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
+                "SLP210 should decode to 1021.0 hPa");
+
+        // T-group should be parsed
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(22.2, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(11.7, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should preserve main body parsing when remarks are present")
+    void testParseMetarWithRemarksPreservesMainBody() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify main body was parsed correctly
+        assertEquals("KJFK", data.getStationId());
+        assertNotNull(data.getWind());
+        assertEquals(280, data.getWind().directionDegrees());
+        assertEquals(16, data.getWind().speedValue());
+        assertNotNull(data.getVisibility());
+        assertEquals(10.0, data.getVisibility().distanceValue(), 0.01);
+        assertNotNull(data.getTemperature());
+        assertEquals(22.0, data.getTemperature().celsius(), 0.01);
+        assertNotNull(data.getPressure());
+        assertEquals(30.15, data.getPressure().value(), 0.01);
+
+        // Verify remarks were also parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO1', AO1, false, 'AO1 without precipitation discriminator'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2', AO2, true, 'AO2 with precipitation discriminator'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK A01', AO1, false, 'A01 OCR error corrected to AO1'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK A02', AO2, true, 'A02 OCR error corrected to AO2'"
+    })
+    @DisplayName("Should parse various automated station types correctly")
+    void testParseVariousAutomatedStationTypes(String metar, AutomatedStationType expectedType,
+                                               boolean expectedHasDiscriminator, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), scenario);
+        assertEquals(expectedType, data.getRemarks().automatedStationType(), scenario);
+        assertEquals(expectedHasDiscriminator, data.getRemarks().hasPrecipitationDiscriminator(), scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse real-world METAR with complete remarks")
+    void testParseRealWorldMetarWithRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all components parsed
+        assertEquals("KJFK", data.getStationId());
+        assertNotNull(data.getWind());
+        assertNotNull(data.getVisibility());
+        assertNotNull(data.getSkyConditions());
+        assertNotNull(data.getTemperature());
+        assertNotNull(data.getPressure());
+
+        // Verify remarks
+        assertNotNull(data.getRemarks());
+
+        // AO2 should be parsed
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+
+        // SLP201 should be parsed
+        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertEquals(1020.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
+                "SLP201 should decode to 1020.1 hPa");
+
+        // T02330139 should be parsed
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should handle remarks with no automated station type pattern but with SLP")
+    void testParseMetarRemarksWithoutAutoPattern() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SLP210 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+
+        // No AO type
+        assertNull(data.getRemarks().automatedStationType(),"Should have no automated station type");
+
+        // SLP210 should be parsed
+        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
+                "SLP210 should decode to 1021.0 hPa");
+
+        // T-group should be parsed
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should handle invalid automated station type digit")
+    void testParseMetarWithInvalidAutoDigit() {
+        // This covers lines 397-401 - exception handling
+        // AO9 is invalid (only AO1 and AO2 are valid)
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO9 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Parser should handle invalid AO digit gracefully");
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        // Invalid digit should result in null automated station type
+        // but remarks should still be created with free text
+        assertNull(data.getRemarks().automatedStationType(),
+                "Invalid AO9 should not set automated station type");
+
+        // The unparsed text should still be captured
+        if (data.getRemarks().freeText() != null) {
+            // Depending on implementation, might contain "SLP210" or full text
+            assertFalse(data.getRemarks().freeText().isBlank());
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle malformed automated station pattern")
+    void testParseMetarWithMalformedAutoPattern() {
+        // Additional edge case - letters instead of digits
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AOX SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNull(data.getRemarks().automatedStationType(),
+                "Malformed pattern should not match");
+        assertNotNull(data.getRemarks().freeText());
+    }
+
+    @Test
+    @DisplayName("Should handle blank remarks text (whitespace only)")
+    void testParseMetarWithBlankRemarks() {
+        // Edge case: RMK followed by only spaces
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK   ";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Blank remarks should result in null or empty
+        if (data.getRemarks() != null) {
+            assertTrue(data.getRemarks().isEmpty());
+        }
+    }
+
+    @Test
+    @DisplayName("Should handle AO3 invalid digit")
+    void testParseMetarWithAO3Invalid() {
+        // Explicit test for AO3 (invalid)
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO3";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNull(data.getRemarks().automatedStationType(),
+                "AO3 is invalid, should be null");
+    }
+
+    @Test
+    @DisplayName("Should handle A00 OCR error variant")
+    void testParseMetarWithA00OcrError() {
+        // A00 is invalid (both digits are zero)
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK A00";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        // A00 might match pattern but fail in fromDigit()
+        // Should be handled gracefully
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "METAR KJFK 121853Z 28016KT 10SM RMK AO5",     // Invalid digit 5
+            "METAR KJFK 121853Z 28016KT 10SM RMK AO7",     // Invalid digit 7
+            "METAR KJFK 121853Z 28016KT 10SM RMK A03",     // Invalid digit 3
+            "METAR KJFK 121853Z 28016KT 10SM RMK A04"      // Invalid digit 4
+    })
+    @DisplayName("Should handle various invalid AO digits gracefully")
+    void testParseMetarWithVariousInvalidDigits(String metar) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully even with invalid AO digit");
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Should have remarks object");
+        assertNull(data.getRemarks().automatedStationType(),
+                "Invalid AO digit should result in null automated station type");
+    }
+
+    // ========== SEA LEVEL PRESSURE PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // High values (>= 500): add 900
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP982', 998.2, 'High pressure - hurricane level'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP500', 950.0, 'Boundary high value'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SLP982', 998.2, 'High without AO2'",
+
+            // Low values (< 500): add 1000
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210', 1021.0, 'Standard pressure'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP145', 1014.5, 'Normal pressure'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP499', 1049.9, 'Boundary low value'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SLP210', 1021.0, 'Low without AO2'",
+
+            // Edge cases
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP000', 1000.0, 'Minimum value'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP999', 999.9, 'Maximum value'"
+    })
+    @DisplayName("Should parse sea level pressure correctly")
+    void testParseSeaLevelPressure(String metar, double expectedHPa, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().seaLevelPressure(),
+                "Sea level pressure should not be null: " + scenario);
+
+        double actualHPa = data.getRemarks().seaLevelPressure().toHectopascals();
+        assertEquals(expectedHPa, actualHPa, 0.1,
+                "Sea level pressure mismatch for: " + scenario);
+    }
+
+    @Test
+    @DisplayName("Should handle SLPNO (pressure not available)")
+    void testParseSeaLevelPressureNotAvailable() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLPNO T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNull(data.getRemarks().seaLevelPressure(),
+                "SLPNO should result in null pressure");
+
+        // AO2 should be parsed
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+
+        // T-group should be parsed (not in free text)
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should parse SLP with AO2 and additional remarks")
+    void testParseSeaLevelPressureWithMultipleRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all parsed remarks
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1020.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+
+        // T-group should be parsed (not in free text)
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should parse SLP without AO2")
+    void testParseSeaLevelPressureWithoutAO2() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNull(data.getRemarks().automatedStationType(), "Should have no AO type");
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should handle real-world METAR with SLP")
+    void testParseRealWorldMetarWithSLP() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify main body
+        assertEquals("KJFK", data.getStationId());
+        assertNotNull(data.getWind());
+        assertNotNull(data.getVisibility());
+        assertNotNull(data.getTemperature());
+        assertNotNull(data.getPressure());
+
+        // Verify remarks
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertEquals(1020.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should handle malformed SLP gracefully")
+    void testParseMalformedSeaLevelPressure() {
+        // Invalid format - not 3 digits
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP99 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should handle malformed SLP gracefully");
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        // Malformed SLP should not match pattern, so will be in free text
+        assertNull(data.getRemarks().seaLevelPressure());
+
+        // Should be captured in free text
+        assertNotNull(data.getRemarks().freeText());
+    }
+
+    @Test
+    @DisplayName("Should convert sea level pressure to other units")
+    void testSeaLevelPressureUnitConversions() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        Pressure slp = data.getRemarks().seaLevelPressure();
+        assertNotNull(slp);
+
+        // Verify conversions
+        assertEquals(1021.0, slp.toHectopascals(), 0.1);
+        assertEquals(1021.0, slp.toMillibars(), 0.1);
+        assertEquals(30.15, slp.toInchesHg(), 0.01);
+    }
+
+    @Test
+    @DisplayName("Should parse SLP before AO2")
+    void testParseSeaLevelPressureBeforeAO2() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM RMK SLP210 AO2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+
+        // SLP comes first and should parse
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+
+        // AO2 comes after but might be in free text depending on sequential parsing
+        // At minimum, one of them should be parsed
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP055', 1005.5, 'Extremely high pressure'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP920', 992.0, 'Extremely low pressure (hurricane level)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP500', 950.0, 'Boundary value 500 (uses 900 + 50.0)'"
+    })
+    @DisplayName("Should handle extreme and boundary sea level pressure values")
+    void testParseExtremePressureValues(String metar, double expectedHPa, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().seaLevelPressure(),
+                "Sea level pressure should not be null: " + scenario);
+        assertEquals(expectedHPa, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
+                "Sea level pressure mismatch for: " + scenario);
+    }
+
+    @Test
+    @DisplayName("Should handle SLP with only digits")
+    void testParseSeaLevelPressureOnlyDigits() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SLP145";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1014.5, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+    }
+
+    // ========== SECTION: HOURLY TEMPERATURE/DEWPOINT PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // Positive temperature, positive dewpoint
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 T02330139', 23.3, 13.9, 'Positive temp and dewpoint'",
+
+            // Negative temperature, negative dewpoint
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 T10281035', -2.8, -3.5, 'Negative temp and dewpoint'",
+
+            // Positive temperature, negative dewpoint
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 T00171002', 1.7, -0.2, 'Positive temp, negative dewpoint'",
+
+            // Near freezing
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 T00011000', 0.1, -0.0, 'Near freezing'",
+
+            // Very cold
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK T12781289', -27.8, -28.9, 'Very cold conditions'",
+
+            // Very hot
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK T04670311', 46.7, 31.1, 'Very hot conditions'"
+    })
+    @DisplayName("Should parse T-group with temperature and dewpoint")
+    void testParseHourlyTemperatureWithDewpoint(String metar, double expectedTemp, double expectedDewpt, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().preciseTemperature(),
+                "Precise temperature should not be null: " + scenario);
+
+        // Verify temperature
+        assertEquals(expectedTemp, data.getRemarks().preciseTemperature().celsius(), 0.1,
+                "Temperature mismatch for: " + scenario);
+
+        // Verify dewpoint
+        assertNotNull(data.getRemarks().preciseTemperature().dewpointCelsius(),
+                "Dewpoint should not be null: " + scenario);
+        assertEquals(expectedDewpt, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1,
+                "Dewpoint mismatch for: " + scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse T-group with temperature only (no dewpoint)")
+    void testParseHourlyTemperatureOnly() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 T0233";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().preciseTemperature());
+
+        // Temperature should be present
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+
+        // Dewpoint should be null (not reported)
+        assertNull(data.getRemarks().preciseTemperature().dewpointCelsius(),
+                "Dewpoint should be null when not reported");
+    }
+
+    @Test
+    @DisplayName("Should parse complete METAR with AO2, SLP, and T-group")
+    void testParseCompleteMetarWithAllRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify main body
+        assertEquals("KJFK", data.getStationId());
+        assertNotNull(data.getWind());
+        assertNotNull(data.getVisibility());
+        assertNotNull(data.getTemperature());
+        assertNotNull(data.getPressure());
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+
+        // AO2
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+
+        // SLP201
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1020.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+
+        // T02330139
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+
+        // No unparsed free text should remain
+        if (data.getRemarks().freeText() != null) {
+            assertTrue(data.getRemarks().freeText().isBlank(),
+                    "All remarks should be parsed, no free text expected");
+        }
+    }
+
+    @Test
+    @DisplayName("Should parse T-group without AO2 or SLP")
+    void testParseHourlyTemperatureWithoutOtherRemarks() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+
+        // No AO type
+        assertNull(data.getRemarks().automatedStationType());
+
+        // No SLP
+        assertNull(data.getRemarks().seaLevelPressure());
+
+        // But T-group should be parsed
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should handle malformed T-group gracefully")
+    void testParseMalformedHourlyTemperature() {
+        // Invalid format - not enough digits
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 T023";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should handle malformed T-group gracefully");
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        // Malformed T-group should not match pattern
+        assertNull(data.getRemarks().preciseTemperature());
+    }
+
+    @Test
+    @DisplayName("Should calculate relative humidity from T-group")
+    void testHourlyTemperatureRelativeHumidity() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        Temperature preciseTemp = data.getRemarks().preciseTemperature();
+        assertNotNull(preciseTemp);
+
+        // Temperature class should calculate relative humidity
+        Double rh = preciseTemp.getRelativeHumidity();
+        assertNotNull(rh, "Relative humidity should be calculable");
+        assertTrue(rh >= 0 && rh <= 100, "RH should be between 0-100%");
+
+        // For 23.3°C temp and 13.9°C dewpoint, RH should be around 56%
+        assertEquals(56.0, rh, 5.0, "RH should be approximately 56%");
+    }
+
+    @Test
+    @DisplayName("Should parse T-group at end of remarks (no trailing space)")
+    void testParseHourlyTemperatureAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+    }
+
+    @Test
+    @DisplayName("Should verify T-group is more precise than main body temp")
+    void testHourlyTemperatureVsMainBodyTemperature() {
+        // Main body: 23/14 (whole degrees)
+        // T-group: T02330139 (23.3°C / 13.9°C - tenths precision)
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Main body temperature (whole degrees)
+        assertEquals(23.0, data.getTemperature().celsius(), 0.1);
+        assertEquals(14.0, data.getTemperature().dewpointCelsius(), 0.1);
+
+        // T-group temperature (tenth degree precision)
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertEquals(13.9, data.getRemarks().preciseTemperature().dewpointCelsius(), 0.1);
+
+        // T-group should be more precise
+        assertNotEquals(data.getTemperature().celsius(),
+                data.getRemarks().preciseTemperature().celsius(),
+                "T-group should provide more precise temperature");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM RMK T0000', 0.0, 'Zero degrees'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK T1000', -0.0, 'Negative zero'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK T0001', 0.1, 'Just above freezing'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK T1001', -0.1, 'Just below freezing'"
+    })
+    @DisplayName("Should handle freezing point edge cases")
+    void testFreezingPointEdgeCases(String metar, double expectedTemp, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(expectedTemp, data.getRemarks().preciseTemperature().celsius(), 0.1,
+                scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse T-group in mixed remark order")
+    void testParseTGroupInMixedOrder() {
+        // T-group in middle of remarks
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 T02330139 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+
+        // All should be parsed
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertEquals(23.3, data.getRemarks().preciseTemperature().celsius(), 0.1);
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+    }
+
+    // ========== PEAK WIND PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // Complete peak wind (direction, speed, hour, minute)
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 PK WND 28032/1530', 280, 32, 15, 30, 'Complete peak wind'",
+
+            // High speed with P prefix (>99 knots)
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 360P120/2145', 360, 120, 21, 45, 'High speed >99kt with P prefix'",
+
+            // Another high speed example
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 180P105/0830', 180, 105, 8, 30, 'Speed 105kt'",
+
+            // Different directions
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 090045/1215', 90, 45, 12, 15, 'East wind'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 180050/2359', 180, 50, 23, 59, 'South wind at end of hour'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 270038/0000', 270, 38, 0, 0, 'West wind at midnight'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 360042/1800', 360, 42, 18, 0, 'North wind'"
+    })
+    @DisplayName("Should parse peak wind with complete data")
+    void testParsePeakWind(String metar, int expectedDir, int expectedSpeed,
+                           int expectedHour, int expectedMin, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().peakWind(), "Peak wind should not be null: " + scenario);
+
+        PeakWind peakWind = data.getRemarks().peakWind();
+        assertEquals(expectedDir, peakWind.directionDegrees(), "Direction mismatch: " + scenario);
+        assertEquals(expectedSpeed, peakWind.speedKnots(), "Speed mismatch: " + scenario);
+        assertEquals(expectedHour, peakWind.hour(), "Hour mismatch: " + scenario);
+        assertEquals(expectedMin, peakWind.minute(), "Minute mismatch: " + scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind with partial time (hour only)")
+    void testParsePeakWindHourOnly() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 32035/15";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().peakWind());
+
+        PeakWind peakWind = data.getRemarks().peakWind();
+        assertEquals(320, peakWind.directionDegrees());
+        assertEquals(35, peakWind.speedKnots());
+        assertEquals(15, peakWind.hour(), "Hour should be 15");
+        assertNull(peakWind.minute(), "Minute should be null when not provided");
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind in complete remarks")
+    void testParsePeakWindWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139 PK WND 28032/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1020.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1);
+        assertNotNull(data.getRemarks().preciseTemperature());
+
+        // Verify peak wind
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
+        assertEquals(32, data.getRemarks().peakWind().speedKnots());
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind in mixed remark order")
+    void testParsePeakWindInMixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 28032/1530 AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should handle malformed peak wind gracefully")
+    void testParseMalformedPeakWind() {
+        // Invalid format - missing slash
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 280321530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should handle malformed peak wind gracefully");
+        NoaaMetarData data = extractMetarData(result);
+
+        // Malformed peak wind should not match pattern
+        assertNull(data.getRemarks().peakWind());
+    }
+
+    @Test
+    @DisplayName("Should convert peak wind speed to MPH")
+    void testPeakWindSpeedConversion() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 28032/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        PeakWind peakWind = data.getRemarks().peakWind();
+        assertNotNull(peakWind);
+
+        // 32 knots ≈ 37 MPH (32 * 1.1508)
+        Double mph = peakWind.toMph();
+        assertNotNull(mph, "MPH conversion should not be null");
+        assertEquals(37.0, mph, 1.0);
+    }
+
+    @Test
+    @DisplayName("Should get cardinal direction from peak wind")
+    void testPeakWindCardinalDirection() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 28032/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        PeakWind peakWind = data.getRemarks().peakWind();
+        assertNotNull(peakWind);
+
+        // 280° is W or WNW
+        String cardinal = peakWind.getCardinalDirection();
+        assertNotNull(cardinal);
+        assertTrue(cardinal.equals("W") || cardinal.equals("WNW"),
+                "280° should be W or WNW, got: " + cardinal);
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind at end of remarks (no trailing space)")
+    void testParsePeakWindAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 PK WND 28032/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM RMK PK WND 000025/1200', 0, 'North (0°)'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK PK WND 090030/1200', 90, 'East (90°)'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK PK WND 180035/1200', 180, 'South (180°)'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK PK WND 270040/1200', 270, 'West (270°)'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK PK WND 360045/1200', 360, 'North (360°)'"
+    })
+    @DisplayName("Should handle all cardinal directions")
+    void testPeakWindCardinalDirections(String metar, int expectedDir, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(expectedDir, data.getRemarks().peakWind().directionDegrees(), scenario);
+    }
+
+    @Test
+    @DisplayName("Should handle very high peak wind speeds")
+    void testParseVeryHighPeakWindSpeed() {
+        // Hurricane-force winds >100 knots
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A2950 RMK PK WND 090P145/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(145, data.getRemarks().peakWind().speedKnots(),
+                "P prefix should be stripped, speed should be 145kt");
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind with only required fields")
+    void testParsePeakWindMinimal() {
+        // Direction and speed only (no time components)
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 280P105/";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Should parse even with missing time components
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
+        assertEquals(105, data.getRemarks().peakWind().speedKnots());
+        assertNull(data.getRemarks().peakWind().hour());
+        assertNull(data.getRemarks().peakWind().minute());
+    }
+
+    // ========== WIND SHIFT PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // Complete wind shift (hour and minute)
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 WSHFT 1530', 15, 30, false, 'Complete wind shift'",
+
+            // With frontal passage
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 WSHFT 1530 FROPA', 15, 30, true, 'Wind shift with FROPA'",
+
+            // Different times
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 0815', 8, 15, false, 'Morning wind shift'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 2145 FROPA', 21, 45, true, 'Evening FROPA'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 0000', 0, 0, false, 'Midnight wind shift'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 2359 FROPA', 23, 59, true, 'End of hour FROPA'"
+    })
+    @DisplayName("Should parse wind shift with complete data")
+    void testParseWindShift(String metar, Integer expectedHour, Integer expectedMin,
+                            boolean expectedFropa, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().windShift(), "Wind shift should not be null: " + scenario);
+
+        WindShift windShift = data.getRemarks().windShift();
+        assertEquals(expectedHour, windShift.hour(), "Hour mismatch: " + scenario);
+        assertEquals(expectedMin, windShift.minute(), "Minute mismatch: " + scenario);
+        assertEquals(expectedFropa, windShift.frontalPassage(), "FROPA mismatch: " + scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse wind shift with minute only (no hour)")
+    void testParseWindShiftMinuteOnly() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 30";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().windShift());
+
+        WindShift windShift = data.getRemarks().windShift();
+        assertNull(windShift.hour(), "Hour should be null when not provided");
+        assertEquals(30, windShift.minute());
+        assertFalse(windShift.frontalPassage());
+    }
+
+    @Test
+    @DisplayName("Should parse wind shift with minute only and FROPA")
+    void testParseWindShiftMinuteOnlyWithFropa() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 45 FROPA";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().windShift());
+
+        WindShift windShift = data.getRemarks().windShift();
+        assertNull(windShift.hour());
+        assertEquals(45, windShift.minute());
+        assertTrue(windShift.frontalPassage(), "FROPA should be true");
+    }
+
+    @Test
+    @DisplayName("Should parse wind shift in complete remarks")
+    void testParseWindShiftWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 PK WND 28032/1530 WSHFT 1545 FROPA";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertNotNull(data.getRemarks().peakWind());
+
+        // Verify wind shift
+        assertNotNull(data.getRemarks().windShift());
+        assertEquals(15, data.getRemarks().windShift().hour());
+        assertEquals(45, data.getRemarks().windShift().minute());
+        assertTrue(data.getRemarks().windShift().frontalPassage());
+    }
+
+    @Test
+    @DisplayName("Should parse wind shift in mixed remark order")
+    void testParseWindShiftInMixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 1530 FROPA AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        assertNotNull(data.getRemarks().windShift());
+        assertEquals(15, data.getRemarks().windShift().hour());
+        assertTrue(data.getRemarks().windShift().frontalPassage());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should handle malformed wind shift gracefully")
+    void testParseMalformedWindShift() {
+        // Invalid format - missing time
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should handle malformed wind shift gracefully");
+        NoaaMetarData data = extractMetarData(result);
+
+        // Malformed wind shift should not match pattern
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().windShift());
+        }
+    }
+
+    @Test
+    @DisplayName("Should parse wind shift at end of remarks (no trailing space)")
+    void testParseWindShiftAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 WSHFT 1530 FROPA";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().windShift());
+        assertEquals(15, data.getRemarks().windShift().hour());
+        assertTrue(data.getRemarks().windShift().frontalPassage());
+    }
+
+    @Test
+    @DisplayName("Should distinguish FROPA from non-FROPA wind shifts")
+    void testWindShiftFropaVsNoFropa() {
+        // Without FROPA
+        String metar1 = "METAR KJFK 121853Z 28016KT 10SM RMK WSHFT 1530";
+        ParseResult<NoaaWeatherData> result1 = parser.parse(metar1);
+        NoaaMetarData data1 = extractMetarData(result1);
+        assertFalse(data1.getRemarks().windShift().frontalPassage(),
+                "Should be false without FROPA");
+
+        // With FROPA
+        String metar2 = "METAR KJFK 121853Z 28016KT 10SM RMK WSHFT 1530 FROPA";
+        ParseResult<NoaaWeatherData> result2 = parser.parse(metar2);
+        NoaaMetarData data2 = extractMetarData(result2);
+        assertTrue(data2.getRemarks().windShift().frontalPassage(),
+                "Should be true with FROPA");
+    }
+
+    @Test
+    @DisplayName("Should parse wind shift without other remarks")
+    void testParseWindShiftAlone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 1530 FROPA";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().windShift());
+
+        // Other remark fields should be null
+        assertNull(data.getRemarks().automatedStationType());
+        assertNull(data.getRemarks().seaLevelPressure());
+        assertNull(data.getRemarks().preciseTemperature());
+        assertNull(data.getRemarks().peakWind());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM RMK WSHFT 0000', 0, 0, 'Midnight'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK WSHFT 0100', 1, 0, 'One AM'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK WSHFT 1200', 12, 0, 'Noon'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK WSHFT 2300', 23, 0, 'Eleven PM'"
+    })
+    @DisplayName("Should handle edge case times")
+    void testWindShiftEdgeCaseTimes(String metar, int expectedHour, int expectedMin, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().windShift());
+        assertEquals(expectedHour, data.getRemarks().windShift().hour(), scenario);
+        assertEquals(expectedMin, data.getRemarks().windShift().minute(), scenario);
+    }
+
+    @Test
+    @DisplayName("Should handle wind shift with peak wind")
+    void testWindShiftAndPeakWind() {
+        // Both wind shift and peak wind in same METAR
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 28045/1528 WSHFT 1530 FROPA";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Peak wind should be parsed: 280° at 45kt at 15:28 UTC
+        assertNotNull(data.getRemarks().peakWind());
+        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
+        assertEquals(45, data.getRemarks().peakWind().speedKnots());
+        assertEquals(15, data.getRemarks().peakWind().hour());
+        assertEquals(28, data.getRemarks().peakWind().minute());
+
+        // Wind shift should be parsed: 15:30 UTC with FROPA
+        assertNotNull(data.getRemarks().windShift());
+        assertEquals(15, data.getRemarks().windShift().hour());
+        assertEquals(30, data.getRemarks().windShift().minute());
+        assertTrue(data.getRemarks().windShift().frontalPassage());
+    }
+
+    // ========== VARIABLE VISIBILITY PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // Simple fractions
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 VIS 1/2V2', 0.5, 2.0, '', '', 'Half mile varying to 2'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/4V1', 0.25, 1.0, '', '', 'Quarter mile varying to 1'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 3/4V2', 0.75, 2.0, '', '', 'Three quarters varying to 2'",
+
+            // Mixed numbers
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1 1/2V3', 1.5, 3.0, '', '', 'One and a half varying to 3'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 2 1/4V5', 2.25, 5.0, '', '', 'Two and a quarter varying to 5'",
+
+            // Whole numbers
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 2V4', 2.0, 4.0, '', '', 'Two varying to four'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1V10', 1.0, 10.0, '', '', 'One varying to ten'"
+    })
+    @DisplayName("Should parse variable visibility with various formats")
+    void testParseVariableVisibility(String metar, double expectedMin, double expectedMax,
+                                     String expectedDir, String expectedLoc, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().variableVisibility(),
+                "Variable visibility should not be null: " + scenario);
+
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+
+        // Verify minimum visibility
+        assertNotNull(varVis.minimumVisibility(), "Minimum visibility should not be null: " + scenario);
+        Double minSM = varVis.minimumVisibility().toStatuteMiles();
+        assertNotNull(minSM, "Minimum visibility in SM should not be null: " + scenario);
+        assertEquals(expectedMin, minSM, 0.01, "Minimum visibility mismatch: " + scenario);
+
+        // Verify maximum visibility
+        assertNotNull(varVis.maximumVisibility(), "Maximum visibility should not be null: " + scenario);
+        Double maxSM = varVis.maximumVisibility().toStatuteMiles();
+        assertNotNull(maxSM, "Maximum visibility in SM should not be null: " + scenario);
+        assertEquals(expectedMax, maxSM, 0.01,"Maximum visibility mismatch: " + scenario);
+
+        // Verify direction and location (empty string means null)
+        if (!expectedDir.isEmpty()) {
+            assertEquals(expectedDir, varVis.direction(), "Direction mismatch: " + scenario);
+        } else {
+            assertNull(varVis.direction(), "Direction should be null: " + scenario);
+        }
+
+        if (!expectedLoc.isEmpty()) {
+            assertEquals(expectedLoc, varVis.location(), "Location mismatch: " + scenario);
+        } else {
+            assertNull(varVis.location(), "Location should be null: " + scenario);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS NE 2V4', NE, 'Northeast'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS SE 1V3', SE, 'Southeast'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS SW 1/2V2', SW, 'Southwest'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS NW 3V5', NW, 'Northwest'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS N 2V4', N, 'North'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS E 1V3', E, 'East'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS S 2V5', S, 'South'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS W 1V4', W, 'West'"
+    })
+    @DisplayName("Should parse variable visibility with all cardinal directions")
+    void testParseVariableVisibilityWithDirections(String metar, String expectedDir, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().variableVisibility());
+        assertEquals(expectedDir, data.getRemarks().variableVisibility().direction(), scenario);
+        assertTrue(data.getRemarks().variableVisibility().hasDirection());
+    }
+
+    @Test
+    @DisplayName("Should parse variable visibility in complete remarks")
+    void testParseVariableVisibilityWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 PK WND 28032/1530 VIS 1/2V2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertNotNull(data.getRemarks().peakWind());
+
+        // Verify variable visibility
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        Double minSM = varVis.minimumVisibility().toStatuteMiles();
+        assertNotNull(minSM, "Minimum visibility in SM should not be null");
+        assertEquals(0.5, minSM, 0.01);
+
+        Double maxSM = varVis.maximumVisibility().toStatuteMiles();
+        assertNotNull(maxSM, "Maximum visibility in SM should not be null");
+        assertEquals(2.0, maxSM, 0.01);
+    }
+
+    @Test
+    @DisplayName("Should parse variable visibility in mixed remark order")
+    void testParseVariableVisibilityInMixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1V3 AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        Double minSM = varVis.minimumVisibility().toStatuteMiles();
+        assertNotNull(minSM);
+        assertEquals(1.0, minSM, 0.01);
+
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should handle malformed variable visibility gracefully")
+    void testParseMalformedVariableVisibility() {
+        // Invalid format - missing max visibility
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should handle malformed variable visibility gracefully");
+        NoaaMetarData data = extractMetarData(result);
+
+        // Malformed variable visibility should not parse
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().variableVisibility());
+        }
+    }
+
+    @Test
+    @DisplayName("Should parse variable visibility at end of remarks (no trailing space)")
+    void testParseVariableVisibilityAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 VIS 1/2V2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        Double minSM = varVis.minimumVisibility().toStatuteMiles();
+        assertNotNull(minSM);
+        assertEquals(0.5, minSM, 0.01);
+    }
+
+    @Test
+    @DisplayName("Should parse variable visibility without other remarks")
+    void testParseVariableVisibilityAlone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1V3";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().variableVisibility());
+
+        // Other remark fields should be null
+        assertNull(data.getRemarks().automatedStationType());
+        assertNull(data.getRemarks().seaLevelPressure());
+        assertNull(data.getRemarks().preciseTemperature());
+    }
+
+    @Test
+    @DisplayName("Should verify variable visibility spread calculation")
+    void testVariableVisibilitySpread() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1V4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        // Spread should be 3 SM (4 - 1)
+        Double spread = varVis.getSpread();
+        assertNotNull(spread, "Spread should not be null");
+        assertEquals(3.0, spread, 0.01);
+        assertTrue(varVis.hasSignificantVariability(), "Spread > 1 SM should be significant");
+    }
+
+    @Test
+    @DisplayName("Should handle variable visibility with small spread")
+    void testVariableVisibilitySmallSpread() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 2V3";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        // Spread should be 1 SM (3 - 2)
+        Double spread = varVis.getSpread();
+        assertNotNull(spread, "Spread should not be null");
+        assertEquals(1.0, spread, 0.01);
+        assertFalse(varVis.hasSignificantVariability(), "Spread = 1 SM should not be significant");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS 1/8V1/4', 0.125, 0.25, 'Very low visibility'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS 1/4V1/2', 0.25, 0.5, 'Low visibility'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS 5V10', 5.0, 10.0, 'High visibility'",
+            "'METAR KJFK 121853Z 28016KT 10SM RMK VIS 8V10', 8.0, 10.0, 'Good to excellent'"
+    })
+    @DisplayName("Should handle variable visibility edge cases")
+    void testVariableVisibilityEdgeCases(String metar, double expectedMin,
+                                         double expectedMax, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().variableVisibility());
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis, "Variable visibility should not be null: " + scenario);
+
+        Double minSM = varVis.minimumVisibility().toStatuteMiles();
+        assertNotNull(minSM, "Minimum visibility in SM should not be null: " + scenario);
+        assertEquals(expectedMin, minSM, 0.01, scenario);
+
+        Double maxSM = varVis.maximumVisibility().toStatuteMiles();
+        assertNotNull(maxSM, "Maximum visibility in SM should not be null: " + scenario);
+        assertEquals(expectedMax, maxSM, 0.01, scenario);
+    }
+
+    @Test
+    @DisplayName("Should generate human-readable description")
+    void testVariableVisibilityDescription() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS NE 1/2V2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        String description = varVis.getDescription();
+        assertNotNull(description);
+        assertTrue(description.contains("NE"), "Description should include direction");
+        assertTrue(description.contains("varying"), "Description should include 'varying'");
+    }
+
+    @Test
+    @DisplayName("Should handle complex mixed fraction visibility")
+    void testComplexMixedFractionVisibility() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1 3/4V2 1/2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().variableVisibility());
+        VariableVisibility varVis = data.getRemarks().variableVisibility();
+        assertNotNull(varVis);
+
+        Double minSM = varVis.minimumVisibility().toStatuteMiles();
+        assertNotNull(minSM, "Minimum visibility in SM should not be null");
+        assertEquals(1.75, minSM, 0.01, "Should parse 1 3/4 as 1.75");
+
+        Double maxSM = varVis.maximumVisibility().toStatuteMiles();
+        assertNotNull(maxSM, "Maximum visibility in SM should not be null");
+        assertEquals(2.5, maxSM, 0.01, "Should parse 2 1/2 as 2.5");
+    }
+
+    // ========== VARIABLE VISIBILITY ERROR COVERAGE TEST ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS V2', 'Missing minimum distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2V', 'Missing maximum distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS RWY 1/2', 'Without V separator'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS ABCV2', 'Unparseable minimum'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2VABC', 'Unparseable maximum'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 5V2', 'Minimum greater than maximum (triggers validation exception)'"
+    })
+    @DisplayName("Should skip variable visibility for malformed formats")
+    void testVariableVisibilityMalformedFormats(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        // Variable visibility should not be parsed for malformed formats
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().variableVisibility(),
+                    "Variable visibility should be null: " + scenario);
+        }
+    }
+
+    // ========== TOWER VISIBILITY PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // Tower visibility - fractions
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 1/2', 0.5, 'Half mile'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 1/4', 0.25, 'Quarter mile'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 3/4', 0.75, 'Three quarters'",
+
+            // Tower visibility - mixed numbers
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 1 1/2', 1.5, 'One and a half'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 2 1/4', 2.25, 'Two and a quarter'",
+
+            // Tower visibility - whole numbers
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 2', 2.0, 'Two miles'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 5', 5.0, 'Five miles'"
+    })
+    @DisplayName("Should parse tower visibility with various formats")
+    void testParseTowerVisibility(String metar, double expectedVis, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().towerVisibility(),
+                "Tower visibility should not be null: " + scenario);
+
+        Visibility towerVis = data.getRemarks().towerVisibility();
+        Double visSM = towerVis.toStatuteMiles();
+        assertNotNull(visSM, "Tower visibility in SM should not be null: " + scenario);
+        assertEquals(expectedVis, visSM, 0.01, "Tower visibility mismatch: " + scenario);
+    }
+
+
+    // ========== SURFACE VISIBILITY PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            // Surface visibility - fractions
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 1/2', 0.5, 'Half mile'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 1/4', 0.25, 'Quarter mile'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 3/4', 0.75, 'Three quarters'",
+
+            // Surface visibility - mixed numbers
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 1 1/2', 1.5, 'One and a half'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 2 1/4', 2.25, 'Two and a quarter'",
+
+            // Surface visibility - whole numbers
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 1', 1.0, 'One mile'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS 3', 3.0, 'Three miles'"
+    })
+    @DisplayName("Should parse surface visibility with various formats")
+    void testParseSurfaceVisibility(String metar, double expectedVis, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().surfaceVisibility(),
+                "Surface visibility should not be null: " + scenario);
+
+        Visibility surfaceVis = data.getRemarks().surfaceVisibility();
+        Double visSM = surfaceVis.toStatuteMiles();
+        assertNotNull(visSM, "Surface visibility in SM should not be null: " + scenario);
+        assertEquals(expectedVis, visSM, 0.01, "Surface visibility mismatch: " + scenario);
+    }
+
+
+    // ========== INTEGRATION TESTS ==========
+
+    @Test
+    @DisplayName("Should parse tower visibility with other remarks")
+    void testParseTowerVisibilityWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 TWR VIS 1 1/2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().preciseTemperature());
+
+        // Verify tower visibility
+        assertNotNull(data.getRemarks().towerVisibility());
+        Double towerVisSM = data.getRemarks().towerVisibility().toStatuteMiles();
+        assertNotNull(towerVisSM);
+        assertEquals(1.5, towerVisSM, 0.01);
+    }
+
+    @Test
+    @DisplayName("Should parse surface visibility with other remarks")
+    void testParseSurfaceVisibilityWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 SFC VIS 1/4 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().preciseTemperature());
+
+        // Verify surface visibility
+        assertNotNull(data.getRemarks().surfaceVisibility());
+        Double surfaceVisSM = data.getRemarks().surfaceVisibility().toStatuteMiles();
+        assertNotNull(surfaceVisSM);
+        assertEquals(0.25, surfaceVisSM, 0.01);
+    }
+
+    @Test
+    @DisplayName("Should parse tower visibility in mixed remark order")
+    void testParseTowerVisibilityInMixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 2 AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        assertNotNull(data.getRemarks().towerVisibility());
+        Double towerVisSM = data.getRemarks().towerVisibility().toStatuteMiles();
+        assertNotNull(towerVisSM);
+        assertEquals(2.0, towerVisSM, 0.01);
+
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should handle tower and surface visibility together")
+    void testParseBothTowerAndSurfaceVisibility() {
+        // Note: This is unusual in real METARs but testing the parser handles it
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 2 SFC VIS 1/2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Both should be parsed
+        assertNotNull(data.getRemarks().towerVisibility());
+        assertNotNull(data.getRemarks().surfaceVisibility());
+
+        Double towerVisSM = data.getRemarks().towerVisibility().toStatuteMiles();
+        assertNotNull(towerVisSM);
+        assertEquals(2.0, towerVisSM, 0.01);
+
+        Double surfaceVisSM = data.getRemarks().surfaceVisibility().toStatuteMiles();
+        assertNotNull(surfaceVisSM);
+        assertEquals(0.5, surfaceVisSM, 0.01);
+    }
+
+
+    // ========== ERROR HANDLING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS', 'TWR VIS missing distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS', 'SFC VIS missing distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS ABC', 'TWR VIS unparseable distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS XYZ', 'SFC VIS unparseable distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS  ', 'TWR VIS blank distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK SFC VIS  ', 'SFC VIS blank distance'"
+    })
+    @DisplayName("Should skip tower/surface visibility for malformed formats")
+    void testTowerSurfaceVisibilityMalformedFormats(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        // Tower/Surface visibility should not be parsed for malformed formats
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().towerVisibility(),
+                    "Tower visibility should be null: " + scenario);
+            assertNull(data.getRemarks().surfaceVisibility(),
+                    "Surface visibility should be null: " + scenario);
+        }
+    }
+
+    @Test
+    @DisplayName("Should parse tower visibility without other remarks")
+    void testParseTowerVisibilityAlone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TWR VIS 1 1/2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().towerVisibility());
+
+        Double towerVisSM = data.getRemarks().towerVisibility().toStatuteMiles();
+        assertNotNull(towerVisSM);
+        assertEquals(1.5, towerVisSM, 0.01);
+
+        // Other remark fields should be null
+        assertNull(data.getRemarks().automatedStationType());
+        assertNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should parse surface visibility at end of remarks")
+    void testParseSurfaceVisibilityAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 SFC VIS 1/4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().surfaceVisibility());
+        Double surfaceVisSM = data.getRemarks().surfaceVisibility().toStatuteMiles();
+        assertNotNull(surfaceVisSM);
+        assertEquals(0.25, surfaceVisSM, 0.01);
+    }
+
+    // ========== HOURLY PRECIPITATION PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0015', 0.15, 'Quarter inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0009', 0.09, 'Less than tenth'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0025', 0.25, 'Quarter inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0125', 1.25, 'Over an inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0000', 0.0, 'Zero precipitation'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0001', 0.01, 'Minimal measurable'"
+    })
+    @DisplayName("Should parse hourly precipitation amounts")
+    void testParseHourlyPrecipitation(String metar, double expectedInches, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().hourlyPrecipitation(),
+                "Hourly precipitation should not be null: " + scenario);
+
+        PrecipitationAmount precip = data.getRemarks().hourlyPrecipitation();
+        assertEquals(1, precip.periodHours(), scenario);
+        assertFalse(precip.isTrace(), scenario);
+
+        Double inches = precip.inches();
+        assertNotNull(inches, "Precipitation amount should not be null: " + scenario);
+        assertEquals(expectedInches, inches, 0.001, scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse hourly trace precipitation")
+    void testParseHourlyTracePrecipitation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK P////";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+        PrecipitationAmount precip = data.getRemarks().hourlyPrecipitation();
+
+        assertTrue(precip.isTrace(), "Should be trace precipitation");
+        assertEquals(1, precip.periodHours());
+        assertNull(precip.inches(), "Trace should have null inches");
+    }
+
+    // ========== 6-HOUR PRECIPITATION PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 60009', 0.09, '6-hour - less than tenth'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 60015', 0.15, '6-hour - quarter inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 60025', 0.25, '6-hour - quarter inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 60125', 1.25, '6-hour - over an inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 60000', 0.0, '6-hour - zero'"
+    })
+    @DisplayName("Should parse 6-hour precipitation amounts")
+    void testParseSixHourPrecipitation(String metar, double expectedInches, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().sixHourPrecipitation(),
+                "6-hour precipitation should not be null: " + scenario);
+
+        PrecipitationAmount precip = data.getRemarks().sixHourPrecipitation();
+        assertEquals(6, precip.periodHours(), scenario);
+        assertFalse(precip.isTrace(), scenario);
+
+        Double inches = precip.inches();
+        assertNotNull(inches, "Precipitation amount should not be null: " + scenario);
+        assertEquals(expectedInches, inches, 0.001, scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse 6-hour trace precipitation")
+    void testParseSixHourTracePrecipitation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 6////";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().sixHourPrecipitation());
+        PrecipitationAmount precip = data.getRemarks().sixHourPrecipitation();
+
+        assertTrue(precip.isTrace(), "Should be trace precipitation");
+        assertEquals(6, precip.periodHours());
+        assertNull(precip.inches(), "Trace should have null inches");
+    }
+
+    // ========== 24-HOUR PRECIPITATION PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 70009', 0.09, '24-hour - less than tenth'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 70125', 1.25, '24-hour - over an inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 70250', 2.50, '24-hour - two and a half'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 71000', 10.0, '24-hour - ten inches'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 70000', 0.0, '24-hour - zero'"
+    })
+    @DisplayName("Should parse 24-hour precipitation amounts")
+    void testParseTwentyFourHourPrecipitation(String metar, double expectedInches, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().twentyFourHourPrecipitation(),
+                "24-hour precipitation should not be null: " + scenario);
+
+        PrecipitationAmount precip = data.getRemarks().twentyFourHourPrecipitation();
+        assertEquals(24, precip.periodHours(), scenario);
+        assertFalse(precip.isTrace(), scenario);
+
+        Double inches = precip.inches();
+        assertNotNull(inches, "Precipitation amount should not be null: " + scenario);
+        assertEquals(expectedInches, inches, 0.001, scenario);
+    }
+
+    @Test
+    @DisplayName("Should parse 24-hour trace precipitation")
+    void testParseTwentyFourHourTracePrecipitation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 7////";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().twentyFourHourPrecipitation());
+        PrecipitationAmount precip = data.getRemarks().twentyFourHourPrecipitation();
+
+        assertTrue(precip.isTrace(), "Should be trace precipitation");
+        assertEquals(24, precip.periodHours());
+        assertNull(precip.inches(), "Trace should have null inches");
+    }
+
+    // ========== INTEGRATION TESTS ==========
+
+    @Test
+    @DisplayName("Should parse hourly precipitation with other remarks")
+    void testParseHourlyPrecipitationWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 P0015";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().preciseTemperature());
+
+        // Verify hourly precipitation
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+        Double precipInches = data.getRemarks().hourlyPrecipitation().inches();
+        assertNotNull(precipInches);
+        assertEquals(0.15, precipInches, 0.001);
+    }
+
+    @Test
+    @DisplayName("Should parse multiple precipitation periods together")
+    void testParseMultiplePrecipitationPeriods() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0015 60025 70125";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All three should be parsed
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+        assertNotNull(data.getRemarks().sixHourPrecipitation());
+        assertNotNull(data.getRemarks().twentyFourHourPrecipitation());
+
+        Double hourlyInches = data.getRemarks().hourlyPrecipitation().inches();
+        assertNotNull(hourlyInches);
+        assertEquals(0.15, hourlyInches, 0.001);
+
+        Double sixHourInches = data.getRemarks().sixHourPrecipitation().inches();
+        assertNotNull(sixHourInches);
+        assertEquals(0.25, sixHourInches, 0.001);
+
+        Double twentyFourHourInches = data.getRemarks().twentyFourHourPrecipitation().inches();
+        assertNotNull(twentyFourHourInches);
+        assertEquals(1.25, twentyFourHourInches, 0.001);
+    }
+
+    @Test
+    @DisplayName("Should parse precipitation in mixed remark order")
+    void testParsePrecipitationInMixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 60025 AO2 P0015 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        assertNotNull(data.getRemarks().sixHourPrecipitation());
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should parse precipitation at end of remarks")
+    void testParsePrecipitationAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 P0015";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+        Double precipInches = data.getRemarks().hourlyPrecipitation().inches();
+        assertNotNull(precipInches);
+        assertEquals(0.15, precipInches, 0.001);
+    }
+
+
+// ========== ERROR HANDLING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PABCD', 'Hourly - invalid characters'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 6ABCD', '6-hour - invalid characters'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 7WXYZ', '24-hour - invalid characters'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 6    ', '6-hour - blank value'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 7    ', '24-hour - blank value'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK P    ', 'Hourly - blank value'"
+    })
+    @DisplayName("Should skip precipitation for malformed formats")
+    void testPrecipitationMalformedFormats(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        // Precipitation should not be parsed for malformed formats
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().hourlyPrecipitation(),
+                    "Hourly precipitation should be null: " + scenario);
+            assertNull(data.getRemarks().sixHourPrecipitation(),
+                    "6-hour precipitation should be null: " + scenario);
+            assertNull(data.getRemarks().twentyFourHourPrecipitation(),
+                    "24-hour precipitation should be null: " + scenario);
+        }
+    }
+
+    @Test
+    @DisplayName("Should parse precipitation without other remarks")
+    void testParsePrecipitationAlone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0015";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+
+        Double precipInches = data.getRemarks().hourlyPrecipitation().inches();
+        assertNotNull(precipInches);
+        assertEquals(0.15, precipInches, 0.001);
+
+        // Other remark fields should be null
+        assertNull(data.getRemarks().automatedStationType());
+        assertNull(data.getRemarks().seaLevelPressure());
+    }
+
+    @Test
+    @DisplayName("Should handle all trace precipitation types")
+    void testParseAllTracePrecipitation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK P//// 6//// 7////";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be trace
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+        assertTrue(data.getRemarks().hourlyPrecipitation().isTrace());
+
+        assertNotNull(data.getRemarks().sixHourPrecipitation());
+        assertTrue(data.getRemarks().sixHourPrecipitation().isTrace());
+
+        assertNotNull(data.getRemarks().twentyFourHourPrecipitation());
+        assertTrue(data.getRemarks().twentyFourHourPrecipitation().isTrace());
+    }
+
+    @Test
+    @DisplayName("Should verify precipitation isMeasurable check")
+    void testPrecipitationMeasurableCheck() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK P0015";  // ← Only one value
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        PrecipitationAmount precip = data.getRemarks().hourlyPrecipitation();
+        assertNotNull(precip);
+
+        assertTrue(precip.isMeasurable(), "0.15 inches should be measurable");
+        assertFalse(precip.isTrace());
+
+        Double inches = precip.inches();
+        assertNotNull(inches);
+        assertEquals(0.15, inches, 0.001);
+    }
+
+    // ========== HAIL SIZE PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1/2', 0.5, 'Half inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 3/4', 0.75, 'Three quarters inch'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1', 1.0, 'One inch (severe)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1 3/4', 1.75, 'Golf ball sized'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 2', 2.0, 'Tennis ball sized (significantly severe)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 2 1/2', 2.5, 'Baseball sized'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 3', 3.0, 'Softball sized'"
+    })
+    @DisplayName("Should parse hail sizes")
+    void testParseHailSize(String metar, double expectedInches, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null: " + scenario);
+        assertNotNull(data.getRemarks().hailSize(),
+                "Hail size should not be null: " + scenario);
+
+        HailSize hailSize = data.getRemarks().hailSize();
+        assertEquals(expectedInches, hailSize.inches(), 0.001, scenario);
+    }
+
+    // ========== HAIL SIZE SEVERITY TESTS ==========
+
+    @Test
+    @DisplayName("Should parse severe hail (1.0 inch)")
+    void testParseSevereHail() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        HailSize hailSize = data.getRemarks().hailSize();
+
+        assertEquals(1.0, hailSize.inches(), 0.001);
+        assertTrue(hailSize.isSevere(), "1.0 inch should be severe");
+        assertFalse(hailSize.isSignificantlySevere());
+    }
+
+    @Test
+    @DisplayName("Should parse significantly severe hail (2.0 inches)")
+    void testParseSignificantlySevereHail() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        HailSize hailSize = data.getRemarks().hailSize();
+
+        assertEquals(2.0, hailSize.inches(), 0.001);
+        assertTrue(hailSize.isSignificantlySevere(), "2.0 inches should be significantly severe");
+        assertTrue(hailSize.isSevere(), "Should also be severe");
+    }
+
+    @Test
+    @DisplayName("Should parse non-severe hail (0.75 inch)")
+    void testParseNonSevereHail() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 3/4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        HailSize hailSize = data.getRemarks().hailSize();
+
+        assertEquals(0.75, hailSize.inches(), 0.001);
+        assertFalse(hailSize.isSevere(), "0.75 inch should not be severe");
+    }
+
+    // ========== HAIL SIZE CATEGORY TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1/2', 'Penny-sized'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1', 'Quarter-sized'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1 3/4', 'Tennis ball-sized'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 2 1/2', 'Baseball-sized'"
+    })
+    @DisplayName("Should correctly categorize hail sizes")
+    void testHailSizeCategories(String metar, String expectedCategory) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(expectedCategory, data.getRemarks().hailSize().getSizeCategory());
+    }
+
+    // ========== INTEGRATION TESTS ==========
+
+    @Test
+    @DisplayName("Should parse hail size with other remarks")
+    void testParseHailSizeWithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 P0015 GR 1 3/4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Verify all remarks parsed
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().preciseTemperature());
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+
+        // Verify hail size
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(1.75, data.getRemarks().hailSize().inches(), 0.001);
+    }
+
+    @Test
+    @DisplayName("Should parse hail size in mixed remark order")
+    void testParseHailSizeInMixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 2 AO2 SLP210 P0015";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertNotNull(data.getRemarks().hourlyPrecipitation());
+
+        assertEquals(2.0, data.getRemarks().hailSize().inches(), 0.001);
+    }
+
+    @Test
+    @DisplayName("Should parse hail size at end of remarks")
+    void testParseHailSizeAtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 GR 1 3/4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(1.75, data.getRemarks().hailSize().inches(), 0.001);
+    }
+
+    @Test
+    @DisplayName("Should parse hail size at beginning of remarks")
+    void testParseHailSizeAtBeginning() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 2 AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(2.0, data.getRemarks().hailSize().inches(), 0.001);
+    }
+
+    @Test
+    @DisplayName("Should parse hail size without other remarks")
+    void testParseHailSizeAlone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1 3/4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertNotNull(data.getRemarks().hailSize());
+
+        assertEquals(1.75, data.getRemarks().hailSize().inches(), 0.001);
+
+        // Other remark fields should be null
+        assertNull(data.getRemarks().automatedStationType());
+        assertNull(data.getRemarks().seaLevelPressure());
+    }
+
+    // ========== ERROR HANDLING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR ABC', 'Invalid characters'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR XYZ', 'Non-numeric value'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR    ', 'Blank value'"
+    })
+    @DisplayName("Should skip hail size for malformed formats")
+    void testHailSizeMalformedFormats(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        // Hail size should not be parsed for malformed formats
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().hailSize(),
+                    "Hail size should be null: " + scenario);
+        }
+    }
+
+    @Test
+    @DisplayName("Should skip hail size with missing value")
+    void testHailSizeMissingValue() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertNull(data.getRemarks().hailSize(),
+                    "Hail size should be null when value is missing");
+        }
+    }
+
+    // ========== EDGE CASES ==========
+
+    @Test
+    @DisplayName("Should parse very small hail")
+    void testParseVerySmallHail() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1/4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(0.25, data.getRemarks().hailSize().inches(), 0.001);
+        assertEquals("Marble-sized", data.getRemarks().hailSize().getSizeCategory());
+    }
+
+    @Test
+    @DisplayName("Should parse large hail")
+    void testParseLargeHail() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 4";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        assertEquals(4.0, data.getRemarks().hailSize().inches(), 0.001);
+        assertEquals("Grapefruit-sized or larger", data.getRemarks().hailSize().getSizeCategory());
+        assertTrue(data.getRemarks().hailSize().isSignificantlySevere());
+    }
+
+    @Test
+    @DisplayName("Should handle hail size at severe threshold boundary")
+    void testHailSizeAtSevereThreshold() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks().hailSize());
+        HailSize hailSize = data.getRemarks().hailSize();
+
+        assertEquals(1.0, hailSize.inches(), 0.001);
+        assertTrue(hailSize.isSevere(), "Exactly 1.0 inch should be severe");
     }
 }
