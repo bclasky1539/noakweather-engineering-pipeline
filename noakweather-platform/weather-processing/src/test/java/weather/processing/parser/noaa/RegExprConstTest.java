@@ -16,8 +16,10 @@
  */
 package weather.processing.parser.noaa;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.regex.Matcher;
@@ -350,7 +352,270 @@ class RegExprConstTest {
         assertThat(matcher.group("tend")).isEqualTo("2");
         assertThat(matcher.group("press")).isEqualTo("032");
     }
-    
+
+    // ========== HAIL SIZE PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'GR 1/4 ', 1/4, 'Quarter inch'",
+            "'GR 1/2 ', 1/2, 'Half inch'",
+            "'GR 3/4 ', 3/4, 'Three-quarter inch'",
+            "'GR 1 ', 1, 'One inch (severe threshold)'",
+            "'GR 1 1/4 ', '1 1/4', 'One and quarter'",
+            "'GR 1 1/2 ', '1 1/2', 'One and half'",
+            "'GR 1 3/4 ', '1 3/4', 'One and three-quarter'",
+            "'GR 2 ', 2, 'Two inches (significantly severe)'",
+            "'GR 2 1/2 ', '2 1/2', 'Two and half'",
+            "'GR 3 ', 3, 'Three inches'",
+            "'GR 4 ', 4, 'Four inches'",
+            "'GR 2 3/4 ', '2 3/4', 'Baseball sized'",
+            "'GR 1 3/4', '1 3/4', 'Without trailing space'"
+    })
+    @DisplayName("HAIL_SIZE_PATTERN should match various hail sizes")
+    void testHailSizePattern_VariousSizes(String input, String expectedSize, String scenario) {
+        Matcher matcher = RegExprConst.HAIL_SIZE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+
+        assertThat(matcher.group("size"))
+                .as("Size should match: %s", scenario)
+                .isEqualTo(expectedSize);
+    }
+
+    @Test
+    void testHailSizePattern_DoesNotMatchWithoutGR() {
+        // Should NOT match without GR prefix
+        String input = "1 3/4 ";
+        Matcher matcher = RegExprConst.HAIL_SIZE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    @Test
+    void testHailSizePattern_DoesNotMatchInvalidFormat() {
+        // Should NOT match invalid formats
+        String input = "GR A ";
+        Matcher matcher = RegExprConst.HAIL_SIZE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    // ========== WEATHER BEGIN/END PATTERN TESTS ==========
+
+    @Test
+    void testBeginEndWeatherPattern_SimpleBegin() {
+        // RAB05 - Rain began at :05 (minute only)
+        String input = "RAB05 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begin")).isEqualTo("B");
+        assertThat(matcher.group("begint")).isEqualTo("05");
+        assertThat(matcher.group("end")).isNull();
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_SimpleEnd() {
+        // RAE30 - Rain ended at :30 (minute only)
+        String input = "RAE30 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begin")).isNull();
+        assertThat(matcher.group("end")).isEqualTo("E");
+        assertThat(matcher.group("endt")).isEqualTo("30");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_BeginAndEnd() {
+        // RAB15E30 - Rain began :15, ended :30 (both minute only)
+        String input = "RAB15E30 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begin")).isEqualTo("B");
+        assertThat(matcher.group("begint")).isEqualTo("15");
+        assertThat(matcher.group("end")).isEqualTo("E");
+        assertThat(matcher.group("endt")).isEqualTo("30");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_FullTimestamp() {
+        // FZRAB1159E1240 - Freezing rain began 11:59, ended 12:40 (4-digit format)
+        String input = "FZRAB1159E1240 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("desc")).isEqualTo("FZ");
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begin")).isEqualTo("B");
+        assertThat(matcher.group("begint")).isEqualTo("1159");
+        assertThat(matcher.group("end")).isEqualTo("E");
+        assertThat(matcher.group("endt")).isEqualTo("1240");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_WithLightIntensity() {
+        // -RAB05 - Light rain began :05
+        String input = "-RAB05 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("int")).isEqualTo("-");
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begint")).isEqualTo("05");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_WithHeavyIntensity() {
+        // +TSRAB20E45 - Heavy thunderstorm with rain began :20, ended :45
+        String input = "+TSRAB20E45 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("int")).isEqualTo("+");
+        assertThat(matcher.group("desc")).isEqualTo("TS");
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begint")).isEqualTo("20");
+        assertThat(matcher.group("endt")).isEqualTo("45");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_Thunderstorm() {
+        // TSB0159E0240 - Thunderstorm began 01:59, ended 02:40
+        String input = "TSB0159E0240 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("desc")).isEqualTo("TS");
+        assertThat(matcher.group("begint")).isEqualTo("0159");
+        assertThat(matcher.group("endt")).isEqualTo("0240");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_Snow() {
+        // SNB30 - Snow began :30
+        String input = "SNB30 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("SN");
+        assertThat(matcher.group("begint")).isEqualTo("30");
+        assertThat(matcher.group("end")).isNull();
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_FreezingRain() {
+        // FZRAE42 - Freezing rain ended :42
+        String input = "FZRAE42 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("desc")).isEqualTo("FZ");
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("endt")).isEqualTo("42");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_Obscuration() {
+        // BRB10E25 - Mist began :10, ended :25
+        String input = "BRB10E25 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("obsc")).isEqualTo("BR");
+        assertThat(matcher.group("begint")).isEqualTo("10");
+        assertThat(matcher.group("endt")).isEqualTo("25");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_Fog() {
+        // FGB0520E0630 - Fog began 05:20, ended 06:30
+        String input = "FGB0520E0630 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("obsc")).isEqualTo("FG");
+        assertThat(matcher.group("begint")).isEqualTo("0520");
+        assertThat(matcher.group("endt")).isEqualTo("0630");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_MixedTimeFormats() {
+        // RAB1159E30 - Rain began 11:59 (4-digit), ended :30 (2-digit)
+        // Note: This is technically valid but unusual in practice
+        String input = "RAB1159E30 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begint")).isEqualTo("1159");
+        assertThat(matcher.group("endt")).isEqualTo("30");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_Drizzle() {
+        // DZB05E20 - Drizzle began :05, ended :20
+        String input = "DZB05E20 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("DZ");
+        assertThat(matcher.group("begint")).isEqualTo("05");
+        assertThat(matcher.group("endt")).isEqualTo("20");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_WithIntensity2() {
+        // -SNRAB15E30 - Light snow and rain began :15, ended :30
+        // Note: int2 captures intensity at the end if present
+        String input = "-SNRAB15E30 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("int")).isEqualTo("-");
+        assertThat(matcher.group("prec")).contains("SN");
+        assertThat(matcher.group("begint")).isEqualTo("15");
+        assertThat(matcher.group("endt")).isEqualTo("30");
+    }
+
+    @Test
+    void testBeginEndWeatherPattern_EdgeCaseMidnight() {
+        // RAB0000E0030 - Rain began 00:00 (midnight), ended 00:30
+        String input = "RAB0000E0030 ";
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prec")).isEqualTo("RA");
+        assertThat(matcher.group("begint")).isEqualTo("0000");
+        assertThat(matcher.group("endt")).isEqualTo("0030");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "RAB05 ",           // Rain began :05
+            "SNE30 ",           // Snow ended :30
+            "FZRAB1159 ",       // Freezing rain began 11:59
+            "TSE0240 ",         // Thunderstorm ended 02:40
+            "BRB10E25 ",        // Mist began :10, ended :25
+            "-DZB05 ",          // Light drizzle began :05
+            "+TSRAB20E45 ",     // Heavy thunderstorm with rain began :20, ended :45
+            "PLB1545 ",         // Ice pellets began 15:45 (edge case: 4-digit)
+            "SNB2359 ",         // Snow began 23:59 (edge case: end of day)
+            "RAB05"             // Word boundary test (no trailing space)
+    })
+    void testBeginEndWeatherPattern_VariousFormats(String input) {
+        Matcher matcher = RegExprConst.BEGIN_END_WEATHER_PATTERN.matcher(input);
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", input.trim())
+                .isTrue();
+    }
+
     // ========== REPORT MODIFIER TEST ==========
     
     @ParameterizedTest
