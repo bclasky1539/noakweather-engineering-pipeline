@@ -23,6 +23,7 @@ import weather.model.components.remark.*;
 import weather.model.enums.AutomatedStationType;
 import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
+import weather.model.components.remark.VariableCeiling;
 import weather.processing.parser.common.WeatherParser;
 import weather.processing.parser.common.ParseResult;
 import weather.utils.IndexedLinkedHashMap;
@@ -30,6 +31,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -65,6 +67,10 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
     
     private static final Logger LOGGER = LoggerFactory.getLogger(NoaaMetarParser.class);
     private static final String RVR_PREFIX_PATTERN = "^[MP]";
+    // Pressure Tendency Pattern Groups
+    private static final String GROUP_TENDENCY_CODE = "tend";
+    private static final String GROUP_PRESSURE_CHANGE = "press";
+    private static final String GROUP_HEIGHT_CODE = "height";
     
     // Pattern registry for METAR parsing
     private final MetarPatternRegistry patternRegistry;
@@ -114,10 +120,6 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             if (!remarks.isEmpty()) {
                 String originalRemarks = remarks;
                 remarks = parseWithHandlers(remarks, remarkHandlers, "REMARK");
-                //System.out.println("\n=== DEBUG INFO ===");
-                //System.out.println("Remarks: " + remarks);
-                //System.out.println("originalRemarks: " + originalRemarks);
-                //System.out.println("=== DEBUG INFO ===");
                 // Also do sequential parsing of remarks for components not in registry
                 handleRemarks(originalRemarks, (NoaaMetarData) weatherData);
             }
@@ -889,7 +891,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         }
 
         String coverageStr = matcher.group("cover");
-        String heightStr = matcher.group("height");
+        String heightStr = matcher.group(GROUP_HEIGHT_CODE);
         String cloudTypeStr = matcher.group("cloud");
 
         // Handle unknown/missing coverage (///)
@@ -1105,7 +1107,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         }
 
         String unit1 = matcher.group("unit");
-        String pressureStr = matcher.group("press");
+        String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
         String unit2 = matcher.group("unit2");
 
         // Handle missing pressure
@@ -1242,6 +1244,24 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
     }
 
     /**
+     * Handle NOSIG (No Significant Change) indicator in main METAR body.
+     * Appears after altimeter setting and before RMK.
+     *
+     * @param matcher the regex matcher positioned at NOSIG
+     */
+    private void handleNoSigChange(Matcher matcher) {
+        if (weatherData == null) {
+            return;
+        }
+
+        ((NoaaMetarData) weatherData).setNoSignificantChange(true);
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("NOSIG (No Significant Change) indicator found: '{}'", matcher.group(0));
+        }
+    }
+
+    /**
      * Generic handler for registry-based remark patterns.
      * This is a stub that logs when a pattern is matched by the registry.
      * The actual parsing is done by sequential handlers in handleRemarks().
@@ -1312,13 +1332,23 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             remaining = handlePeakWindSequential(remaining, remarksBuilder);
             remaining = handleWindShiftSequential(remaining, remarksBuilder);
             remaining = handleVariableVisibilitySequential(remaining, remarksBuilder);
+            remaining = handleVariableCeilingSequential(remaining, remarksBuilder);
+            remaining = handleCeilingSecondSiteSequential(remaining, remarksBuilder);
+            remaining = handleObscurationSequential(remaining, remarksBuilder);
+            remaining = handleThunderstormLocationSequential(remaining, remarksBuilder);
+            remaining = handleCloudTypeSequential(remaining, remarksBuilder);
             remaining = handleTowerSurfaceVisibilitySequential(remaining, remarksBuilder);
             remaining = handleHourlyPrecipitationSequential(remaining, remarksBuilder);
             remaining = handleMultiHourPrecipitationSequential(remaining, remarksBuilder);
             remaining = handleHailSizeSequential(remaining, remarksBuilder);
+            remaining = handleWeatherEventsSequential(remaining, remarksBuilder);
+            remaining = handlePressureTendencySequential(remaining, remarksBuilder);
+            remaining = handle6HourMaxMinTemperatureSequential(remaining, remarksBuilder);
+            remaining = handle24HourMaxMinTemperatureSequential(remaining, remarksBuilder);
+            remaining = handleAutomatedMaintenanceSequential(remaining, remarksBuilder);
 
             // Continue while we're making progress
-        } while (!remaining.equals(previous));
+        } while (!Objects.equals(remaining, previous));
 
         // Store any unparsed remarks as free text
         if (remaining != null && !remaining.isBlank()) {
@@ -1401,7 +1431,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         }
 
         try {
-            String pressureStr = matcher.group("press");
+            String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
 
             // Handle SLPNO (pressure not available)
             if ("NO".equals(pressureStr)) {
@@ -1830,47 +1860,78 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
      * @return the remaining text after this remark is processed
      */
     private String handleTowerSurfaceVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
-        // Precondition: remarksText is non-null and non-blank
-
-        Matcher matcher = TWR_SFC_VIS_PATTERN.matcher(remarksText);
-
-        if (!matcher.find()) {
-            return remarksText;
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
         }
 
+        String remaining = remarksText.trim();
+        Matcher matcher = TWR_SFC_VIS_PATTERN.matcher(remaining);
+
+        while (matcher.find() && matcher.start() == 0) {
+            processTowerSurfaceVisibility(matcher, remarks);
+            remaining = remaining.substring(matcher.end()).trim();
+            matcher = TWR_SFC_VIS_PATTERN.matcher(remaining);
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Process a single tower or surface visibility match.
+     *
+     * @param matcher the regex matcher positioned at a match
+     * @param remarks the remarks builder to populate
+     */
+    private void processTowerSurfaceVisibility(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
         try {
-            // Extract type (TWR VIS or SFC VIS)
             String type = matcher.group("type");
-
-            // Extract distance
             String distStr = matcher.group("dist");
-            if (distStr == null || distStr.isBlank()) {
+
+            if (isValidDistanceString(distStr)) {
+                Visibility visibility = parseVisibilityDistance(distStr);
+
+                if (visibility != null) {
+                    setVisibilityByType(type, visibility, distStr, remarks);
+                } else {
+                    LOGGER.warn("Failed to parse tower/surface visibility: {}", distStr);
+                }
+            } else {
                 LOGGER.debug("Tower/Surface visibility missing distance, skipping");
-                return remarksText.substring(matcher.end()).trim();
             }
 
-            // Parse visibility distance (reuse existing helper!)
-            Visibility visibility = parseVisibilityDistance(distStr);
-            if (visibility == null) {
-                LOGGER.warn("Failed to parse tower/surface visibility: {}", distStr);
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            // Determine which type and set appropriately
-            if ("TWR VIS".equals(type)) {
-                remarks.towerVisibility(visibility);
-                LOGGER.debug("Tower visibility: {}", distStr);
-            } else if ("SFC VIS".equals(type)) {
-                remarks.surfaceVisibility(visibility);
-                LOGGER.debug("Surface visibility: {}", distStr);
-            }
-
-            return remarksText.substring(matcher.end()).trim();
-
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            String matchText = matcher.group(0);
             LOGGER.warn("Invalid tower/surface visibility in remarks: {}",
-                    remarksText.substring(0, Math.min(30, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+                    matchText.substring(0, Math.min(30, matchText.length())), e);
+        }
+    }
+
+    /**
+     * Check if distance string is valid (non-null and non-blank).
+     *
+     * @param distStr the distance string to validate
+     * @return true if valid
+     */
+    private boolean isValidDistanceString(String distStr) {
+        return distStr != null && !distStr.isBlank();
+    }
+
+    /**
+     * Set the appropriate visibility field based on type.
+     *
+     * @param type the visibility type (TWR VIS or SFC VIS)
+     * @param visibility the parsed visibility
+     * @param distStr the original distance string (for logging)
+     * @param remarks the remarks builder to populate
+     */
+    private void setVisibilityByType(String type, Visibility visibility, String distStr,
+                                     NoaaMetarRemarks.Builder remarks) {
+        if ("TWR VIS".equals(type)) {
+            remarks.towerVisibility(visibility);
+            LOGGER.debug("Tower visibility: {}", distStr);
+        } else if ("SFC VIS".equals(type)) {
+            remarks.surfaceVisibility(visibility);
+            LOGGER.debug("Surface visibility: {}", distStr);
         }
     }
 
@@ -1916,7 +1977,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
 
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid hourly precipitation: {}",
                     remarksText.substring(0, Math.min(20, remarksText.length())), e);
             return remarksText.substring(matcher.end()).trim();
@@ -1974,7 +2035,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
 
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid multi-hour precipitation: {}",
                     remarksText.substring(0, Math.min(20, remarksText.length())), e);
             return remarksText.substring(matcher.end()).trim();
@@ -2037,19 +2098,992 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
 
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid hail size: {}",
                     remarksText.substring(0, Math.min(20, remarksText.length())), e);
             return remarksText.substring(matcher.end()).trim();
         }
     }
 
+    /**
+     * Handle weather begin/end time events for sequential parsing.
+     *
+     * Uses the existing BEGIN_END_WEATHER_PATTERN which captures:
+     * - Intensity: int, int2
+     * - Descriptor: desc (MI, PR, BC, DR, BL, SH, TS, FZ)
+     * - Precipitation: prec (DZ, RA, SN, SG, IC, PL, GR, GS, UP)
+     * - Obscuration: obsc (BR, FG, FU, VA, DU, SA, HZ, PY)
+     * - Other: other (PO, SQ, FC, SS, DS, NSW)
+     * - Begin time: begin (B marker), begint (time digits)
+     * - End time: end (E marker), endt (time digits)
+     *
+     * Time format:
+     * - 2 digits (05) → minute only (:05)
+     * - 4 digits (1159) → hour and minute (11:59)
+     *
+     * Examples:
+     * - RAB05 → Rain began at :05
+     * - FZRAB1159E1240 → Freezing rain began 11:59, ended 12:40
+     * - RAB15E30SNB30 → Rain began :15 ended :30; Snow began :30 (parsed as 2 events)
+     * - -RAB05 → Light rain began :05
+     * - +TSRAB20E45 → Heavy thunderstorm with rain began :20, ended :45
+     *
+     * Multiple events can be chained together (e.g., RAB15E30SNB30 contains two events).
+     * This method will parse all chained events in a single pass.
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after all chained events are processed
+     */
+    private String handleWeatherEventsSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        // Precondition: remarksText is non-null and non-blank
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText;
+        Matcher matcher = BEGIN_END_WEATHER_PATTERN.matcher(remaining);
+
+        // Process all chained events
+        while (matcher.find() && matcher.start() == 0) {
+            try {
+                WeatherEvent event = parseWeatherEventFromExistingPattern(matcher);
+
+                if (event != null) {
+                    remarks.addWeatherEvent(event);
+                    LOGGER.debug("Weather event: {}", event.getSummary());
+
+                    // Remove matched portion and continue
+                    remaining = remaining.substring(matcher.end()).trim();
+                    matcher = BEGIN_END_WEATHER_PATTERN.matcher(remaining);
+                } else {
+                    // No valid event parsed, stop processing
+                    break;
+                }
+
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid weather event: {}",
+                        remaining.substring(0, Math.min(30, remaining.length())), e);
+                // Skip this match and continue
+                remaining = remaining.substring(matcher.end()).trim();
+                matcher = BEGIN_END_WEATHER_PATTERN.matcher(remaining);
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Parse a single weather event from the existing BEGIN_END_WEATHER_PATTERN matcher.
+     *
+     * Extracts data from your existing capture groups:
+     * - int, int2: intensity markers
+     * - desc: descriptor (TS, FZ, etc.)
+     * - prec: precipitation (RA, SN, etc.)
+     * - obsc: obscuration (BR, FG, etc.)
+     * - begin, begint: begin marker and time
+     * - end, endt: end marker and time
+     *
+     * @param matcher the matcher positioned at a weather event
+     * @return WeatherEvent object, or null if the match doesn't represent a valid event
+     */
+    private WeatherEvent parseWeatherEventFromExistingPattern(Matcher matcher) {
+        // Extract intensity - prefer int2 (at end), fallback to int (at start)
+        String intensityEnd = matcher.group("int2");
+        String intensityStart = matcher.group("int");
+        String intensity = null;
+
+        if (intensityEnd != null && intensityEnd.matches("[-+]")) {
+            intensity = intensityEnd;
+        } else if (intensityStart != null && intensityStart.matches("[-+]")) {
+            intensity = intensityStart;
+        }
+
+        // Extract weather components
+        String descriptor = matcher.group("desc");
+        String precipitation = matcher.group("prec");
+        String obscuration = matcher.group("obsc");
+        String other = matcher.group("other");
+
+        // Build weather code from available components
+        String weatherCode = buildWeatherCodeFromExistingGroups(
+                descriptor, precipitation, obscuration, other
+        );
+
+        // If no weather code components, this isn't a valid weather event
+        if (weatherCode.isEmpty()) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("No weather code found in match: {}", matcher.group(0));
+            }
+            return null;
+        }
+
+        // Extract begin time
+        String beginMarker = matcher.group("begin");
+        String beginTimeStr = matcher.group("begint");
+
+        Integer beginHour = null;
+        Integer beginMinute = null;
+
+        if (beginMarker != null && beginTimeStr != null) {
+            TimeComponents beginTime = parseTimeDigits(beginTimeStr);
+            beginHour = beginTime.hour();
+            beginMinute = beginTime.minute();
+        }
+
+        // Extract end time
+        String endMarker = matcher.group("end");
+        String endTimeStr = matcher.group("endt");
+
+        Integer endHour = null;
+        Integer endMinute = null;
+
+        if (endMarker != null && endTimeStr != null) {
+            TimeComponents endTime = parseTimeDigits(endTimeStr);
+            endHour = endTime.hour();
+            endMinute = endTime.minute();
+        }
+
+        // Must have at least a begin or end time
+        if (beginMinute == null && endMinute == null) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("No begin or end time found in weather event: {}", matcher.group(0));
+            }
+            return null;
+        }
+
+        return new WeatherEvent(
+                weatherCode,
+                intensity,
+                beginHour,
+                beginMinute,
+                endHour,
+                endMinute
+        );
+    }
+
+    /**
+     * Helper record to return hour and minute components.
+     */
+    private record TimeComponents(Integer hour, Integer minute) {}
+
+    /**
+     * Parse time digits which can be either 2 digits (mm) or 4 digits (hhmm).
+     *
+     * Format:
+     * - 2 digits (05) → hour=null, minute=5
+     * - 4 digits (1159) → hour=11, minute=59
+     *
+     * @param timeStr the time string (2 or 4 digits)
+     * @return TimeComponents with hour (if 4 digits) and minute
+     */
+    private TimeComponents parseTimeDigits(String timeStr) {
+        if (timeStr == null || timeStr.isEmpty()) {
+            return new TimeComponents(null, null);
+        }
+
+        try {
+            if (timeStr.length() == 2) {
+                // 2 digits: minute only (e.g., "05" = :05)
+                int minute = Integer.parseInt(timeStr);
+                return new TimeComponents(null, minute);
+
+            } else if (timeStr.length() == 4) {
+                // 4 digits: hour and minute (e.g., "1159" = 11:59)
+                int hour = Integer.parseInt(timeStr.substring(0, 2));
+                int minute = Integer.parseInt(timeStr.substring(2, 4));
+                return new TimeComponents(hour, minute);
+
+            } else {
+                LOGGER.warn("Invalid time digit length: {}", timeStr);
+                return new TimeComponents(null, null);
+            }
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Failed to parse time digits '{}': {}", timeStr, e.getMessage());
+            return new TimeComponents(null, null);
+        }
+    }
+
+    /**
+     * Build the weather code from your existing pattern's capture groups.
+     *
+     * Combines descriptor, precipitation, obscuration, and other components
+     * in the order they appear in the pattern.
+     *
+     * Weather codes can be:
+     * - Just descriptor (e.g., "TS" for thunderstorm)
+     * - Descriptor + precipitation (e.g., "FZRA", "TSRA")
+     * - Just precipitation (e.g., "RA", "SN")
+     * - Precipitation + obscuration (e.g., "RABR")
+     * - Just obscuration (e.g., "BR", "FG")
+     *
+     * @param descriptor Weather descriptor (may be null)
+     * @param precipitation Weather precipitation (may be null)
+     * @param obscuration Weather obscuration (may be null)
+     * @param other Other weather phenomena (may be null)
+     * @return Combined weather code, or empty string if all are null/empty
+     */
+    private String buildWeatherCodeFromExistingGroups(
+            String descriptor, String precipitation, String obscuration, String other) {
+
+        StringBuilder code = new StringBuilder();
+
+        // Add components in order
+        if (descriptor != null && !descriptor.isEmpty()) {
+            code.append(descriptor);
+        }
+
+        if (precipitation != null && !precipitation.isEmpty() && !precipitation.equals("/")) {
+            code.append(precipitation);
+        }
+
+        if (obscuration != null && !obscuration.isEmpty()) {
+            code.append(obscuration);
+        }
+
+        if (other != null && !other.isEmpty() && !other.equals("/") && other.matches("PO|SQ|FC|SS|DS|NSW")) {
+            code.append(other);
+        }
+
+        return code.toString();
+    }
+
+    /**
+     * Handle thunderstorm and cloud location remarks for sequential parsing.
+     *
+     * Uses the existing TS_CLD_LOC_PATTERN which captures:
+     * - type: Cloud/phenomenon type (TS, CB, TCU, ACC, CBMAM, VIRGA)
+     * - loc: Location qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR)
+     * - dir: Primary direction (N, NE, E, SE, S, SW, W, NW)
+     * - dir2: Secondary direction for range (e.g., N-NE)
+     * - dirm: Movement direction (if MOV present)
+     *
+     * Examples:
+     * - TS SE → Thunderstorm Southeast
+     * - CB OHD MOV E → Cumulonimbus Overhead Moving East
+     * - TCU DSNT N-NE → Towering Cumulus Distant North to Northeast
+     *
+     * Multiple occurrences can be present (e.g., "TS SE CB W").
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after all cloud locations are processed
+     */
+    private String handleThunderstormLocationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText;
+        Matcher matcher = TS_CLD_LOC_PATTERN.matcher(remaining);
+
+        // Process all cloud locations
+        while (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                ThunderstormLocation location = parseThunderstormLocationFromMatcher(matcher);
+                remarks.addThunderstormLocation(location);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Thunderstorm/Cloud location: {}", location.getSummary());
+                }
+
+                // SUCCESS: advance
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = TS_CLD_LOC_PATTERN.matcher(remaining);
+
+            } catch (RuntimeException e) {
+                // Handle unexpected errors (indicates parser or regex bug)
+                String matchedText = remaining.substring(0, Math.min(matchEnd, remaining.length()));
+                LOGGER.error("Unexpected error parsing thunderstorm location from '{}'. " +
+                                "This may indicate a bug in the regex or parser logic.",
+                        matchedText, e);
+
+                // FAILURE: Skip this match and continue processing
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = TS_CLD_LOC_PATTERN.matcher(remaining);
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Parse ThunderstormLocation from regex matcher.
+     *
+     * Extracts all captured groups from TS_CLD_LOC_PATTERN and creates
+     * a ThunderstormLocation object.
+     *
+     * @param matcher the regex matcher positioned at a thunderstorm/cloud location
+     * @return ThunderstormLocation object with all extracted fields
+     */
+    private ThunderstormLocation parseThunderstormLocationFromMatcher(Matcher matcher) {
+        String cloudType = matcher.group("type");
+        String locationQualifier = matcher.group("loc");
+        String direction = matcher.group("dir");
+        String directionRange = matcher.group("dir2");
+        String movingDirection = matcher.group("dirm");
+
+        return new ThunderstormLocation(
+                cloudType,
+                locationQualifier,
+                direction,
+                directionRange,
+                movingDirection
+        );
+    }
+
+    /**
+     * Handle 3-hour pressure tendency remark.
+     *
+     * <p>Format: 5TCCC where:
+     * <ul>
+     *   <li>5 = Indicator (always 5)</li>
+     *   <li>T = Tendency code (0-8, WMO Code 0200)</li>
+     *   <li>CCC = Pressure change in tenths of hPa (3 digits)</li>
+     * </ul>
+     *
+     * <p>Examples:
+     * <ul>
+     *   <li>52032 → Increasing then steady, +3.2 hPa</li>
+     *   <li>57045 → Decreasing steadily, -4.5 hPa</li>
+     *   <li>54000 → Steady, 0.0 hPa change</li>
+     * </ul>
+     *
+     * <p>Note: This remark appears at most once per METAR.
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after pressure tendency is processed
+     */
+    private String handlePressureTendencySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = PRESS_3HR_PATTERN.matcher(remaining);
+
+        // Only process first match (single occurrence)
+        if (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                // Extract pressure tendency from matcher
+                PressureTendency tendency = parsePressureTendencyFromMatcher(matcher);
+
+                // Add to builder
+                remarks.pressureTendency(tendency);
+
+                // Log success
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("3-hour pressure tendency: {}", tendency.getSummary());
+                }
+
+                // SUCCESS: Move past this match
+                remaining = remaining.substring(matchEnd).trim();
+            } catch (IllegalArgumentException e) {
+                // Handle both parsing and validation errors
+                String matchedText = remaining.substring(0, Math.min(matchEnd, remaining.length()));
+                LOGGER.warn("Error parsing pressure tendency from '{}': {}",
+                        matchedText, e.getMessage());
+
+                remaining = remaining.substring(matchEnd).trim();
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Helper method to parse PressureTendency from a Matcher.
+     *
+     * @param matcher the matcher with a successful match
+     * @return a new PressureTendency instance
+     * @throws NumberFormatException if tendency code or pressure cannot be parsed
+     */
+    private PressureTendency parsePressureTendencyFromMatcher(Matcher matcher) {
+        String tendencyCodeStr = matcher.group(GROUP_TENDENCY_CODE);
+        String pressureChangeStr = matcher.group(GROUP_PRESSURE_CHANGE);
+
+        int tendencyCode = Integer.parseInt(tendencyCodeStr);
+
+        // Use PressureTendency.fromMetar factory method
+        return PressureTendency.fromMetar(tendencyCode, pressureChangeStr);
+    }
+
+    /**
+     * Handle 6-hour maximum/minimum temperature.
+     * Format: 1sTTT (max) or 2sTTT (min)
+     * where s=sign (0=positive, 1=negative), TTT=temp in tenths of degrees C.
+     *
+     * Examples:
+     * - 10142 → Maximum: 14.2°C
+     * - 11023 → Maximum: -2.3°C
+     * - 20012 → Minimum: 1.2°C
+     * - 21001 → Minimum: -0.1°C
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing
+     */
+    private String handle6HourMaxMinTemperatureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = TEMP_6HR_MAX_MIN_PATTERN.matcher(remaining);
+
+        // Process all matches (can have both max AND min in same METAR)
+        while (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                Temperature temperature = parse6HourTemperatureFromMatcher(matcher);
+                String type = matcher.group("type");
+                add6HourTemperatureToRemarks(type, temperature, remarks);
+
+                // SUCCESS: Move past this match
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = TEMP_6HR_MAX_MIN_PATTERN.matcher(remaining);
+
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid 6-hour max/min temperature in remarks: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = TEMP_6HR_MAX_MIN_PATTERN.matcher(remaining);
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Parse temperature from 6-hour max/min pattern matcher.
+     *
+     * @param matcher the regex matcher with captured groups
+     * @return Temperature object
+     * @throws IllegalArgumentException if parsing fails
+     */
+    private Temperature parse6HourTemperatureFromMatcher(Matcher matcher) {
+        String sign = matcher.group("sign");
+        String tempStr = matcher.group("temp");
+
+        // Parse temperature value (in tenths of degrees)
+        int tempTenths = Integer.parseInt(tempStr);
+        double tempCelsius = tempTenths / 10.0;
+
+        // Apply sign (0 = positive, 1 = negative)
+        if ("1".equals(sign)) {
+            tempCelsius = -tempCelsius;
+        }
+
+        return Temperature.of(tempCelsius);
+    }
+
+    /**
+     * Add parsed 6-hour temperature to appropriate remarks field.
+     *
+     * @param type temperature type ("1" = max, "2" = min)
+     * @param temperature the parsed temperature
+     * @param remarks the remarks builder to populate
+     */
+    private void add6HourTemperatureToRemarks(String type, Temperature temperature, NoaaMetarRemarks.Builder remarks) {
+        if ("1".equals(type)) {
+            // Type 1 = Maximum temperature
+            remarks.sixHourMaxTemperature(temperature);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("6-hour maximum temperature: {}", temperature.getSummary());
+            }
+        } else if ("2".equals(type)) {
+            // Type 2 = Minimum temperature
+            remarks.sixHourMinTemperature(temperature);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("6-hour minimum temperature: {}", temperature.getSummary());
+            }
+        }
+    }
+
+    /**
+     * Handle 24-hour maximum/minimum temperature.
+     * Format: 4sTTTsTTT where s=sign (0=positive, 1=negative), TTT=temp in tenths °C
+     * Reported at midnight local standard time.
+     *
+     * Examples:
+     * - 400461006 → Max: 4.6°C, Min: -0.6°C
+     * - 411231089 → Max: -12.3°C, Min: -8.9°C
+     * - 400001000 → Max: 0.0°C, Min: -0.0°C
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing
+     */
+    private String handle24HourMaxMinTemperatureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = TEMP_24HR_PATTERN.matcher(remaining);
+
+        // Only process first match (single occurrence per METAR)
+        if (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                // Parse both temperatures from the single code
+                Temperature maxTemp = parse24HourMaxTemperatureFromMatcher(matcher);
+                Temperature minTemp = parse24HourMinTemperatureFromMatcher(matcher);
+
+                // Add to builder
+                remarks.twentyFourHourMaxTemperature(maxTemp);
+                remarks.twentyFourHourMinTemperature(minTemp);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("24-hour max/min temperature: {} / {}",
+                            maxTemp.getSummary(), minTemp.getSummary());
+                }
+
+                // SUCCESS: Move past this match
+                remaining = remaining.substring(matchEnd).trim();
+
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid 24-hour max/min temperature in remarks: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
+                remaining = remaining.substring(matchEnd).trim();
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Parse 24-hour maximum temperature from matcher.
+     *
+     * @param matcher the regex matcher with captured groups
+     * @return Temperature object for maximum
+     * @throws IllegalArgumentException if parsing fails
+     */
+    private Temperature parse24HourMaxTemperatureFromMatcher(Matcher matcher) {
+        String maxSign = matcher.group("maxsign");
+        String maxTempStr = matcher.group("maxtemp");
+
+        // Parse temperature value (in tenths of degrees)
+        int maxTempTenths = Integer.parseInt(maxTempStr);
+        double maxTempCelsius = maxTempTenths / 10.0;
+
+        // Apply sign (0 = positive, 1 = negative)
+        if ("1".equals(maxSign)) {
+            maxTempCelsius = -maxTempCelsius;
+        }
+
+        return Temperature.of(maxTempCelsius);
+    }
+
+    /**
+     * Parse 24-hour minimum temperature from matcher.
+     *
+     * @param matcher the regex matcher with captured groups
+     * @return Temperature object for minimum
+     * @throws IllegalArgumentException if parsing fails
+     */
+    private Temperature parse24HourMinTemperatureFromMatcher(Matcher matcher) {
+        String minSign = matcher.group("minsign");
+        String minTempStr = matcher.group("mintemp");
+
+        // Parse temperature value (in tenths of degrees)
+        int minTempTenths = Integer.parseInt(minTempStr);
+        double minTempCelsius = minTempTenths / 10.0;
+
+        // Apply sign (0 = positive, 1 = negative)
+        if ("1".equals(minSign)) {
+            minTempCelsius = -minTempCelsius;
+        }
+
+        return Temperature.of(minTempCelsius);
+    }
+
+    /**
+     * Handle variable ceiling.
+     * Format: CIG minVmax where values are in hundreds of feet.
+     *
+     * Examples:
+     * - CIG 005V010 → 500-1000 feet
+     * - CIG 020V035 → 2000-3500 feet
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing
+     */
+    private String handleVariableCeilingSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = VARIABLE_CEILING_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                String minStr = matcher.group("min");
+                String maxStr = matcher.group("max");
+
+                int minHundreds = Integer.parseInt(minStr);
+                int maxHundreds = Integer.parseInt(maxStr);
+
+                VariableCeiling variableCeiling = VariableCeiling.fromHundreds(minHundreds, maxHundreds);
+                remarks.variableCeiling(variableCeiling);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Variable ceiling: {}", variableCeiling.getSummary());
+                }
+
+                remaining = remaining.substring(matchEnd).trim();
+
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid variable ceiling in remarks: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
+                remaining = remaining.substring(matchEnd).trim();
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Handle ceiling height at second site.
+     * Format: CIG height [LOC] where height is in hundreds of feet.
+     *
+     * Examples:
+     * - CIG 002 RY11 → 200 ft at runway 11
+     * - CIG 005 RWY06 → 500 ft at runway 06
+     * - CIG 010 → 1000 ft (no location)
+     *
+     * IMPORTANT: This handler must be called AFTER handleVariableCeilingSequential
+     * to avoid matching variable ceiling patterns (e.g., CIG 005V010).
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing
+     */
+    private String handleCeilingSecondSiteSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = CEILING_SECOND_SITE_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                String heightStr = matcher.group(GROUP_HEIGHT_CODE);
+                String location = matcher.group("loc");
+
+                int hundreds = Integer.parseInt(heightStr);
+
+                CeilingSecondSite ceilingSecondSite = CeilingSecondSite.fromHundreds(hundreds, location);
+                remarks.ceilingSecondSite(ceilingSecondSite);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Ceiling second site: {}", ceilingSecondSite.getSummary());
+                }
+
+                remaining = remaining.substring(matchEnd).trim();
+
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid ceiling second site in remarks: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
+                remaining = remaining.substring(matchEnd).trim();
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Handle obscuration layers.
+     * Format: [Coverage] [Phenomenon] [Height]
+     *
+     * Examples:
+     * - FEW FG 000 → Few fog at ground level
+     * - SCT FU 010 → Scattered smoke at 1000 feet
+     *
+     * Multiple layers can be present: FEW FG 000 SCT FU 010
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing
+     */
+    private String handleObscurationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = OBSCURATION_PATTERN.matcher(remaining);
+
+        // Process all obscuration layers (repeating pattern)
+        while (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                String coverage = matcher.group("coverage");
+                String phenomenon = matcher.group("phenomenon");
+                String heightStr = matcher.group(GROUP_HEIGHT_CODE);
+
+                int hundreds = Integer.parseInt(heightStr);
+
+                ObscurationLayer layer = ObscurationLayer.fromHundreds(coverage, phenomenon, hundreds);
+                remarks.addObscurationLayer(layer);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Obscuration layer: {}", layer.getSummary());
+                }
+
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = OBSCURATION_PATTERN.matcher(remaining);
+
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid obscuration layer in remarks: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = OBSCURATION_PATTERN.matcher(remaining);
+            }
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Handle cloud type observations in okta format.
+     * Format: [Intensity] CloudType [Oktas] [Location/Movement]
+     *
+     * Examples:
+     * - SC1 → Stratocumulus 1 okta
+     * - SC TR → Stratocumulus trace
+     * - MDT CU OHD → Moderate cumulus overhead
+     * - CI MOVG NE → Cirrus moving northeast
+     *
+     * Multiple cloud types can be present: SC1 AC2 CI
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleCloudTypeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = CLOUD_OKTA_PATTERN.matcher(remaining);
+
+        // Process all cloud type observations (repeating pattern)
+        while (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+            remaining = processCloudTypeMatch(matcher, matchEnd, remaining, remarks);
+
+            // IMPORTANT: Trim again before next iteration!
+            remaining = remaining.trim();
+            matcher = CLOUD_OKTA_PATTERN.matcher(remaining);
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Process a single cloud type pattern match.
+     *
+     * @param matcher the pattern matcher (must not be null)
+     * @param matchEnd the end position of the match
+     * @param remaining the remaining text (must not be null)
+     * @param remarks the remarks builder (must not be null)
+     * @return the remaining text after processing this match (never null)
+     */
+    private String processCloudTypeMatch(Matcher matcher, int matchEnd, String remaining,
+                                         NoaaMetarRemarks.Builder remarks) {
+        try {
+            CloudType cloudType = extractCloudTypeFromMatcher(matcher);
+            remarks.addCloudType(cloudType);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Cloud type: {}", cloudType.getSummary());
+            }
+
+        } catch (IllegalArgumentException e) {
+            int endIndex = Math.min(matchEnd, remaining.length());
+            LOGGER.warn("Invalid cloud type in remarks: {}",
+                    remaining.substring(0, endIndex), e);
+        }
+
+        // Always return remaining text (never null)
+        return remaining.substring(matchEnd).trim();
+    }
+
+    /**
+     * Extract cloud type components from a pattern matcher.
+     * Validates that at least one optional field (oktas, intensity, location, movement) is present.
+     *
+     * @param matcher the pattern matcher (must not be null)
+     * @return the constructed CloudType (never null)
+     * @throws IllegalArgumentException if cloud type data is invalid or no optional fields present
+     */
+    private CloudType extractCloudTypeFromMatcher(Matcher matcher) {
+        String intensity = matcher.group("intensity");
+        String cloudTypeCode = matcher.group("cloud");
+        String oktaStr = matcher.group("okta");
+        String verb = matcher.group("verb");
+        String directionMovement = matcher.group("dirm");
+        String directionLocation = matcher.group("direction");
+
+        Integer oktas = parseOktas(oktaStr);
+        String[] locationAndMovement = determineLocationAndMovement(verb, directionMovement, directionLocation);
+
+        String location = locationAndMovement[0];
+        String movement = locationAndMovement[1];
+        String trimmedIntensity = trimOrNull(intensity);
+
+        // VALIDATION: At least one optional field must be present
+        // This prevents matching "SC HEAVY" or "SC XXX" as valid cloud types
+        // where HEAVY/XXX are not recognized qualifiers
+        boolean hasValidOptionalField = (oktas != null) ||
+                (trimmedIntensity != null) ||
+                (location != null) ||
+                (movement != null);
+
+        if (!hasValidOptionalField) {
+            // Cloud type alone is not valid - must have at least one qualifier
+            throw new IllegalArgumentException("Cloud type must have at least one optional field (oktas, intensity, location, or movement): " + cloudTypeCode);
+        }
+
+        return new CloudType(
+                cloudTypeCode,
+                oktas,
+                trimmedIntensity,
+                location,
+                movement
+        );
+    }
+
+    /**
+     * Parse oktas string to Integer.
+     *
+     * @param oktaStr the oktas string from the pattern (may be null)
+     * @return the parsed Integer or null if not present
+     */
+    private Integer parseOktas(String oktaStr) {
+        if (oktaStr != null && !oktaStr.isEmpty()) {
+            return Integer.parseInt(oktaStr);
+        }
+        return null;
+    }
+
+    /**
+     * Determine location and movement from pattern groups.
+     *
+     * @param verb the verb group (may be null)
+     * @param directionMovement the movement direction (may be null)
+     * @param directionLocation the location qualifier (may be null)
+     * @return array with [location, movement] - never null, but elements may be null
+     */
+    private String[] determineLocationAndMovement(String verb, String directionMovement, String directionLocation) {
+        String location = null;
+        String movement = null;
+
+        if ("MOVG".equals(verb)) {
+            movement = directionMovement;
+        } else if (directionLocation != null) {
+            location = directionLocation;
+        }
+
+        return new String[]{location, movement};
+    }
+
+    /**
+     * Trim a string or return null if it's null or blank.
+     *
+     * @param str the string to trim (may be null)
+     * @return the trimmed string or null if blank/null
+     */
+    private String trimOrNull(String str) {
+        if (str == null || str.isBlank()) {
+            return null;
+        }
+        return str.trim();
+    }
+
+    /**
+     * Handle automated maintenance indicators sequentially.
+     * Handles: RVRNO, PWINO, PNO, FZRANO, TSNO, VISNO [LOC], CHINO [LOC], $
+     *
+     * @param remarksText the remaining remarks text
+     * @param remarks the remarks builder
+     * @return remaining text after processing
+     */
+    private String handleAutomatedMaintenanceSequential(String remarksText,
+                                                        NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = AUTOMATED_MAINTENANCE_PATTERN.matcher(remaining);
+
+        while (matcher.find() && matcher.start() == 0) {
+            processAutomatedMaintenance(matcher, remarks);
+            remaining = remaining.substring(matcher.end()).trim();
+            matcher = AUTOMATED_MAINTENANCE_PATTERN.matcher(remaining);
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Process a single automated maintenance indicator match.
+     *
+     * @param matcher the regex matcher positioned at a match
+     * @param remarks the remarks builder to populate
+     */
+    private void processAutomatedMaintenance(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+        try {
+            String typeAM = matcher.group("typeam");  // Automated maintenance type
+            String typeMC = matcher.group("typemc");  // Maintenance check ($)
+            String location = matcher.group("loc");   // Optional location
+
+            if (typeMC != null) {
+                // Maintenance check indicator ($)
+                remarks.maintenanceRequired(true);
+                remarks.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.maintenanceCheck());
+                LOGGER.debug("Maintenance check indicator ($) found");
+            } else if (typeAM != null) {
+                // Automated maintenance type (RVRNO, PWINO, etc.)
+                AutomatedMaintenanceIndicator indicator =
+                        location != null
+                                ? AutomatedMaintenanceIndicator.of(typeAM, location)
+                                : AutomatedMaintenanceIndicator.of(typeAM);
+
+                remarks.addAutomatedMaintenanceIndicator(indicator);
+                LOGGER.debug("Automated maintenance indicator: {} {}",
+                        typeAM,
+                        location != null ? location : "(no location)");
+            }
+
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid automated maintenance indicator: {}", matcher.group(0), e);
+        }
+    }
+
     // ==================== STUB HANDLERS (to be implemented) ====================
 
-    private void handleNoSigChange(Matcher matcher) {
-        LOGGER.debug("TODO: Implement no significant change handler {}", matcher);
-    }
-    
     private void handleUnparsed(Matcher matcher) {
         LOGGER.debug("Unparsed token: '{}'", matcher);
     }

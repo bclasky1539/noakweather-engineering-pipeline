@@ -7,6 +7,232 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.8.0-SNAPSHOT - December 29, 2024
+
+#### Enhanced METAR Remarks Parser - Phase 2 Complete
+
+**Added:**
+- **METAR Remarks Parser Components** (9 additional remark types implemented)
+    - Weather Events Begin/End Times (RAB, SNE, FZRAB, etc. with timestamps)
+    - Thunderstorm/Cloud Locations (TS, CB, TCU with direction and movement)
+    - Pressure Tendency (3-hour tendency with WMO codes)
+    - 6-Hour Max/Min Temperature (1sTTT, 2sTTT formats)
+    - 24-Hour Max/Min Temperature (4sTTTsTTT format)
+    - Variable Ceiling (CIG minVmax)
+    - Ceiling at Second Site (CIG height with location)
+    - Obscuration Layers (FEW FG, SCT FU, etc.)
+    - Cloud Type in Oktas (SC1, AC2, CI with intensity/movement)
+    - Automated Maintenance Indicators (RVRNO, PWINO, PNO, FZRANO, TSNO, VISNO, CHINO, $)
+
+- **METAR Main Body Component**
+    - NOSIG (No Significant Change) indicator parsing
+
+- **Value Object Components** (weather-common)
+    - `WeatherEvent` record - Weather phenomenon begin/end times
+        - Weather code with optional intensity
+        - Begin time (hour/minute, optional hour)
+        - End time (hour/minute, optional hour)
+        - Query methods (`hasBeginTime()`, `hasEndTime()`, `getDuration()`)
+        - Human-readable summaries and descriptions
+        - Support for chained events (RAB15E30SNB30)
+
+    - `ThunderstormLocation` record - Thunderstorm and cloud locations
+        - Cloud type (TS, CB, TCU, ACC, CBMAM, VIRGA)
+        - Location qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR)
+        - Direction (N, NE, E, SE, S, SW, W, NW)
+        - Direction range (N-NE, SW-W, etc.)
+        - Movement direction
+        - Query methods (`isOverhead()`, `isDistant()`, `isMoving()`)
+        - Comprehensive descriptions
+
+    - `PressureTendency` record - 3-hour pressure change data
+        - WMO Code 0200 tendency codes (0-8)
+        - Pressure change in hPa (tenths precision)
+        - Tendency descriptions (Increasing, Decreasing, Steady, etc.)
+        - Query methods (`isIncreasing()`, `isDecreasing()`, `isSteady()`)
+        - Factory method `fromMetar()` with validation
+
+    - `VariableCeiling` record - Ceiling height variations
+        - Minimum and maximum heights in feet
+        - Spread calculation
+        - Factory method `fromHundreds()` for METAR format
+        - Validation (min ≤ max, positive values)
+
+    - `CeilingSecondSite` record - Ceiling at alternate location
+        - Height in feet
+        - Optional location (RWY designator)
+        - Factory method `fromHundreds()` for METAR format
+        - Query methods (`hasLocation()`)
+
+    - `ObscurationLayer` record - Atmospheric obscuration
+        - Coverage (FEW, SCT, BKN, OVC)
+        - Phenomenon (FG, FU, HZ, DU, SA, VA, PY)
+        - Height in feet
+        - Factory method `fromHundreds()` for METAR format
+        - Validation and descriptions
+
+    - `CloudType` record - Cloud type observations in oktas
+        - Cloud type code (CI, CC, CS, AC, AS, NS, SC, ST, CU, CB)
+        - Optional oktas (0-8)
+        - Optional intensity (FEW, BKN, LYR, etc.)
+        - Optional location (OHD, DSNT, VC)
+        - Optional movement direction
+        - Query methods (`hasOktas()`, `hasIntensity()`, `isMoving()`)
+        - Comprehensive validation
+
+    - `AutomatedMaintenanceIndicator` record - Station maintenance status
+        - 7 indicator types (RVRNO, PWINO, PNO, FZRANO, TSNO, VISNO, CHINO)
+        - Maintenance check indicator ($)
+        - Optional location qualifier (runway or direction)
+        - Static factories for each type
+        - Query methods for each indicator type
+        - Location handling (runway designators, cardinal directions)
+
+**Enhanced:**
+- **NoaaMetarRemarks Model** (weather-common)
+    - Added 14 new fields to record:
+        - `List<WeatherEvent> weatherEvents`
+        - `List<ThunderstormLocation> thunderstormLocations`
+        - `PressureTendency pressureTendency`
+        - `Temperature sixHourMaxTemperature`
+        - `Temperature sixHourMinTemperature`
+        - `Temperature twentyFourHourMaxTemperature`
+        - `Temperature twentyFourHourMinTemperature`
+        - `VariableCeiling variableCeiling`
+        - `CeilingSecondSite ceilingSecondSite`
+        - `List<ObscurationLayer> obscurationLayers`
+        - `List<CloudType> cloudTypes`
+        - `Boolean maintenanceRequired`
+        - `List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators`
+        - `String freeText` (unparsed remarks)
+    - Total parameters: 28 (up from 14)
+    - Builder pattern with collection adders (`addWeatherEvent()`, etc.)
+    - Custom `maintenanceRequired()` getter (returns `false` for `null`)
+    - Enhanced `isEmpty()` checks all 28 fields
+    - Maintained 99% test coverage (2,526 tests)
+
+- **NoaaMetarData Model** (weather-common)
+    - Added `noSignificantChange` boolean field for NOSIG indicator
+    - Included in `equals()` and `hashCode()`
+    - Getter: `isNoSignificantChange()`
+
+- **NoaaMetarParser** (weather-processing)
+    - Added 9 sequential handler methods:
+        - `handleWeatherEventsSequential()` - Parses weather begin/end times
+        - `handleThunderstormLocationSequential()` - Parses cloud locations
+        - `handlePressureTendencySequential()` - Parses 3-hour pressure tendency
+        - `handle6HourMaxMinTemperatureSequential()` - Parses 1/2 groups
+        - `handle24HourMaxMinTemperatureSequential()` - Parses 4 group
+        - `handleVariableCeilingSequential()` - Parses CIG minVmax
+        - `handleCeilingSecondSiteSequential()` - Parses CIG with location
+        - `handleObscurationSequential()` - Parses obscuration layers
+        - `handleCloudTypeSequential()` - Parses cloud types in oktas
+        - `handleAutomatedMaintenanceSequential()` - Parses maintenance indicators
+    - Added main body handler:
+        - `handleNoSigChange()` - Parses NOSIG indicator
+    - Helper methods:
+        - `parseWeatherEventFromExistingPattern()` - Weather event extraction
+        - `parseThunderstormLocationFromMatcher()` - Cloud location extraction
+        - `parsePressureTendencyFromMatcher()` - Pressure tendency extraction
+        - `parse6HourTemperatureFromMatcher()` - 6-hour temp extraction
+        - `parse24HourMaxTemperatureFromMatcher()` - 24-hour max temp
+        - `parse24HourMinTemperatureFromMatcher()` - 24-hour min temp
+        - `extractCloudTypeFromMatcher()` - Cloud type extraction
+        - `processAutomatedMaintenance()` - Maintenance indicator processing
+        - `parseTimeDigits()` - Time parsing (2 or 4 digits)
+        - `buildWeatherCodeFromExistingGroups()` - Weather code construction
+    - Updated `handleRemarks()` multi-pass loop with all new handlers
+    - Updated `handlePattern()` switch with `"noSigChange"` case
+
+- **RegExprConst** (weather-processing)
+    - Updated `AUTOMATED_MAINTENANCE_PATTERN`:
+        - Now matches all 7 types plus $ indicator
+        - Supports runway designators (RWY06, RY11)
+        - Supports cardinal directions (N, SE, NW)
+        - Optional location handling
+        - Word boundary handling for $ indicator
+
+**Testing:**
+- **weather-common**: 2,526 tests (+734 new tests from Phase 1)
+    - WeatherEvent: 75 tests (100% instruction coverage)
+    - ThunderstormLocation: 15 tests (100% coverage)
+    - PressureTendency: 89 tests (100% coverage)
+    - VariableCeiling: 14 tests (100% coverage)
+    - CeilingSecondSite: 15 tests (100% coverage)
+    - ObscurationLayer: 18 tests (100% coverage)
+    - CloudType: 136 tests (100% coverage)
+    - AutomatedMaintenanceIndicator: 34 tests (99% instruction, 96% branch)
+    - NoaaMetarRemarks: Enhanced tests for all new fields (99% coverage)
+    - All value objects achieve 99-100% coverage
+
+- **weather-processing**: 929 tests (+316 new tests from Phase 1)
+    - Weather Events parsing: 9 tests with chained events
+    - Thunderstorm/Cloud locations: 8 tests with movement
+    - Pressure Tendency: 5 tests (all WMO codes)
+    - 6-Hour Max/Min Temperature: 6 tests
+    - 24-Hour Max/Min Temperature: 4 tests
+    - Variable Ceiling: 3 tests
+    - Ceiling Second Site: 4 tests
+    - Obscuration Layers: 7 tests (repeating pattern)
+    - Cloud Types: 12 tests (oktas, intensity, movement)
+    - Automated Maintenance: 14 tests (all types, locations, $)
+    - NOSIG: 4 tests (main body parsing)
+    - Integration tests covering complex real-world METARs
+    - Parser coverage: 82% instruction, 73% branch
+
+**METAR Components Now Supported:**
+
+*Main Body:*
+1. Station ID & observation time
+2. Report type & modifiers
+3. Wind (direction, speed, gusts, variability)
+4. Visibility (statute miles, meters, special conditions)
+5. Runway Visual Range with CLRD flag
+6. Present Weather (intensity, descriptor, precipitation, obscuration)
+7. Sky Conditions (FEW/SCT/BKN/OVC/VV with heights and cloud types)
+8. Temperature/Dewpoint
+9. Altimeter (multiple formats: A/Q/QNH/INS)
+10. **NOSIG (No Significant Change)** (NEW)
+
+*Remarks Section (21 types):*
+1. Automated Station Type (AO1/AO2)
+2. Sea Level Pressure (SLP)
+3. Hourly Temperature/Dewpoint (T-group)
+4. Peak Wind (PK WND)
+5. Wind Shift (WSHFT/FROPA)
+6. Variable Visibility (VIS minVmax)
+7. Tower Visibility (TWR VIS)
+8. Surface Visibility (SFC VIS)
+9. Hourly Precipitation (Prrrr)
+10. 6-Hour Precipitation (6RRRR)
+11. 24-Hour Precipitation (7RRRR)
+12. Hail Size (GR size)
+13. **Weather Events Begin/End (RAB, SNE, etc.)** (NEW)
+14. **Thunderstorm/Cloud Locations (TS, CB, TCU)** (NEW)
+15. **3-Hour Pressure Tendency (5TCCC)** (NEW)
+16. **6-Hour Max/Min Temperature (1/2sTTT)** (NEW)
+17. **24-Hour Max/Min Temperature (4sTTTsTTT)** (NEW)
+18. **Variable Ceiling (CIG minVmax)** (NEW)
+19. **Ceiling Second Site (CIG height [LOC])** (NEW)
+20. **Obscuration Layers (FEW FG, etc.)** (NEW)
+21. **Cloud Types in Oktas (SC1, CI, etc.)** (NEW)
+22. **Automated Maintenance Indicators (RVRNO, $, etc.)** (NEW)
+23. **Free Text (unparsed remarks)** (NEW)
+
+**Technical Details:**
+- Multi-pass parsing ensures order-independent remark processing
+- Comprehensive validation in all value objects
+- Reused existing patterns from `RegExprConst` where possible
+- Complex regex patterns for weather events and cloud locations
+- Real-world METAR examples validated in tests
+- Defensive coding with extensive null checks and exception handling
+
+**Notes:**
+- **Phase 2 of remarks parsing complete** (21 total remark types)
+- **Main body parsing complete** with NOSIG support
+- Strong architectural foundation
+- All implementations follow consistent patterns established in Phase 1
+
 ### Version 1.7.0-SNAPSHOT - December 18, 2024
 
 #### Enhanced METAR Remarks Parser - Phase 1 Complete

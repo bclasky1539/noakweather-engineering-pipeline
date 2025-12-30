@@ -46,7 +46,6 @@ public final class RegExprConst {
      * Month, Day and Year (optional at start of METAR/TAF)
      * Example: "2024/11/02 16:51"
      */
-    // "^(?<year>\\d\\d\\d\\d)/(?<month>\\d\\d)/(?<day>\\d\\d) (?<time>\\d\\d:\\d\\d)?\\s+"
     public static final Pattern MONTH_DAY_YEAR_PATTERN = Pattern.compile(
             "^(?<year>\\d{4})/(?<month>\\d{2})/(?<day>\\d{2})\\s+(?<time>\\d{2}:\\d{2})?\\s+"
     );
@@ -56,7 +55,6 @@ public final class RegExprConst {
      * Example: "KJFK 121851Z" or "EGLL 121820Z 1218/1318"
      * Complexity is required to capture all optional components of station/time format
      */
-    // ^(?<station>[A-Z][A-Z0-9]{3}) (?<zday>\\d\\d)(?<zhour>\\d\\d)(?<zmin>\\d\\d)Z\\s?((?<bvaltime>\\d\\d\\d\\d)/(?<evaltime>\\d\\d\\d\\d))?\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for METAR station/time format
     public static final Pattern STATION_DAY_TIME_VALTMPER_PATTERN = Pattern.compile(
             "^(?<station>[A-Z][A-Z0-9]{3})\\s+(?<zday>\\d{2})(?<zhour>\\d{2})(?<zmin>\\d{2})Z\\s?((?<bvaltime>\\d{4})/(?<evaltime>\\d{4}))?\\s+"
@@ -85,7 +83,6 @@ public final class RegExprConst {
      * Example: "10SM", "9999", "1 1/2SM", "CAVOK"
      * Complexity is required to handle statute miles, meters, CAVOK, fractions, and direction
      */
-    // ^(?<vis>(?<dist>[MP]?\\d\\d\\d\\d|////)(?<dir>[NSEW][EW]?|NDV)?|(?<distu>[MP]?(\\d+|\\d\\d?/\\d\\d|\\d+\\s+\\d/\\d))(?<units>SM|KM|M|U)|NDV|CAVOK)\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for multiple visibility formats
     public static final Pattern VISIBILITY_PATTERN = Pattern.compile(
         "^(?<vis>(?<dist>[MP]?\\d{4}|////)(?<dir>[NSEW][EW]?|NDV)?|(?<distu>[MP]?(\\d+|\\d{1,2}/\\d{1,2}|\\d+\\s+\\d/\\d))(?<units>SM|KM|M|U)|NDV|CAVOK)\\s+"
@@ -96,7 +93,6 @@ public final class RegExprConst {
      * Example: "R28L/1200V1800FT", "R06/P6000FT"
      * Complexity is required to capture runway designator, visibility range, and units
      */
-    // ^(RVRNO|R(?<name>\\d\\d(?<inden>RLC)?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d\\d\\d\\d))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for runway visual range format
     public static final Pattern RUNWAY_PATTERN = Pattern.compile(
         "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?\\s+"
@@ -167,13 +163,28 @@ public final class RegExprConst {
     );
 
     /**
-     * Beginning and End of Precipitation. Example RAB20E51
-     * Complexity is required to capture weather type and begin/end times
+     * Beginning and End of Precipitation/Weather Phenomena.
+     *
+     * Supports both minute-only and full timestamp formats:
+     * - RAB05 → Rain began at :05 (2-digit format)
+     * - FZRAB1159E1240 → Freezing rain began 11:59, ended 12:40 (4-digit format)
+     * - RAB15E30 → Rain began :15, ended :30
+     * - -RAB05 → Light rain began :05
+     * - +TSRAB20E45 → Heavy thunderstorm with rain began :20, ended :45
+     *
+     * - Begin time: (?<begint>\\d{2,4}) allows 2 OR 4 digits
+     * - End time: (?<endt>\\d{2,4}) allows 2 OR 4 digits
+     * - Added word boundary (?=\\s|$) to prevent over-matching
+     *
+     * Time parsing logic (in handler):
+     * - 2 digits (05) → minute only (:05)
+     * - 4 digits (1159) → hour and minute (11:59)
+     *
+     * Complexity is required to capture weather type and flexible begin/end time formats.
      */
-    // ^(?<int>(VC|-|\\+)*)(?<desc>(MI|PR|BC|DR|BL|SH|TS|FZ)+)?(?<prec>(DZ|RA|SN|SG|IC|PL|GR|GS|UP|/)*)(?<obsc>BR|FG|FU|VA|DU|SA|HZ|PY)?(?<other>PO|SQ|FC|SS|DS|NSW|/+)?(?<int2>[-+])?((?<begin>B)(?<begint>\\d\\d)*)?((?<end>E)(?<endt>\\d\\d)*)
     @SuppressWarnings("java:S5843") // Complex regex required for precipitation timing format
     public static final Pattern BEGIN_END_WEATHER_PATTERN = Pattern.compile(
-            "^(?<int>(VC|-|\\+)*)(?<desc>(MI|PR|BC|DR|BL|SH|TS|FZ)+)?(?<prec>(DZ|RA|SN|SG|IC|PL|GR|GS|UP|/)*)(?<obsc>BR|FG|FU|VA|DU|SA|HZ|PY)?(?<other>PO|SQ|FC|SS|DS|NSW|/+)?(?<int2>[-+])?((?<begin>B)(?<begint>\\d{2})*)?((?<end>E)(?<endt>\\d{2})*)"
+            "^(?<int>(VC|-|\\+)*)(?<desc>(MI|PR|BC|DR|BL|SH|TS|FZ)+)?(?<prec>(DZ|RA|SN|SG|IC|PL|GR|GS|UP|/)*)(?<obsc>BR|FG|FU|VA|DU|SA|HZ|PY)?(?<other>PO|SQ|FC|SS|DS|NSW|/+)?(?<int2>[-+])?((?<begin>B)(?<begint>\\d{2,4}))?((?<end>E)(?<endt>\\d{2,4}))?(?=\\s|$|[A-Z])"
     );
 
     /**
@@ -211,7 +222,6 @@ public final class RegExprConst {
      * TWR_VIS_vvvvv or SFC_VIS_vvvvv, respectively
      * Example: "TWR VIS 1 1/2"
      */
-    // ^(?<type>TWR VIS|SFC VIS) (?<dist>\\d+\\s\\d/\\d|\\d\\d?/\\d\\d?|\\d{1,2})?\\s+
     public static final Pattern TWR_SFC_VIS_PATTERN = Pattern.compile(
             "^(?<type>TWR VIS|SFC VIS)\\s+(?<dist>\\d+\\s\\d/\\d|\\d{1,2}/\\d{1,2}|\\d{1,2})?\\s*"
     );
@@ -226,7 +236,6 @@ public final class RegExprConst {
      * VIS_vvvvv_[LOC] visibility shall be coded in the formats, TWR_VIS_vvvvv
      * or SFC_VIS_vvvvv, respectively
      */
-    // ^(?<vis>VIS) (?<dir>([NSEW][EW]))?\\s*(?<dist1>\\d\\d?/\\d\\d?|\\d+\\s+\\d\\d?/\\d\\d?|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d\\d?/\\d\\d?|\\d+\\s+\\d\\d?/\\d\\d?|\\d+))?\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for variable visibility formats
     public static final Pattern VPV_SV_VSL_PATTERN = Pattern.compile(
             "^(?<vis>VIS)\\s+(?<dir>([NSEW]([EW])?))?\\s*(?<dist1>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+))?\\s*"
@@ -250,10 +259,9 @@ public final class RegExprConst {
      * Example: "TS SE MOV E", "CB OHD", "TCU DSNT S"
      * Complexity is required to capture cloud type, location, and movement
      */
-    // ^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)\\s*(?<loc>(OHD|VC|DSNT|DSIPTD|TOP|TR)?)\\s*((?<dir>[NSEW][EW]?)-?(?<dir2>[NSEW][EW]?)*)?(\\s*MOV\\s*(?<dirm>[NSEW][EW]?))?\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern TS_CLD_LOC_PATTERN = Pattern.compile(
-        "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?:(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?\\s+"
+           "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?:(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
     );
 
     /**
@@ -267,7 +275,6 @@ public final class RegExprConst {
      * Icing
      * Complexity is required to capture icing type and additional information
      */
-    // ^(?<type>ICG)((?<typeic>IC)?(?<typeip>IP)?)\\s(?<extra>\\w\\w\\w\\w\\s\\w\\w)\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for icing format
     public static final Pattern ICING_PATTERN = Pattern.compile(
             "^(?<type>ICG)((?<typeic>IC)?(?<typeip>IP)?)\\s(?<extra>\\w{4}\\s\\w{2})\\s+"
@@ -279,7 +286,7 @@ public final class RegExprConst {
      * Example: "10142" or "20012"
      */
     public static final Pattern TEMP_6HR_MAX_MIN_PATTERN = Pattern.compile(
-            "^(?<type>[12])(?<sign>[01])(?<temp>\\d{2,3})\\s+"
+            "^(?<type>[12])(?<sign>[01])(?<temp>\\d{2,3})\\s*"
     );
 
     /**
@@ -287,7 +294,6 @@ public final class RegExprConst {
      * the hourly precipitation amount shall be coded in the format, Prrrr
      * Example: "P0015" = 0.15 inches
      */
-    //"^(?<type>P)(?<precip>\\d\\d\\d\\d)\\s*"
     public static final Pattern PRECIP_1HR_PATTERN = Pattern.compile(
             "^(?<type>P)(?<precip>\\d{4}|/{4})\\s*"
     );
@@ -296,9 +302,8 @@ public final class RegExprConst {
      * 3-hour pressure tendency
      * Example: "52032"
      */
-    // ^(?<type>5)(?<tend>[0-8])(?<press>\\d\\d\\d)\\s+
     public static final Pattern PRESS_3HR_PATTERN = Pattern.compile(
-            "^(?<type>5)(?<tend>[0-8])(?<press>\\d{3})\\s+"
+            "^(?<type>5)(?<tend>[0-8])(?<press>\\d{3})(?=\\s|$)"
     );
 
     /**
@@ -330,7 +335,7 @@ public final class RegExprConst {
      * Example: "400461006"
      */
     public static final Pattern TEMP_24HR_PATTERN = Pattern.compile(
-            "^(?<type>4)(?<maxsign>01)(?<maxtemp>\\d{3})((?<minsign>01)(?<mintemp>\\d{3}))\\s+"
+            "^(?<type>4)(?<maxsign>[01])(?<maxtemp>\\d{3})(?<minsign>[01])(?<mintemp>\\d{3})\\s*"
     );
 
     /**
@@ -349,7 +354,8 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for okta cloud format
     public static final Pattern CLOUD_OKTA_PATTERN = Pattern.compile(
-             "^(?<intensity>MDT\\s+)?(?<cloud>(CU|CF|ST|SC|SF|NS|AS|AC|CS|CC|CI))(?<okta>[1-8](?=\\s|$))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD)))?"
+            "^(?<intensity>MDT\\s+)?(?<cloud>(TCU|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI))(?<okta>[1-8](?=\\s|$))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD|TR)))?"
+
     );
 
     /**
@@ -366,7 +372,6 @@ public final class RegExprConst {
      * millibars
      * Example: "QFE747/996", "QNH1013"
      */
-    // ^(?<pressq>QFE|QNH|QNE)((?<pressmm>\\d{3,4})?(/(?<pressmb>\\d{3,4}))?)?\\s+
     public static final Pattern PRESS_Q_PATTERN = Pattern.compile(
             "^(?<pressq>QFE|QNH|QNE)(?:(?<pressmm>\\d{3,4})(?:/(?<pressmb>\\d{3,4}))?)?\\s+"
 );
@@ -383,18 +388,16 @@ public final class RegExprConst {
      * Example: "RVRNO", "TSNO", "VISNO RWY06", "$"
      * Complexity is required to capture maintenance indicator type and optional location
      */
-    // ^(?<typeam>|RVRNO|PWINO|PNO|FZRANO|TSNO|VISNO|CHINO)\\s(?<loc>\\w+\\d+)?|(?<typemc>\\$)\\s+
     @SuppressWarnings("java:S5843") // Complex regex required for maintenance data format
     public static final Pattern AUTOMATED_MAINTENANCE_PATTERN = Pattern.compile(
-            "^(?:(?<typeam>RVRNO|PWINO|PNO|FZRANO|TSNO|VISNO|CHINO)(?:\\s+(?<loc>\\w+\\d+))?|(?<typemc>\\$))\\s+"
+            "(?:(?<typeam>RVRNO|PWINO|PNO|FZRANO|TSNO|VISNO|CHINO)(?:\\s+(?<loc>RW?Y?\\d{1,2}[LCR]?|[NSEW]{1,2}))?|(?<typemc>\\$))(?:\\b|(?=\\s)|$)"
     );
-    
+
     /**
      * Groups - BECMG - Becoming, TEMPO - Temporary, PROB - Probability forecasts
      * Complexity is required to capture group type and all observation data
      * Examples: "BECMG 18016KT 10SM FEW250 ", "TEMPO +TSRA BKN020CB ", "PROB30 SHRA "
      */
-    // ^(?<group>BECMG|TEMPO|PROB\\d{2}) (?<obs>(\\S+\\s){1,})
     @SuppressWarnings("java:S5843") // Complex regex required for TAF group format
     public static final Pattern GROUP_BECMG_TEMPO_PROB_PATTERN = Pattern.compile(
             "^(?<group>BECMG|TEMPO|PROB\\d{2})\\s+(?<obs>.+?)(?=\\s*$)"
@@ -404,7 +407,6 @@ public final class RegExprConst {
      * Group - FM - From
      * Example: "FM121600"
      */
-    // ^(?<group>FM)(?<daytime>\\d{6}) (?<obs>(\\S+\\s){1,})
     public static final Pattern GROUP_FM_PATTERN = Pattern.compile(
             "^(?<group>FM)(?<daytime>\\\\d{6})\\\\s+(?<obs>.+?)(?=\\\\s*$)"
     );
@@ -444,6 +446,56 @@ public final class RegExprConst {
      */
     public static final Pattern HAIL_SIZE_PATTERN = Pattern.compile(
             "^GR\\s+(?<size>\\d+\\s+\\d/\\d|\\d+/\\d+|\\d+)\\s*"
+    );
+
+    /**
+     * Variable Ceiling (CIG minVmax).
+     * Ceiling varies between minimum and maximum heights in hundreds of feet.
+     *
+     * Examples:
+     * - "CIG 005V010" → Ceiling 500-1000 feet
+     * - "CIG 020V035" → Ceiling 2000-3500 feet
+     * - "CIG 010V015" → Ceiling 1000-1500 feet
+     */
+    public static final Pattern VARIABLE_CEILING_PATTERN = Pattern.compile(
+            "^CIG\\s+(?<min>\\d{3})V(?<max>\\d{3})\\s*"
+    );
+
+    /**
+     * Ceiling Height at Second Site (CIG height [LOC]).
+     * Ceiling at a specific location (usually runway).
+     * Height is in hundreds of feet, location is optional.
+     *
+     * Examples:
+     * - "CIG 002 RY11" → Ceiling 200 ft at runway 11
+     * - "CIG 005 RWY06" → Ceiling 500 ft at runway 06
+     * - "CIG 010" → Ceiling 1000 ft (no location)
+     *
+     * NOTE: This pattern must be checked AFTER VARIABLE_CEILING_PATTERN
+     * to avoid conflicts (variable ceiling has "V" separator).
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for TAF group format
+    public static final Pattern CEILING_SECOND_SITE_PATTERN = Pattern.compile(
+            "^CIG\\s+(?<height>\\d{3})(?:\\s+(?<loc>RY\\d{1,2}[LRC]?|RWY\\d{1,2}[LRC]?|TWR|APCH))?\\s*"
+    );
+
+    /**
+     * Obscuration Layer ([Coverage] [Phenomenon] [Height]).
+     * Represents obscuration like fog, mist, smoke at a specific height.
+     *
+     * Examples:
+     * - "FEW FG 000" → Few fog at ground level
+     * - "SCT FU 010" → Scattered smoke at 1000 feet
+     * - "BKN BR 005" → Broken mist at 500 feet
+     *
+     * Coverage: FEW, SCT, BKN, OVC
+     * Phenomenon: FG, BR, FU, HZ, DU, SA, VA, PY
+     * Height: 3 digits (hundreds of feet)
+     *
+     * NOTE: Spaces distinguish this from SKY_CONDITION_PATTERN which has no spaces.
+     */
+    public static final Pattern OBSCURATION_PATTERN = Pattern.compile(
+            "^(?<coverage>FEW|SCT|BKN|OVC)\\s+(?<phenomenon>FG|BR|FU|HZ|DU|SA|VA|PY)\\s+(?<height>\\d{3})\\s*"
     );
 
     /**

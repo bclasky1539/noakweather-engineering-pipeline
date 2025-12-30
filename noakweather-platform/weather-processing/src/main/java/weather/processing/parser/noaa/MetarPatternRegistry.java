@@ -134,21 +134,35 @@ public class MetarPatternRegistry {
         handlers.put(RegExprConst.WIND_SHIFT_PATTERN, 
                 MetarPatternHandler.single("windShift"));
         
-        // Tower or surface visibility
-        handlers.put(RegExprConst.TWR_SFC_VIS_PATTERN, 
-                MetarPatternHandler.single("towerSurfaceVis"));
-        
+        // Tower or surface visibility (NOT HANDLED)
+
         // Variable visibility
         handlers.put(RegExprConst.VPV_SV_VSL_PATTERN, 
                 MetarPatternHandler.single("variableVis"));
-        
+
+        // Variable ceiling
+        handlers.put(RegExprConst.VARIABLE_CEILING_PATTERN,
+                MetarPatternHandler.single("variableCeiling"));
+
+        // Ceiling second site (MUST be after variable ceiling)
+        handlers.put(RegExprConst.CEILING_SECOND_SITE_PATTERN,
+                MetarPatternHandler.single("ceilingSecondSite"));
+
+        // Obscuration layers (can have multiple)
+        handlers.put(RegExprConst.OBSCURATION_PATTERN,
+                MetarPatternHandler.repeating("obscurationLayers"));
+
+        // Thunderstorm/cloud location
+        handlers.put(RegExprConst.TS_CLD_LOC_PATTERN,
+                MetarPatternHandler.repeating("thunderstormCloudLocation"));
+
+        // Cloud types (can have multiple)
+        handlers.put(RegExprConst.CLOUD_OKTA_PATTERN,
+                MetarPatternHandler.repeating("cloudTypes"));
+
         // Lightning (uses wrapper class for individual type captures)
         handlers.put(RegExprConst.LIGHTNING_PATTERN, 
                 MetarPatternHandler.single("lightning"));
-        
-        // Thunderstorm/cloud location
-        handlers.put(RegExprConst.TS_CLD_LOC_PATTERN, 
-                MetarPatternHandler.repeating("thunderstormCloudLocation"));
         
         // Pressure rising/falling rapidly
         handlers.put(RegExprConst.PRES_RF_RAPDLY_PATTERN, 
@@ -189,6 +203,12 @@ public class MetarPatternRegistry {
         // Hail size
         handlers.put(RegExprConst.HAIL_SIZE_PATTERN,
                 MetarPatternHandler.single("hailSize"));
+
+        // Weather begin/end times (RAB05, FZRAB1159E1240, etc.)
+        // IMPORTANT: This is a repeating pattern because multiple weather events can be chained
+        // Example: RAB15E30SNB30 contains two events (rain and snow)
+        handlers.put(RegExprConst.BEGIN_END_WEATHER_PATTERN,
+                MetarPatternHandler.repeating("weatherBeginEnd"));
 
         // Catch unparsed remarks
         handlers.put(RegExprConst.UNPARSED_PATTERN, 
