@@ -571,4 +571,29 @@ public final class RegExprConst {
     public static final Pattern UNPARSED_PATTERN = Pattern.compile(
             "^(?<unparsed>\\S+)\\s+"
     );
+
+    /**
+     * Pattern for TAF report with optional date prefix
+     * Example: "2025/12/15 20:57 TAF AMD KCLT ..."
+     */
+    public static final Pattern TAF_WITH_DATE_PREFIX = Pattern.compile(
+            "^\\d{4}/\\d{2}/\\d{2}\\s+\\d{2}:\\d{2}\\s+TAF\\b"
+    );
+
+    /**
+     * Pattern for TAF report starting with TAF keyword
+     * Example: "TAF KJFK 151800Z ..."
+     */
+    public static final Pattern TAF_KEYWORD_START = Pattern.compile(
+            "^\\s*TAF\\s+"
+    );
+
+    /**
+     * Pattern for splitting TAF main body and remarks section
+     * Matches RMK with at least one space on each side
+     */
+    public static final Pattern REMARKS_SEPARATOR = Pattern.compile(
+            "\\s+RMK(?=\\s)",  // RMK followed by space (using lookahead)
+            Pattern.CASE_INSENSITIVE
+    );
 }

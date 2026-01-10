@@ -151,12 +151,12 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
         String trimmed = rawData.trim();
 
         // Check if starts with date/time pattern followed by TAF
-        if (trimmed.matches("^\\d{4}/\\d{2}/\\d{2}\\s+.*TAF.*")) {
+        if (TAF_WITH_DATE_PREFIX.matcher(trimmed).find()) {
             return true;
         }
 
         // Check if TAF appears at the start
-        return trimmed.matches("^\\s*TAF\\s+.*");
+        return TAF_KEYWORD_START.matcher(trimmed).lookingAt();
     }
 
     @Override
@@ -199,7 +199,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
      */
     private String[] splitMainBodyAndRemarks(String token) {
         // TAF remarks are introduced by "RMK"
-        String[] parts = token.split("\\s+RMK\\s+", 2);
+        String[] parts = REMARKS_SEPARATOR.split(token, 2);
         String mainBody = parts[0];
         String remarks = parts.length > 1 ? parts[1] : "";
         return new String[]{mainBody, remarks};
