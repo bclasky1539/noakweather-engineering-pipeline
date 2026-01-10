@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,6 +61,23 @@ public final class RegExprConst {
     );
 
     /**
+     * Pattern for TAF station ID and issue time
+     * Example: "KJFK 151800Z"
+     */
+    public static final Pattern STATION_AND_ISSUE_TIME_PATTERN = Pattern.compile(
+            "(?<station>[A-Z]{4})\\s+" +
+                    "(?<zday>\\d{2})(?<zhour>\\d{2})(?<zmin>\\d{2})Z"
+    );
+
+    /**
+     * Pattern for TAF validity period
+     * Example: "1518/1624"
+     */
+    public static final Pattern VALIDITY_PERIOD_PATTERN = Pattern.compile(
+            "(?<from>\\d{4})/(?<to>\\d{4})"
+    );
+
+    /**
      * Report Modifier (AUTO, COR, AMD, etc.)
      * Example: "AUTO", "COR", "AMD"
      */
@@ -112,9 +129,10 @@ public final class RegExprConst {
      * Sky condition (cloud layers)
      * Example: "FEW250", "SCT100", "BKN050CB", "OVC020"
      */
+    // "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?\\s+"
     @SuppressWarnings("java:S5843") // Complex regex required for weather phenomena combinations
     public static final Pattern SKY_CONDITION_PATTERN = Pattern.compile(
-            "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?\\s+"
+            "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?\\s*"
     );
 
     /**
@@ -410,6 +428,55 @@ public final class RegExprConst {
     public static final Pattern GROUP_FM_PATTERN = Pattern.compile(
             "^(?<group>FM)(?<daytime>\\\\d{6})\\\\s+(?<obs>.+?)(?=\\\\s*$)"
     );
+
+    /**
+     * TAF TEMPO change group with validity period
+     * Example: "TEMPO 3003/3011 -SHSN BKN040"
+     * Captures the validity period (from/to times) for TEMPO groups
+     */
+    public static final Pattern TEMPO_PATTERN =
+            Pattern.compile("^TEMPO\\s+(?<from>\\d{4})/(?<to>\\d{4})\\s+");
+
+    /**
+     * TAF BECMG change group with validity period
+     * Example: "BECMG 3003/3011 18016KT"
+     * Captures the validity period (from/to times) for BECMG groups
+     */
+    public static final Pattern BECMG_PATTERN =
+            Pattern.compile("^BECMG\\s+(?<from>\\d{4})/(?<to>\\d{4})\\s+");
+
+    /**
+     * TAF PROB change group with validity period and optional TEMPO
+     * Examples: "PROB30 3003/3011 SHRA", "PROB40 TEMPO 3003/3011 TSRA"
+     * Captures probability percentage and validity period
+     */
+    // ^PROB(?<prob>\\d{2})(?:\\s+TEMPO)?\\s+(?<from>\\d{4})/(?<to>\\d{4})\\s+")
+    public static final Pattern PROB_PATTERN =
+            Pattern.compile("^PROB(?<prob>\\d{2})(?:\\s+TEMPO)?\\s+(?<from>\\d{4})/(?<to>\\d{4})\\s+");
+
+    /**
+     * TAF FM (From) change group with exact time
+     * Example: "FM152100 21005KT P6SM SCT250"
+     * Captures the exact date-time when permanent change occurs (DDHHMM format)
+     */
+    public static final Pattern FM_PATTERN =
+            Pattern.compile("^FM(?<time>\\d{6})\\s+");
+
+    /**
+     * TAF temperature forecast (TX/TN)
+     * Examples: "TX15/1518Z", "TNM05/1510Z"
+     * Captures type (X=max, N=min), optional sign (M=minus), temperature, day, hour
+     */
+    public static final Pattern TEMP_FORECAST_PATTERN =
+            Pattern.compile("^T(?<type>[XN])(?<sign>M)?(?<temp>\\d{2})/(?<day>\\d{2})(?<hour>\\d{2})Z\\s*");
+
+    /**
+     * TAF validity period
+     * Example: "1520/1624" means valid from 15th at 2000Z to 16th at 2400Z
+     * Captures from/to times in DDHH format
+     */
+    public static final Pattern VALIDITY_PATTERN =
+            Pattern.compile("^(?<from>\\d{4})/(?<to>\\d{4})\\s+");
 
     /**
      * Valid Time Period

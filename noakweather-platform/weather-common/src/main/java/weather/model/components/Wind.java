@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -188,16 +188,28 @@ public record Wind(
     }
     
     // ==================== Query Methods ====================
-    
+
     /**
-     * Check if wind direction is variable.
-     * 
-     * @return true if direction varies (has variability range)
+     * Check if wind has a variability range (e.g., 180V240).
+     * This indicates wind direction is varying between two compass points.
+     *
+     * @return true if wind varies between two directions
      */
     public boolean isVariable() {
         return variabilityFrom != null && variabilityTo != null;
     }
-    
+
+    /**
+     * Check if wind direction is unpredictable/variable (VRB).
+     * Variable direction means the wind is coming from multiple directions
+     * with no predictable pattern.
+     *
+     * @return true if direction is variable (VRB - null direction with speed > 0)
+     */
+    public boolean hasVariableDirection() {
+        return directionDegrees == null && speedValue != null && speedValue > 0;
+    }
+
     /**
      * Check if wind has gusts.
      * 

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ package weather.processing.parser.noaa;
  * @author bclasky1539
  *
  */
-public record MetarPatternHandler(String handlerName, boolean canRepeat) {
+public record NoaaAviationWeatherPatternHandler(String handlerName, boolean canRepeat) {
     
     /**
      * Factory method for non-repeating patterns (most common case).
@@ -44,10 +44,10 @@ public record MetarPatternHandler(String handlerName, boolean canRepeat) {
      * Examples: station ID, wind, visibility, temperature, pressure
      * 
      * @param handlerName The handler method name
-     * @return MetarPatternHandler configured for single match
+     * @return NoaaAviationWeatherPatternHandler configured for single match
      */
-    public static MetarPatternHandler single(String handlerName) {
-        return new MetarPatternHandler(handlerName, false);
+    public static NoaaAviationWeatherPatternHandler single(String handlerName) {
+        return new NoaaAviationWeatherPatternHandler(handlerName, false);
     }
     
     /**
@@ -58,9 +58,9 @@ public record MetarPatternHandler(String handlerName, boolean canRepeat) {
      * runway visual range (multiple runways)
      * 
      * @param handlerName The handler method name
-     * @return MetarPatternHandler configured for repeating matches
+     * @return NoaaAviationWeatherPatternHandler configured for repeating matches
      */
-    public static MetarPatternHandler repeating(String handlerName) {
-        return new MetarPatternHandler(handlerName, true);
+    public static NoaaAviationWeatherPatternHandler repeating(String handlerName) {
+        return new NoaaAviationWeatherPatternHandler(handlerName, true);
     }
 }

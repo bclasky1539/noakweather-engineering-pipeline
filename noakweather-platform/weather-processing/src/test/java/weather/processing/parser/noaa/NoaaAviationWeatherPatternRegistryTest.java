@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,18 +27,18 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for MetarPatternRegistry.
+ * Tests for NoaaAviationWeatherPatternRegistry.
  * 
  * @author bclasky1539
  *
  */
-class MetarPatternRegistryTest {
+class NoaaAviationWeatherPatternRegistryTest {
     
-    private final MetarPatternRegistry registry = new MetarPatternRegistry();
+    private final NoaaAviationWeatherPatternRegistry registry = new NoaaAviationWeatherPatternRegistry();
     
     @Test
     void testGetMainHandlersReturnsIndexedLinkedHashMap() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
         
         assertThat(handlers)
                 .isNotNull()
@@ -47,7 +47,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetMainHandlersHasExpectedPatterns() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
         
         // Should contain key patterns
         assertThat(handlers)
@@ -60,7 +60,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetMainHandlersMaintainsOrder() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
         
         // Use IndexedLinkedHashMap's index access
         int stationIndex = handlers.getIndexOf(RegExprConst.STATION_DAY_TIME_VALTMPER_PATTERN);
@@ -76,13 +76,13 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetMainHandlersIndexAccess() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
 
         // Test index-based access (unique feature of IndexedLinkedHashMap)
         Pattern firstPattern = handlers.getKeyAtIndex(0);
         assertThat(firstPattern).isNotNull();
 
-        MetarPatternHandler firstHandler = handlers.getValueAtIndex(0);
+        NoaaAviationWeatherPatternHandler firstHandler = handlers.getValueAtIndex(0);
         assertThat(firstHandler).isNotNull();
 
         // First pattern should be reportType (METAR|SPECI)
@@ -93,26 +93,26 @@ class MetarPatternRegistryTest {
         // Second pattern should be month/day/year (what used to be first)
         Pattern secondPattern = handlers.getKeyAtIndex(1);
         assertThat(secondPattern).isEqualTo(RegExprConst.MONTH_DAY_YEAR_PATTERN);
-        MetarPatternHandler secondHandler = handlers.getValueAtIndex(1);
+        NoaaAviationWeatherPatternHandler secondHandler = handlers.getValueAtIndex(1);
         assertThat(secondHandler.handlerName()).isEqualTo("monthDayYear");
     }
     
     @Test
     void testGetMainHandlersRepeatingPatterns() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
         
         // Sky condition should be repeating
-        MetarPatternHandler skyHandler = handlers.get(RegExprConst.SKY_CONDITION_PATTERN);
+        NoaaAviationWeatherPatternHandler skyHandler = handlers.get(RegExprConst.SKY_CONDITION_PATTERN);
         assertThat(skyHandler.canRepeat()).isTrue();
         
         // Wind should NOT be repeating
-        MetarPatternHandler windHandler = handlers.get(RegExprConst.WIND_PATTERN);
+        NoaaAviationWeatherPatternHandler windHandler = handlers.get(RegExprConst.WIND_PATTERN);
         assertThat(windHandler.canRepeat()).isFalse();
     }
     
     @Test
     void testGetRemarksHandlersReturnsIndexedLinkedHashMap() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
         
         assertThat(handlers)
                 .isNotNull()
@@ -121,7 +121,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetRemarksHandlersHasExpectedPatterns() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
         
         // Should contain key remarks patterns
         assertThat(handlers)
@@ -134,7 +134,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetRemarksHandlersIndexAccess() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
         
         // Test that we can access by index
         assertThat(handlers).hasSizeGreaterThan(0);
@@ -148,7 +148,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetGroupHandlersReturnsIndexedLinkedHashMap() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getGroupHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getGroupHandlers();
         
         assertThat(handlers)
                 .isNotNull()
@@ -157,7 +157,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testGetGroupHandlersHasExpectedPatterns() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getGroupHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getGroupHandlers();
         
         // Should contain TAF group patterns
         assertThat(handlers)
@@ -168,9 +168,9 @@ class MetarPatternRegistryTest {
     
     @Test
     void testAllHandlersHaveValidHandlerNames() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> mainHandlers = registry.getMainHandlers();
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> remarksHandlers = registry.getRemarksHandlers();
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> groupHandlers = registry.getGroupHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> mainHandlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> remarksHandlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> groupHandlers = registry.getGroupHandlers();
         
         // All handler names should be non-null and non-empty
         mainHandlers.values().forEach(handler -> {
@@ -191,7 +191,7 @@ class MetarPatternRegistryTest {
     
     @Test
     void testIndexedLinkedHashMapFeatures() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getMainHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
         
         // Test IndexedLinkedHashMap specific features
         int size = handlers.size();
@@ -200,7 +200,7 @@ class MetarPatternRegistryTest {
         // Test that we can iterate by index
         for (int i = 0; i < size; i++) {
             Pattern pattern = handlers.getKeyAtIndex(i);
-            MetarPatternHandler handler = handlers.getValueAtIndex(i);
+            NoaaAviationWeatherPatternHandler handler = handlers.getValueAtIndex(i);
             
             assertThat(pattern).isNotNull();
             assertThat(handler).isNotNull();
@@ -212,14 +212,14 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersHasHailSizePattern() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Should contain hail size pattern
         assertThat(handlers)
                 .containsKey(RegExprConst.HAIL_SIZE_PATTERN);
 
         // Verify handler details
-        MetarPatternHandler hailSizeHandler = handlers.get(RegExprConst.HAIL_SIZE_PATTERN);
+        NoaaAviationWeatherPatternHandler hailSizeHandler = handlers.get(RegExprConst.HAIL_SIZE_PATTERN);
         assertThat(hailSizeHandler).isNotNull();
         assertThat(hailSizeHandler.handlerName()).isEqualTo("hailSize");
         assertThat(hailSizeHandler.canRepeat()).isFalse();
@@ -227,14 +227,14 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersHasBeginEndWeatherPattern() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Should contain BEGIN_END_WEATHER_PATTERN
         assertThat(handlers)
                 .containsKey(RegExprConst.BEGIN_END_WEATHER_PATTERN);
 
         // Verify handler details
-        MetarPatternHandler weatherEventHandler = handlers.get(RegExprConst.BEGIN_END_WEATHER_PATTERN);
+        NoaaAviationWeatherPatternHandler weatherEventHandler = handlers.get(RegExprConst.BEGIN_END_WEATHER_PATTERN);
         assertThat(weatherEventHandler).isNotNull();
         assertThat(weatherEventHandler.handlerName()).isEqualTo("weatherBeginEnd");
         assertThat(weatherEventHandler.canRepeat()).isTrue();  // Should be repeating for chained events
@@ -242,7 +242,7 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersWeatherEventAfterHailSize() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get indices of both patterns
         int hailSizeIndex = handlers.getIndexOf(RegExprConst.HAIL_SIZE_PATTERN);
@@ -265,14 +265,14 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersHasVariableCeilingPattern() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Should contain variable ceiling pattern
         assertThat(handlers)
                 .containsKey(RegExprConst.VARIABLE_CEILING_PATTERN);
 
         // Verify handler details
-        MetarPatternHandler variableCeilingHandler = handlers.get(RegExprConst.VARIABLE_CEILING_PATTERN);
+        NoaaAviationWeatherPatternHandler variableCeilingHandler = handlers.get(RegExprConst.VARIABLE_CEILING_PATTERN);
         assertThat(variableCeilingHandler).isNotNull();
         assertThat(variableCeilingHandler.handlerName()).isEqualTo("variableCeiling");
         assertThat(variableCeilingHandler.canRepeat()).isFalse();
@@ -280,7 +280,7 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersVariableCeilingAfterVariableVisibility() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get indices of both patterns
         int variableVisibilityIndex = handlers.getIndexOf(RegExprConst.VPV_SV_VSL_PATTERN);
@@ -303,14 +303,14 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersHasCeilingSecondSitePattern() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Should contain ceiling second site pattern
         assertThat(handlers)
                 .containsKey(RegExprConst.CEILING_SECOND_SITE_PATTERN);
 
         // Verify handler details
-        MetarPatternHandler ceilingSecondSiteHandler = handlers.get(RegExprConst.CEILING_SECOND_SITE_PATTERN);
+        NoaaAviationWeatherPatternHandler ceilingSecondSiteHandler = handlers.get(RegExprConst.CEILING_SECOND_SITE_PATTERN);
         assertThat(ceilingSecondSiteHandler).isNotNull();
         assertThat(ceilingSecondSiteHandler.handlerName()).isEqualTo("ceilingSecondSite");
         assertThat(ceilingSecondSiteHandler.canRepeat()).isFalse();
@@ -318,7 +318,7 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersCeilingSecondSiteAfterVariableCeiling() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get indices of both patterns
         int variableCeilingIndex = handlers.getIndexOf(RegExprConst.VARIABLE_CEILING_PATTERN);
@@ -341,14 +341,14 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersHasObscurationPattern() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Should contain obscuration pattern
         assertThat(handlers)
                 .containsKey(RegExprConst.OBSCURATION_PATTERN);
 
         // Verify handler details
-        MetarPatternHandler obscurationHandler = handlers.get(RegExprConst.OBSCURATION_PATTERN);
+        NoaaAviationWeatherPatternHandler obscurationHandler = handlers.get(RegExprConst.OBSCURATION_PATTERN);
         assertThat(obscurationHandler).isNotNull();
         assertThat(obscurationHandler.handlerName()).isEqualTo("obscurationLayers");
         assertThat(obscurationHandler.canRepeat()).isTrue();  // Should be repeating for multiple layers
@@ -356,7 +356,7 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersObscurationAfterCeilingSecondSite() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get indices of both patterns
         int ceilingSecondSiteIndex = handlers.getIndexOf(RegExprConst.CEILING_SECOND_SITE_PATTERN);
@@ -379,7 +379,7 @@ class MetarPatternRegistryTest {
 
     @Test
     void testGetRemarksHandlersObscurationBeforeLightning() {
-        IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get indices of both patterns
         int obscurationIndex = handlers.getIndexOf(RegExprConst.OBSCURATION_PATTERN);
@@ -391,19 +391,19 @@ class MetarPatternRegistryTest {
                 .isLessThan(lightningIndex);
     }
 
-    // ========== ADD TO MetarPatternRegistryTest.java ==========
+    // ========== ADD TO NoaaAviationWeatherPatternRegistryTest.java ==========
 
 // ADD THESE 3 TESTS to the test class:
 
     @Test
     @DisplayName("Should have CLOUD_OKTA_PATTERN in remarks handlers")
     void testGetRemarksHandlersHasCloudOktaPattern() {
-        Map<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        Map<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Verify CLOUD_OKTA_PATTERN is registered
         assertThat(handlers).containsKey(RegExprConst.CLOUD_OKTA_PATTERN);
 
-        MetarPatternHandler handler = handlers.get(RegExprConst.CLOUD_OKTA_PATTERN);
+        NoaaAviationWeatherPatternHandler handler = handlers.get(RegExprConst.CLOUD_OKTA_PATTERN);
         assertThat(handler).isNotNull();
         assertThat(handler.handlerName()).isEqualTo("cloudTypes");
         assertThat(handler.canRepeat()).isTrue();
@@ -412,7 +412,7 @@ class MetarPatternRegistryTest {
     @Test
     @DisplayName("Should have CLOUD_OKTA_PATTERN after OBSCURATION_PATTERN")
     void testGetRemarksHandlersCloudTypeAfterObscuration() {
-        Map<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        Map<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get the insertion order of patterns
         List<Pattern> patterns = new ArrayList<>(handlers.keySet());
@@ -429,7 +429,7 @@ class MetarPatternRegistryTest {
     @Test
     @DisplayName("Should have CLOUD_OKTA_PATTERN before LIGHTNING_PATTERN")
     void testGetRemarksHandlersCloudTypeBeforeLightning() {
-        Map<Pattern, MetarPatternHandler> handlers = registry.getRemarksHandlers();
+        Map<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
 
         // Get the insertion order of patterns
         List<Pattern> patterns = new ArrayList<>(handlers.keySet());

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -130,7 +130,7 @@ class NoaaMetarParserTest {
         NoaaWeatherData data = result.getData().get();
         assertEquals("KJFK", data.getStationId());
         assertEquals("METAR", data.getReportType());
-        assertEquals(metar, data.getRawData());
+        assertEquals(metar, data.getRawText());
         assertNotNull(data.getObservationTime());
     }
     
@@ -182,16 +182,16 @@ class NoaaMetarParserTest {
         assertTrue(result.isFailure());
         assertEquals("Data is not a valid METAR report", result.getErrorMessage());
     }
-    
+
     @Test
     @DisplayName("Should fail when station ID is missing")
     void testParseMissingStationId() {
         String invalidMetar = "METAR 251651Z 28016KT";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(invalidMetar);
-        
+
         assertTrue(result.isFailure());
-        assertEquals("Could not extract station ID from METAR", result.getErrorMessage());
+        assertEquals("Failed to parse METAR data: Could not extract station ID from METAR", result.getErrorMessage());
     }
     
     @Test
@@ -202,7 +202,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(invalidMetar);
         
         assertTrue(result.isFailure());
-        assertEquals("Could not extract station ID from METAR", result.getErrorMessage());
+        assertEquals("Failed to parse METAR data: Could not extract station ID from METAR", result.getErrorMessage());
     }
 
     @ParameterizedTest
@@ -229,7 +229,7 @@ class NoaaMetarParserTest {
         
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
-        assertEquals(metar.trim(), data.getRawData());
+        assertEquals(metar.trim(), data.getRawText());
     }
     
     @Test
@@ -266,7 +266,7 @@ class NoaaMetarParserTest {
         
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
-        assertTrue(data.getRawData().contains("RMK"));
+        assertTrue(data.getRawText().contains("RMK"));
     }
     
     @Test
@@ -302,7 +302,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         // Verify Wind object was created
         assertNotNull(data.getWind());
@@ -320,7 +320,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         assertNotNull(data.getWind());
         assertEquals(280, data.getWind().directionDegrees());
@@ -337,7 +337,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         assertNotNull(data.getWind());
         assertNull(data.getWind().directionDegrees()); // VRB = null direction
@@ -353,7 +353,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         assertNotNull(data.getWind());
         assertEquals("MPS", data.getWind().unit());
@@ -367,10 +367,11 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         assertNotNull(data.getWind());
-        assertEquals(0, data.getWind().directionDegrees());
+        assertTrue(data.getWind().isCalm());  // ← Use isCalm() method
+        assertNull(data.getWind().directionDegrees());  // ← Calm = null direction
         assertEquals(0, data.getWind().speedValue());
     }
 
@@ -523,7 +524,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isFailure());
-        assertEquals("Could not extract station ID from METAR", result.getErrorMessage());
+        assertEquals("Failed to parse METAR data: Could not extract station ID from METAR", result.getErrorMessage());
     }
 
     @ParameterizedTest
@@ -547,7 +548,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         assertNotNull(data.getVisibility(), "Visibility should not be null: " + scenario);
         assertEquals(expectedDistance, data.getVisibility().distanceValue(),
@@ -568,7 +569,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         assertNotNull(data.getVisibility());
         assertTrue(data.getVisibility().isCavok());
@@ -582,10 +583,12 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess());
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
-        assertNotNull(data.getVisibility());
-        assertEquals("NDV", data.getVisibility().specialCondition());
+        // NDV (No Directional Variation) is not set as visibility
+        // It's a special case that's logged but not stored
+        // Visibility should be null when NDV is present
+        assertNull(data.getVisibility(), "NDV should result in null visibility");
     }
 
     // ========== RUNWAY VISUAL RANGE (RVR) TESTS ==========
@@ -800,7 +803,7 @@ class NoaaMetarParserTest {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertTrue(result.isSuccess(), "Should parse with unknown visibility");
-        NoaaWeatherData data = extractData(result);
+        NoaaMetarData data = extractMetarData(result);
 
         // Visibility should be null when unknown (//// means visibility not available)
         assertNull(data.getVisibility(), "Visibility should be null for ////");

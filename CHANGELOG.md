@@ -7,7 +7,157 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Version 1.8.0-SNAPSHOT - December 29, 2024
+### Version 1.9.0-SNAPSHOT - January 10, 2026
+
+#### TAF Parser Implementation & Architecture Refactoring
+
+**Added:**
+- **TAF Parser Components** (Complete Terminal Aerodrome Forecast parsing)
+    - `NoaaTafParser` - Full TAF report parser with change group support
+    - Header parsing: station ID, issue time, validity period, modifiers (AMD/COR)
+    - Base forecast: Initial conditions for validity period
+    - Change groups: FM (From), TEMPO (Temporary), BECMG (Becoming), PROB (Probability)
+    - Temperature forecasts: TX/TN with time specifications
+    - Multi-pass parsing for order-independent processing
+    - Pattern Infrastructure
+
+- **Wind Enhancements** (weather-common)
+    - Distinguishes between VRB (unpredictable) and variability range (180V240)
+    - Comprehensive test suite for variable direction detection
+
+**Enhanced:**
+- **Architecture Refactoring** (weather-common)
+    - **NoaaWeatherData hierarchy refactored**:
+        - Moved `WeatherConditions` from subclasses → `NoaaWeatherData` (single source of truth)
+        - Fixed architectural flaw: `getSkyConditions()` now delegates to `conditions.skyConditions()`
+        - Eliminated duplicate storage of sky conditions and present weather
+        - `NoaaMetarData` and `NoaaTafData` now extend consistent parent
+    - **equals/hashCode improvements**:
+        - Now use business fields only (exclude auto-generated IDs and timestamps)
+        - Proper `super.equals()` calls in subclasses
+        - Consistent with domain-driven design principles
+    - **Stream API modernization**:
+        - Updated to Java 16+ `.toList()` (replaces `.collect(Collectors.toList())`)
+        - Cleaner, more concise code
+    - **Temperature component**:
+        - Fixed `dewpointCelsius()` accessor (was incorrectly named `dewPointCelsius()`)
+    - **Wind factory methods**:
+        - Improved naming consistency across factory methods
+        - Added proper support for calm and variable wind
+
+- **Pattern Registry Refactoring** (weather-processing)
+    - **Renamed classes** for clarity:
+        - `MetarPatternRegistry` → `NoaaAviationWeatherPatternRegistry`
+        - `MetarPatternHandler` → `NoaaAviationWeatherPatternHandler`
+    - Rationale: Both METAR and TAF are aviation weather reports sharing common patterns
+    - Registered weather element patterns (wind, visibility, sky conditions)
+    - TAF change group patterns handled separately (not in registry)
+
+- **NoaaAviationWeatherParser Base Class** (weather-processing)
+    - **handleWind()** refactored for reduced cognitive complexity:
+        - Extracted parsing methods: `parseWindDirection()`, `parseWindSpeed()`, `parseWindGust()`, `parseWindUnit()`
+        - Extracted creation method: `createWind()` with clear decision logic
+        - Extracted logging method: `logWindData()`
+        - Improved from ~15 complexity → ~3-4 per method
+    - **Calm wind detection**: `00000KT` correctly creates `Wind.calm()`
+    - **Variable wind support**: `VRB05KT` correctly creates `Wind.variable(speed, unit)`
+    - **Null safety**: Uses `"VRB".equals(directionStr)` pattern (prevents NPE)
+
+- **NoaaTafParser** (weather-processing)
+    - **Validity period parsing**:
+        - Fixed month/year wrap-around logic (removed `&& hour == 24` restriction)
+        - Now correctly handles periods crossing month boundaries (Dec 31 → Jan 1)
+        - Supports 24:00 notation as next day 00:00
+    - **Forecast period parsing**:
+        - Multi-pass loop structure for change groups
+        - Proper handling of PROB periods (fixed validity period consumption issue)
+        - Each change group creates separate `ForecastPeriod` object
+    - **Temperature forecast parsing**:
+        - Fixed pattern to use `\\s*` instead of `\\s+` (handles end-of-string)
+        - Correctly parses both TX and TN in sequence
+
+- **RegExprConst Pattern Updates** (weather-processing)
+    - Split monolithic pattern into focused patterns:
+        - `STATION_DAY_TIME_VALTMPER_PATTERN` split into `STATION_AND_ISSUE_TIME_PATTERN` + `VALIDITY_PERIOD_PATTERN`
+        - Improved single responsibility and reusability
+
+**Testing:**
+- **weather-common**: 1,792 tests (maintained from v1.7.0)
+    - NoaaWeatherData refactored tests: 100% coverage
+    - NoaaMetarData refactored tests: 100% coverage
+    - NoaaTafData refactored tests: 100% coverage
+    - Wind variable direction tests: 6 new tests (100% coverage)
+    - CAVOK visibility tests: 3 new tests (100% coverage)
+    - Overall coverage: **97% instruction, 91% branch**
+
+- **weather-processing**: 1,097 tests (+484 new TAF tests)
+    - NoaaTafParser: 70+ comprehensive tests
+        - Header parsing (station, issue time, validity, modifiers)
+        - Base forecast parsing (wind, visibility, sky conditions)
+        - Change group parsing (FM, TEMPO, BECMG, PROB)
+        - Temperature forecast parsing (TX/TN)
+        - Month/year wrap-around scenarios
+        - Real-world TAF examples
+    - NoaaMetarParser: All existing tests passing + 3 fixes
+    - Pattern registry tests: Updated for renamed classes
+    - Overall coverage: **87% instruction, 77% branch**
+    - Missing coverage is defensive code (null checks, exception handlers)
+
+**TAF Components Now Supported:**
+1. **Header**:
+    - Report type (TAF)
+    - Modifiers (AMD, COR)
+    - Station ID
+    - Issue time (with date/time prefix support)
+    - Validity period (with month/year wrap-around)
+
+2. **Base Forecast**:
+    - Wind (including calm and variable)
+    - Visibility
+    - Present weather
+    - Sky conditions
+    - All inherited from NoaaAviationWeatherParser
+
+3. **Change Groups**:
+    - FM (From) - Permanent change at exact time
+    - TEMPO - Temporary fluctuations
+    - BECMG - Gradual change
+    - PROB30/PROB40 - Probabilistic conditions
+
+4. **Temperature Forecasts**:
+    - TX (Maximum temperature)
+    - TN (Minimum temperature)
+    - With date/time specifications
+
+**Technical Details:**
+- Parametric polymorphism: `NoaaAviationWeatherParser<T extends NoaaWeatherData>`
+- Generics ensure type safety between parser and data model
+- Multi-pass parsing ensures order-independent processing
+- Comprehensive validation with meaningful error messages
+- Real-world TAF examples validated in tests
+- Defensive coding with extensive null checks
+
+**Architecture Benefits:**
+- **DRY Principle**: Weather parsing logic shared between METAR and TAF
+- **Single Source of Truth**: WeatherConditions stored once in parent class
+- **Type Safety**: Generics prevent type errors at compile time
+- **Extensibility**: Easy to add new NOAA report types (SPECI, PIREP, etc.)
+- **Maintainability**: Clear separation of concerns, consistent patterns
+
+**Migration Notes:**
+- NoaaWeatherData hierarchy changed (WeatherConditions moved to parent)
+- Pattern registry classes renamed (Metar → NoaaAviationWeather)
+- Wind class has new `hasVariableDirection()` method
+- Temperature accessor renamed (`dewPointCelsius()` → `dewpointCelsius()`)
+- Tests updated to use `hasVariableDirection()` instead of checking nulls
+
+**Notes:**
+- TAF parser implementation complete and production-ready
+- Architecture refactoring improves code quality and maintainability
+- Both METAR and TAF parsers achieve >85% test coverage
+- Ready for integration with weather-ingestion pipeline
+
+### Version 1.8.0-SNAPSHOT - December 29, 2025
 
 #### Enhanced METAR Remarks Parser - Phase 2 Complete
 
@@ -233,7 +383,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Strong architectural foundation
 - All implementations follow consistent patterns established in Phase 1
 
-### Version 1.7.0-SNAPSHOT - December 18, 2024
+### Version 1.7.0-SNAPSHOT - December 18, 2025
 
 #### Enhanced METAR Remarks Parser - Phase 1 Complete
 
