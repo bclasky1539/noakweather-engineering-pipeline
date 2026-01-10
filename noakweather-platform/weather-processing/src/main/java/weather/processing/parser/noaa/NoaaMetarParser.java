@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,9 @@ import weather.model.components.*;
 import weather.model.components.remark.*;
 import weather.model.enums.AutomatedStationType;
 import weather.model.enums.PressureUnit;
-import weather.model.enums.SkyCoverage;
-import weather.model.components.remark.VariableCeiling;
-import weather.processing.parser.common.WeatherParser;
 import weather.processing.parser.common.ParseResult;
 import weather.utils.IndexedLinkedHashMap;
+
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -34,6 +32,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,113 +40,166 @@ import static weather.processing.parser.noaa.RegExprConst.*;
 
 /**
  * Parser for NOAA METAR (Meteorological Aerodrome Report) data.
- * 
- * Uses pattern-driven parsing approach via MetarPatternRegistry where patterns 
- * are applied in order to progressively consume the METAR token string.
- * 
+ *
+ * Extends NoaaAviationWeatherParser to inherit shared aviation weather parsing logic
+ * for wind, visibility, present weather, sky conditions, and RVR.
+ *
  * METAR Format Example:
  * "2025/11/14 22:52
  *  METAR KJFK 142252Z 19005KT 10SM FEW100 FEW250 16/M03 A3012 RMK AO2 SLP214 T01611028"
- * 
+ *
  * Components:
  * - METAR: Report type
  * - KJFK: Station identifier (JFK Airport)
- * - 251651Z: Day (25th) and time (16:51 UTC)
- * - 28016KT: Wind from 280° at 16 knots
+ * - 142252Z: Day (14th) and time (22:52 UTC)
+ * - 19005KT: Wind from 190° at 5 knots
  * - 10SM: Visibility 10 statute miles
- * - FEW250: Few clouds at 25,000 feet
- * - 22/12: Temperature 22°C, Dewpoint 12°C
- * - A3015: Altimeter setting 30.15 inHg
+ * - FEW100 FEW250: Few clouds at 10,000 and 25,000 feet
+ * - 16/M03: Temperature 16°C, Dewpoint -3°C
+ * - A3012: Altimeter setting 30.12 inHg
  * - RMK: Remarks section
- * 
- * @author bclasky1539
  *
+ * @author bclasky1539
  */
-public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
-    
+public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(NoaaMetarParser.class);
-    private static final String RVR_PREFIX_PATTERN = "^[MP]";
+
     // Pressure Tendency Pattern Groups
     private static final String GROUP_TENDENCY_CODE = "tend";
     private static final String GROUP_PRESSURE_CHANGE = "press";
     private static final String GROUP_HEIGHT_CODE = "height";
-    
+
     // Pattern registry for METAR parsing
-    private final MetarPatternRegistry patternRegistry;
-    
-    // Working data structure during parsing
-    private NoaaWeatherData weatherData;
+    private final NoaaAviationWeatherPatternRegistry patternRegistry;
+
+    // METAR-specific state
     private Instant issueTime;
     private String reportType;
-    
+
     public NoaaMetarParser() {
-        this.patternRegistry = new MetarPatternRegistry();
+        this.patternRegistry = new NoaaAviationWeatherPatternRegistry();
     }
-    
+
     @Override
     public ParseResult<NoaaWeatherData> parse(String rawData) {
         if (rawData == null || rawData.trim().isEmpty()) {
             return ParseResult.failure("Raw data cannot be null or empty");
         }
-        
+
         if (!canParse(rawData)) {
             return ParseResult.failure("Data is not a valid METAR report");
         }
-        
-        try {
-            // Initialize working data
-            this.weatherData = null;
-            this.issueTime = null;
-            this.reportType = "METAR";  // default to METAR
-            
-            String token = rawData.trim();
-            
-            // Parse main METAR body (everything before RMK)
-            String[] parts = token.split("\\s+RMK\\s+", 2);
-            String mainBody = parts[0];
-            String remarks = parts.length > 1 ? parts[1] : "";
-            
-            // Get handlers from registry
-            IndexedLinkedHashMap<Pattern, MetarPatternHandler> mainHandlers = 
-                patternRegistry.getMainHandlers();
-            IndexedLinkedHashMap<Pattern, MetarPatternHandler> remarkHandlers = 
-                patternRegistry.getRemarksHandlers();
-            
-            // Process main handlers
-            mainBody = parseWithHandlers(mainBody, mainHandlers, "MAIN");
-            
-            // Process remark handlers if present
-            if (!remarks.isEmpty()) {
-                String originalRemarks = remarks;
-                remarks = parseWithHandlers(remarks, remarkHandlers, "REMARK");
-                // Also do sequential parsing of remarks for components not in registry
-                handleRemarks(originalRemarks, (NoaaMetarData) weatherData);
-            }
-            
-            // Validate that we extracted minimum required data
-            if (weatherData == null || weatherData.getStationId() == null) {
-                return ParseResult.failure("Could not extract station ID from METAR");
-            }
-            
-            // Store raw data
-            weatherData.setRawData(rawData.trim());
-            
-            // Log any unparsed tokens
-            if (LOGGER.isDebugEnabled() && !mainBody.trim().isEmpty()) {
-                    LOGGER.debug("Unparsed main body tokens: '{}'", mainBody.trim());
-            }
 
-            if (LOGGER.isDebugEnabled() && !remarks.trim().isEmpty()) {
-                    LOGGER.debug("Unparsed remark tokens: '{}'", remarks.trim());
-            }
+        try {
+            initializeParsingState();
+
+            String token = rawData.trim();
+            String[] parts = splitMainBodyAndRemarks(token);
+            String mainBody = parts[0];
+            String remarks = parts[1];
+
+            mainBody = parseMainBody(mainBody);
+            remarks = parseRemarks(remarks);
+
+            validateParsedData();
+            buildAndSetConditions();
+
+            weatherData.setRawText(rawData.trim());
+
+            logUnparsedTokens(mainBody, remarks);
 
             return ParseResult.success(weatherData);
-            
-        } catch (Exception e) {
+
+        } catch (IllegalStateException | IllegalArgumentException e) {
             return ParseResult.failure(
-                "Failed to parse METAR data: " + e.getMessage(), 
-                e
+                    "Failed to parse METAR data: " + e.getMessage(), e
             );
+        } catch (RuntimeException e) {
+            LOGGER.error("Unexpected error parsing METAR data", e);
+            return ParseResult.failure(
+                    "Unexpected parsing error: " + e.getMessage(), e
+            );
+        }
+    }
+
+    /**
+     * Initialize all parsing state fields.
+     * Calls base class to initialize shared state.
+     */
+    private void initializeParsingState() {
+        initializeSharedState();  // Initialize base class state
+        this.weatherData = null;
+        this.issueTime = null;
+        this.reportType = "METAR";
+    }
+
+    /**
+     * Split METAR into main body and remarks sections.
+     *
+     * @param token the raw METAR string
+     * @return array with [mainBody, remarks]
+     */
+    private String[] splitMainBodyAndRemarks(String token) {
+        String[] parts = token.split("\\s+RMK\\s+", 2);
+        String mainBody = parts[0];
+        String remarks = parts.length > 1 ? parts[1] : "";
+        return new String[]{mainBody, remarks};
+    }
+
+    /**
+     * Parse the main METAR body (before RMK).
+     *
+     * @param mainBody the main body section
+     * @return remaining unparsed tokens
+     */
+    private String parseMainBody(String mainBody) {
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> mainHandlers =
+                patternRegistry.getMainHandlers();
+        return parseWithHandlers(mainBody, mainHandlers, "MAIN");
+    }
+
+    /**
+     * Parse the remarks section (after RMK).
+     *
+     * @param remarks the remarks section
+     * @return remaining unparsed tokens
+     */
+    private String parseRemarks(String remarks) {
+        if (remarks.isEmpty()) {
+            return remarks;
+        }
+
+        String originalRemarks = remarks;
+        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> remarkHandlers =
+                patternRegistry.getRemarksHandlers();
+
+        remarks = parseWithHandlers(remarks, remarkHandlers, "REMARK");
+
+        // Also do sequential parsing of remarks for components not in registry
+        handleRemarks(originalRemarks, weatherData);
+
+        return remarks;
+    }
+
+    /**
+     * Validate that minimum required data was extracted.
+     *
+     * @throws IllegalStateException if validation fails
+     */
+    private void validateParsedData() {
+        if (weatherData == null || weatherData.getStationId() == null) {
+            throw new IllegalStateException("Could not extract station ID from METAR");
+        }
+    }
+
+    /**
+     * Build WeatherConditions from accumulated data and set on weather data.
+     * Uses base class buildConditions() method.
+     */
+    private void buildAndSetConditions() {
+        if (weatherData != null) {
+            weatherData.setConditions(buildConditions());  // Call base class method
         }
     }
 
@@ -167,108 +219,107 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         // Check if METAR or SPECI appears at the start (not just anywhere)
         return trimmed.matches("^\\s*(METAR|SPECI)\\s+.*");
     }
-    
+
     @Override
     public String getSourceType() {
         return "NOAA_METAR";
     }
-    
+
     /**
      * Parse token string using ordered pattern handlers from registry.
-     * Similar to legacy parseAviaHandlers method.
-     * 
+     *
      * @param token The token string to parse
-     * @param handlers Ordered map of patterns and their handlers from MetarPatternRegistry
+     * @param handlers Ordered map of patterns and their handlers from NoaaAviationWeatherPatternRegistry
      * @param handlersType Type of handlers ("MAIN" or "REMARK") for logging
      * @return Remaining unparsed token string
      */
-    private String parseWithHandlers(String token, 
-                                     IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers, 
+    private String parseWithHandlers(String token,
+                                     IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers,
                                      String handlersType) {
         String currentToken = token;
-        
+
         while (!currentToken.isEmpty()) {
             LOGGER.debug("\n{} - Processing token: '{}'", handlersType, currentToken);
-            
+
             String updatedToken = tryAllPatterns(currentToken, handlers);
-            
+
             // If no match found, exit loop
             if (updatedToken.equals(currentToken)) {
                 break;
             }
-            
+
             currentToken = updatedToken;
         }
-        
+
         return currentToken;
     }
-    
+
     /**
      * Try all patterns against the token and return updated token after first match.
-     * 
+     *
      * @param token Current token to parse
      * @param handlers Pattern handlers to try
      * @return Updated token after match, or original token if no match
      */
-    private String tryAllPatterns(String token, 
-                                   IndexedLinkedHashMap<Pattern, MetarPatternHandler> handlers) {
-        for (Map.Entry<Pattern, MetarPatternHandler> entry : handlers.entrySet()) {
-            Pattern pattern = entry.getKey();                     // Get key from entry
-            MetarPatternHandler handlerInfo = entry.getValue();  // Get value from entry
+    private String tryAllPatterns(String token,
+                                  IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers) {
+        for (Map.Entry<Pattern, NoaaAviationWeatherPatternHandler> entry : handlers.entrySet()) {
+            Pattern pattern = entry.getKey();
+            NoaaAviationWeatherPatternHandler handlerInfo = entry.getValue();
 
             LOGGER.debug("Trying pattern: {} ({})",
-                handlerInfo.handlerName(), pattern.pattern());
-            
+                    handlerInfo.handlerName(), pattern.pattern());
+
             String updatedToken = tryPattern(token, pattern, handlerInfo);
-            
+
             // If pattern matched (token changed), return updated token
             if (!updatedToken.equals(token)) {
                 return updatedToken;
             }
         }
-        
+
         // No pattern matched
         return token;
     }
-    
+
     /**
      * Try a single pattern against the token, applying it repeatedly if configured.
-     * 
+     *
      * @param token Current token to parse
      * @param pattern Pattern to try
      * @param handlerInfo Handler metadata
      * @return Updated token after all matches, or original token if no match
      */
-    private String tryPattern(String token, Pattern pattern, MetarPatternHandler handlerInfo) {
+    private String tryPattern(String token, Pattern pattern, NoaaAviationWeatherPatternHandler handlerInfo) {
         String currentToken = token;
         Matcher matcher = pattern.matcher(currentToken);
-        
+
         while (matcher.find() && !matcher.group(0).isEmpty()) {
             logMatchDetails(matcher);
-            
+
             // Execute handler to extract data
             handlePattern(handlerInfo.handlerName(), matcher);
-            
+
             // Remove matched portion and prepare for next iteration
             currentToken = prepareTokenForNextMatch(matcher);
 
             LOGGER.debug("Token after match: '{}'", currentToken);
-            
+
             // If not repeating, stop after first match
             if (!handlerInfo.canRepeat()) {
                 break;
             }
-            
+
             // Re-apply pattern for repeating handlers
             matcher = pattern.matcher(currentToken);
         }
-        
+
         return currentToken;
     }
-    
+
     /**
      * Log details about a successful pattern match.
-     * 
+     *
      * @param matcher The matcher with a successful match
      */
     private void logMatchDetails(Matcher matcher) {
@@ -276,7 +327,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Match group(0): '{}'", matcher.group(0));
         }
-        
+
         // Log all capture groups
         if (LOGGER.isDebugEnabled()) {
             for (int j = 1; j <= matcher.groupCount(); j++) {
@@ -284,47 +335,53 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             }
         }
     }
-    
+
     /**
      * Remove matched portion from token and add trailing space if needed.
-     * 
+     *
      * @param matcher The matcher with a successful match
      * @return Updated token ready for next match
      */
     private String prepareTokenForNextMatch(Matcher matcher) {
         String updatedToken = matcher.replaceFirst("").trim();
-        
+
         // Add trailing space for proper next match (legacy behavior)
         if (!updatedToken.isEmpty()) {
             updatedToken += " ";
         }
-        
+
         return updatedToken;
     }
-    
+
     /**
      * Route to appropriate handler method based on handler name from registry.
-     * 
-     * @param handlerName The name of the handler from MetarPatternRegistry
+     *
+     * Handlers for shared aviation weather elements (wind, visibility, present weather,
+     * sky conditions) are inherited from NoaaAviationWeatherParser.
+     *
+     * @param handlerName The name of the handler from NoaaAviationWeatherPatternRegistry
      * @param matcher The regex matcher with captured groups
      */
     private void handlePattern(String handlerName, Matcher matcher) {
-
         try {
             switch (handlerName) {
+                // METAR-specific handlers
                 case "reportType" -> handleReportType(matcher);
                 case "monthDayYear" -> handleIssueDateTime(matcher);
                 case "station" -> handleStationAndObsTime(matcher);
                 case "reportModifier" -> handleReportModifier(matcher);
-                case "wind" -> handleWind(matcher);
-                case "visibility" -> handleVisibility(matcher);
-                case "runway" -> handleRunway(matcher);
-                case "presentWeather" -> handlePresentWeather(matcher);
-                case "skyCondition" -> handleSkyCondition(matcher);
                 case "tempDewpoint" -> handleTempDewpoint(matcher);
                 case "altimeter" -> handleAltimeter(matcher);
                 case "noSigChange" -> handleNoSigChange(matcher);
                 case "unparsed" -> handleUnparsed(matcher);
+
+                // Shared handlers (from base class)
+                case "wind" -> handleWind(matcher);
+                case "visibility" -> handleVisibility(matcher);
+                case "runway" -> handleRunway(matcher);  // Override for full RVR support
+                case "presentWeather" -> handlePresentWeather(matcher);
+                case "skyCondition" -> handleSkyCondition(matcher);
+
                 // Remarks handlers
                 case "autoType" -> handleAutoType(matcher);
                 case "seaLevelPressure" -> handleRemarkRegistry(matcher, "Sea level pressure");
@@ -336,14 +393,15 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
                 case "precip1Hour" -> handleRemarkRegistry(matcher, "Hourly precipitation");
                 case "precip3Hr24Hr" -> handleRemarkRegistry(matcher, "Multi-hour precipitation");
                 case "hailSize" -> handleRemarkRegistry(matcher, "Hail size");
+
                 default -> LOGGER.debug("No handler implemented for: {}", handlerName);
             }
         } catch (Exception e) {
             LOGGER.warn("Error in handler '{}': {}", handlerName, e.getMessage(), e);
         }
     }
-    
-    // ==================== PATTERN HANDLERS ====================
+
+    // ==================== METAR-SPECIFIC PATTERN HANDLERS ====================
 
     /**
      * Handle report type: "METAR" or "SPECI"
@@ -361,23 +419,23 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         int year = Integer.parseInt(matcher.group("year"));
         int month = Integer.parseInt(matcher.group("month"));
         int day = Integer.parseInt(matcher.group("day"));
-        
+
         String time = matcher.group("time");
         int hour = 0;
         int minute = 0;
-        
+
         if (time != null) {
             String[] timeParts = time.split(":");
             hour = Integer.parseInt(timeParts[0]);
             minute = Integer.parseInt(timeParts[1]);
         }
-        
+
         LocalDateTime localDateTime = LocalDateTime.of(year, month, day, hour, minute);
         this.issueTime = localDateTime.toInstant(ZoneOffset.UTC);
-        
+
         LOGGER.debug("Parsed issue time: {}", issueTime);
     }
-    
+
     /**
      * Handle station ID and observation time: "KCLT 142252Z"
      */
@@ -386,15 +444,15 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         int day = Integer.parseInt(matcher.group("zday"));
         int hour = Integer.parseInt(matcher.group("zhour"));
         int minute = Integer.parseInt(matcher.group("zmin"));
-        
+
         // Determine year and month from issue time or current time
         LocalDateTime referenceTime = issueTime != null ?
-            LocalDateTime.ofInstant(issueTime, ZoneOffset.UTC) :
-            LocalDateTime.now(ZoneOffset.UTC);
-        
+                LocalDateTime.ofInstant(issueTime, ZoneOffset.UTC) :
+                LocalDateTime.now(ZoneOffset.UTC);
+
         int year = referenceTime.getYear();
         int month = referenceTime.getMonthValue();
-        
+
         // Handle month wrap-around
         if (day > referenceTime.getDayOfMonth()) {
             month--;
@@ -403,18 +461,18 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
                 year--;
             }
         }
-        
+
         LocalDateTime obsDateTime = LocalDateTime.of(year, month, day, hour, minute);
         Instant observationTime = obsDateTime.toInstant(ZoneOffset.UTC);
-        
-        // Create NoaaWeatherData instance
+
+        // Create NoaaMetarData instance (assign to inherited weatherData field)
         this.weatherData = new NoaaMetarData(stationId, observationTime);
         this.weatherData.setReportType(this.reportType);
 
         LOGGER.debug("Station: {}, Observation time: {}, Report type: {}",
                 stationId, observationTime, reportType);
     }
-    
+
     /**
      * Handle report modifier: "AUTO", "COR", etc.
      */
@@ -425,203 +483,9 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             LOGGER.debug("Report modifier: {}", modifier);
         }
     }
-    
-    /**
-     * Handle wind: "19005KT" or "19005G15KT"
-     */
-    private void handleWind(Matcher matcher) {
-        if (weatherData == null) {
-            return;
-        }
-        
-        String directionStr = matcher.group("dir");
-        String speedStr = matcher.group("speed");
-        String gustStr = matcher.group("gust");
-        String unitStr = matcher.group("units");
-        
-        // Parse direction (handle VRB = variable, null for calm)
-        Integer direction = null;
-        if (directionStr != null && !directionStr.equals("VRB")) {
-            direction = Integer.parseInt(directionStr);
-        }
-        
-        // Parse speed (required)
-        Integer speed = speedStr != null ? Integer.parseInt(speedStr) : null;
-        
-        // Parse gust (optional)
-        Integer gust = null;
-        if (gustStr != null && !gustStr.isEmpty()) {
-            gust = Integer.parseInt(gustStr);
-        }
-        
-        // Parse unit (default to KT if not specified)
-        String unit = unitStr != null ? unitStr : "KT";
-        
-        // Let WeatherData create the Wind object (encapsulation)
-        weatherData.setWind(direction, speed, gust, unit);
-        
-        LOGGER.debug("Wind - Dir: {}, Speed: {}, Gust: {}, Unit: {}", 
-            direction, speed, gust, unit);
-    }
-
-    /**
-     * Handle visibility: "10SM", "9999", "1/2SM", "CAVOK", etc.
-     */
-    private void handleVisibility(Matcher matcher) {
-        if (weatherData == null) {
-            return;
-        }
-
-        // Try special conditions first (CAVOK, NDV)
-        if (handleSpecialVisibility(matcher)) {
-            return;
-        }
-
-        // Try international format (meters)
-        if (handleInternationalVisibility(matcher)) {
-            return;
-        }
-
-        // Try US format (statute miles, etc.)
-        handleUSVisibility(matcher);
-    }
-
-    /**
-     * Handle special visibility conditions (CAVOK, NDV).
-     *
-     * @param matcher Regex matcher
-     * @return true if special condition was handled
-     */
-    private boolean handleSpecialVisibility(Matcher matcher) {
-        String visGroup = matcher.group("vis");
-        if (visGroup == null) {
-            return false;
-        }
-
-        if ("CAVOK".equals(visGroup)) {
-            weatherData.setVisibilityCavok();
-            LOGGER.debug("Visibility: CAVOK");
-            return true;
-        }
-
-        if ("NDV".equals(visGroup)) {
-            weatherData.setVisibility(null, null, false, false, "NDV");
-            LOGGER.debug("Visibility: NDV");
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Handle international visibility format (meters with optional M/P prefix).
-     *
-     * @param matcher Regex matcher
-     * @return true if international format was handled
-     */
-    private boolean handleInternationalVisibility(Matcher matcher) {
-        String distStr = matcher.group("dist");
-        if (distStr == null || distStr.equals("////")) {
-            return false;
-        }
-
-        boolean lessThan = distStr.startsWith("M");
-        boolean greaterThan = distStr.startsWith("P");
-
-        // Remove M/P prefix if present
-        String numStr = distStr.replaceFirst(RVR_PREFIX_PATTERN, "");
-
-        try {
-            double distance = Double.parseDouble(numStr);
-            weatherData.setVisibility(distance, "M", lessThan, greaterThan);
-
-            LOGGER.debug("Visibility: {} meters (lessThan={}, greaterThan={})",
-                    distance, lessThan, greaterThan);
-            return true;
-        } catch (NumberFormatException e) {
-            logVisibilityParseError(distStr, e);
-            return false;
-        }
-    }
-
-    /**
-     * Handle US visibility format (statute miles with fractions).
-     *
-     * @param matcher Regex matcher
-     */
-    private void handleUSVisibility(Matcher matcher) {
-        String distU = matcher.group("distu");
-        String unit = matcher.group("units");
-
-        if (distU == null || unit == null) {
-            return;
-        }
-
-        boolean lessThan = distU.startsWith("M");
-        boolean greaterThan = distU.startsWith("P");
-
-        // Remove M/P prefix if present
-        String numStr = distU.replaceFirst(RVR_PREFIX_PATTERN, "").trim();
-
-        try {
-            double distance = parseFractionalDistance(numStr);
-            weatherData.setVisibility(distance, unit, lessThan, greaterThan);
-
-            LOGGER.debug("Visibility: {} {} (lessThan={}, greaterThan={})",
-                    distance, unit, lessThan, greaterThan);
-        } catch (NumberFormatException e) {
-            logVisibilityParseError(distU, e);
-        }
-    }
-
-    /**
-     * Log visibility parsing error with consistent message format.
-     *
-     * @param distanceStr The distance string that failed to parse
-     * @param e The NumberFormatException that occurred
-     */
-    private void logVisibilityParseError(String distanceStr, NumberFormatException e) {
-        LOGGER.warn("Failed to parse visibility distance: '{}' - {}", distanceStr, e.getMessage());
-    }
-
-    /**
-     * Parse fractional distance values like "1/2", "1 1/2", or "10".
-     *
-     * @param distStr Distance string (e.g., "10", "1/2", "1 1/2")
-     * @return Parsed distance as double
-     */
-    private double parseFractionalDistance(String distStr) {
-        // Handle mixed fractions: "1 1/2" → 1.5
-        if (distStr.contains(" ")) {
-            String[] parts = distStr.split("\\s+");
-            double whole = Double.parseDouble(parts[0]);
-            double fraction = parseFraction(parts[1]);
-            return whole + fraction;
-        }
-
-        // Handle pure fractions: "1/2" → 0.5
-        if (distStr.contains("/")) {
-            return parseFraction(distStr);
-        }
-
-        // Handle whole numbers: "10" → 10.0
-        return Double.parseDouble(distStr);
-    }
-
-    /**
-     * Parse a fraction string like "1/2" to decimal.
-     *
-     * @param fraction Fraction string (e.g., "1/2", "3/4")
-     * @return Decimal value
-     */
-    private double parseFraction(String fraction) {
-        String[] parts = fraction.split("/");
-        double numerator = Double.parseDouble(parts[0]);
-        double denominator = Double.parseDouble(parts[1]);
-        return numerator / denominator;
-    }
 
     // ==================== RUNWAY VISUAL RANGE (RVR) HANDLER ====================
+
     /**
      * Internal helper record to pass RVR range values between methods.
      *
@@ -632,9 +496,11 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
     private record RvrRange(Integer visualRange, Integer variableLow, Integer variableHigh) {}
 
     /**
+     * Override base class to provide full RVR handling for METAR.
      * Handle runway visual range (RVR): "R22R/0400N", "R24/P2000N", "R23L/0900V6000FT", etc.
      */
-    private void handleRunway(Matcher matcher) {
+    @Override
+    protected void handleRunway(Matcher matcher) {
         String runwayName = matcher.group("name");
 
         if (weatherData == null) {
@@ -771,7 +637,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
         }
 
         // Variable range: parse high value
-        String highNumStr = highStr.replaceFirst(RVR_PREFIX_PATTERN, "");
+        String highNumStr = highStr.replaceFirst("^[MP]", "");
         try {
             Integer highValue = Integer.parseInt(highNumStr);
             return new RvrRange(null, lowValue, highValue);
@@ -836,182 +702,6 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
     }
 
     /**
-     * Handle present weather phenomena.
-     * Parses weather codes like: -RA, +TSRA, VCFG, BR, NSW
-     */
-    private void handlePresentWeather(Matcher matcher) {
-        if (weatherData == null) {
-            return;
-        }
-
-        String weatherString = matcher.group(0).trim();
-
-        try {
-            PresentWeather presentWeather = PresentWeather.parse(weatherString);
-            weatherData.addPresentWeather(presentWeather);
-
-            // Determine primary phenomenon for logging
-            String phenomenon = getPrimaryPhenomenon(presentWeather);
-
-            LOGGER.debug("Present Weather: {} (Intensity: {}, Descriptor: {}, Phenomena: {})",
-                    weatherString,
-                    presentWeather.intensity(),
-                    presentWeather.descriptor(),
-                    phenomenon);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse present weather '{}': {}", weatherString, e.getMessage());
-        }
-    }
-
-    /**
-     * Get the primary weather phenomenon for logging.
-     */
-    private String getPrimaryPhenomenon(PresentWeather weather) {
-        if (weather.hasPrecipitation()) {
-            return weather.precipitation();
-        }
-        if (weather.hasObscuration()) {
-            return weather.obscuration();
-        }
-        return weather.other();
-    }
-
-    /**
-     * Handle sky condition (cloud layers).
-     * Parses sky condition codes like: FEW250, SCT100, BKN050CB, OVC020, SKC, VV008
-     *
-     * Format: [COVERAGE][HEIGHT][TYPE]
-     * - Coverage: SKC, CLR, FEW, SCT, BKN, OVC, VV, etc.
-     * - Height: 3-4 digits (in hundreds of feet)
-     * - Type: CB (cumulonimbus), TCU (towering cumulus), etc.
-     */
-    private void handleSkyCondition(Matcher matcher) {
-        if (weatherData == null) {
-            return;
-        }
-
-        String coverageStr = matcher.group("cover");
-        String heightStr = matcher.group(GROUP_HEIGHT_CODE);
-        String cloudTypeStr = matcher.group("cloud");
-
-        // Handle unknown/missing coverage (///)
-        if ("///".equals(coverageStr)) {
-            LOGGER.debug("Sky condition: Unknown coverage (///)");
-            return;
-        }
-
-        try {
-            // Parse coverage
-            SkyCoverage coverage = parseCoverage(coverageStr);
-
-            // Parse height (if present and not unknown)
-            Integer heightFeet = parseHeight(heightStr, coverage);
-
-            // Parse cloud type (if present and not unknown)
-            String cloudType = parseCloudType(cloudTypeStr);
-
-            // Create and add sky condition
-            SkyCondition skyCondition = new SkyCondition(coverage, heightFeet, cloudType);
-            weatherData.addSkyCondition(skyCondition);
-
-            LOGGER.debug("Sky Condition: {} at {} feet{}",
-                    coverage,
-                    heightFeet != null ? heightFeet : "N/A",
-                    cloudType != null ? " (" + cloudType + ")" : "");
-
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse sky condition '{}': {}", matcher.group(0).trim(), e.getMessage());
-        }
-    }
-
-    /**
-     * Parse sky coverage string to SkyCoverage enum.
-     * Handles various formats and common OCR errors (O→0, SCK→SKC).
-     *
-     * @param coverageStr the coverage string from METAR
-     * @return SkyCoverage enum
-     * @throws IllegalArgumentException if coverage is invalid
-     */
-    private SkyCoverage parseCoverage(String coverageStr) {
-        if (coverageStr == null || coverageStr.isBlank()) {
-            throw new IllegalArgumentException("Coverage cannot be null or blank");
-        }
-
-        String normalized = coverageStr.trim().toUpperCase();
-
-        // Handle common OCR/parsing errors
-        normalized = normalized.replace("0VC", "OVC")  // 0→O
-                .replace("SCK", "SKC"); // K→C
-
-        return switch (normalized) {
-            case "SKC" -> SkyCoverage.SKC;           // Sky Clear
-            case "CLR" -> SkyCoverage.CLR;           // Clear
-            case "NSC" -> SkyCoverage.NSC;           // No Significant Clouds
-            case "NCD" -> SkyCoverage.NSC;           // No Cloud Detected (treat as NSC)
-            case "FEW" -> SkyCoverage.FEW;           // Few (1/8 to 2/8)
-            case "SCT" -> SkyCoverage.SCATTERED;     // Scattered (3/8 to 4/8)
-            case "BKN" -> SkyCoverage.BROKEN;        // Broken (5/8 to 7/8)
-            case "OVC" -> SkyCoverage.OVERCAST;      // Overcast (8/8)
-            case "VV" -> SkyCoverage.VERTICAL_VISIBILITY;  // Vertical Visibility
-            default -> throw new IllegalArgumentException("Unknown sky coverage: " + coverageStr);
-        };
-    }
-
-    /**
-     * Parse cloud height from METAR format.
-     * Heights are encoded as hundreds of feet (e.g., "050" = 5000 feet).
-     *
-     * @param heightStr the height string from METAR (could be null)
-     * @param coverage the sky coverage (used for validation)
-     * @return height in feet, or null if not applicable
-     */
-    private Integer parseHeight(String heightStr, SkyCoverage coverage) {
-        // Clear sky conditions should not have height
-        if (coverage == SkyCoverage.SKC || coverage == SkyCoverage.CLR || coverage == SkyCoverage.NSC) {
-            return null;
-        }
-
-        // Handle unknown/missing height (///)
-        if (heightStr == null || heightStr.isBlank() || "///".equals(heightStr)) {
-            // Vertical visibility requires height
-            if (coverage == SkyCoverage.VERTICAL_VISIBILITY) {
-                throw new IllegalArgumentException("Vertical visibility must have height specified");
-            }
-            return null;
-        }
-
-        try {
-            // Replace common OCR error: O→0
-            String normalized = heightStr.replace('O', '0');
-
-            // Parse the number and convert to feet
-            int heightCode = Integer.parseInt(normalized);
-
-            // Height code is in hundreds of feet
-            return heightCode * 100;
-
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid cloud height format: " + heightStr);
-        }
-    }
-
-    /**
-     * Parse cloud type from METAR format.
-     * Common types: CB (cumulonimbus), TCU (towering cumulus).
-     *
-     * @param cloudTypeStr the cloud type string from METAR (could be null)
-     * @return cloud type, or null if not present
-     */
-    private String parseCloudType(String cloudTypeStr) {
-        // Handle unknown/missing cloud type (///)
-        if (cloudTypeStr == null || cloudTypeStr.isBlank() || "///".equals(cloudTypeStr)) {
-            return null;
-        }
-
-        return cloudTypeStr.trim().toUpperCase();
-    }
-
-    /**
      * Handle temperature and dewpoint.
      *
      * Format: TT/DD or M[TT]/M[DD]
@@ -1039,8 +729,8 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
 
             // Only create Temperature object if we have at least temperature
             if (temperatureCelsius != null) {
-                Temperature temperature = new Temperature(temperatureCelsius, dewpointCelsius);
-                weatherData.setTemperature(temperature);
+                Temperature temperature = Temperature.ofCurrent(temperatureCelsius, dewpointCelsius);
+                conditionsBuilder.temperature(temperature);
 
                 LOGGER.debug("Temperature: {}°C, Dewpoint: {}°C",
                         temperatureCelsius,
@@ -1121,7 +811,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             Pressure pressure = parsePressure(unit1, pressureStr, unit2);
 
             if (pressure != null) {
-                weatherData.setPressure(pressure);
+                conditionsBuilder.pressure(pressure);
 
                 LOGGER.debug("Altimeter: {}", pressure.getSummary());
             }
@@ -1254,7 +944,7 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             return;
         }
 
-        ((NoaaMetarData) weatherData).setNoSignificantChange(true);
+        weatherData.setNoSignificantChange(true);
 
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("NOSIG (No Significant Change) indicator found: '{}'", matcher.group(0));
@@ -1296,12 +986,14 @@ public class NoaaMetarParser implements WeatherParser<NoaaWeatherData> {
             // For now, just log it - full integration will store in remarks
             logAutomatedStationType(stationType);
 
-            // Future: Store in NoaaMetarRemarks once sequential parsing is implemented
-
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid automated station type: {}", matcher.group(0), e);
         }
     }
+
+    // ==================== REMARKS HANDLERS ====================
+    // (Keeping all the existing remarks handlers - they are METAR-specific)
+    // These are NOT moved to base class as they are specific to METAR observations
 
     /**
      * Handle the remarks section of the METAR using sequential parsing.

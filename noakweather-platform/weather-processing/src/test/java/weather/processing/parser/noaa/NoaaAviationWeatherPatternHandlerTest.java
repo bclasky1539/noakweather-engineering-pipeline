@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,16 +20,16 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for MetarPatternHandler record.
+ * Tests for NoaaAviationWeatherPatternHandler record.
  * 
  * @author bclasky1539
  *
  */
-class MetarPatternHandlerTest {
+class NoaaAviationWeatherPatternHandlerTest {
     
     @Test
     void testSingleFactoryMethod() {
-        MetarPatternHandler handler = MetarPatternHandler.single("testHandler");
+        NoaaAviationWeatherPatternHandler handler = NoaaAviationWeatherPatternHandler.single("testHandler");
         
         assertThat(handler.handlerName()).isEqualTo("testHandler");
         assertThat(handler.canRepeat()).isFalse();
@@ -37,7 +37,7 @@ class MetarPatternHandlerTest {
     
     @Test
     void testRepeatingFactoryMethod() {
-        MetarPatternHandler handler = MetarPatternHandler.repeating("testHandler");
+        NoaaAviationWeatherPatternHandler handler = NoaaAviationWeatherPatternHandler.repeating("testHandler");
         
         assertThat(handler.handlerName()).isEqualTo("testHandler");
         assertThat(handler.canRepeat()).isTrue();
@@ -45,9 +45,9 @@ class MetarPatternHandlerTest {
     
     @Test
     void testRecordEquality() {
-        MetarPatternHandler handler1 = MetarPatternHandler.single("test");
-        MetarPatternHandler handler2 = MetarPatternHandler.single("test");
-        MetarPatternHandler handler3 = MetarPatternHandler.repeating("test");
+        NoaaAviationWeatherPatternHandler handler1 = NoaaAviationWeatherPatternHandler.single("test");
+        NoaaAviationWeatherPatternHandler handler2 = NoaaAviationWeatherPatternHandler.single("test");
+        NoaaAviationWeatherPatternHandler handler3 = NoaaAviationWeatherPatternHandler.repeating("test");
         
         assertThat(handler1)
                 .isEqualTo(handler2)
@@ -56,7 +56,7 @@ class MetarPatternHandlerTest {
     
     @Test
     void testRecordToString() {
-        MetarPatternHandler handler = MetarPatternHandler.single("windHandler");
+        NoaaAviationWeatherPatternHandler handler = NoaaAviationWeatherPatternHandler.single("windHandler");
         
         String str = handler.toString();
         assertThat(str)

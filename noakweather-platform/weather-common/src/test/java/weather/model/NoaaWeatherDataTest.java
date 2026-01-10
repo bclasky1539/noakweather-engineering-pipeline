@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,363 +20,243 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import weather.model.components.Pressure;
-import weather.model.components.SkyCondition;
+import weather.model.components.*;
 import weather.model.components.remark.NoaaMetarRemarks;
 import weather.model.enums.AutomatedStationType;
 import weather.model.enums.SkyCoverage;
 
-import java.util.ArrayList;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for NoaaWeatherData base class.
- * 
+ * Tests NOAA-specific fields and WeatherConditions integration.
+ *
  * @author bclasky1539
  */
 class NoaaWeatherDataTest {
-    
+
     private Instant now;
-    
+
     @BeforeEach
     void setUp() {
         now = Instant.now();
     }
-    
+
     // ========== CONSTRUCTOR TESTS ==========
-    
+
     @Test
     @DisplayName("Should create NoaaWeatherData with default constructor")
     void testDefaultConstructor() {
         NoaaWeatherData data = new NoaaWeatherData();
-        
+
         assertNotNull(data);
         assertNotNull(data.getId());
         assertNotNull(data.getIngestionTime());
+        assertNotNull(data.getConditions());
+        assertNotNull(data.getSkyConditions());
+        assertNotNull(data.getRunwayVisualRange());
+        assertTrue(data.getSkyConditions().isEmpty());
+        assertTrue(data.getRunwayVisualRange().isEmpty());
     }
-    
+
     @Test
     @DisplayName("Should create NoaaWeatherData with parameterized constructor")
     void testParameterizedConstructor() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
+
         assertNotNull(data);
         assertEquals("KJFK", data.getStationId());
         assertEquals(now, data.getObservationTime());
         assertEquals("METAR", data.getReportType());
         assertEquals(WeatherDataSource.NOAA, data.getSource());
+        assertNotNull(data.getConditions());
+        assertNotNull(data.getSkyConditions());
+        assertNotNull(data.getRunwayVisualRange());
     }
-    
-    // ========== EQUALS TESTS ==========
-    
+
+    // ========== CONDITIONS TESTS ==========
+
     @Test
-    @DisplayName("Should test equals with same object instance")
-    void testEquals_SameInstance() {
+    @DisplayName("Should set and get weather conditions")
+    void testSetAndGetConditions() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        assertThat(data).isEqualTo(data);
-    }
-    
-    @ParameterizedTest
-    @MethodSource("provideReportTypesForEqualityTest")
-    @DisplayName("Should test equals with different reportType combinations")
-    void testEquals_DifferentReportTypes(String reportType1, String reportType2) {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, reportType1);
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, reportType2);
-        
-        // Objects have different auto-generated IDs, so should not be equal
-        assertThat(data1).isNotEqualTo(data2);
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                .visibility(Visibility.statuteMiles(10.0))
+                .temperature(Temperature.ofCurrent(22.0, 12.0))
+                .pressure(Pressure.inchesHg(30.15))
+                .build();
+
+        data.setConditions(conditions);
+
+        assertThat(data.getConditions()).isEqualTo(conditions);
     }
 
-    @SuppressWarnings("unused")
-    private static Stream<Arguments> provideReportTypesForEqualityTest() {
-        return Stream.of(
-            Arguments.of("METAR", "METAR"),    // Both have same reportType
-            Arguments.of(null, null),           // Both have null reportType
-            Arguments.of("METAR", null)         // One has reportType, one is null
-        );
-    }
-    
     @Test
-    @DisplayName("Should return false when comparing NoaaWeatherData with different class type")
-    void testEquals_DifferentClassType() {
+    @DisplayName("Should handle null conditions by setting empty")
+    void testSetConditions_Null() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        assertThat(data)
-                .isNotEqualTo("Not a NoaaWeatherData")
-                .isNotEqualTo(null)
-                .isNotEqualTo(new Object());
+
+        data.setConditions(null);
+
+        assertThat(data.getConditions()).isNotNull();
+        assertThat(data.getConditions()).isEqualTo(WeatherConditions.empty());
     }
-    
+
+    // ========== CONVENIENCE GETTER TESTS ==========
+
     @Test
-    @DisplayName("Should return false when super.equals fails due to different base fields")
-    void testEquals_SuperEqualsFails() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KLGA", now, "METAR");
-        
-        assertThat(data1).isNotEqualTo(data2);
-    }
-    
-    @Test
-    @DisplayName("Should return false when observation times differ")
-    void testEquals_DifferentObservationTimes() {
-        Instant time1 = Instant.now();
-        Instant time2 = time1.plus(1, ChronoUnit.HOURS);
-        
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", time1, "METAR");
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", time2, "METAR");
-        
-        assertThat(data1).isNotEqualTo(data2);
-    }
-    
-    @Test
-    @DisplayName("Should handle equals when comparing with WeatherData parent type")
-    void testEquals_WithParentType() {
+    @DisplayName("Should get wind from conditions")
+    void testGetWind() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        WeatherData parentReference = data;
-        assertThat(data).isEqualTo(parentReference);
-        assertThat(parentReference).isEqualTo(data);
+        Wind wind = Wind.of(280, 16, "KT");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(wind)
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getWind()).isEqualTo(wind);
     }
-    
-    // ========== HASHCODE TESTS ==========
-    
+
     @Test
-    @DisplayName("Should call hashCode on NoaaWeatherData directly")
-    void testHashCode_DirectCall() {
+    @DisplayName("Should return null when no wind in conditions")
+    void testGetWind_Null() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        int hash1 = data.hashCode();
-        int hash2 = data.hashCode();
-        
-        assertEquals(hash1, hash2, "hashCode should be consistent");
-    }
-    
-    @Test
-    @DisplayName("Should call hashCode with different reportTypes")
-    void testHashCode_DifferentReportTypes() {
-        NoaaWeatherData metar = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData taf = new NoaaWeatherData("KJFK", now, "TAF");
-        
-        int metarHash = metar.hashCode();
-        int tafHash = taf.hashCode();
-        
-        assertNotEquals(metarHash, tafHash);
+
+        assertThat(data.getWind()).isNull();
     }
 
     @Test
-    @DisplayName("Should call hashCode with null reportType")
-    void testHashCode_NullReportType() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
-        
-        int hash1 = data.hashCode();
-        int hash2 = data.hashCode();
-        
-        // Verify hashCode is consistent
-        assertEquals(hash1, hash2, "hashCode should be consistent across multiple calls");
-    }
-    
-    // ========== GETSUMMARY TESTS ==========
-    
-    @Test
-    @DisplayName("Should call getSummary on NoaaWeatherData directly")
-    void testGetSummary_DirectCall() {
+    @DisplayName("Should get visibility from conditions")
+    void testGetVisibility() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        String summary = data.getSummary();
-        
-        assertNotNull(summary);
-        assertTrue(summary.contains("METAR"));
-        assertTrue(summary.contains("KJFK"));
-    }
-    
-    @Test
-    @DisplayName("Should call getSummary with null reportType on NoaaWeatherData")
-    void testGetSummary_NullReportType_DirectCall() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
-        
-        String summary = data.getSummary();
-        
-        assertNotNull(summary);
-        assertTrue(summary.contains("NOAA Report"));
-        assertTrue(summary.contains("KJFK"));
-    }
+        Visibility visibility = Visibility.statuteMiles(10.0);
 
-    // ========== ISCURRENT TESTS ==========
+        WeatherConditions conditions = WeatherConditions.builder()
+                .visibility(visibility)
+                .build();
+        data.setConditions(conditions);
 
-    @Test
-    @DisplayName("Should call isCurrent on NoaaWeatherData directly with recent time")
-    void testIsCurrent_Recent_DirectCall() {
-        Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", oneHourAgo, "METAR");
-        
-        boolean current = data.isCurrent();
-        
-        assertTrue(current);
-    }
-    
-    @Test
-    @DisplayName("Should call isCurrent on NoaaWeatherData directly with old time")
-    void testIsCurrent_Old_DirectCall() {
-        Instant threeHoursAgo = Instant.now().minus(3, ChronoUnit.HOURS);
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", threeHoursAgo, "METAR");
-        
-        boolean current = data.isCurrent();
-        
-        assertFalse(current);
-    }
-    
-    @Test
-    @DisplayName("Should call isCurrent on NoaaWeatherData directly with null time")
-    void testIsCurrent_Null_DirectCall() {
-        NoaaWeatherData data = new NoaaWeatherData();
-        data.setObservationTime(null);
-        
-        boolean current = data.isCurrent();
-        
-        assertFalse(current);
-    }
-    
-    @Test
-    @DisplayName("Should test isCurrent at exact 2 hour boundary")
-    void testIsCurrent_ExactlyTwoHours() {
-        Instant exactlyTwoHoursAgo = Instant.now().minus(2, ChronoUnit.HOURS);
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", exactlyTwoHoursAgo, "METAR");
-        
-        boolean current = data.isCurrent();
-        
-        assertFalse(current);
-    }
-    
-    @Test
-    @DisplayName("Should test isCurrent just under 2 hours")
-    void testIsCurrent_JustUnderTwoHours() {
-        Instant justUnderTwoHours = Instant.now().minus(119, ChronoUnit.MINUTES);
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", justUnderTwoHours, "METAR");
-        
-        boolean current = data.isCurrent();
-        
-        assertTrue(current);
-    }
-    
-    // ========== GETDATATYPE TESTS ==========
-    
-    @Test
-    @DisplayName("Should test constructor branch with null reportType")
-    void testConstructor_NullReportType() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, null);
-        
-        assertNotNull(data);
-        assertEquals("KJFK", data.getStationId());
-        assertEquals(now, data.getObservationTime());
-        assertNull(data.getReportType());
-    }
-    
-    @Test
-    @DisplayName("Should test constructor branch with empty reportType")
-    void testConstructor_EmptyReportType() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "");
-        
-        assertNotNull(data);
-        assertEquals("", data.getReportType());
-    }
-    
-    @Test
-    @DisplayName("Should test getDataType with various reportTypes")
-    void testGetDataType_VariousTypes() {
-        NoaaWeatherData metar = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaWeatherData taf = new NoaaWeatherData("KJFK", now, "TAF");
-        NoaaWeatherData pirep = new NoaaWeatherData("KJFK", now, "PIREP");
-        
-        assertEquals("METAR", metar.getDataType());
-        assertEquals("TAF", taf.getDataType());
-        assertEquals("PIREP", pirep.getDataType());
-    }
-    
-    @Test
-    @DisplayName("Should return NOAA when reportType is null - direct call")
-    void testGetDataType_NullReportType_DirectCall() {
-        NoaaWeatherData data = new NoaaWeatherData();
-        data.setReportType(null);
-        
-        String dataType = data.getDataType();
-        
-        assertEquals("NOAA", dataType);
+        assertThat(data.getVisibility()).isEqualTo(visibility);
     }
 
     @Test
-    @DisplayName("Should return reportType when not null - direct call")
-    void testGetDataType_NotNullReportType_DirectCall() {
+    @DisplayName("Should return null when no visibility in conditions")
+    void testGetVisibility_Null() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        String dataType = data.getDataType();
-        
-        assertEquals("METAR", dataType);
+
+        assertThat(data.getVisibility()).isNull();
     }
-    
+
     @Test
-    @DisplayName("Should return NOAA for default constructed object")
-    void testGetDataType_DefaultConstructor() {
-        NoaaWeatherData data = new NoaaWeatherData();
-        
-        String dataType = data.getDataType();
-        
-        assertEquals("NOAA", dataType);
-    }
-    
-    @Test
-    @DisplayName("Should handle empty string reportType")
-    void testGetDataType_EmptyStringReportType() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "");
-        
-        String dataType = data.getDataType();
-        
-        assertEquals("", dataType);
-    }
-    
-    @Test
-    @DisplayName("Should return correct type after setting reportType to null")
-    void testGetDataType_SetToNull() {
+    @DisplayName("Should get present weather from conditions")
+    void testGetPresentWeather() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        
-        assertEquals("METAR", data.getDataType());
-        
-        data.setReportType(null);
-        
-        assertEquals("NOAA", data.getDataType());
+        PresentWeather weather = PresentWeather.of("-RA");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .presentWeather(List.of(weather))
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getPresentWeather()).hasSize(1);
+        assertThat(data.getPresentWeather()).contains(weather);
     }
 
     @Test
-    @DisplayName("Should set CAVOK visibility")
-    void testSetVisibilityCavok() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", Instant.now(), "METAR");
+    @DisplayName("Should return empty list when no present weather in conditions")
+    void testGetPresentWeather_Empty() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
 
-        data.setVisibilityCavok();
-
-        assertNotNull(data.getVisibility());
-        assertTrue(data.getVisibility().isCavok());
-        assertEquals("CAVOK", data.getVisibility().specialCondition());
+        assertThat(data.getPresentWeather()).isEmpty();
     }
 
-    // ========== SKY CONDITION TESTS ==========
+    @Test
+    @DisplayName("Should return empty list when conditions is null for present weather")
+    void testGetPresentWeather_NullConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        data.setConditions(null);
+
+        assertThat(data.getPresentWeather()).isEmpty();
+    }
 
     @Test
-    @DisplayName("Should add sky condition")
-    void testAddSkyCondition() {
+    @DisplayName("Should return empty list when present weather is null in conditions")
+    void testGetPresentWeather_NullWeatherInConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                // No present weather set
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getPresentWeather()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should get temperature from conditions")
+    void testGetTemperature() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        Temperature temperature = Temperature.ofCurrent(22.0, 12.0);
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .temperature(temperature)
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getTemperature()).isEqualTo(temperature);
+    }
+
+    @Test
+    @DisplayName("Should return null when no temperature in conditions")
+    void testGetTemperature_Null() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertThat(data.getTemperature()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should get pressure from conditions")
+    void testGetPressure() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        Pressure pressure = Pressure.inchesHg(30.15);
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .pressure(pressure)
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getPressure()).isEqualTo(pressure);
+    }
+
+    @Test
+    @DisplayName("Should return null when no pressure in conditions")
+    void testGetPressure_Null() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertThat(data.getPressure()).isNull();
+    }
+
+    // ========== SKY CONDITION TESTS (via WeatherConditions) ==========
+
+    @Test
+    @DisplayName("Should get sky conditions from weather conditions")
+    void testGetSkyConditions() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         SkyCondition skyCondition = SkyCondition.of(SkyCoverage.BROKEN, 5000);
 
-        data.addSkyCondition(skyCondition);
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(skyCondition))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(1);
@@ -384,16 +264,17 @@ class NoaaWeatherDataTest {
     }
 
     @Test
-    @DisplayName("Should add multiple sky conditions")
-    void testAddMultipleSkyConditions() {
+    @DisplayName("Should get multiple sky conditions")
+    void testGetMultipleSkyConditions() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         SkyCondition few = SkyCondition.of(SkyCoverage.FEW, 1500);
         SkyCondition sct = SkyCondition.of(SkyCoverage.SCATTERED, 4000);
         SkyCondition bkn = SkyCondition.of(SkyCoverage.BROKEN, 8000);
 
-        data.addSkyCondition(few);
-        data.addSkyCondition(sct);
-        data.addSkyCondition(bkn);
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(few, sct, bkn))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(3);
@@ -403,14 +284,40 @@ class NoaaWeatherDataTest {
     }
 
     @Test
-    @DisplayName("Should not add null sky condition")
-    void testAddNullSkyCondition() {
+    @DisplayName("Should return empty list when no sky conditions in weather conditions")
+    void testGetSkyConditions_Empty() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
 
-        data.addSkyCondition(null);
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should return empty list when conditions is null for sky conditions")
+    void testGetSkyConditions_NullConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        data.setConditions(null);
+
+        assertThat(data.getSkyConditions()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should return empty list when sky conditions is null in conditions")
+    void testGetSkyConditions_NullSkyInConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                // No sky conditions set
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getSkyConditions()).isEmpty();
     }
 
     @Test
@@ -418,69 +325,31 @@ class NoaaWeatherDataTest {
     void testGetSkyConditionsImmutable() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         SkyCondition skyCondition = SkyCondition.of(SkyCoverage.BROKEN, 5000);
-        data.addSkyCondition(skyCondition);
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(skyCondition))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
 
         // Verify it's an immutable copy
         SkyCondition additionalCondition = SkyCondition.of(SkyCoverage.OVERCAST, 2000);
         assertThrows(UnsupportedOperationException.class, () ->
-                        skyConditions.add(additionalCondition)
+                skyConditions.add(additionalCondition)
         );
-    }
-
-    @Test
-    @DisplayName("Should set sky conditions with valid list")
-    void testSetSkyConditions() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        List<SkyCondition> newConditions = List.of(
-                SkyCondition.of(SkyCoverage.FEW, 2500),
-                SkyCondition.of(SkyCoverage.SCATTERED, 6000)
-        );
-
-        data.setSkyConditions(newConditions);
-
-        List<SkyCondition> skyConditions = data.getSkyConditions();
-        assertThat(skyConditions).hasSize(2);
-        assertThat(skyConditions.get(0).coverage()).isEqualTo(SkyCoverage.FEW);
-        assertThat(skyConditions.get(1).coverage()).isEqualTo(SkyCoverage.SCATTERED);
-    }
-
-    @Test
-    @DisplayName("Should set sky conditions with null list")
-    void testSetSkyConditionsNull() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        // First add some conditions
-        data.addSkyCondition(SkyCondition.of(SkyCoverage.BROKEN, 5000));
-
-        // Then set to null (should clear the list)
-        data.setSkyConditions(null);
-
-        List<SkyCondition> skyConditions = data.getSkyConditions();
-        assertThat(skyConditions).isEmpty();
-    }
-
-    @Test
-    @DisplayName("Should set sky conditions with empty list")
-    void testSetSkyConditionsEmpty() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        // First add some conditions
-        data.addSkyCondition(SkyCondition.of(SkyCoverage.BROKEN, 5000));
-
-        // Then set to empty list
-        data.setSkyConditions(new ArrayList<>());
-
-        List<SkyCondition> skyConditions = data.getSkyConditions();
-        assertThat(skyConditions).isEmpty();
     }
 
     @Test
     @DisplayName("Should handle sky conditions with cloud types")
-    void testAddSkyConditionWithCloudType() {
+    void testSkyConditionWithCloudType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         SkyCondition cb = SkyCondition.of(SkyCoverage.BROKEN, 3000, "CB");
 
-        data.addSkyCondition(cb);
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(cb))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(1);
@@ -490,11 +359,14 @@ class NoaaWeatherDataTest {
 
     @Test
     @DisplayName("Should handle clear sky conditions")
-    void testAddClearSkyCondition() {
+    void testClearSkyCondition() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         SkyCondition clear = SkyCondition.clear();
 
-        data.addSkyCondition(clear);
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(clear))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(1);
@@ -504,11 +376,14 @@ class NoaaWeatherDataTest {
 
     @Test
     @DisplayName("Should handle vertical visibility")
-    void testAddVerticalVisibility() {
+    void testVerticalVisibility() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
         SkyCondition vv = SkyCondition.verticalVisibility(800);
 
-        data.addSkyCondition(vv);
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(vv))
+                .build();
+        data.setConditions(conditions);
 
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(1);
@@ -517,45 +392,259 @@ class NoaaWeatherDataTest {
         assertThat(skyConditions.get(0).isCeiling()).isTrue();
     }
 
+    // ========== GETTER/SETTER TESTS ==========
+
     @Test
-    @DisplayName("Should add sky conditions after construction")
-    void testAddSkyConditionsAfterConstruction() {
+    @DisplayName("Should get and set report type")
+    void testGetSetReportType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
 
-        // Initially empty
-        assertThat(data.getSkyConditions()).isEmpty();
+        assertEquals("METAR", data.getReportType());
 
-        // Add conditions
-        data.addSkyCondition(SkyCondition.of(SkyCoverage.FEW, 2000));
-        data.addSkyCondition(SkyCondition.of(SkyCoverage.BROKEN, 6000));
-
-        assertThat(data.getSkyConditions()).hasSize(2);
+        data.setReportType("TAF");
+        assertEquals("TAF", data.getReportType());
     }
 
     @Test
-    @DisplayName("Should replace sky conditions when setting new list")
-    void testReplaceSkyConditions() {
+    @DisplayName("Should get and set raw text")
+    void testGetSetRawText() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
 
-        // Add initial conditions
-        data.addSkyCondition(SkyCondition.of(SkyCoverage.FEW, 1000));
-        data.addSkyCondition(SkyCondition.of(SkyCoverage.SCATTERED, 3000));
-        assertThat(data.getSkyConditions()).hasSize(2);
+        assertNull(data.getRawText());
 
-        // Replace with new list
-        List<SkyCondition> newConditions = List.of(
-                SkyCondition.of(SkyCoverage.BROKEN, 5000),
-                SkyCondition.of(SkyCoverage.OVERCAST, 8000),
-                SkyCondition.of(SkyCoverage.VERTICAL_VISIBILITY, 400)
+        String rawText = "METAR KJFK 121251Z 31008KT 10SM FEW250 M04/M17 A3034";
+        data.setRawText(rawText);
+
+        assertEquals(rawText, data.getRawText());
+    }
+
+    @Test
+    @DisplayName("Should get and set report modifier")
+    void testGetSetReportModifier() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertNull(data.getReportModifier());
+
+        data.setReportModifier("AUTO");
+        assertEquals("AUTO", data.getReportModifier());
+
+        data.setReportModifier("COR");
+        assertEquals("COR", data.getReportModifier());
+    }
+
+    @Test
+    @DisplayName("Should get and set latitude")
+    void testGetSetLatitude() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertNull(data.getLatitude());
+
+        data.setLatitude(40.6413);
+        assertEquals(40.6413, data.getLatitude());
+    }
+
+    @Test
+    @DisplayName("Should get and set longitude")
+    void testGetSetLongitude() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertNull(data.getLongitude());
+
+        data.setLongitude(-73.7781);
+        assertEquals(-73.7781, data.getLongitude());
+    }
+
+    @Test
+    @DisplayName("Should get and set elevation feet")
+    void testGetSetElevationFeet() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertNull(data.getElevationFeet());
+
+        data.setElevationFeet(13);
+        assertEquals(13, data.getElevationFeet());
+    }
+
+    @Test
+    @DisplayName("Should get and set quality control flags")
+    void testGetSetQualityControlFlags() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertNull(data.getQualityControlFlags());
+
+        data.setQualityControlFlags("CORRECTED");
+        assertEquals("CORRECTED", data.getQualityControlFlags());
+    }
+
+    // ========== RUNWAY VISUAL RANGE TESTS ==========
+
+    @Test
+    @DisplayName("Should add runway visual range")
+    void testAddRunwayVisualRange() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        RunwayVisualRange rvr = RunwayVisualRange.of("04L", 2200);
+
+        data.addRunwayVisualRange(rvr);
+
+        List<RunwayVisualRange> rvrList = data.getRunwayVisualRange();
+        assertThat(rvrList).hasSize(1);
+        assertThat(rvrList.get(0)).isEqualTo(rvr);
+    }
+
+    @Test
+    @DisplayName("Should add multiple runway visual ranges")
+    void testAddMultipleRunwayVisualRanges() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        RunwayVisualRange rvr1 = RunwayVisualRange.of("04L", 2200);
+        RunwayVisualRange rvr2 = RunwayVisualRange.variable("04R", 1800, 2400);
+
+        data.addRunwayVisualRange(rvr1);
+        data.addRunwayVisualRange(rvr2);
+
+        List<RunwayVisualRange> rvrList = data.getRunwayVisualRange();
+        assertThat(rvrList).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Should not add null runway visual range")
+    void testAddNullRunwayVisualRange() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        data.addRunwayVisualRange(null);
+
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should get runway visual range as immutable copy")
+    void testGetRunwayVisualRangeImmutable() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        RunwayVisualRange rvr = RunwayVisualRange.of("04L", 2200);
+        data.addRunwayVisualRange(rvr);
+
+        List<RunwayVisualRange> rvrList = data.getRunwayVisualRange();
+
+        // Verify it's immutable
+        RunwayVisualRange additionalRvr = RunwayVisualRange.of("22L", 3000);
+        assertThrows(UnsupportedOperationException.class, () ->
+                rvrList.add(additionalRvr)
         );
-        data.setSkyConditions(newConditions);
+    }
 
-        // Should have new conditions only
-        List<SkyCondition> skyConditions = data.getSkyConditions();
-        assertThat(skyConditions).hasSize(3);
-        assertThat(skyConditions.get(0).coverage()).isEqualTo(SkyCoverage.BROKEN);
-        assertThat(skyConditions.get(1).coverage()).isEqualTo(SkyCoverage.OVERCAST);
-        assertThat(skyConditions.get(2).coverage()).isEqualTo(SkyCoverage.VERTICAL_VISIBILITY);
+    @Test
+    @DisplayName("Should set runway visual range list")
+    void testSetRunwayVisualRange() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        List<RunwayVisualRange> rvrList = List.of(
+                RunwayVisualRange.of("04L", 2200),
+                RunwayVisualRange.variable("04R", 1800, 2400)
+        );
+
+        data.setRunwayVisualRange(rvrList);
+
+        assertThat(data.getRunwayVisualRange()).hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Should set runway visual range to null")
+    void testSetRunwayVisualRangeNull() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+
+        data.setRunwayVisualRange(null);
+
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+    }
+
+    // ========== UTILITY METHODS TESTS ==========
+
+    @Test
+    @DisplayName("Should get ceiling feet from conditions")
+    void testGetCeilingFeet() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(
+                        SkyCondition.of(SkyCoverage.FEW, 10000),
+                        SkyCondition.of(SkyCoverage.BROKEN, 5000),
+                        SkyCondition.of(SkyCoverage.OVERCAST, 8000)
+                ))
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.getCeilingFeet()).isEqualTo(5000);
+    }
+
+    @Test
+    @DisplayName("Should return null ceiling when conditions is null")
+    void testGetCeilingFeet_NullConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        data.setConditions(null);
+
+        assertThat(data.getCeilingFeet()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should check if has flight category data")
+    void testHasFlightCategoryData_True() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .visibility(Visibility.statuteMiles(10.0))
+                .skyConditions(List.of(SkyCondition.of(SkyCoverage.FEW, 25000)))
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.hasFlightCategoryData()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should return false when no visibility")
+    void testHasFlightCategoryData_NoVisibility() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .skyConditions(List.of(SkyCondition.of(SkyCoverage.FEW, 25000)))
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.hasFlightCategoryData()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should return false when no sky conditions")
+    void testHasFlightCategoryData_NoSkyConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .visibility(Visibility.statuteMiles(10.0))
+                .build();
+        data.setConditions(conditions);
+
+        assertThat(data.hasFlightCategoryData()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should get minimum RVR feet")
+    void testGetMinimumRvrFeet() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
+        data.addRunwayVisualRange(RunwayVisualRange.of("04R", 1800));
+        data.addRunwayVisualRange(RunwayVisualRange.of("22L", 3000));
+
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(1800);
+    }
+
+    @Test
+    @DisplayName("Should get RVR for specific runway")
+    void testGetRvrForRunway() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+        RunwayVisualRange rvr04L = RunwayVisualRange.of("04L", 2200);
+
+        data.addRunwayVisualRange(rvr04L);
+        data.addRunwayVisualRange(RunwayVisualRange.of("04R", 1800));
+
+        assertThat(data.getRvrForRunway("04L")).isEqualTo(rvr04L);
     }
 
     // ========== REMARKS TESTS ==========
@@ -581,116 +670,109 @@ class NoaaWeatherDataTest {
         assertNull(data.getRemarks());
     }
 
+    // ========== ISCURRENT TESTS ==========
+
     @Test
-    @DisplayName("Should test equals with same remarks")
-    void testEquals_SameRemarks() {
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .build();
+    @DisplayName("Should return true when observation time is recent")
+    void testIsCurrent_Recent() {
+        Instant oneHourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", oneHourAgo, "METAR");
 
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        data1.setRemarks(remarks);
-
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
-        data2.setRemarks(remarks);
-
-        // They still won't be equal due to different auto-generated IDs
-        // but this tests the remarks comparison logic
-        assertThat(data1).isNotEqualTo(data2);
+        assertTrue(data.isCurrent());
     }
 
     @Test
-    @DisplayName("Should test equals with different remarks")
-    void testEquals_DifferentObjectsDifferentRemarks() {
-        // Note: Since equals() is based on ID only (immutable), two different
-        // NoaaWeatherData objects will NEVER be equal, regardless of remarks.
-        // This test documents this behavior.
-        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO1)
-                .build();
+    @DisplayName("Should return false when observation time is old")
+    void testIsCurrent_Old() {
+        Instant threeHoursAgo = Instant.now().minus(3, ChronoUnit.HOURS);
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", threeHoursAgo, "METAR");
 
-        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .build();
-
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        data1.setRemarks(remarks1);
-
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
-        data2.setRemarks(remarks2);
-
-        // Different objects with different IDs are never equal
-        assertThat(data1).isNotEqualTo(data2);
+        assertFalse(data.isCurrent());
     }
 
     @Test
-    @DisplayName("Should test equals with one null remarks")
-    void testEquals_OneNullRemarks() {
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .build();
+    @DisplayName("Should return false when observation time is null")
+    void testIsCurrent_Null() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        data.setObservationTime(null);
 
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        data1.setRemarks(remarks);
-
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
-        data2.setRemarks(null);
-
-        assertThat(data1).isNotEqualTo(data2);
+        assertFalse(data.isCurrent());
     }
 
-    @Test
-    @DisplayName("Should test equals with both null remarks")
-    void testEquals_BothNullRemarks() {
-        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
-        data1.setRemarks(null);
-
-        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
-        data2.setRemarks(null);
-
-        // Still won't be equal due to different IDs, but this tests the null remarks path
-        assertThat(data1).isNotEqualTo(data2);
-    }
+    // ========== GETDATATYPE TESTS ==========
 
     @Test
-    @DisplayName("Should test equals with same instance and remarks")
-    void testEquals_SameInstanceWithRemarks() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .build();
-        data.setRemarks(remarks);
-
-        assertThat(data).isEqualTo(data);
-    }
-
-    @Test
-    @DisplayName("Should include remarks in hashCode calculation")
-    void testHashCode_WithRemarks() {
+    @DisplayName("Should return report type when not null")
+    void testGetDataType_WithReportType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
 
-        int hashBefore = data.hashCode();
-
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .build();
-        data.setRemarks(remarks);
-
-        int hashAfter = data.hashCode();
-
-        // HashCode DOES change when remarks are set (includes remarks in calculation)
-        assertNotEquals(hashBefore, hashAfter,
-                "HashCode should change when remarks are set");
+        assertEquals("METAR", data.getDataType());
     }
 
     @Test
-    @DisplayName("Should have consistent hashCode with remarks")
-    void testHashCode_ConsistentWithRemarks() {
+    @DisplayName("Should return NOAA when report type is null")
+    void testGetDataType_NullReportType() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        data.setReportType(null);
+
+        assertEquals("NOAA", data.getDataType());
+    }
+
+    // ========== GETSUMMARY TESTS ==========
+
+    @Test
+    @DisplayName("Should generate summary with report type")
+    void testGetSummary_WithReportType() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
+
+        String summary = data.getSummary();
+
+        assertNotNull(summary);
+        assertTrue(summary.contains("METAR"));
+        assertTrue(summary.contains("KJFK"));
+    }
+
+    @Test
+    @DisplayName("Should generate summary with conditions")
+    void testGetSummary_WithConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                .visibility(Visibility.statuteMiles(10.0))
+                .temperature(Temperature.ofCurrent(22.0, 12.0))
                 .build();
-        data.setRemarks(remarks);
+        data.setConditions(conditions);
+
+        String summary = data.getSummary();
+
+        assertNotNull(summary);
+        assertTrue(summary.contains("METAR"));
+        assertTrue(summary.contains("KJFK"));
+        assertTrue(summary.contains("Wind:"));
+        assertTrue(summary.contains("Vis:"));
+        assertTrue(summary.contains("Temp:"));
+    }
+
+    // ========== EQUALS TESTS ==========
+
+    @Test
+    @DisplayName("Should return false when comparing with different class")
+    void testEquals_DifferentClass() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        assertThat(data)
+                .isNotEqualTo("Not a NoaaWeatherData")
+                .isNotEqualTo(null)
+                .isNotEqualTo(new Object());
+    }
+
+    // ========== HASHCODE TESTS ==========
+
+    @Test
+    @DisplayName("Should have consistent hashCode")
+    void testHashCode_Consistency() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
 
         int hash1 = data.hashCode();
         int hash2 = data.hashCode();
@@ -699,52 +781,133 @@ class NoaaWeatherDataTest {
     }
 
     @Test
-    @DisplayName("Should handle setting remarks to null")
-    void testSetRemarks_Null() {
+    @DisplayName("Should generate toString with all fields")
+    void testToString_Complete() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                .visibility(Visibility.statuteMiles(10.0))
+                .temperature(Temperature.ofCurrent(22.0, 12.0))
+                .pressure(Pressure.inchesHg(30.15))
+                .skyConditions(List.of(SkyCondition.of(SkyCoverage.FEW, 25000)))
                 .build();
+        data.setConditions(conditions);
+        data.addRunwayVisualRange(RunwayVisualRange.of("04L", 2200));
 
-        data.setRemarks(remarks);
-        assertNotNull(data.getRemarks());
+        String toString = data.toString();
 
-        data.setRemarks(null);
-        assertNull(data.getRemarks());
+        assertThat(toString)
+                .contains("NoaaWeatherData")
+                .contains("station=KJFK")
+                .contains("type=METAR")
+                .contains("wind=Wind")
+                .contains("vis=Visibility")
+                .contains("temp=Temperature")
+                .contains("pressure=Pressure")
+                .contains("skyCond=1")
+                .contains("rvr=1");
     }
 
     @Test
-    @DisplayName("Should handle remarks with multiple fields")
-    void testRemarks_MultipleFields() {
-        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .seaLevelPressure(Pressure.hectopascals(1013.2))
-                .freeText("Additional remarks")
-                .build();
+    @DisplayName("Should generate toString with minimal fields")
+    void testToString_Minimal() {
+        NoaaWeatherData data = new NoaaWeatherData("KLGA", now, "TAF");
 
-        data.setRemarks(remarks);
+        String toString = data.toString();
 
-        NoaaMetarRemarks retrieved = data.getRemarks();
-        assertNotNull(retrieved);
-        assertEquals(AutomatedStationType.AO2, retrieved.automatedStationType());
-        assertNotNull(retrieved.seaLevelPressure());
-        assertEquals("Additional remarks", retrieved.freeText());
+        assertThat(toString)
+                .contains("NoaaWeatherData")
+                .contains("station=KLGA")
+                .contains("type=TAF")
+                .contains("wind=null")
+                .contains("vis=null")
+                .contains("temp=null")
+                .contains("pressure=null")
+                .contains("skyCond=0")
+                .contains("rvr=0");
     }
 
     @Test
-    @DisplayName("Should preserve remarks through getter")
-    void testRemarks_Preservation() {
+    @DisplayName("Should generate toString with partial conditions")
+    void testToString_PartialConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KORD", now, "METAR");
+
+        // Only set wind and visibility, no temperature or pressure
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(350, 8, "KT"))
+                .visibility(Visibility.meters(9999))
+                .build();
+        data.setConditions(conditions);
+
+        String toString = data.toString();
+
+        assertThat(toString)
+                .contains("station=KORD")
+                .contains("wind=Wind")
+                .contains("vis=Visibility")
+                .contains("temp=null")
+                .contains("pressure=null");
+    }
+
+    @Test
+    @DisplayName("Should change hashCode when conditions are set")
+    void testHashCode_WithConditions() {
         NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
-        NoaaMetarRemarks original = NoaaMetarRemarks.builder()
-                .automatedStationType(AutomatedStationType.AO2)
-                .seaLevelPressure(Pressure.hectopascals(1013.2))
+
+        int hashBefore = data.hashCode();
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .wind(Wind.of(280, 16, "KT"))
+                .build();
+        data.setConditions(conditions);
+
+        int hashAfter = data.hashCode();
+
+        assertNotEquals(hashBefore, hashAfter,
+                "HashCode should change when conditions are set");
+    }
+
+    // ========== CAVOK VISIBILITY TESTS ==========
+
+    @Test
+    @DisplayName("Should create CAVOK visibility")
+    void testCreateCavokVisibility() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        // Access protected method through test subclass
+        Visibility cavok = data.createCavokVisibility();
+
+        assertThat(cavok).isNotNull();
+        assertThat(cavok.isCavok()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should create visibility with correct CAVOK properties")
+    void testCavokVisibilityProperties() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        Visibility cavok = data.createCavokVisibility();
+
+        assertThat(cavok.isCavok()).isTrue();
+        // CAVOK implies visibility >= 10km (approximately 6+ statute miles)
+        assertThat(cavok.specialCondition()).isEqualTo("CAVOK");
+    }
+
+    @Test
+    @DisplayName("Should use CAVOK visibility in weather conditions")
+    void testSetCavokInConditions() {
+        NoaaWeatherData data = new NoaaWeatherData("KJFK", now, "METAR");
+
+        Visibility cavok = data.createCavokVisibility();
+
+        WeatherConditions conditions = WeatherConditions.builder()
+                .visibility(cavok)
                 .build();
 
-        data.setRemarks(original);
-        NoaaMetarRemarks retrieved = data.getRemarks();
+        data.setConditions(conditions);
 
-        // Should be the exact same instance (no defensive copying)
-        assertSame(original, retrieved);
+        assertThat(data.getVisibility()).isNotNull();
+        assertThat(data.getVisibility().isCavok()).isTrue();
     }
 }

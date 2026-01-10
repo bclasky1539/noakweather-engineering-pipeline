@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
  */
 package weather.model.components;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -730,5 +731,74 @@ class WindTest {
                 .contains("16")
                 .contains("28")
                 .contains("KT");
+    }
+
+    // ==================== Variable Direction Tests ====================
+
+    @Test
+    @DisplayName("Should return true for variable direction wind (VRB)")
+    void testHasVariableDirection_VRB() {
+        Wind wind = Wind.variable(5, "KT");
+
+        assertThat(wind.hasVariableDirection()).isTrue();
+        assertThat(wind.directionDegrees()).isNull();
+        assertThat(wind.speedValue()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("Should return false for normal directional wind")
+    void testHasVariableDirection_NormalWind() {
+        Wind wind = Wind.of(270, 10, "KT");
+
+        assertThat(wind.hasVariableDirection()).isFalse();
+        assertThat(wind.directionDegrees()).isEqualTo(270);
+    }
+
+    @Test
+    @DisplayName("Should return false for calm wind")
+    void testHasVariableDirection_CalmWind() {
+        Wind wind = Wind.calm();
+
+        assertThat(wind.hasVariableDirection()).isFalse();
+        assertThat(wind.isCalm()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should return false for wind with variability range")
+    void testHasVariableDirection_WithVariabilityRange() {
+        // Wind from 270° at 10 KT, varying between 240° and 320°
+        Wind wind = new Wind(270, 10, null, 240, 320, "KT");
+
+        assertThat(wind.hasVariableDirection()).isFalse();
+        assertThat(wind.isVariable()).isTrue();  // Has variability range
+        assertThat(wind.directionDegrees()).isEqualTo(270);
+    }
+
+    @Test
+    @DisplayName("Should return false for variable wind with zero speed")
+    void testHasVariableDirection_ZeroSpeed() {
+        Wind wind = Wind.variable(0, "KT");
+
+        assertThat(wind.hasVariableDirection()).isFalse();
+        assertThat(wind.directionDegrees()).isNull();
+        assertThat(wind.speedValue()).isZero();
+    }
+
+    @Test
+    @DisplayName("Should distinguish between VRB and variability range")
+    void testHasVariableDirection_VsIsVariable() {
+        // VRB wind: direction varies unpredictably
+        Wind vrbWind = Wind.variable(8, "KT");
+
+        // Variability range: direction varies between two known points
+        Wind rangeWind = new Wind(270, 10, null, 240, 320, "KT");
+
+        // VRB wind: hasVariableDirection = true, isVariable = false
+        assertThat(vrbWind.hasVariableDirection()).isTrue();
+        assertThat(vrbWind.isVariable()).isFalse();
+
+        // Variability range: hasVariableDirection = false, isVariable = true
+        assertThat(rangeWind.hasVariableDirection()).isFalse();
+        assertThat(rangeWind.isVariable()).isTrue();
     }
 }

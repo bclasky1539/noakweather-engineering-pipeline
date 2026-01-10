@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -645,5 +645,207 @@ class RegExprConstTest {
         
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("unparsed")).isEqualTo("UNKNOWN_TOKEN");
+    }
+
+    // ========== TAF PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("VALIDITY_PATTERN should match TAF validity period")
+    void testValidityPattern() {
+        String input = "1520/1624 ";
+        Matcher matcher = RegExprConst.VALIDITY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("from")).isEqualTo("1520");
+        assertThat(matcher.group("to")).isEqualTo("1624");
+    }
+
+    @Test
+    @DisplayName("FM_PATTERN should match FM change group")
+    void testFmPattern() {
+        String input = "FM152100 ";
+        Matcher matcher = RegExprConst.FM_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("time")).isEqualTo("152100");
+    }
+
+    @Test
+    @DisplayName("TEMPO_PATTERN should match TEMPO change group with validity")
+    void testTempoPattern() {
+        String input = "TEMPO 3003/3011 ";
+        Matcher matcher = RegExprConst.TEMPO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("from")).isEqualTo("3003");
+        assertThat(matcher.group("to")).isEqualTo("3011");
+    }
+
+    @Test
+    @DisplayName("BECMG_PATTERN should match BECMG change group with validity")
+    void testBecmgPattern() {
+        String input = "BECMG 3003/3011 ";
+        Matcher matcher = RegExprConst.BECMG_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("from")).isEqualTo("3003");
+        assertThat(matcher.group("to")).isEqualTo("3011");
+    }
+
+    @Test
+    @DisplayName("PROB_PATTERN should match PROB change group with validity")
+    void testProbPattern() {
+        String input = "PROB30 3003/3011 ";
+        Matcher matcher = RegExprConst.PROB_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prob")).isEqualTo("30");
+        assertThat(matcher.group("from")).isEqualTo("3003");
+        assertThat(matcher.group("to")).isEqualTo("3011");
+    }
+
+    @Test
+    @DisplayName("PROB_PATTERN should match PROB with TEMPO")
+    void testProbPatternWithTempo() {
+        String input = "PROB40 TEMPO 3003/3011 ";
+        Matcher matcher = RegExprConst.PROB_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("prob")).isEqualTo("40");
+        assertThat(matcher.group("from")).isEqualTo("3003");
+        assertThat(matcher.group("to")).isEqualTo("3011");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'PROB30 3003/3011 ', 30, 'PROB30'",
+            "'PROB40 3003/3011 ', 40, 'PROB40'",
+            "'PROB30 TEMPO 3003/3011 ', 30, 'PROB30 TEMPO'",
+            "'PROB40 TEMPO 3003/3011 ', 40, 'PROB40 TEMPO'"
+    })
+    @DisplayName("PROB_PATTERN should match various probability formats")
+    void testProbPatternVariations(String input, String expectedProb, String scenario) {
+        Matcher matcher = RegExprConst.PROB_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("prob"))
+                .as("Probability should match: %s", scenario)
+                .isEqualTo(expectedProb);
+    }
+
+    @Test
+    @DisplayName("TEMP_FORECAST_PATTERN should match TX temperature forecast")
+    void testTempForecastPattern_Max() {
+        String input = "TX15/1518Z ";
+        Matcher matcher = RegExprConst.TEMP_FORECAST_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("X");
+        assertThat(matcher.group("sign")).isNull();
+        assertThat(matcher.group("temp")).isEqualTo("15");
+        assertThat(matcher.group("day")).isEqualTo("15");
+        assertThat(matcher.group("hour")).isEqualTo("18");
+    }
+
+    @Test
+    @DisplayName("TEMP_FORECAST_PATTERN should match TN temperature forecast")
+    void testTempForecastPattern_Min() {
+        String input = "TN05/1510Z ";
+        Matcher matcher = RegExprConst.TEMP_FORECAST_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("N");
+        assertThat(matcher.group("sign")).isNull();
+        assertThat(matcher.group("temp")).isEqualTo("05");
+        assertThat(matcher.group("day")).isEqualTo("15");
+        assertThat(matcher.group("hour")).isEqualTo("10");
+    }
+
+    @Test
+    @DisplayName("TEMP_FORECAST_PATTERN should match negative temperature")
+    void testTempForecastPattern_Negative() {
+        String input = "TNM05/1510Z ";
+        Matcher matcher = RegExprConst.TEMP_FORECAST_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("N");
+        assertThat(matcher.group("sign")).isEqualTo("M");
+        assertThat(matcher.group("temp")).isEqualTo("05");
+        assertThat(matcher.group("day")).isEqualTo("15");
+        assertThat(matcher.group("hour")).isEqualTo("10");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'TX15/1518Z ', X, '', 15, 'Max temp positive'",
+            "'TN05/1510Z ', N, '', 05, 'Min temp positive'",
+            "'TNM05/1510Z ', N, M, 05, 'Min temp negative'",
+            "'TXM12/1612Z ', X, M, 12, 'Max temp negative'",
+            "'TX00/1500Z ', X, '', 00, 'Zero temp'",
+            "'TN99/3023Z ', N, '', 99, 'High temp value'"
+    })
+    @DisplayName("TEMP_FORECAST_PATTERN should match various temperature formats")
+    void testTempForecastPatternVariations(String input, String expectedType,
+                                           String expectedSign, String expectedTemp, String scenario) {
+        Matcher matcher = RegExprConst.TEMP_FORECAST_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("type"))
+                .as("Type should match: %s", scenario)
+                .isEqualTo(expectedType);
+
+        if (expectedSign.isEmpty()) {
+            assertThat(matcher.group("sign"))
+                    .as("Sign should be null: %s", scenario)
+                    .isNull();
+        } else {
+            assertThat(matcher.group("sign"))
+                    .as("Sign should match: %s", scenario)
+                    .isEqualTo(expectedSign);
+        }
+
+        assertThat(matcher.group("temp"))
+                .as("Temperature should match: %s", scenario)
+                .isEqualTo(expectedTemp);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "FM152100 ",
+            "FM010000 ",
+            "FM302359 ",
+            "TEMPO 0102/0106 ",
+            "BECMG 1520/1524 ",
+            "PROB30 3003/3011 ",
+            "TX15/1518Z ",
+            "TNM05/1510Z ",
+            "1520/1624 "
+    })
+    @DisplayName("TAF patterns should match valid inputs")
+    void testTafPatternsVariousInputs(String input) {
+        // This test ensures all TAF patterns compile and can match basic inputs
+        boolean matched = false;
+
+        if (input.startsWith("FM")) {
+            matched = RegExprConst.FM_PATTERN.matcher(input).find();
+        } else if (input.startsWith("TEMPO")) {
+            matched = RegExprConst.TEMPO_PATTERN.matcher(input).find();
+        } else if (input.startsWith("BECMG")) {
+            matched = RegExprConst.BECMG_PATTERN.matcher(input).find();
+        } else if (input.startsWith("PROB")) {
+            matched = RegExprConst.PROB_PATTERN.matcher(input).find();
+        } else if (input.startsWith("TX") || input.startsWith("TN")) {
+            matched = RegExprConst.TEMP_FORECAST_PATTERN.matcher(input).find();
+        } else if (input.matches("^\\d{4}/\\d{4}.*")) {
+            matched = RegExprConst.VALIDITY_PATTERN.matcher(input).find();
+        }
+
+        assertThat(matched)
+                .as("TAF pattern should match: %s", input.trim())
+                .isTrue();
     }
 }
