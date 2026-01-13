@@ -221,6 +221,12 @@ public abstract class AbstractNoaaIngestionApp {
         }
 
         String[] parts = input.split("\\s+");
+
+        // Handle empty array or empty first element
+        if (parts.length == 0 || parts[0].isEmpty()) {
+            return true;
+        }
+
         String command = parts[0].toLowerCase();
 
         return switch (command) {
