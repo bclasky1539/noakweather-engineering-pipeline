@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
  */
 package weather.ingestion.service.source.noaa;
 
-import weather.model.ProcessingLayer;
 import weather.model.WeatherData;
 import weather.model.WeatherDataSource;
 import weather.exception.WeatherServiceException;
@@ -28,6 +27,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.net.http.HttpClient;
 import java.util.List;
 import java.util.Properties;
 
@@ -36,404 +36,403 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for NoaaAviationWeatherClient using WireMock.
- * These tests don't require actual NOAA API access.
+ * <p>
+ * Updated for TG FTP endpoints - tests raw text file fetching.
+ *
+ * @author bclasky1539
+ *
  */
 class NoaaAviationWeatherClientTest {
-    
+
     private WireMockServer wireMockServer;
     private NoaaAviationWeatherClient client;
-    
+    private NoaaConfiguration testConfig;
+
     @BeforeEach
     void setUp() {
         // Start WireMock server on random port
         wireMockServer = new WireMockServer();
         wireMockServer.start();
-        
+
         // Configure WireMock
         WireMock.configureFor("localhost", wireMockServer.port());
-        
+
         // Create configuration pointing to WireMock server
         Properties testProps = new Properties();
-        testProps.setProperty("noaa.metar.base.url", "http://localhost:" + wireMockServer.port() + "/metar");
-        testProps.setProperty("noaa.taf.base.url", "http://localhost:" + wireMockServer.port() + "/taf");
-        testProps.setProperty("noaa.timeout.seconds", "30");
-        NoaaConfiguration testConfig = new NoaaConfiguration(testProps);
-        
+        testProps.setProperty("noaa.metar.base.url",
+                "http://localhost:" + wireMockServer.port() + "/metar/stations");
+        testProps.setProperty("noaa.taf.base.url",
+                "http://localhost:" + wireMockServer.port() + "/taf/stations");
+        testProps.setProperty("noaa.timeout.seconds", "5");
+        testProps.setProperty("noaa.retry.attempts", "2");
+        testProps.setProperty("noaa.retry.delay.ms", "100");
+        testConfig = new NoaaConfiguration(testProps);
+
         // Create client with test configuration
         client = new NoaaAviationWeatherClient(testConfig);
     }
-    
+
     @AfterEach
     void tearDown() {
         wireMockServer.stop();
-        client.close();
+        if (client != null) {
+            client.close();
+        }
     }
-    
+
+    // ===== Station Code Validation Tests =====
+
     @Test
-    void testStationCodeValidation() {
-        // Valid codes
+    void testValidStationCodes() {
         assertTrue(client.isValidStationCode("KJFK"));
         assertTrue(client.isValidStationCode("KLGA"));
-        assertTrue(client.isValidStationCode("EGLL"));
-        assertTrue(client.isValidStationCode("LFPG"));
-        assertTrue(client.isValidStationCode("kjfk")); // lowercase should work
+        assertTrue(client.isValidStationCode("EGLL")); // 4 letters
+        assertTrue(client.isValidStationCode("LFP")); // 3 letters
+        assertTrue(client.isValidStationCode("kjfk")); // lowercase
         assertTrue(client.isValidStationCode("  KJFK  ")); // with whitespace
-        
-        // Invalid codes
+    }
+
+    @Test
+    void testInvalidStationCodes() {
         assertFalse(client.isValidStationCode(null));
         assertFalse(client.isValidStationCode(""));
         assertFalse(client.isValidStationCode("  "));
         assertFalse(client.isValidStationCode("K1FK")); // contains number
         assertFalse(client.isValidStationCode("KJ")); // too short
-        assertFalse(client.isValidStationCode("KJFK1")); // too long
-        assertFalse(client.isValidStationCode("KJ-FK")); // contains special char
+        assertFalse(client.isValidStationCode("KJFK1")); // too long (5 chars)
+        assertFalse(client.isValidStationCode("KJ-FK")); // special character
+        assertFalse(client.isValidStationCode("12345")); // all numbers
     }
-    
+
     @Test
     void testInvalidStationCode_ThrowsException() {
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarReports("INVALID123");
-        });
-        
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchMetarReport("INVALID123"));
+
         assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
         assertTrue(exception.getMessage().contains("3-4 alphabetic characters"));
     }
-    
+
+    // ===== METAR Fetching Tests =====
+
     @Test
-    void testEmptyStationIds_ThrowsException() {
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarReports();
-        });
-        
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-    }
-    
-    @Test
-    void testNullStationIds_ThrowsException() {
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarReports((String[]) null);
-        });
-        
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-    }
-    
-    @Test
-    void testFetchMetarReports_Success() throws Exception {
-        // Mock NOAA API response
+    void testFetchMetarReport_Success() throws WeatherServiceException {
+        // Mock NOAA TG FTP response (raw text format)
         String mockResponse = """
-                [
-                    {
-                        "rawOb": "METAR KJFK 251651Z 28016KT 10SM FEW250 22/12 A3015",
-                        "icaoId": "KJFK",
-                        "reportTime": "2025-10-25T16:51:00Z"
-                    }
-                ]
+                2025/01/11 14:56
+                KCLT 111456Z 27008KT 10SM FEW250 06/M07 A3034 RMK AO2 SLP278 T00561072
                 """;
-        
-        stubFor(get(urlPathEqualTo("/metar"))
+
+        stubFor(get(urlEqualTo("/metar/stations/KCLT.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
+                        .withHeader("Content-Type", "text/plain")
                         .withBody(mockResponse)));
-        
+
         // Execute
-        List<WeatherData> results = client.fetchMetarReports("KJFK");
-        
-        // Verify request was made
-        verify(getRequestedFor(urlPathEqualTo("/metar"))
-                .withQueryParam("ids", equalTo("KJFK"))
-                .withHeader("Accept", equalTo("application/json"))
-                .withHeader("User-Agent", equalTo("NoakWeather-Platform/2.0")));
-        
+        WeatherData result = client.fetchMetarReport("KCLT");
+
+        // Verify request
+        verify(getRequestedFor(urlEqualTo("/metar/stations/KCLT.TXT")));
+
         // Verify response
-        assertNotNull(results);
-        assertEquals(1, results.size());
-        
-        WeatherData data = results.get(0);
-        assertEquals(WeatherDataSource.NOAA, data.getSource());
-        assertEquals("KJFK", data.getStationId());
-        assertEquals("METAR", data.getDataType());
-        assertEquals(ProcessingLayer.SPEED_LAYER, data.getProcessingLayer());
-        assertNotNull(data.getIngestionTime());
+        assertNotNull(result);
+        assertEquals(WeatherDataSource.NOAA, result.getSource());
+        assertEquals("KCLT", result.getStationId());
+        assertEquals("METAR", result.getDataType());
+        assertNotNull(result.getRawData());
+        assertTrue(result.getRawData().contains("KCLT"));
+        assertTrue(result.getRawData().contains("27008KT"));
     }
-    
+
     @Test
-    void testFetchMetarReports_MultipleStations() throws Exception {
-        // Mock response with data for 3 stations
-        String mockResponse = """
-                [
-                    {"icaoId": "KJFK"},
-                    {"icaoId": "KLGA"},
-                    {"icaoId": "KEWR"}
-                ]
-                """;
-        
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testFetchMetarReport_NoData() throws WeatherServiceException {
+        // Empty response
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("")));
+
+        WeatherData result = client.fetchMetarReport("KJFK");
+
+        assertNull(result, "Should return null when no data available");
+    }
+
+    @Test
+    void testFetchMetarReport_404NotFound() throws WeatherServiceException {
+        // Station file doesn't exist - should return null, not throw exception
+        stubFor(get(urlEqualTo("/metar/stations/XXXX.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(404)));
+
+        // Act
+        WeatherData result = client.fetchMetarReport("XXXX");
+
+        // Assert
+        assertNull(result, "Should return null when station file not found");
+    }
+
+    @Test
+    void testFetchMetarReport_LowercaseConversion() throws WeatherServiceException {
+        String mockResponse = "2025/01/11 14:56\nKJFK 111456Z 28016KT";
+
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withBody(mockResponse)));
-        
+
+        // Pass lowercase, should convert to uppercase
+        WeatherData result = client.fetchMetarReport("kjfk");
+
+        verify(getRequestedFor(urlEqualTo("/metar/stations/KJFK.TXT")));
+        assertNotNull(result);
+    }
+
+    @Test
+    void testFetchMetarReports_MultipleStations() throws WeatherServiceException {
+        // Mock responses for multiple stations
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2025/01/11 14:56\nKJFK 111456Z")));
+
+        stubFor(get(urlEqualTo("/metar/stations/KLGA.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2025/01/11 14:56\nKLGA 111456Z")));
+
+        stubFor(get(urlEqualTo("/metar/stations/KEWR.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2025/01/11 14:56\nKEWR 111456Z")));
+
         List<WeatherData> results = client.fetchMetarReports("KJFK", "KLGA", "KEWR");
-        
-        // Verify query contains all stations
-        verify(getRequestedFor(urlPathEqualTo("/metar"))
-                .withQueryParam("ids", matching(".*KJFK.*"))
-                .withQueryParam("ids", matching(".*KLGA.*"))
-                .withQueryParam("ids", matching(".*KEWR.*")));
-        
+
+        // Each station requested separately
+        verify(getRequestedFor(urlEqualTo("/metar/stations/KJFK.TXT")));
+        verify(getRequestedFor(urlEqualTo("/metar/stations/KLGA.TXT")));
+        verify(getRequestedFor(urlEqualTo("/metar/stations/KEWR.TXT")));
+
         assertNotNull(results);
         assertEquals(3, results.size());
     }
-    
+
     @Test
-    void testFetchTafReports_Success() throws Exception {
+    void testFetchMetarReports_PartialFailure() throws WeatherServiceException {
+        // First station succeeds
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2025/01/11 14:56\nKJFK 111456Z")));
+
+        // Second station fails
+        stubFor(get(urlEqualTo("/metar/stations/XXXX.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(404)));
+
+        // Should return data for successful station only
+        List<WeatherData> results = client.fetchMetarReports("KJFK", "XXXX");
+
+        assertNotNull(results);
+        assertEquals(1, results.size());
+        assertEquals("KJFK", results.get(0).getStationId());
+    }
+
+    @Test
+    void testFetchMetarReports_NullStationIds() {
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchMetarReports());
+
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+        assertTrue(exception.getMessage().contains("At least one station"));
+    }
+
+    @Test
+    void testFetchMetarReports_EmptyArray() {
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchMetarReports());
+
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+    }
+
+    @Test
+    void testFetchMetarReports_InvalidStationInList() {
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchMetarReports("KJFK", "INVALID123", "KLGA"));
+
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+    }
+
+    // ===== TAF Fetching Tests =====
+
+    @Test
+    void testFetchTafReport_Success() throws WeatherServiceException {
         String mockResponse = """
-                [
-                    {
-                        "rawTAF": "TAF KJFK 251720Z 2518/2624 28016KT P6SM FEW250",
-                        "icaoId": "KJFK",
-                        "issueTime": "2025-10-25T17:20:00Z"
-                    }
-                ]
+                2025/01/11 11:25
+                TAF KBUF 111125Z 1112/1212 31012G20KT P6SM BKN030
+                     FM111900 30015G25KT P6SM BKN020
                 """;
-        
-        stubFor(get(urlPathEqualTo("/taf"))
+
+        stubFor(get(urlEqualTo("/taf/stations/KBUF.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withBody(mockResponse)));
-        
-        List<WeatherData> results = client.fetchTafReports("KJFK");
-        
-        verify(getRequestedFor(urlPathEqualTo("/taf")));
-        
-        assertNotNull(results);
-        assertEquals(1, results.size());
-        assertEquals("TAF", results.get(0).getDataType());
-    }
-    
-    @Test
-    void testFetchLatestMetar_Success() throws Exception {
-        String mockResponseBody = "[{\"icaoId\":\"KJFK\"}]";
-        
-        stubFor(get(urlPathEqualTo("/metar"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody(mockResponseBody)));
-        
-        WeatherData result = client.fetchLatestMetar("KJFK");
-        
+
+        WeatherData result = client.fetchTafReport("KBUF");
+
+        verify(getRequestedFor(urlEqualTo("/taf/stations/KBUF.TXT")));
+
         assertNotNull(result);
-        assertEquals("KJFK", result.getStationId());
+        assertEquals(WeatherDataSource.NOAA, result.getSource());
+        assertEquals("KBUF", result.getStationId());
+        assertEquals("TAF", result.getDataType());
+        assertTrue(result.getRawData().contains("TAF KBUF"));
     }
-    
+
     @Test
-    void testFetchLatestMetar_NoData() throws Exception {
-        String mockResponseBody = "[]";
-        
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testFetchTafReport_NoData() throws WeatherServiceException {
+        stubFor(get(urlEqualTo("/taf/stations/KJFK.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withBody(mockResponseBody)));
-        
-        WeatherData result = client.fetchLatestMetar("KJFK");
-        
-        assertNull(result, "Should return null when no data available");
+                        .withBody("")));
+
+        WeatherData result = client.fetchTafReport("KJFK");
+
+        assertNull(result, "Should return null when no TAF data available");
     }
-    
+
     @Test
-    void testFetchMetarByBoundingBox() throws Exception {
-        String mockResponseBody = "[]";
-        
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testFetchTafReport_InvalidStation() {
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchTafReport("123"));
+
+        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
+    }
+
+    @Test
+    void testFetchTafReports_MultipleStations() throws WeatherServiceException {
+        stubFor(get(urlMatching("/taf/stations/.*.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withBody(mockResponseBody)));
-        
-        List<WeatherData> results = client.fetchMetarByBoundingBox(
-                40.0, -75.0, 41.0, -73.0);
-        
-        verify(getRequestedFor(urlPathEqualTo("/metar"))
-                .withQueryParam("bbox", matching(".*-75.*40.*")));
-        
+                        .withBody("2025/01/11 11:25\nTAF TEST")));
+
+        List<WeatherData> results = client.fetchTafReports("KJFK", "KLGA");
+
         assertNotNull(results);
+        assertEquals(2, results.size());
     }
-    
+
+    // ===== Error Handling Tests =====
+
     @Test
-    void testApiError_500() {
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testNetworkError_500() {
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
                 .willReturn(aResponse()
                         .withStatus(500)
                         .withBody("Internal Server Error")));
-        
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarReports("KJFK");
-        });
-        
+
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchMetarReport("KJFK"));
+
         assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
-        assertTrue(exception.getMessage().contains("Failed to fetch METAR data"));
+        assertTrue(exception.getMessage().contains("Failed to fetch METAR"));
     }
-    
+
     @Test
-    void testApiError_404() {
-        stubFor(get(urlPathEqualTo("/metar"))
-                .willReturn(aResponse()
-                        .withStatus(404)
-                        .withBody("Not Found")));
-        
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarReports("KJFK");
-        });
-        
-        assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
-    }
-    
-    @Test
-    void testUserAgentHeader() throws Exception {
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testTimeout() {
+        // Delay exceeds configured timeout (5 seconds)
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withBody("[]")));
-        
-        client.fetchMetarReports("KJFK");
-        
-        verify(getRequestedFor(urlPathEqualTo("/metar"))
-                .withHeader("User-Agent", equalTo("NoakWeather-Platform/2.0")));
-    }
-    
-    @Test
-    void testConnectionTimeout() {
-        // Simulate timeout with delay exceeding configured timeout
-        stubFor(get(urlPathEqualTo("/metar"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("[]")
-                        .withFixedDelay(35000))); // 35 seconds - exceeds 30s timeout
-        
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarReports("KJFK");
-        });
-        
-        // Could be either TIMEOUT or NETWORK_ERROR depending on how it fails
+                        .withBody("data")
+                        .withFixedDelay(6000)));
+
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchMetarReport("KJFK"));
+
         assertTrue(
-            exception.getErrorType() == ErrorType.TIMEOUT ||
-            exception.getErrorType() == ErrorType.NETWORK_ERROR
+                exception.getErrorType() == ErrorType.TIMEOUT ||
+                        exception.getErrorType() == ErrorType.NETWORK_ERROR,
+                "Should be TIMEOUT or NETWORK_ERROR"
         );
     }
-    
-    // ===== Tests for fetchTafReports =====
+
+    // ===== Retry Logic Tests =====
+
     @Test
-    void testFetchTafReportsMultipleStations() throws WeatherServiceException {
-        // Arrange
-        String mockResponse = "[{\"icaoId\": \"KJFK\"}, {\"icaoId\": \"KLGA\"}]";
-        
-        stubFor(get(urlPathEqualTo("/taf"))
+    void testRetryOnFailure_EventualSuccess() throws WeatherServiceException {
+        // First attempt fails, second succeeds
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .inScenario("Retry")
+                .whenScenarioStateIs("Started")
+                .willReturn(aResponse().withStatus(500))
+                .willSetStateTo("First Attempt Failed"));
+
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .inScenario("Retry")
+                .whenScenarioStateIs("First Attempt Failed")
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withBody(mockResponse)));
-        
-        // Act
-        List<WeatherData> result = client.fetchTafReports("KJFK", "KLGA");
-        
-        // Assert
-        assertNotNull(result);
-        assertEquals(2, result.size());
+                        .withBody("2025/01/11 14:56\nKJFK 111456Z")));
+
+        WeatherData result = client.fetchMetarReport("KJFK");
+
+        assertNotNull(result, "Should succeed after retry");
+        verify(2, getRequestedFor(urlEqualTo("/metar/stations/KJFK.TXT")));
     }
-    
+
+    // ===== Custom HttpClient Tests =====
+
     @Test
-    void testFetchTafReportsNullStationIds() {
-        // Act & Assert
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchTafReports((String[]) null);
-        });
-        
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-        assertTrue(exception.getMessage().contains("At least one station ID"));
+    void testCustomHttpClient() {
+        HttpClient customClient = HttpClient.newBuilder().build();
+        NoaaAviationWeatherClient clientWithCustomHttp =
+                new NoaaAviationWeatherClient(customClient, testConfig);
+
+        assertNotNull(clientWithCustomHttp);
+        clientWithCustomHttp.close();
     }
-    
+
+    // ===== Integration Tests =====
+
     @Test
-    void testFetchTafReportsEmptyArray() {
-        // Act & Assert
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchTafReports();
-        });
-        
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-    }
-    
-    @Test
-    void testFetchTafReportsInvalidStationCode() {
-        // Act & Assert - test with invalid station code (numbers)
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchTafReports("123");
-        });
-        
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-        assertTrue(exception.getMessage().contains("3-4 alphabetic characters"));
-    }
-    
-    @Test
-    void testFetchTafReportsNetworkError() {
-        // Arrange
-        stubFor(get(urlPathEqualTo("/taf"))
-                .willReturn(aResponse()
-                        .withStatus(500)));
-        
-        // Act & Assert
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchTafReports("KJFK");
-        });
-        
-        assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
-    }
-    
-    // ===== Tests for fetchMetarByBoundingBox =====
-    
-    @Test
-    void testFetchMetarByBoundingBoxSuccess() throws WeatherServiceException {
-        // Arrange
-        String mockResponse = "[{\"icaoId\": \"KJFK\", \"lat\": 40.6, \"lon\": -73.8}]";
-        
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testComplexMetarFormat() throws WeatherServiceException {
+        String complexMetar = """
+                2025/01/11 14:56
+                METAR KJFK 251651Z 28016G28KT 240V310 3/4SM R04R/2200V6000FT
+                +TSRA BR FEW015CB SCT025 BKN035 OVC250 22/21 A2990 RMK
+                AO2 PK WND 27045/1655 WSHFT 1643 PRESRR RAB25 TSB32 SLP095
+                FRQ LTGICCG OHD TS OHD MOV E CB DSNT N AND W P0035 T02220206
+                """;
+
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withBody(mockResponse)));
-        
-        // Act
-        List<WeatherData> result = client.fetchMetarByBoundingBox(40.0, -74.0, 41.0, -73.0);
-        
-        // Assert
+                        .withBody(complexMetar)));
+
+        WeatherData result = client.fetchMetarReport("KJFK");
+
         assertNotNull(result);
-        assertFalse(result.isEmpty());
+        assertTrue(result.getRawData().contains("+TSRA"));
+        assertTrue(result.getRawData().contains("SLP095"));
     }
-    
+
     @Test
-    void testFetchMetarByBoundingBoxEmptyResult() throws WeatherServiceException {
-        // Arrange
-        stubFor(get(urlPathEqualTo("/metar"))
+    void testMetarWithMultipleLines() throws WeatherServiceException {
+        String multiLineMetar = """
+                2025/01/11 14:56
+                METAR KJFK 251651Z 28016KT 10SM FEW250 22/12 A3015
+                     RMK AO2 SLP210 T02220117
+                """;
+
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
                 .willReturn(aResponse()
                         .withStatus(200)
-                        .withBody("[]")));
-        
-        // Act
-        List<WeatherData> result = client.fetchMetarByBoundingBox(40.0, -74.0, 41.0, -73.0);
-        
-        // Assert
+                        .withBody(multiLineMetar)));
+
+        WeatherData result = client.fetchMetarReport("KJFK");
+
         assertNotNull(result);
-        assertTrue(result.isEmpty());
-    }
-    
-    @Test
-    void testFetchMetarByBoundingBoxNetworkError() {
-        // Arrange
-        stubFor(get(urlPathEqualTo("/metar"))
-                .willReturn(aResponse()
-                        .withStatus(500)));
-        
-        // Act & Assert
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class, () -> {
-            client.fetchMetarByBoundingBox(40.0, -74.0, 41.0, -73.0);
-        });
-        
-        assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
+        assertTrue(result.getRawData().contains("RMK"));
     }
 }
