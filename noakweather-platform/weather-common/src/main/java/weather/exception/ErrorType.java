@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,18 +25,21 @@ package weather.exception;
 public enum ErrorType {
     INVALID_STATION_CODE("Invalid station code format"),
     STATION_NOT_FOUND("Station not found"),
+    NO_DATA("No data available for station"),
     SERVICE_UNAVAILABLE("Weather service unavailable"),
     NETWORK_ERROR("Network communication error"),
     INVALID_RESPONSE("Invalid response from weather service"),
+    INVALID_DATA("Invalid or incomplete weather data"),
     TIMEOUT("Request timeout"),
+    STORAGE_ERROR("Storage operation failed"),
     CONFIGURATION_ERROR("Configuration error");
-    
+
     private final String description;
-    
+
     ErrorType(String description) {
         this.description = description;
     }
-    
+
     public String getDescription() {
         return description;
     }

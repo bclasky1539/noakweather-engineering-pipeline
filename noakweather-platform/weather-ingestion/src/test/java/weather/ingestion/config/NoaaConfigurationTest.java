@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,220 +17,300 @@
 package weather.ingestion.config;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+
 import java.util.Properties;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for NoaaConfiguration.
- * 
+ * <p>
+ * Updated to test the correct TG FTP endpoints and new configuration structure.
+ *
  * @author bclasky1539
  *
  */
 class NoaaConfigurationTest {
-    
+
+    private NoaaConfiguration defaultConfig;
+
+    @BeforeEach
+    void setUp() {
+        defaultConfig = new NoaaConfiguration();
+    }
+
     @Test
     void testDefaultConfiguration() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        // Should use default values when properties file not found
-        assertNotNull(config.getMetarBaseUrl());
-        assertNotNull(config.getTafBaseUrl());
-        assertNotNull(config.getFormat());
-        assertTrue(config.getTimeoutSeconds() > 0);
+        assertNotNull(defaultConfig.getMetarBaseUrl());
+        assertNotNull(defaultConfig.getTafBaseUrl());
+        assertTrue(defaultConfig.getTimeoutSeconds() > 0);
+        assertTrue(defaultConfig.getRetryAttempts() > 0);
+        assertTrue(defaultConfig.getRetryDelayMs() > 0);
     }
-    
+
+    @Test
+    void testDefaultMetarBaseUrl() {
+        String url = defaultConfig.getMetarBaseUrl();
+        assertTrue(url.contains("tgftp.nws.noaa.gov"),
+                "Should use TG FTP endpoint");
+        assertTrue(url.contains("observations/metar/stations"),
+                "Should point to METAR stations directory");
+    }
+
+    @Test
+    void testDefaultTafBaseUrl() {
+        String url = defaultConfig.getTafBaseUrl();
+        assertTrue(url.contains("tgftp.nws.noaa.gov"),
+                "Should use TG FTP endpoint");
+        assertTrue(url.contains("forecasts/taf/stations"),
+                "Should point to TAF stations directory");
+    }
+
+    @Test
+    void testDefaultTimeoutSeconds() {
+        assertEquals(30, defaultConfig.getTimeoutSeconds());
+    }
+
+    @Test
+    void testDefaultRetryAttempts() {
+        assertEquals(3, defaultConfig.getRetryAttempts());
+    }
+
+    @Test
+    void testDefaultRetryDelayMs() {
+        assertEquals(1000, defaultConfig.getRetryDelayMs());
+    }
+
     @Test
     void testCustomPropertiesConfiguration() {
         Properties props = new Properties();
         props.setProperty("noaa.metar.base.url", "https://custom.noaa.gov/metar");
         props.setProperty("noaa.taf.base.url", "https://custom.noaa.gov/taf");
-        props.setProperty("noaa.format", "xml");
         props.setProperty("noaa.timeout.seconds", "45");
-        
+        props.setProperty("noaa.retry.attempts", "5");
+        props.setProperty("noaa.retry.delay.ms", "2000");
+
         NoaaConfiguration config = new NoaaConfiguration(props);
-        
+
         assertEquals("https://custom.noaa.gov/metar", config.getMetarBaseUrl());
         assertEquals("https://custom.noaa.gov/taf", config.getTafBaseUrl());
-        assertEquals("xml", config.getFormat());
         assertEquals(45, config.getTimeoutSeconds());
+        assertEquals(5, config.getRetryAttempts());
+        assertEquals(2000, config.getRetryDelayMs());
     }
-    
+
     @Test
-    void testDefaultMetarBaseUrl() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.getMetarBaseUrl();
-        assertTrue(url.contains("aviationweather.gov"));
-        assertTrue(url.contains("metar"));
+    void testBuildMetarUrl() {
+        String url = defaultConfig.buildMetarUrl("KJFK");
+
+        assertTrue(url.contains("KJFK"), "Should contain station ID");
+        assertTrue(url.endsWith(".TXT"), "Should end with .TXT extension");
+        assertTrue(url.contains("tgftp.nws.noaa.gov"), "Should use TG FTP");
+        assertEquals("https://tgftp.nws.noaa.gov/data/observations/metar/stations/KJFK.TXT", url);
     }
-    
+
     @Test
-    void testDefaultTafBaseUrl() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.getTafBaseUrl();
-        assertTrue(url.contains("aviationweather.gov"));
-        assertTrue(url.contains("taf"));
+    void testBuildMetarUrlLowercaseStation() {
+        String url = defaultConfig.buildMetarUrl("kjfk");
+
+        // Should convert to uppercase
+        assertTrue(url.contains("KJFK"), "Should convert to uppercase");
+        assertFalse(url.contains("kjfk"), "Should not contain lowercase");
     }
-    
+
     @Test
-    void testDefaultFormat() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        assertEquals("json", config.getFormat());
+    void testBuildTafUrl() {
+        String url = defaultConfig.buildTafUrl("KCLT");
+
+        assertTrue(url.contains("KCLT"), "Should contain station ID");
+        assertTrue(url.endsWith(".TXT"), "Should end with .TXT extension");
+        assertTrue(url.contains("tgftp.nws.noaa.gov"), "Should use TG FTP");
+        assertEquals("https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/KCLT.TXT", url);
     }
-    
+
     @Test
-    void testDefaultTimeout() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        assertEquals(30, config.getTimeoutSeconds());
+    void testBuildTafUrlLowercaseStation() {
+        String url = defaultConfig.buildTafUrl("kclt");
+
+        // Should convert to uppercase
+        assertTrue(url.contains("KCLT"), "Should convert to uppercase");
+        assertFalse(url.contains("kclt"), "Should not contain lowercase");
     }
-    
+
     @Test
-    void testBuildMetarUrlSingleStation() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildMetarUrl("KJFK");
-        
-        assertTrue(url.contains("KJFK"));
-        assertTrue(url.contains("ids="));
-        assertTrue(url.contains("format="));
-        assertTrue(url.contains("taf=false"));
+    void testValidateConfigurationWithCorrectEndpoints() {
+        Properties props = new Properties();
+        props.setProperty("noaa.metar.base.url",
+                "https://tgftp.nws.noaa.gov/data/observations/metar/stations");
+        props.setProperty("noaa.taf.base.url",
+                "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations");
+
+        NoaaConfiguration config = new NoaaConfiguration(props);
+
+        assertTrue(config.validateConfiguration(),
+                "Should validate correctly with TG FTP endpoints");
     }
-    
+
     @Test
-    void testBuildMetarUrlMultipleStations() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildMetarUrl("KJFK", "KLGA", "KEWR");
-        
-        assertTrue(url.contains("KJFK"));
-        assertTrue(url.contains("KLGA"));
-        assertTrue(url.contains("KEWR"));
-        assertTrue(url.contains("ids="));
+    void testValidateConfigurationWithIncorrectMetarEndpoint() {
+        Properties props = new Properties();
+        props.setProperty("noaa.metar.base.url",
+                "https://aviationweather.gov/api/data/metar");
+        props.setProperty("noaa.taf.base.url",
+                "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations");
+
+        NoaaConfiguration config = new NoaaConfiguration(props);
+
+        assertFalse(config.validateConfiguration(),
+                "Should fail validation with incorrect aviationweather.gov API endpoint");
     }
-    
+
     @Test
-    void testBuildTafUrlSingleStation() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildTafUrl("KJFK");
-        
-        assertTrue(url.contains("KJFK"));
-        assertTrue(url.contains("ids="));
-        assertTrue(url.contains("format="));
-        assertTrue(url.contains("taf=true"));
+    void testValidateConfigurationWithIncorrectTafEndpoint() {
+        Properties props = new Properties();
+        props.setProperty("noaa.metar.base.url",
+                "https://tgftp.nws.noaa.gov/data/observations/metar/stations");
+        props.setProperty("noaa.taf.base.url",
+                "https://aviationweather.gov/api/data/taf");
+
+        NoaaConfiguration config = new NoaaConfiguration(props);
+
+        assertFalse(config.validateConfiguration(),
+                "Should fail validation with incorrect aviationweather.gov API endpoint");
     }
-    
-    @Test
-    void testBuildTafUrlMultipleStations() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildTafUrl("KJFK", "KLGA");
-        
-        assertTrue(url.contains("KJFK"));
-        assertTrue(url.contains("KLGA"));
-        assertTrue(url.contains("ids="));
-    }
-    
-    @Test
-    void testBuildMetarBboxUrl() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildMetarBboxUrl(40.0, -75.0, 41.0, -73.0);
-        
-        assertTrue(url.contains("bbox="));
-        assertTrue(url.contains("-75"));
-        assertTrue(url.contains("40"));
-        assertTrue(url.contains("-73"));
-        assertTrue(url.contains("41"));
-    }
-    
-    @Test
-    void testBoundingBoxUrlFormat() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildMetarBboxUrl(40.5, -74.5, 41.5, -73.5);
-        
-        // Bbox format should be: minLon,minLat,maxLon,maxLat
-        assertTrue(url.matches(".*bbox=-74\\.5.*40\\.5.*-73\\.5.*41\\.5.*"));
-    }
-    
+
     @Test
     void testInvalidTimeoutUsesDefault() {
         Properties props = new Properties();
         props.setProperty("noaa.timeout.seconds", "invalid");
-        
+
         NoaaConfiguration config = new NoaaConfiguration(props);
-        
-        // Should fall back to default timeout
-        assertEquals(30, config.getTimeoutSeconds());
+
+        assertEquals(30, config.getTimeoutSeconds(),
+                "Should fall back to default timeout on parse error");
     }
-    
+
     @Test
-    void testNegativeTimeoutUsesDefault() {
+    void testInvalidRetryAttemptsUsesDefault() {
         Properties props = new Properties();
-        props.setProperty("noaa.timeout.seconds", "-10");
-        
+        props.setProperty("noaa.retry.attempts", "not_a_number");
+
         NoaaConfiguration config = new NoaaConfiguration(props);
-        
-        // Should parse -10, but it's a bad value
-        // The method parses it successfully, so we get -10
-        assertEquals(-10, config.getTimeoutSeconds());
+
+        assertEquals(3, config.getRetryAttempts(),
+                "Should fall back to default retry attempts on parse error");
     }
-    
+
     @Test
-    void testEmptyStationIdHandling() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildMetarUrl("");
-        
-        // Should still build URL even with empty station
-        assertTrue(url.contains("ids="));
-    }
-    
-    @Test
-    void testUrlFormatConsistency() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String metarUrl = config.buildMetarUrl("KJFK");
-        String tafUrl = config.buildTafUrl("KJFK");
-        
-        // Both should use same format parameter
-        assertTrue(metarUrl.contains("format=json"));
-        assertTrue(tafUrl.contains("format=json"));
-    }
-    
-    @Test
-    void testCustomFormatInUrls() {
+    void testInvalidRetryDelayUsesDefault() {
         Properties props = new Properties();
-        props.setProperty("noaa.format", "xml");
-        
+        props.setProperty("noaa.retry.delay.ms", "abc");
+
         NoaaConfiguration config = new NoaaConfiguration(props);
-        
-        String url = config.buildMetarUrl("KJFK");
-        assertTrue(url.contains("format=xml"));
+
+        assertEquals(1000, config.getRetryDelayMs(),
+                "Should fall back to default retry delay on parse error");
     }
-    
+
     @Test
-    void testVarargsWithEmptyArray() {
-        NoaaConfiguration config = new NoaaConfiguration();
-        
-        String url = config.buildMetarUrl(new String[]{});
-        
-        // Should handle empty array gracefully
-        assertNotNull(url);
-        assertTrue(url.contains("ids="));
-    }
-    
-    @Test
-    void testPropertiesPartialOverride() {
+    void testPartialPropertiesOverride() {
         Properties props = new Properties();
         props.setProperty("noaa.metar.base.url", "https://custom.metar.url");
         // Don't set TAF URL - should use default
-        
+
         NoaaConfiguration config = new NoaaConfiguration(props);
-        
+
         assertEquals("https://custom.metar.url", config.getMetarBaseUrl());
-        assertTrue(config.getTafBaseUrl().contains("aviationweather.gov"));
+        assertTrue(config.getTafBaseUrl().contains("tgftp.nws.noaa.gov"),
+                "TAF URL should use default");
+    }
+
+    @Test
+    void testGetConfigurationSummary() {
+        String summary = defaultConfig.getConfigurationSummary();
+
+        assertNotNull(summary);
+        assertTrue(summary.contains("NoaaConfiguration"));
+        assertTrue(summary.contains("metarBase="));
+        assertTrue(summary.contains("tafBase="));
+        assertTrue(summary.contains("timeout="));
+        assertTrue(summary.contains("retries="));
+    }
+
+    @Test
+    void testConfigurationSummaryWithCustomValues() {
+        Properties props = new Properties();
+        props.setProperty("noaa.timeout.seconds", "60");
+        props.setProperty("noaa.retry.attempts", "10");
+
+        NoaaConfiguration config = new NoaaConfiguration(props);
+        String summary = config.getConfigurationSummary();
+
+        assertTrue(summary.contains("timeout=60s"));
+        assertTrue(summary.contains("retries=10"));
+    }
+
+    @Test
+    void testEmptyStationIdHandling() {
+        String metarUrl = defaultConfig.buildMetarUrl("");
+        String tafUrl = defaultConfig.buildTafUrl("");
+
+        // Should still build URL even with empty station
+        assertTrue(metarUrl.endsWith("/.TXT"));
+        assertTrue(tafUrl.endsWith("/.TXT"));
+    }
+
+    @Test
+    void testMetarUrlFormat() {
+        String url = defaultConfig.buildMetarUrl("TEST");
+
+        // Verify exact format
+        String expected = "https://tgftp.nws.noaa.gov/data/observations/metar/stations/TEST.TXT";
+        assertEquals(expected, url);
+    }
+
+    @Test
+    void testTafUrlFormat() {
+        String url = defaultConfig.buildTafUrl("TEST");
+
+        // Verify exact format
+        String expected = "https://tgftp.nws.noaa.gov/data/forecasts/taf/stations/TEST.TXT";
+        assertEquals(expected, url);
+    }
+
+    @Test
+    void testMultipleStationsNotSupported() {
+        // The new TG FTP endpoint doesn't support multiple stations in one URL
+        // Each station has its own file
+        String url1 = defaultConfig.buildMetarUrl("KJFK");
+        String url2 = defaultConfig.buildMetarUrl("KLGA");
+
+        assertNotEquals(url1, url2, "Each station should have its own URL");
+        assertTrue(url1.contains("KJFK"));
+        assertTrue(url2.contains("KLGA"));
+    }
+
+    @Test
+    void testZeroTimeoutAllowed() {
+        Properties props = new Properties();
+        props.setProperty("noaa.timeout.seconds", "0");
+
+        NoaaConfiguration config = new NoaaConfiguration(props);
+
+        assertEquals(0, config.getTimeoutSeconds(),
+                "Zero timeout should be allowed (infinite wait)");
+    }
+
+    @Test
+    void testNegativeRetryAttempts() {
+        Properties props = new Properties();
+        props.setProperty("noaa.retry.attempts", "-1");
+
+        NoaaConfiguration config = new NoaaConfiguration(props);
+
+        // Method parses it successfully, returns negative value
+        // Could add validation in the actual class if needed
+        assertEquals(-1, config.getRetryAttempts());
     }
 }

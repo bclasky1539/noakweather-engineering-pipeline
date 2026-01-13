@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.10.0-SNAPSHOT - January 13, 2026
+
+#### NOAA Aviation Weather Ingestion System - Complete Implementation
+
+**Added:**
+- **NOAA Aviation Weather Ingestion System**
+    - Abstract base classes (`AbstractNoaaIngestionOrchestrator`, `AbstractNoaaIngestionApp`) to eliminate code duplication
+    - `NoaaConfiguration` for TG FTP endpoint management and URL building
+    - `NoaaAviationWeatherClient` for fetching METAR and TAF data from NOAA TG FTP service
+    - `MetarIngestionApp` and `TafIngestionApp` command-line applications
+    - Three execution modes: batch (one-time), scheduled (periodic), and interactive (command-line interface)
+    - Scheduled periodic ingestion with configurable intervals using `ScheduledExecutorService`
+    - Comprehensive test suite with 139 tests (100% pass rate)
+    - Station code validation (3-4 alphabetic characters)
+    - Retry logic with exponential backoff for NOAA API calls
+    - Batch processing support for multiple stations
+
+**Changed:**
+- **Refactored `SpeedLayerProcessor`** to be source-agnostic
+    - Now works with any `WeatherData` source, not just NOAA
+    - Generic processing pipeline for future data sources
+- Improved async testing patterns using Mockito's `timeout()` instead of `Thread.sleep()`
+
+**Fixed:**
+- Non-deterministic parallel processing test in `SpeedLayerProcessorTest`
+- 404 handling in NOAA client (returns null instead of throwing exception)
+
+**Technical Improvements:**
+- **Design Patterns**: Template Method, Strategy, Builder, Dependency Injection
+
+**Testing:**
+- Added 9 comprehensive test suites for NOAA components
+- Total of 139 passing tests (0 failures, 0 errors)
+- Coverage improvements:
+    - `schedulePeriodicIngestion`: 0% → ~90%
+    - Overall orchestrator: 78% instruction coverage
+
+**Documentation:**
+- Added comprehensive Javadoc for all public APIs
+- Inline comments explaining complex logic
+- Test documentation with clear arrange/act/assert structure
+
 ### Version 1.9.0-SNAPSHOT - January 10, 2026
 
 #### TAF Parser Implementation & Architecture Refactoring
