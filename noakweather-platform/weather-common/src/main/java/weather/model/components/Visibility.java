@@ -296,7 +296,7 @@ public record Visibility(
             case "KM" -> distanceValue * METERS_PER_KILOMETER;
             case "SM" -> distanceValue * METERS_PER_STATUTE_MILE;
             // Defensive: should never reach here due to constructor validation
-            default -> throw new IllegalStateException("Unknown unit: " + unit);
+            default -> throw new IllegalStateException("Unknown unit: " + unit); //NOSONAR - Defensive code, unreachable due to constructor validation
         };
     }
     
@@ -316,7 +316,7 @@ public record Visibility(
             case "M" -> distanceValue / METERS_PER_STATUTE_MILE;
             case "KM" -> distanceValue * SM_PER_KILOMETER;
             // Defensive: should never reach here due to constructor validation
-            default -> throw new IllegalStateException("Unknown unit: " + unit);
+            default -> throw new IllegalStateException("Unknown unit: " + unit); //NOSONAR - Defensive code, unreachable due to constructor validation
         };
     }
     
@@ -336,7 +336,7 @@ public record Visibility(
             case "M" -> distanceValue / METERS_PER_KILOMETER;
             case "SM" -> distanceValue * KM_PER_STATUTE_MILE;
             // Defensive: should never reach here due to constructor validation
-            default -> throw new IllegalStateException("Unknown unit: " + unit);
+            default -> throw new IllegalStateException("Unknown unit: " + unit); //NOSONAR - Defensive code, unreachable due to constructor validation
         };
     }
     
