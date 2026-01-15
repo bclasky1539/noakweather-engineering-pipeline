@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactoring focused on code quality and maintainability
 - All changes are internal improvements with no API changes
 - Prepares codebase for upcoming weather-storage integration
+- **SonarCloud Coverage Note**: New code coverage shows 25% due to 3 unreachable
+  defensive default branches in Visibility.java conversion methods. These branches
+  cannot be tested as the constructor validates all units. Overall project coverage
+  remains at 91%. This metric will reset with the next release.
 
 ### Version 1.10.0-SNAPSHOT - January 13, 2026
 
