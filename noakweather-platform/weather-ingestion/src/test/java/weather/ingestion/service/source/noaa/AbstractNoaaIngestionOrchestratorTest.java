@@ -346,7 +346,7 @@ class AbstractNoaaIngestionOrchestratorTest {
     }
 
     @Test
-    void testSchedulePeriodicIngestion_CallsIngestStationsBatch() throws Exception {
+    void testSchedulePeriodicIngestion_CallsIngestStationsBatch() {
         // Arrange
         List<String> stationIds = List.of("KJFK");
         int intervalMinutes = 1;
@@ -354,15 +354,8 @@ class AbstractNoaaIngestionOrchestratorTest {
         // Create a spy to verify method calls
         TestNoaaOrchestrator spyOrchestrator = spy(orchestrator);
 
-        when(mockNoaaClient.fetchMetarReport(anyString())).thenAnswer(invocation -> {
-            String stationId = invocation.getArgument(0);
-            return createMockWeatherData(stationId);
-        });
-
-        when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class))).thenAnswer(invocation -> {
-            WeatherData input = invocation.getArgument(0);
-            return createMockWeatherData(input.getStationId());
-        });
+        // Don't set up mocks for mockNoaaClient or mockSpeedLayerProcessor
+        // The spy verification on ingestStationsBatch is enough
 
         setSpeedLayerProcessor(spyOrchestrator, mockSpeedLayerProcessor);
 

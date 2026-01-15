@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,8 +30,8 @@ public class WeatherServiceException extends Exception {
     
     /**
      * Creates a WeatherServiceException with error type and message
-     * @param errorType
-     * @param message
+     * @param errorType error type
+     * @param message description of what went wrong
      */
     public WeatherServiceException(ErrorType errorType, String message) {
         super(message);
@@ -41,9 +41,9 @@ public class WeatherServiceException extends Exception {
     
     /**
      * Creates a WeatherServiceException with error type, message, and station code
-     * @param errorType
-     * @param message
-     * @param stationCode
+     * @param errorType error type
+     * @param message description of what went wrong
+     * @param stationCode station code
      */
     public WeatherServiceException(ErrorType errorType, String message, String stationCode) {
         super(message + " [Station: " + stationCode + "]");
@@ -53,10 +53,10 @@ public class WeatherServiceException extends Exception {
     
     /**
      * Creates a WeatherServiceException with error type, message, station code, and cause
-     * @param errorType
-     * @param message
-     * @param stationCode
-     * @param cause
+     * @param errorType error type
+     * @param message description of what went wrong
+     * @param stationCode station code
+     * @param cause the underlying exception
      */
     public WeatherServiceException(ErrorType errorType, String message, String stationCode, Throwable cause) {
         super(message + " [Station: " + stationCode + "]", cause);

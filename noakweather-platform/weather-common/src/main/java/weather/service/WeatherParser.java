@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,19 @@
  */
 package weather.service;
 
+import weather.exception.WeatherParseException;
 import weather.model.WeatherData;
 import weather.model.WeatherDataSource;
 
 /**
  * Universal interface for parsing weather data from any source.
- * 
+ * <p>
  * Design Pattern: Strategy Pattern
- * 
+ * <p>
  * Each weather source (NOAA, OpenWeatherMap, etc.) will have its own
  * implementation of this interface, allowing the system to parse data
  * from multiple sources using a common API.
- * 
+ * <p>
  * Analogy: Like having different "readers" for different file formats
  * (PDF reader, Word reader, etc.) that all implement a common "Document Reader"
  * interface.

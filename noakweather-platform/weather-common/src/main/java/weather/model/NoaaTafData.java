@@ -26,23 +26,23 @@ import java.util.Objects;
 
 /**
  * TAF-specific weather data model.
- *
+ * <p>
  * Extends NoaaWeatherData with TAF (Terminal Aerodrome Forecast) fields.
  * Inherits WeatherConditions from parent for the base forecast.
  * TAF is an aviation weather forecast valid for a specific time period (typically 24-30 hours).
- *
+ * <p>
  * TAF Structure:
  * - Header: Station, issue time, validity period
  * - Base forecast: Initial conditions for the period (stored in parent's conditions field)
  * - Change groups: FM, TEMPO, BECMG, PROB - variations from base forecast
  * - Optional: Max/min temperature forecasts
  * - Optional: Remarks
- *
+ * <p>
  * Example TAF:
  * TAF AMD KCLT 151953Z 1520/1624 VRB02KT P6SM FEW250
  *      FM152100 21005KT P6SM SCT250
  *      TEMPO 3003/3011 P6SM -SHSN BKN040 BKN160
- *
+ * <p>
  * Architecture:
  * - Uses ValidityPeriod for overall forecast validity
  * - Base forecast conditions inherited from NoaaWeatherData.conditions
@@ -71,7 +71,7 @@ public class NoaaTafData extends NoaaWeatherData {
     /**
      * All forecast periods including BASE and change groups.
      * Ordered chronologically. First element is typically the BASE forecast.
-     *
+     * <p>
      * Types of periods:
      * - BASE: Initial forecast conditions
      * - FM: Permanent change from exact time
@@ -79,7 +79,7 @@ public class NoaaTafData extends NoaaWeatherData {
      * - BECMG: Gradual change over period
      * - PROB: Probabilistic conditions
      */
-    private List<ForecastPeriod> forecastPeriods = new ArrayList<>();
+    private List<ForecastPeriod> forecastPeriods;
 
     /**
      * Maximum temperature forecast (Celsius).

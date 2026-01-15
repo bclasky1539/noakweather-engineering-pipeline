@@ -20,19 +20,19 @@ import java.time.Instant;
 
 /**
  * Immutable value object representing temperature information.
- *
+ * <p>
  * Supports both:
  * 1. Current observations (METAR): temperature and dewpoint
  * 2. Forecast extremes (TAF): maximum and minimum temperatures with occurrence times
- *
+ * <p>
  * Design Philosophy:
  * - Single unified Temperature class for all temperature data
  * - Fields are optional - use only what's relevant for the report type
  * - METAR uses: celsius, dewpointCelsius
  * - TAF uses: maxCelsius, maxTime, minCelsius, minTime
- *
+ * <p>
  * Temperatures are stored in Celsius.
- *
+ * <p>
  * Examples:
  * - METAR "22/12" → Temperature(22.0, 12.0, null, null, null, null)
  * - METAR "M05/M12" → Temperature(-5.0, -12.0, null, null, null, null)
@@ -345,14 +345,14 @@ public record Temperature(
     /**
      * Calculate relative humidity from temperature and dewpoint.
      * Only applicable for current observations (METAR).
-     *
+     * <p>
      * Uses the August-Roche-Magnus approximation (also known as the Bolton 1980
      * formula), which is the World Meteorological Organization (WMO) recommended
      * method for calculating saturation vapor pressure over liquid water.
-     *
+     * <p>
      * Formula: RH = 100 * (e_dewpoint / e_temperature)
      * Where: e(T) = 6.112 * exp((17.67 * T) / (T + 243.5))
-     *
+     * <p>
      * This formula is accurate to within ±0.06% for temperatures between
      * -40°C and +50°C, covering the typical range of meteorological observations.
      *
@@ -427,20 +427,20 @@ public record Temperature(
     /**
      * Get heat index (feels-like temperature) using NOAA's official algorithm.
      * Only applicable for current observations (METAR).
-     *
+     * <p>
      * Implementation follows the National Weather Service Technical Attachment (SR 90-23)
      * by Lans P. Rothfusz, which uses a refined regression equation with adjustments
      * for various temperature and humidity conditions.
-     *
+     * <p>
      * The algorithm has three calculation paths:
      * 1. Simple formula for HI < 80°F (Steadman approximation)
      * 2. Full Rothfusz regression for HI >= 80°F
      * 3. Adjustments for extreme humidity conditions
-     *
+     * <p>
      * Valid range: Temperature between 80°F and 112°F with any humidity.
      * Below 80°F, the simple formula is used.
-     *
-     * Reference: https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml
+     * <p>
+     * Reference: <a href="https://www.wpc.ncep.noaa.gov/html/heatindex_equation.shtml">...</a>
      *
      * @return heat index in Celsius, or null if conditions not met (temp < 27°C / 80°F)
      */
@@ -487,7 +487,7 @@ public record Temperature(
 
     /**
      * Calculate heat index using the Rothfusz regression equation.
-     *
+     * <p>
      * HI = -42.379 + 2.04901523*T + 10.14333127*RH - 0.22475541*T*RH
      *      - 0.00683783*T*T - 0.05481717*RH*RH + 0.00122874*T*T*RH
      *      + 0.00085282*T*RH*RH - 0.00000199*T*T*RH*RH
@@ -527,7 +527,7 @@ public record Temperature(
 
     /**
      * Apply NOAA adjustments for extreme humidity conditions.
-     *
+     * <p>
      * Two adjustments are applied:
      * 1. Low humidity (RH < 13%) and temp 80-112°F: subtract adjustment
      * 2. High humidity (RH > 85%) and temp 80-87°F: add adjustment

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,17 +148,5 @@ class WeatherServiceExceptionTest {
             );
             assertEquals(errorType, exception.getErrorType());
         }
-    }
-    
-    @Test
-    void testIsCheckedException() {
-        // WeatherServiceException extends Exception, so it's a checked exception
-        WeatherServiceException exception = new WeatherServiceException(
-                ErrorType.TIMEOUT,
-                "Test"
-        );
-    
-        assertTrue(exception instanceof Exception);
-        // Since it extends Exception (not RuntimeException), it's a checked exception
     }
 }

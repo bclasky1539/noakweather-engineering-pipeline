@@ -29,10 +29,12 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests for NoaaTafData class.
- *
+ * <p>
  * Tests TAF-specific functionality only.
  * Base class functionality (including inherited WeatherConditions) is tested in NoaaWeatherDataTest.
  *
@@ -783,5 +785,40 @@ class NoaaTafDataTest {
         data2.addForecastPeriod(ForecastPeriod.base(start, end, WeatherConditions.empty()));
 
         assertThat(data1).hasSameHashCodeAs(data2);
+    }
+
+    // ========== SET ISSUE TIME TESTS ==========
+
+    @Test
+    void testSetIssueTime() {
+        NoaaTafData tafData = new NoaaTafData();
+
+        Instant newIssueTime = Instant.parse("2024-01-15T12:00:00Z");
+        tafData.setIssueTime(newIssueTime);
+
+        assertEquals(newIssueTime, tafData.getIssueTime());
+    }
+
+    @Test
+    void testSetIssueTime_OverwritesExisting() {
+        Instant initialTime = Instant.parse("2024-01-15T10:00:00Z");
+        NoaaTafData tafData = new NoaaTafData("KJFK", initialTime);
+
+        assertEquals(initialTime, tafData.getIssueTime());
+
+        // Change the issue time
+        Instant newTime = Instant.parse("2024-01-15T14:00:00Z");
+        tafData.setIssueTime(newTime);
+
+        assertEquals(newTime, tafData.getIssueTime());
+    }
+
+    @Test
+    void testSetIssueTime_Null() {
+        NoaaTafData tafData = new NoaaTafData("KJFK", Instant.now());
+
+        tafData.setIssueTime(null);
+
+        assertNull(tafData.getIssueTime());
     }
 }
