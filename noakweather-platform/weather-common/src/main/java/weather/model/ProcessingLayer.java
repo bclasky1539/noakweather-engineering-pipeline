@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package weather.model;
 
 /**
  * Represents the Lambda Architecture processing layer.
- * 
+ * <p>
  * Lambda Architecture Pattern:
  * ┌─────────────┐
  * │ Speed Layer │ ──> Real-time, low-latency (S3, DynamoDB)
@@ -41,7 +41,7 @@ public enum ProcessingLayer {
     
     /**
      * Speed Layer: Real-time data processing
-     * 
+     * <p>
      * Characteristics:
      * - Low latency (seconds)
      * - Recent data only (last 24-48 hours)
@@ -53,7 +53,7 @@ public enum ProcessingLayer {
     
     /**
      * Batch Layer: Historical data processing
-     * 
+     * <p>
      * Characteristics:
      * - High latency (hours/days)
      * - All historical data
@@ -65,7 +65,7 @@ public enum ProcessingLayer {
     
     /**
      * Serving Layer: Merged views
-     * 
+     * <p>
      * Characteristics:
      * - Combines speed and batch layers
      * - Provides unified query interface
@@ -103,7 +103,7 @@ public enum ProcessingLayer {
     
     /**
      * Check if this layer is real-time focused
-     * @return 
+     * @return if this layer is real-time focused
      */
     public boolean isRealTime() {
         return this == SPEED_LAYER;
@@ -111,7 +111,7 @@ public enum ProcessingLayer {
     
     /**
      * Check if this layer stores historical data
-     * @return 
+     * @return if this layer stores historical data
      */
     public boolean isHistorical() {
         return this == BATCH_LAYER || this == SERVING_LAYER;

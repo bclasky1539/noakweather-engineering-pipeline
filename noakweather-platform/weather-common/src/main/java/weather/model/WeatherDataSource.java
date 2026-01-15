@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package weather.model;
 
 /**
  * Enumeration of all supported weather data sources.
- * 
+ * <p>
  * Each source has different characteristics:
  * - Data formats (XML, JSON)
  * - Update frequencies (real-time, hourly)
@@ -98,8 +98,8 @@ public enum WeatherDataSource {
     
     /**
      * Parse a source string into enum value (Java 17+ enhanced)
-     * @param source
-     * @return 
+     * @param source sourcer string
+     * @return enum value
      */
     public static WeatherDataSource fromString(String source) {
         if (source == null || source.isBlank()) {

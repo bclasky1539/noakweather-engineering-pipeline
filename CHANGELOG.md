@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.11.0-SNAPSHOT - January 15, 2026
+
+#### Weather Common Package Structure Refactoring & Code Quality Improvements
+
+**Changed:**
+- **Package Structure Reorganization** (weather-common)
+    - Moved `WeatherParseException` from `weather.service` to `weather.exception` package
+    - Improved package organization and discoverability
+    - Consistent exception placement with `ErrorType` and `WeatherServiceException`
+
+- **Code Quality Improvements** (weather-common)
+    - **Visibility.java**:
+        - Replaced `default` branches in conversion methods with `IllegalStateException` for unknown units
+        - Collapsed redundant `if` block in `isIFR()` method
+        - Improved conversion methods: `toMeters()`, `toStatuteMiles()`, `toKilometers()`
+    - **NoaaTafData.java**:
+        - Removed redundant field initialization for `forecastPeriods` (handled by constructors)
+        - Added `@Serial` annotation to `serialVersionUID`
+    - **IndexedLinkedHashMap.java**:
+        - Added `@Serial` annotations to serialization-related members
+        - Replaced iteration loop with `addAll()` in `readObject()` method (more efficient)
+        - Enhanced JavaDoc with comprehensive `@param` descriptions for class and methods
+    - **Exception Handling**:
+        - Updated imports across affected classes after package reorganization
+
+- **Test Improvements** (weather-common)
+    - **VisibilityTest.java**:
+        - Added tests for unknown unit handling (coverage for defensive code)
+        - Improved test clarity and conciseness
+    - **NoaaTafDataTest.java**:
+        - Added `testSetIssueTime()` to improve coverage (0% → 100%)
+        - Added null handling and overwrite scenarios
+
+**Technical Improvements:**
+- **Java 17+ Best Practices**:
+    - Improved serialization documentation and tool support
+- **Code Efficiency**:
+    - Bulk collection operations over iteration loops
+    - Eliminated redundant object creation
+- **Documentation**:
+    - Comprehensive JavaDoc additions for `IndexedLinkedHashMap`
+    - Better exception documentation with `@throws` tags
+
+**Fixed:**
+- Package structure inconsistency (exception in wrong package)
+
+**Testing:**
+- All tests passing in weather-common module
+- Maintained high test coverage (97%+ instruction coverage)
+- No breaking changes to public APIs
+
+**Notes:**
+- Refactoring focused on code quality and maintainability
+- All changes are internal improvements with no API changes
+- Prepares codebase for upcoming weather-storage integration
+
 ### Version 1.10.0-SNAPSHOT - January 13, 2026
 
 #### NOAA Aviation Weather Ingestion System - Complete Implementation

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package weather.service;
+package weather.exception;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +36,7 @@ class WeatherParseExceptionTest {
         String rawData = "INVALID DATA";
         WeatherDataSource source = WeatherDataSource.NOAA;
         
-        WeatherParseException exception = 
+        WeatherParseException exception =
             new WeatherParseException(
                 "Failed to parse", 
                 rawData, 

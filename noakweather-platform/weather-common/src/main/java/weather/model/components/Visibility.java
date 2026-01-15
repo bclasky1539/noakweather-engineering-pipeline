@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,11 @@ import weather.utils.ValidationPatterns;
 
 /**
  * Immutable value object representing visibility conditions.
- * 
+ * <p>
  * Visibility can be reported in statute miles (SM), meters, or special conditions
  * like CAVOK (Ceiling And Visibility OK). This replaces the legacy HashMap-based
  * visibility storage.
- * 
+ * <p>
  * Examples:
  * - "10SM" → Visibility(10.0, "SM", false, false, null)
  * - "9999" → Visibility(9999.0, "M", false, false, null)
@@ -252,11 +252,6 @@ public record Visibility(
             return true;
         }
         
-        // If it's "greater than" a value >= IFR max, it's not IFR
-        if (greaterThan) {
-            return sm < IFR_MAXIMUM_SM;
-        }
-        
         return sm < IFR_MAXIMUM_SM;
     }
     
@@ -280,11 +275,6 @@ public record Visibility(
             return true;
         }
         
-        // If it's "greater than" a value < low threshold, we can't be certain
-        if (greaterThan) {
-            return sm < LOW_VISIBILITY_SM;
-        }
-        
         return sm < LOW_VISIBILITY_SM;
     }
     
@@ -294,6 +284,7 @@ public record Visibility(
      * Convert visibility to meters for comparison.
      * 
      * @return visibility in meters, or null for special conditions
+     * @throws IllegalStateException if unit is not recognized (should never happen due to constructor validation)
      */
     public Double toMeters() {
         if (distanceValue == null) {
@@ -304,7 +295,8 @@ public record Visibility(
             case "M" -> distanceValue;
             case "KM" -> distanceValue * METERS_PER_KILOMETER;
             case "SM" -> distanceValue * METERS_PER_STATUTE_MILE;
-            default -> distanceValue;
+            // Defensive: should never reach here due to constructor validation
+            default -> throw new IllegalStateException("Unknown unit: " + unit);
         };
     }
     
@@ -312,6 +304,7 @@ public record Visibility(
      * Convert visibility to statute miles for comparison.
      * 
      * @return visibility in statute miles, or null for special conditions
+     * @throws IllegalStateException if unit is not recognized (should never happen due to constructor validation)
      */
     public Double toStatuteMiles() {
         if (distanceValue == null) {
@@ -322,7 +315,8 @@ public record Visibility(
             case "SM" -> distanceValue;
             case "M" -> distanceValue / METERS_PER_STATUTE_MILE;
             case "KM" -> distanceValue * SM_PER_KILOMETER;
-            default -> distanceValue;
+            // Defensive: should never reach here due to constructor validation
+            default -> throw new IllegalStateException("Unknown unit: " + unit);
         };
     }
     
@@ -330,6 +324,7 @@ public record Visibility(
      * Convert visibility to kilometers for comparison.
      * 
      * @return visibility in kilometers, or null for special conditions
+     * @throws IllegalStateException if unit is not recognized (should never happen due to constructor validation)
      */
     public Double toKilometers() {
         if (distanceValue == null) {
@@ -340,7 +335,8 @@ public record Visibility(
             case "KM" -> distanceValue;
             case "M" -> distanceValue / METERS_PER_KILOMETER;
             case "SM" -> distanceValue * KM_PER_STATUTE_MILE;
-            default -> distanceValue;
+            // Defensive: should never reach here due to constructor validation
+            default -> throw new IllegalStateException("Unknown unit: " + unit);
         };
     }
     
