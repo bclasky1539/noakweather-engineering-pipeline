@@ -24,18 +24,18 @@ import java.util.*;
 
 /**
  * Universal base class for all weather data in the platform.
- *
+ * <p>
  * Design Philosophy:
  * - Source-agnostic: Works with NOAA, OpenWeatherMap, WeatherAPI, etc.
  * - Lambda Architecture ready: Tracks which processing layer it belongs to
  * - Immutable core fields: ID and ingestion time never change
  * - Extensible: Subclasses add source-specific fields
  * - Metadata-focused: Contains WHO, WHAT, WHEN, WHERE - not the weather conditions themselves
- *
+ * <p>
  * This is analogous to a universal "fact table header" in a data warehouse that can
  * accept data from any source system. The actual weather conditions are stored in
  * subclass-specific structures (e.g., WeatherConditions for observations/forecasts).
- *
+ * <p>
  * Sealed class: Only permits known weather data types
  *
  * @author bclasky1539
@@ -48,6 +48,8 @@ import java.util.*;
 )
 @JsonSubTypes({
         @JsonSubTypes.Type(value = NoaaWeatherData.class, name = "NOAA"),
+        @JsonSubTypes.Type(value = NoaaMetarData.class, name = "METAR"),
+        @JsonSubTypes.Type(value = NoaaTafData.class, name = "TAF"),
         @JsonSubTypes.Type(value = TestWeatherData.class, name = "TEST")
 })
 @JsonIgnoreProperties(ignoreUnknown = true)

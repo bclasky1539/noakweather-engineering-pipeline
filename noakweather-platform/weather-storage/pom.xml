@@ -8,13 +8,18 @@
     <parent>
         <groupId>weather</groupId>
         <artifactId>noakweather-platform</artifactId>
-        <version>1.11.0-SNAPSHOT</version>
+        <version>1.12.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>weather-storage</artifactId>
     <packaging>jar</packaging>
     <name>Weather Storage</name>
-    <description>Universal database population (Batch Layer)</description>
+    <description>Database population and management (Speed Layer - DynamoDB, Batch Layer - Snowflake/S3)</description>
+
+    <properties>
+        <!-- Only define versions NOT in parent POM -->
+        <testcontainers.version>1.19.3</testcontainers.version>
+    </properties>
 
     <dependencies>
         <!-- Internal Dependencies -->
@@ -24,20 +29,75 @@
             <version>${project.version}</version>
         </dependency>
 
-        <!-- AWS SDK -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-        </dependency>
+        <!-- AWS SDK v2 (versions from parent BOM) -->
+        <!-- DynamoDB Client (synchronous) -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>dynamodb</artifactId>
+            <!-- Version managed by parent BOM -->
+        </dependency>
+
+        <!-- S3 Client (for batch layer) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <!-- Version managed by parent BOM -->
         </dependency>
 
         <!-- Snowflake JDBC -->
         <dependency>
             <groupId>net.snowflake</groupId>
             <artifactId>snowflake-jdbc</artifactId>
+            <!-- Version managed by parent -->
+        </dependency>
+
+        <!-- JSON Processing (from parent) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <!-- Version managed by parent -->
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <!-- Version managed by parent -->
+        </dependency>
+
+        <!-- Mockito for unit testing -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.14.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.14.2</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- AssertJ for better assertions -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- JaCoCo Code Coverage -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/weather/storage/examples/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

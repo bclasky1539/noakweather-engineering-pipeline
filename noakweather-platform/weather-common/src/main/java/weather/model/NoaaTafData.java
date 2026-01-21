@@ -16,6 +16,7 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import weather.model.components.ForecastPeriod;
 import weather.model.components.ValidityPeriod;
 
@@ -53,6 +54,7 @@ import java.util.Objects;
  * @author bclasky1539
  *
  */
+@JsonTypeName("TAF")
 public class NoaaTafData extends NoaaWeatherData {
 
     /**
@@ -370,9 +372,7 @@ public class NoaaTafData extends NoaaWeatherData {
     }
 
     @Override
-    public String getDataType() {
-        return "TAF";
-    }
+    public String getDataType() { return "TAF"; }
 
     @Override
     public String getSummary() {

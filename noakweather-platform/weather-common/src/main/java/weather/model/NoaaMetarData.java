@@ -16,6 +16,7 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import weather.model.components.remark.*;
 
 import java.time.Instant;
@@ -23,13 +24,13 @@ import java.util.Objects;
 
 /**
  * METAR-specific weather data model.
- *
+ * <p>
  * Extends NoaaWeatherData with METAR observation fields.
  * Inherits WeatherConditions from parent for current observations.
- *
+ * <p>
  * METAR (Meteorological Aerodrome Report) is an aviation weather observation
  * that describes current conditions at an airport.
- *
+ * <p>
  * Architecture:
  * - Weather conditions (wind, visibility, weather, sky, temp, pressure) inherited from NoaaWeatherData
  * - METAR-specific fields for remarks and supplemental data remain here
@@ -38,6 +39,7 @@ import java.util.Objects;
  * @author bclasky1539
  *
  */
+@JsonTypeName("METAR")
 public class NoaaMetarData extends NoaaWeatherData {
 
     // ========== REMARKS SECTION COMPONENTS ==========
@@ -98,16 +100,21 @@ public class NoaaMetarData extends NoaaWeatherData {
      */
     private boolean noSignificantChange;
 
+    /**
+     * Metar value
+     */
+    private static final String OBSERVATION_TYPE = "METAR";
+
     // ========== CONSTRUCTORS ==========
 
     public NoaaMetarData() {
         super();
-        setReportType("METAR");
+        setReportType(OBSERVATION_TYPE);
         this.noSignificantChange = false;
     }
 
     public NoaaMetarData(String stationId, Instant observationTime) {
-        super(stationId, observationTime, "METAR");
+        super(stationId, observationTime, OBSERVATION_TYPE);
         this.noSignificantChange = false;
     }
 
@@ -255,6 +262,9 @@ public class NoaaMetarData extends NoaaWeatherData {
     }
 
     // ========== OVERRIDES ==========
+
+    @Override
+    public String getDataType() { return OBSERVATION_TYPE; }
 
     @Override
     public String getSummary() {
