@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,140 +16,179 @@
  */
 package weather.storage.repository.dynamodb;
 
-import weather.model.WeatherData;
-import weather.model.WeatherDataSource;
-import weather.storage.repository.RepositoryStats;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
+import software.amazon.awssdk.services.dynamodb.model.*;
 
-import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
+import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Unit tests for DynamoDbRepository stub implementation.
- * 
+ * Unit tests for DynamoDbRepository.
+ * <p>
+ * These are basic tests using only JUnit Jupiter (no Mockito).
+ * Tests focus on validation logic and parameter checking.
+ * SonarQube-compliant: Only one method invocation per assertThrows.
+ *
  * @author bclasky1539
  *
  */
 class DynamoDbRepositoryTest {
-    
+
     private DynamoDbRepository repository;
-    
+    private DynamoDbClient mockClient;
+
     @BeforeEach
     void setUp() {
-        repository = new DynamoDbRepository();
+        mockClient = new MockDynamoDbClient();
+        repository = new DynamoDbRepository(mockClient);
     }
-    
+
     @Test
-    void testRepositoryIsInitialized() {
-        assertNotNull(repository, "Repository should be initialized");
+    void shouldThrowExceptionWhenSavingNullWeatherData() {
+        assertThrows(IllegalArgumentException.class, () -> repository.save(null));
     }
-    
+
     @Test
-    void testIsHealthyReturnsFalseForStub() {
-        assertFalse(repository.isHealthy(), 
-                   "Stub repository should not be healthy");
+    void shouldThrowExceptionWhenFindingWithNullStationId() {
+        Instant now = Instant.now();
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationAndTime(null, now));
     }
-    
+
     @Test
-    void testGetStatsReturnsValidStats() {
-        RepositoryStats stats = repository.getStats();
-        
-        assertNotNull(stats, "Stats should not be null");
-        assertEquals(0L, stats.getTotalRecordCount());
-        assertEquals(0, stats.getUniqueStationCount());
+    void shouldThrowExceptionWhenFindingWithEmptyStationId() {
+        Instant now = Instant.now();
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationAndTime("", now));
     }
-    
+
     @Test
-    void testFindByStationAndTimeReturnsEmpty() {
-        Optional<WeatherData> result = repository.findByStationAndTime(
-            "KJFK", 
-            LocalDateTime.now()
-        );
-        
-        assertFalse(result.isPresent(), 
-                   "Stub repository should return empty");
+    void shouldThrowExceptionWhenFindingWithNullTime() {
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationAndTime("KJFK", null));
     }
-    
+
     @Test
-    void testFindByStationAndTimeRangeReturnsEmptyList() {
-        List<WeatherData> results = repository.findByStationAndTimeRange(
-            "KJFK", 
-            LocalDateTime.now().minusDays(1), 
-            LocalDateTime.now()
-        );
-        
-        assertTrue(results.isEmpty(), 
-                  "Stub repository should return empty list");
+    void shouldThrowExceptionForDeleteOlderThan() {
+        Instant now = Instant.now();
+        assertThrows(UnsupportedOperationException.class,
+                () -> repository.deleteOlderThan(now));
     }
-    
+
     @Test
-    void testFindLatestByStationReturnsEmpty() {
-        Optional<WeatherData> result = repository.findLatestByStation("KJFK");
-        
-        assertFalse(result.isPresent());
+    void shouldThrowExceptionWhenTimeRangeIsInvalid() {
+        // Given
+        Instant now = Instant.now();
+        Instant earlier = now.minusSeconds(3600);
+
+        // When/Then - Start time is AFTER end time (invalid)
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationAndTimeRange("KJFK", now, earlier));
     }
-    
+
     @Test
-    void testFindBySourceAndTimeRangeReturnsEmptyList() {
-        List<WeatherData> results = repository.findBySourceAndTimeRange(
-            WeatherDataSource.NOAA, 
-            LocalDateTime.now().minusDays(1), 
-            LocalDateTime.now()
-        );
-        
-        assertTrue(results.isEmpty());
+    void shouldThrowExceptionWhenFindingRangeWithNullStationId() {
+        Instant now = Instant.now();
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationAndTimeRange(null, now, now));
     }
-    
+
     @Test
-    void testFindByStationsAndTimeReturnsEmptyList() {
-        List<String> stations = Arrays.asList("KJFK", "KLGA");
-        List<WeatherData> results = repository.findByStationsAndTime(
-            stations, 
-            LocalDateTime.now()
-        );
-        
-        assertTrue(results.isEmpty());
+    void shouldThrowExceptionWhenFindingRangeWithNullTimes() {
+        Instant now = Instant.now();
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationAndTimeRange("KJFK", null, now));
     }
-    
+
     @Test
-    void testSaveThrowsUnsupportedOperation() {
-        UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> repository.save(null)
-        );
-        
-        assertTrue(exception.getMessage().contains("not yet implemented"));
+    void shouldThrowExceptionWhenFindingLatestWithNullStationId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findLatestByStation(null));
     }
-    
+
     @Test
-    void testSaveBatchThrowsUnsupportedOperation() {
-        List<WeatherData> emptyList = Collections.emptyList();
-    
-        UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class,
-            () -> repository.saveBatch(emptyList)
-        );
-    
-        assertTrue(exception.getMessage().contains("not yet implemented"),
-                   "Exception should indicate feature not implemented");
+    void shouldThrowExceptionWhenFindingLatestWithEmptyStationId() {
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findLatestByStation(""));
     }
-    
+
     @Test
-    void testDeleteOlderThanThrowsUnsupportedOperation() {
-        LocalDateTime cutoffDate = LocalDateTime.now().minusMonths(6);
-        
-        UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> repository.deleteOlderThan(cutoffDate)
-        );
-        
-        assertTrue(exception.getMessage().contains("TTL"), 
-                  "Message should mention TTL as alternative");
+    void shouldThrowExceptionWhenFindingStationsWithNullTime() {
+        // Pre-create the list OUTSIDE the lambda to satisfy SonarQube
+        List<String> stationIds = List.of("KJFK");
+        assertThrows(IllegalArgumentException.class,
+                () -> repository.findByStationsAndTime(stationIds, null));
+    }
+
+    @Test
+    void shouldCreateRepositoryWithValidClient() {
+        // When
+        DynamoDbRepository repo = new DynamoDbRepository(mockClient);
+
+        // Then
+        assertNotNull(repo);
+    }
+
+    @Test
+    void shouldThrowExceptionWhenCreatingWithNullClient() {
+        assertThrows(NullPointerException.class, () -> new DynamoDbRepository(null));
+    }
+
+    // ========== MOCK CLIENT (Minimal Implementation) ==========
+
+    /**
+     * Minimal mock DynamoDB client for validation tests.
+     * Only implements required interface methods - all throw UnsupportedOperationException.
+     */
+    private static class MockDynamoDbClient implements DynamoDbClient {
+
+        @Override
+        public String serviceName() {
+            return "dynamodb";
+        }
+
+        @Override
+        public void close() {
+            // No-op
+        }
+
+        @Override
+        public PutItemResponse putItem(PutItemRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
+
+        @Override
+        public GetItemResponse getItem(GetItemRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
+
+        @Override
+        public QueryResponse query(QueryRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
+
+        @Override
+        public DeleteItemResponse deleteItem(DeleteItemRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
+
+        @Override
+        public BatchWriteItemResponse batchWriteItem(BatchWriteItemRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
+
+        @Override
+        public BatchGetItemResponse batchGetItem(BatchGetItemRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
+
+        @Override
+        public DescribeTableResponse describeTable(DescribeTableRequest request) {
+            throw new UnsupportedOperationException("Mock client - not implemented");
+        }
     }
 }

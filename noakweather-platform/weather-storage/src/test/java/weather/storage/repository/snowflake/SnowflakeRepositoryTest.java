@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import weather.storage.repository.RepositoryStats;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 
@@ -30,90 +30,93 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for SnowflakeRepository stub implementation.
- * 
+ * <p>
+ * UPDATED v1.12.0-SNAPSHOT: Changed from LocalDateTime to Instant for consistency
+ * with WeatherData domain model.
+ *
  * @author bclasky1539
  *
  */
 class SnowflakeRepositoryTest {
-    
+
     private SnowflakeRepository repository;
-    
+
     @BeforeEach
     void setUp() {
         repository = new SnowflakeRepository();
     }
-    
+
     @Test
     void testRepositoryIsInitialized() {
         assertNotNull(repository);
     }
-    
+
     @Test
     void testIsHealthyReturnsFalse() {
         assertFalse(repository.isHealthy());
     }
-    
+
     @Test
     void testGetStatsReturnsZeroStats() {
         RepositoryStats stats = repository.getStats();
-        
+
         assertNotNull(stats);
-        assertEquals(0L, stats.getTotalRecordCount());
+        assertEquals(0L, stats.totalRecordCount());
     }
-    
+
     @Test
     void testAllQueryMethodsReturnEmpty() {
         assertTrue(repository.findByStationAndTimeRange(
-            "KJFK", LocalDateTime.now(), LocalDateTime.now()
+                "KJFK", Instant.now(), Instant.now()
         ).isEmpty());
-        
+
         assertFalse(repository.findByStationAndTime(
-            "KJFK", LocalDateTime.now()
+                "KJFK", Instant.now()
         ).isPresent());
-        
+
         assertFalse(repository.findLatestByStation("KJFK").isPresent());
-        
+
         assertTrue(repository.findBySourceAndTimeRange(
-            WeatherDataSource.NOAA, LocalDateTime.now(), LocalDateTime.now()
+                WeatherDataSource.NOAA, Instant.now(), Instant.now()
         ).isEmpty());
-        
+
         assertTrue(repository.findByStationsAndTime(
-            Collections.singletonList("KJFK"), LocalDateTime.now()
+                Collections.singletonList("KJFK"), Instant.now()
         ).isEmpty());
     }
-    
+
     @Test
     void testSaveThrowsException() {
         UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> repository.save(null)
+                UnsupportedOperationException.class,
+                () -> repository.save(null)
         );
-        
+
         assertTrue(exception.getMessage().contains("not yet implemented"));
     }
-    
+
     @Test
     void testSaveBatchThrowsException() {
         List<WeatherData> emptyList = Collections.emptyList();
-    
+
         UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class,
-            () -> repository.saveBatch(emptyList)
+                UnsupportedOperationException.class,
+                () -> repository.saveBatch(emptyList)
         );
-    
+
         // assertThrows guarantees non-null, optionally verify message:
         assertTrue(exception.getMessage().contains("not yet implemented"));
     }
-    
+
     @Test
     void testDeleteOlderThanThrowsException() {
-        LocalDateTime cutoffDate = LocalDateTime.now();
-        
+        Instant cutoffDate = Instant.now();
+
         UnsupportedOperationException exception = assertThrows(
-            UnsupportedOperationException.class, 
-            () -> repository.deleteOlderThan(cutoffDate)
+                UnsupportedOperationException.class,
+                () -> repository.deleteOlderThan(cutoffDate)
         );
-    
+
         // Optionally verify message contains expected text
         assertTrue(exception.getMessage().contains("not yet implemented"));
     }

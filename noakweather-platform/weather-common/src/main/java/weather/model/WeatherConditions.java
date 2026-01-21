@@ -16,6 +16,8 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import weather.model.components.Wind;
 import weather.model.components.Visibility;
 import weather.model.components.PresentWeather;
@@ -29,26 +31,26 @@ import static weather.model.enums.SkyCoverage.*;
 
 /**
  * Universal weather conditions snapshot.
- *
+ * <p>
  * Represents a complete set of meteorological observations at a point in time,
  * regardless of data source (NOAA, OpenWeatherMap, etc.) or report type (METAR, TAF).
- *
+ * <p>
  * Design Philosophy:
  * - Source-agnostic: Same structure works for all weather data providers
  * - Reusable: Used in both observations (METAR) and forecasts (TAF forecast periods)
  * - Immutable: Once created, conditions don't change
  * - Optional fields: Not all reports contain all elements
  * - Pure universal: No source-specific conveniences (e.g., CAVOK handled in NOAA classes)
- *
+ * <p>
  * Think of this as the "common vocabulary" for describing weather conditions.
  * It's like a standardized form that different weather services fill out.
- *
+ * <p>
  * Usage Examples:
  * - METAR: Single WeatherConditions representing current conditions
  * - TAF: Multiple WeatherConditions, one per forecast period
  * - OpenWeatherMap: Single WeatherConditions for current weather
  * - 5-day forecast: List of WeatherConditions for each forecast interval
- *
+ * <p>
  * Analogy: If WeatherData is the "envelope" (who, what, when, where),
  * then WeatherConditions is the "letter" (the actual weather content).
  *
@@ -62,6 +64,7 @@ import static weather.model.enums.SkyCoverage.*;
  * @author bclasky1539
  *
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record WeatherConditions(
         Wind wind,
         Visibility visibility,
@@ -215,6 +218,7 @@ public record WeatherConditions(
      *
      * @return formatted summary string
      */
+    @JsonIgnore  // Add this to prevent Jackson from treating unknown fields as a property
     public String getSummary() {
         StringBuilder summary = new StringBuilder();
 

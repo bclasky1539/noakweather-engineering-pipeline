@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,104 +16,49 @@
  */
 package weather.storage.repository;
 
-import java.time.LocalDateTime;
-import java.util.Objects;
+import java.time.Instant;
 
 /**
  * Statistics and metrics about a weather data repository.
- * 
- * This class provides insight into the repository's contents and health,
+ * <p>
+ * This record provides insight into the repository's contents and health,
  * useful for monitoring and operational dashboards.
- * 
+ * <p>
+ * UPDATED v1.12.0-SNAPSHOT:
+ * - Changed from LocalDateTime to Instant for consistency with WeatherData domain model
+ * - Converted from class to record for immutability and conciseness
+ *
+ * @param totalRecordCount total number of records in the repository
+ * @param oldestRecordTime timestamp of the oldest record (UTC), or null if no records
+ * @param newestRecordTime timestamp of the newest record (UTC), or null if no records
+ * @param recordsLast24Hours number of records ingested in the last 24 hours
+ * @param recordsLast7Days number of records ingested in the last 7 days
+ * @param uniqueStationCount number of unique weather stations in the repository
+ * @param storageSize total storage size in bytes, if applicable
+ *
  * @author bclasky1539
  *
  */
-public class RepositoryStats {
-    
-    private final long totalRecordCount;
-    private final LocalDateTime oldestRecordTime;
-    private final LocalDateTime newestRecordTime;
-    private final long recordsLast24Hours;
-    private final long recordsLast7Days;
-    private final int uniqueStationCount;
-    private final long storageSize; // in bytes, if applicable
-    
-    public RepositoryStats(long totalRecordCount,
-                          LocalDateTime oldestRecordTime,
-                          LocalDateTime newestRecordTime,
-                          long recordsLast24Hours,
-                          long recordsLast7Days,
-                          int uniqueStationCount,
-                          long storageSize) {
-        this.totalRecordCount = totalRecordCount;
-        this.oldestRecordTime = oldestRecordTime;
-        this.newestRecordTime = newestRecordTime;
-        this.recordsLast24Hours = recordsLast24Hours;
-        this.recordsLast7Days = recordsLast7Days;
-        this.uniqueStationCount = uniqueStationCount;
-        this.storageSize = storageSize;
-    }
-    
-    // Getters
-    public long getTotalRecordCount() {
-        return totalRecordCount;
-    }
-    
-    public LocalDateTime getOldestRecordTime() {
-        return oldestRecordTime;
-    }
-    
-    public LocalDateTime getNewestRecordTime() {
-        return newestRecordTime;
-    }
-    
-    public long getRecordsLast24Hours() {
-        return recordsLast24Hours;
-    }
-    
-    public long getRecordsLast7Days() {
-        return recordsLast7Days;
-    }
-    
-    public int getUniqueStationCount() {
-        return uniqueStationCount;
-    }
-    
-    public long getStorageSize() {
-        return storageSize;
-    }
-    
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof RepositoryStats)) {
-            return false;
-        }
-        RepositoryStats that = (RepositoryStats) o;
-        return getTotalRecordCount() == that.getTotalRecordCount() &&
-               getRecordsLast24Hours() == that.getRecordsLast24Hours() &&
-               getRecordsLast7Days() == that.getRecordsLast7Days() &&
-               getUniqueStationCount() == that.getUniqueStationCount() &&
-               getStorageSize() == that.getStorageSize() &&
-               Objects.equals(getOldestRecordTime(), that.getOldestRecordTime()) &&
-               Objects.equals(getNewestRecordTime(), that.getNewestRecordTime());
-    }
-    
-    @Override
-    public int hashCode() {
-        return Objects.hash(getTotalRecordCount(), getOldestRecordTime(), getNewestRecordTime(),
-                           getRecordsLast24Hours(), getRecordsLast7Days(), 
-                           getUniqueStationCount(), getStorageSize());
-    }
-    
+public record RepositoryStats(
+        long totalRecordCount,
+        Instant oldestRecordTime,
+        Instant newestRecordTime,
+        long recordsLast24Hours,
+        long recordsLast7Days,
+        int uniqueStationCount,
+        long storageSize
+) {
+    /**
+     * Custom toString with formatted output for monitoring dashboards.
+     *
+     * @return formatted string representation
+     */
     @Override
     public String toString() {
         return String.format(
-            "RepositoryStats{totalRecords=%d, stations=%d, oldest=%s, newest=%s, last24h=%d, last7d=%d, size=%d bytes}",
-            totalRecordCount, uniqueStationCount, oldestRecordTime, newestRecordTime,
-            recordsLast24Hours, recordsLast7Days, storageSize
+                "RepositoryStats{totalRecords=%d, stations=%d, oldest=%s, newest=%s, last24h=%d, last7d=%d, size=%d bytes}",
+                totalRecordCount, uniqueStationCount, oldestRecordTime, newestRecordTime,
+                recordsLast24Hours, recordsLast7Days, storageSize
         );
     }
 }

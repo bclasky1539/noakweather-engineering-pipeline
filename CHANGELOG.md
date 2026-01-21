@@ -7,6 +7,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.12.0-SNAPSHOT - January 21, 2026
+
+#### Weather Storage Module - Complete Implementation & Unit Testing
+
+**Added:**
+- **DynamoDB Repository Implementation** (weather-storage)
+    - `DynamoDbRepository` - Complete CRUD operations for real-time data storage
+    - `DynamoDbMapper` - Bidirectional conversion between domain models and DynamoDB AttributeValue format
+    - `DynamoDbConfig` - AWS SDK configuration with region and endpoint support
+    - Single item operations: `save()`, `findByStationAndTime()`, `delete()`
+    - Batch operations: `saveBatch()`, `findByStationsAndTime()` with automatic chunking (25-item limit)
+    - Query operations: `findByStationAndTimeRange()`, `findLatestByStation()`, `findBySource()`
+    - Time-based queries: `findRecordsLast24Hours()`, `findRecordsLast7Days()`
+    - Scan operations: `findAll()` with pagination support
+    - Statistics and monitoring: `getStats()`, `isHealthy()`
+
+- **Jackson Polymorphic Serialization Support** (weather-common)
+    - `@JsonTypeInfo` annotation on `WeatherData` base class for type discrimination
+    - `@JsonSubTypes` registration for all WeatherData subclasses
+    - `@JsonTypeName` annotations on concrete classes (NoaaWeatherData, NoaaMetarData, NoaaTafData)
+    - Enables proper deserialization of polymorphic weather data from DynamoDB
+    - Type discriminator field "dataType" for identifying concrete types during deserialization
+
+- **Repository Pattern Implementation** (weather-storage)
+    - `UniversalWeatherRepository` interface - Source-agnostic repository contract
+    - `RepositoryStats` record - Immutable statistics model for monitoring
+    - `SnowflakeRepository` stub - Placeholder for batch layer implementation
+    - `AbstractStubRepository` - Base class for stub implementations
+
+- **Batch Processing Layer** (weather-storage)
+    - `BatchLayerProcessor` - Orchestrates bulk data operations
+    - `BatchProcessingResult` - Immutable result with success/failure tracking
+    - `BatchProcessingStats` - Aggregated statistics for batch operations
+    - Builder patterns for flexible result construction
+
+- **Exception Handling** (weather-storage)
+    - `WeatherDataMappingException` - JSON serialization/deserialization errors
+    - `WeatherDataPersistenceException` - Repository operation failures
+    - Comprehensive error context preservation
+
+**Fixed:**
+- **WeatherConditions Jackson Deserialization** (weather-common)
+    - Added `@JsonIgnoreProperties(ignoreUnknown = true)` annotation to handle unknown fields
+    - Added `@JsonIgnore` annotation to `getSummary()` method to prevent serialization
+    - Resolved `UnrecognizedPropertyException` for "summary" field in DynamoDbMapperTest
+    - Improved resilience to API changes and data format variations
+
+- **DynamoDbMapper Null Handling**
+    - Changed `fromAttributeMap()` to return `null` for empty/null maps instead of throwing exceptions
+    - Enables proper `Optional.empty()` returns from repository methods
+    - Graceful handling of "not found" scenarios without exceptions
+
+**Changed:**
+- **JaCoCo Coverage Configuration** (weather-storage)
+    - Excluded `**/weather/storage/examples/**` package from coverage metrics
+    - Removed `QuickDynamoDbTest` utility code from coverage reports
+    - Improved accuracy of coverage metrics (86% → 96% instruction coverage)
+    - Total measured lines reduced from 1,995 to 1,793 (excluded 202 example lines)
+
+- **WeatherData Type Hierarchy** (weather-common)
+    - Added `@JsonTypeName("METAR")` to NoaaMetarData
+    - Added `@JsonTypeName("TAF")` to NoaaTafData
+    - Added `@JsonTypeName("TEST")` to TestWeatherData
+    - Updated `@JsonSubTypes` on WeatherData to register all concrete subclasses
+    - Consistent type discrimination across entire hierarchy
+
+**Testing:**
+- **Weather Storage Unit Tests** - Comprehensive coverage achieved
+    - Overall Coverage: 96% instruction coverage, 90% branch coverage
+    - Total: 177 tests passing (0 failures, 0 errors)
+
+- **Coverage by Package:**
+    - weather.storage.repository.dynamodb: 95% instruction, 90% branch
+    - weather.storage.service: 96% instruction, 90% branch
+    - weather.storage.repository: 100% coverage
+    - weather.storage.config: 100% coverage
+    - weather.storage.exception: 100% coverage
+    - weather.storage.repository.snowflake: 100% coverage
+
+**Technical Details:**
+- **DynamoDB Schema Design:**
+    - Table name: `noakweather-data`
+    - Partition key: `station_id` (String)
+    - Sort key: `observation_time` (Number - epoch seconds)
+    - Attributes: Keys as native types, complex objects as JSON
+    - Strategy: Query-optimized keys with flexible JSON payloads
+
+- **Jackson Configuration:**
+    - JavaTimeModule registered for Instant/LocalDateTime support
+    - `FAIL_ON_UNKNOWN_PROPERTIES` disabled for API resilience
+    - Polymorphic type handling with discriminator field
+
+- **AWS SDK v2 Integration:**
+    - DynamoDbClient with configurable region/endpoint
+    - Batch operations with automatic 25-item chunking
+    - Exponential backoff for throttling scenarios
+    - Proper exception handling and logging
+
+- **Domain Model Alignment:**
+    - Uses `Instant` for timestamps (not `LocalDateTime`)
+    - Works with polymorphic `WeatherData` base class
+    - Supports `NoaaWeatherData`, `NoaaMetarData`, `NoaaTafData` subclasses
+    - Type-safe deserialization with Jackson annotations
+
+**Build & Quality:**
+- All 177 tests passing across weather-storage module
+- Build time: ~4.9 seconds
+
+**Documentation:**
+- AWS IAM DynamoDB user setup documentation
+- DynamoDB table schema and design patterns documented
+
+**Notes:**
+- Weather-storage module foundation complete with excellent test coverage
+- DynamoDB repository fully functional with mocked integration tests
+- Jackson polymorphic serialization properly configured
+- Unit testing phase complete (96% coverage)
+
 ### Version 1.11.0-SNAPSHOT - January 15, 2026
 
 #### Weather Common Package Structure Refactoring & Code Quality Improvements
