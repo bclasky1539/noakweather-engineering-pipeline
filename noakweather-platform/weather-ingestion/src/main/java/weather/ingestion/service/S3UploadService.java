@@ -38,7 +38,7 @@ import java.time.LocalDateTime;
 /**
  * Service for uploading weather data to Amazon S3.
  * Part of the Speed Layer in Lambda Architecture - provides low-latency access to recent data.
- * 
+ * <p>
  * S3 Structure:
  *   s3://bucket-name/speed-layer/
  *     ├── noaa/
@@ -46,7 +46,7 @@ import java.time.LocalDateTime;
  *     │   └── taf/2025/10/25/KLGA_20251025_1430.json
  *     └── openweather/
  *         └── current/2025/10/25/NewYork_20251025_1430.json
- * 
+ * <p>
  * NEW FUNCTIONALITY - Not present in legacy system
  * 
  * @author bclasky1539
@@ -72,7 +72,7 @@ public class S3UploadService {
         this.bucketName = bucketName;
         this.s3Client = S3Client.builder()
                 .region(Region.of(region))
-                .credentialsProvider(DefaultCredentialsProvider.create())
+                .credentialsProvider(DefaultCredentialsProvider.builder().build())
                 .build();
         
         this.objectMapper = new ObjectMapper();
@@ -187,7 +187,7 @@ public class S3UploadService {
     /**
      * Generates an S3 key (path) for a weather data record.
      * Format: speed-layer/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.json
-     * 
+     * <p>
      * Example: speed-layer/noaa/metar/2025/10/25/KJFK_20251025_1430.json
      * 
      * @param weatherData the weather data
