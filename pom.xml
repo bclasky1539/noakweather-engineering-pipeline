@@ -28,7 +28,15 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.projectKey>bclasky1539_noakweather-engineering-pipeline</sonar.projectKey>
         <sonar.projectName>Noakweather Engineering Pipeline</sonar.projectName>
-        <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
+
+        <!-- SonarQube Coverage Exclusions -->
+        <!-- Exclude utility tools, examples, and main application classes from coverage -->
+        <sonar.coverage.exclusions>
+            **/Main.java,
+            **/weather/storage/examples/**/*,
+            **/weather/storage/tools/**/*
+        </sonar.coverage.exclusions>
+
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
