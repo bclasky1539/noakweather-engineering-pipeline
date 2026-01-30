@@ -1,6 +1,25 @@
+/*
+ * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
+ * Copyright (C) 2025-2026 bclasky1539
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package weather.storage.repository.dynamodb;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
@@ -30,6 +49,10 @@ import java.util.Map;
  * 1. fromAttributeMap() now returns null for empty maps instead of throwing exception
  * 2. This allows repository layer to return Optional.empty() for "not found" cases
  * 3. Jackson configured with JavaTimeModule for Instant serialization
+ * 4. Phase 3.5: Added source field as top-level attribute for efficient server-side filtering
+ *
+ * @author bclasky1539
+ *
  */
 public class DynamoDbMapper {
 
@@ -57,10 +80,28 @@ public class DynamoDbMapper {
      */
     private static final String ATTR_DATA_TYPE = "dataType";
 
+    /**
+     * Attribute name for the data source (NOAA, INTERNAL, etc.)
+     * Extracted as top-level attribute for efficient server-side filtering (Phase 3.5)
+     */
+    private static final String ATTR_SOURCE = "source";
+
+    /**
+     * Attribute name for the time bucket (hourly granularity)
+     * Used as GSI partition key for efficient time-range queries (Phase 4)
+     * Format: "YYYY-MM-DD-HH" (e.g., "2024-01-27-15")
+     */
+    private static final String ATTR_TIME_BUCKET = "time_bucket";
+
     public DynamoDbMapper() {
         this.objectMapper = new ObjectMapper();
         // CRITICAL: Register JavaTimeModule to handle Instant serialization
         this.objectMapper.registerModule(new JavaTimeModule());
+        // Configure to ignore unknown properties (computed fields from records)
+        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        // Don't include getters in serialization (prevents computed properties from being serialized)
+        this.objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+        this.objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     }
 
     /**
@@ -68,6 +109,9 @@ public class DynamoDbMapper {
      * <p>
      * This is like a custom SQL INSERT statement generator - it takes your Java object
      * and creates the key-value pairs that DynamoDB needs to store it.
+     * <p>
+     * Phase 3.5: Now extracts 'source' field as a top-level attribute for efficient
+     * server-side filtering in findBySourceAndTimeRange() queries.
      *
      * @param weatherData the weather data to convert
      * @return a map of DynamoDB attributes
@@ -87,17 +131,30 @@ public class DynamoDbMapper {
                         AttributeValue.builder().s(weatherData.getStationId()).build());
             }
 
-            // Store the sort key (observation time as ISO-8601 string)
+            // Store the sort key (observation time as epoch seconds)
             if (weatherData.getObservationTime() != null) {
                 attributeMap.put(ATTR_OBSERVATION_TIME,
                         AttributeValue.builder()
-                                .s(weatherData.getObservationTime().toString())
+                                .n(String.valueOf(weatherData.getObservationTime().getEpochSecond()))
                                 .build());
+
+                // Phase 4: Store time bucket for GSI (hourly granularity)
+                // This enables efficient time-range queries via GSI instead of table scans
+                String timeBucket = formatTimeBucket(weatherData.getObservationTime());
+                attributeMap.put(ATTR_TIME_BUCKET,
+                        AttributeValue.builder().s(timeBucket).build());
             }
 
             // Store the data type for easier querying (even though it's in the JSON too)
             attributeMap.put(ATTR_DATA_TYPE,
                     AttributeValue.builder().s(weatherData.getDataType()).build());
+
+            // Phase 3.5: Store the source as a top-level attribute for server-side filtering
+            // This allows DynamoDB FilterExpressions to query by source without parsing JSON
+            if (weatherData.getSource() != null) {
+                attributeMap.put(ATTR_SOURCE,
+                        AttributeValue.builder().s(weatherData.getSource().name()).build());
+            }
 
             // Serialize the entire object to JSON and store it
             // This is similar to storing a JSONB column in PostgreSQL
@@ -188,7 +245,8 @@ public class DynamoDbMapper {
         key.put(ATTR_STATION_ID,
                 AttributeValue.builder().s(stationId).build());
         key.put(ATTR_OBSERVATION_TIME,
-                AttributeValue.builder().s(observationTime.toString()).build());
+                AttributeValue.builder().n(String.valueOf(observationTime.getEpochSecond())).build());
+
 
         return key;
     }
@@ -218,6 +276,27 @@ public class DynamoDbMapper {
             return null;
         }
         AttributeValue value = attributeMap.get(ATTR_OBSERVATION_TIME);
-        return value != null ? Instant.parse(value.s()) : null;
+        return value != null ? Instant.ofEpochSecond(Long.parseLong(value.n())) : null;
+    }
+
+    /**
+     * Formats an Instant into a time bucket string for GSI partitioning.
+     * <p>
+     * Phase 4: Time buckets enable efficient time-range queries via GSI.
+     * Uses hourly granularity to balance partition size and query efficiency.
+     * <p>
+     * Format: "YYYY-MM-DD-HH" (e.g., "2024-01-27-15" for 3 PM on Jan 27, 2024)
+     * <p>
+     * Examples:
+     * - 2024-01-27 15:30:45 UTC → "2024-01-27-15"
+     * - 2024-01-27 15:00:00 UTC → "2024-01-27-15"
+     * - 2024-01-27 15:59:59 UTC → "2024-01-27-15"
+     *
+     * @param instant the timestamp to format
+     * @return time bucket string in "YYYY-MM-DD-HH" format
+     */
+    private String formatTimeBucket(Instant instant) {
+        return instant.atZone(java.time.ZoneOffset.UTC)
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
     }
 }

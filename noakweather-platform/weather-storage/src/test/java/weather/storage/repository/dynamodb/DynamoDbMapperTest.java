@@ -67,7 +67,7 @@ class DynamoDbMapperTest {
                 .containsKey("observation_time");
 
         assertThat(key.get("station_id").s()).isEqualTo("KJFK");
-        assertThat(key.get("observation_time").s()).isEqualTo("2026-01-20T12:00:00Z");
+        assertThat(key.get("observation_time").n()).isEqualTo("1768910400");
     }
 
     @Test
@@ -96,9 +96,9 @@ class DynamoDbMapperTest {
         Map<String, AttributeValue> key2 = mapper.createPrimaryKey(stationId, time2);
 
         // Then
-        assertThat(key1.get("observation_time").s()).isEqualTo("2026-01-20T12:00:00Z");
-        assertThat(key2.get("observation_time").s()).isEqualTo("2026-01-20T13:00:00Z");
-        assertThat(key1.get("observation_time").s()).isNotEqualTo(key2.get("observation_time").s());
+        assertThat(key1.get("observation_time").n()).isEqualTo("1768910400");  // 12:00
+        assertThat(key2.get("observation_time").n()).isEqualTo("1768914000");  // 13:00
+        assertThat(key1.get("observation_time").n()).isNotEqualTo(key2.get("observation_time").n());
     }
 
     @Test
@@ -111,7 +111,8 @@ class DynamoDbMapperTest {
         Map<String, AttributeValue> key = mapper.createPrimaryKey(stationId, observationTime);
 
         // Then
-        assertThat(key.get("observation_time").s()).isEqualTo("2026-01-20T12:34:56.789Z");
+        // Only verifies second precision since we're storing epoch seconds
+        assertThat(key.get("observation_time").n()).isEqualTo("1768912496");
     }
 
     // ========== EXTRACT STATION ID TESTS ==========
@@ -187,7 +188,8 @@ class DynamoDbMapperTest {
         // Given
         Instant expectedTime = Instant.parse("2026-01-20T12:00:00Z");
         Map<String, AttributeValue> attributeMap = new HashMap<>();
-        attributeMap.put("observation_time", AttributeValue.builder().s(expectedTime.toString()).build());
+        attributeMap.put("observation_time",
+                AttributeValue.builder().n(String.valueOf(expectedTime.getEpochSecond())).build());
 
         // When
         Instant actualTime = mapper.extractObservationTime(attributeMap);
@@ -231,20 +233,6 @@ class DynamoDbMapperTest {
     }
 
     @Test
-    void shouldExtractObservationTimeWithMilliseconds() {
-        // Given
-        Instant expectedTime = Instant.parse("2026-01-20T12:34:56.789Z");
-        Map<String, AttributeValue> attributeMap = new HashMap<>();
-        attributeMap.put("observation_time", AttributeValue.builder().s(expectedTime.toString()).build());
-
-        // When
-        Instant actualTime = mapper.extractObservationTime(attributeMap);
-
-        // Then
-        assertThat(actualTime).isEqualTo(expectedTime);
-    }
-
-    @Test
     void shouldExtractDifferentObservationTimes() {
         // Given
         Instant[] times = {
@@ -257,7 +245,8 @@ class DynamoDbMapperTest {
 
         for (Instant expectedTime : times) {
             Map<String, AttributeValue> attributeMap = new HashMap<>();
-            attributeMap.put("observation_time", AttributeValue.builder().s(expectedTime.toString()).build());
+            attributeMap.put("observation_time",
+                    AttributeValue.builder().n(String.valueOf(expectedTime.getEpochSecond())).build());
 
             // When
             Instant actualTime = mapper.extractObservationTime(attributeMap);
@@ -396,7 +385,7 @@ class DynamoDbMapperTest {
         // Given
         Map<String, AttributeValue> attributeMap = new HashMap<>();
         attributeMap.put("station_id", AttributeValue.builder().s("KJFK").build());
-        attributeMap.put("observation_time", AttributeValue.builder().s(Instant.now().toString()).build());
+        attributeMap.put("observation_time", AttributeValue.builder().n(Instant.now().toString()).build());
         // No dataJson
 
         // When

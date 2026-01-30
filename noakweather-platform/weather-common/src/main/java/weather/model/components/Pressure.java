@@ -506,4 +506,14 @@ public record Pressure(
         double hPa = Integer.parseInt(qnh.substring(1));
         return new Pressure(hPa, PressureUnit.HECTOPASCALS);
     }
+
+    /**
+     * Factory method for creating pressure in inches of mercury.
+     *
+     * @param value Pressure value in inHg
+     * @return Pressure instance
+     */
+    public static Pressure ofInchesHg(double value) {
+        return new Pressure(value, PressureUnit.INCHES_HG);
+    }
 }

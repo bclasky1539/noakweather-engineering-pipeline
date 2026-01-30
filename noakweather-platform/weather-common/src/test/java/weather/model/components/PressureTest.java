@@ -1032,4 +1032,61 @@ class PressureTest {
         assertThat(str).contains("30.15")
                 .contains("INCHES_HG");
     }
+
+    @Test
+    @DisplayName("ofInchesHg() should create Pressure with correct value and unit")
+    void ofInchesHg_shouldCreatePressureWithCorrectValueAndUnit() {
+        // Given
+        double expectedValue = 29.92;
+
+        // When
+        Pressure pressure = Pressure.ofInchesHg(expectedValue);
+
+        // Then
+        assertThat(pressure).isNotNull();
+        assertThat(pressure.value()).isEqualTo(expectedValue);
+        assertThat(pressure.unit()).isEqualTo(PressureUnit.INCHES_HG);
+    }
+
+    @Test
+    @DisplayName("ofInchesHg() should handle standard sea level pressure")
+    void ofInchesHg_shouldHandleStandardSeaLevelPressure() {
+        // Given - Standard sea level pressure
+        double standardPressure = 29.92;
+
+        // When
+        Pressure pressure = Pressure.ofInchesHg(standardPressure);
+
+        // Then
+        assertThat(pressure.value()).isEqualTo(29.92);
+        assertThat(pressure.unit()).isEqualTo(PressureUnit.INCHES_HG);
+    }
+
+    @Test
+    @DisplayName("ofInchesHg() should handle low pressure systems")
+    void ofInchesHg_shouldHandleLowPressure() {
+        // Given - Low pressure (hurricane-like conditions)
+        double lowPressure = 28.50;
+
+        // When
+        Pressure pressure = Pressure.ofInchesHg(lowPressure);
+
+        // Then
+        assertThat(pressure.value()).isEqualTo(28.50);
+        assertThat(pressure.unit()).isEqualTo(PressureUnit.INCHES_HG);
+    }
+
+    @Test
+    @DisplayName("ofInchesHg() should handle high pressure systems")
+    void ofInchesHg_shouldHandleHighPressure() {
+        // Given - High pressure
+        double highPressure = 31.00;
+
+        // When
+        Pressure pressure = Pressure.ofInchesHg(highPressure);
+
+        // Then
+        assertThat(pressure.value()).isEqualTo(31.00);
+        assertThat(pressure.unit()).isEqualTo(PressureUnit.INCHES_HG);
+    }
 }

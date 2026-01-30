@@ -28,22 +28,22 @@ import java.util.Objects;
 
 /**
  * Platform-native NOAA weather data implementation.
- *
+ * <p>
  * This is the base class for all NOAA weather products (METAR, TAF, PIREP, etc.).
  * It extends the universal WeatherData base with NOAA-specific fields common across
  * all NOAA aviation weather reports.
- *
+ * <p>
  * Design Philosophy:
  * - NOAA-specific fields only (not in other weather sources)
  * - Shared across METAR, TAF, and other NOAA products
  * - Weather conditions stored in WeatherConditions object (single source of truth)
  * - Provides convenience getters that delegate to conditions
- *
+ * <p>
  * Architecture:
  * - WeatherConditions is the authoritative source for wind, visibility, weather, sky, temp, pressure
  * - All getters delegate to the conditions object
  * - Subclasses (NoaaMetarData, NoaaTafData) add product-specific fields
- *
+ * <p>
  * The legacy NoaaAviationWeatherData in noakweather-legacy remains unchanged.
  *
  * @author bclasky1539
@@ -60,7 +60,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     /**
      * Current weather conditions (wind, visibility, weather, sky, temperature, pressure).
      * This is the single source of truth for meteorological observations.
-     *
+     * <p>
      * All NOAA aviation products (METAR, TAF, etc.) use this structure.
      */
     private WeatherConditions conditions;
@@ -135,11 +135,11 @@ public non-sealed class NoaaWeatherData extends WeatherData {
 
     /**
      * Set the complete weather conditions.
-     *
+     * <p>
      * This is the primary way to set conditions. Parsers should use
      * WeatherConditions.builder() to construct the conditions object,
      * then pass it to this method.
-     *
+     * <p>
      * Example:
      * <pre>
      * WeatherConditions conditions = WeatherConditions.builder()
@@ -381,10 +381,10 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      * - No clouds below 5000ft
      * - No cumulonimbus
      * - No significant weather
-     *
+     * <p>
      * This is a convenience method for NOAA aviation weather products.
      * It creates a CAVOK visibility condition.
-     *
+     * <p>
      * Note: This method should be used by subclasses when parsing CAVOK from reports.
      * The actual WeatherConditions with CAVOK visibility should be set in the subclass.
      *
