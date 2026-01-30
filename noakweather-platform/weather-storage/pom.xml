@@ -8,18 +8,13 @@
     <parent>
         <groupId>weather</groupId>
         <artifactId>noakweather-platform</artifactId>
-        <version>1.12.0-SNAPSHOT</version>
+        <version>1.13.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>weather-storage</artifactId>
     <packaging>jar</packaging>
     <name>Weather Storage</name>
     <description>Database population and management (Speed Layer - DynamoDB, Batch Layer - Snowflake/S3)</description>
-
-    <properties>
-        <!-- Only define versions NOT in parent POM -->
-        <testcontainers.version>1.19.3</testcontainers.version>
-    </properties>
 
     <dependencies>
         <!-- Internal Dependencies -->
@@ -84,9 +79,52 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Testcontainers for integration testing -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Testcontainers JUnit 5 Integration -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- LocalStack Module -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-localstack</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Awaitility Module -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.3.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
+        <resources>
+            <!-- Include parent log4j2.xml -->
+            <resource>
+                <directory>../src/main/resources</directory>
+                <includes>
+                    <include>log4j2.xml</include>
+                </includes>
+            </resource>
+            <!-- Include own resources (if any) -->
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+
         <plugins>
             <!-- JaCoCo Code Coverage -->
             <plugin>
@@ -95,6 +133,7 @@
                 <configuration>
                     <excludes>
                         <exclude>**/weather/storage/examples/**</exclude>
+                        <exclude>**/weather/storage/tools/**</exclude>
                     </excludes>
                 </configuration>
             </plugin>

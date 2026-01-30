@@ -7,7 +7,7 @@
 
     <groupId>weather</groupId>
     <artifactId>noakweather-engineering-pipeline</artifactId>
-    <version>1.12.0-SNAPSHOT</version>
+    <version>1.13.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>NoakWeather Engineering Pipeline Root</name>
@@ -28,11 +28,26 @@
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.projectKey>bclasky1539_noakweather-engineering-pipeline</sonar.projectKey>
         <sonar.projectName>Noakweather Engineering Pipeline</sonar.projectName>
-        <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
+
+        <!-- SonarQube Coverage Exclusions -->
+        <!-- Exclude utility tools, examples, and main application classes from coverage -->
+        <sonar.coverage.exclusions>
+            **/Main.java,
+            **/weather/storage/examples/**/*,
+            **/weather/storage/tools/**/*
+        </sonar.coverage.exclusions>
+
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+
         <plugins>
             <!-- JaCoCo for aggregated coverage across all modules -->
             <plugin>

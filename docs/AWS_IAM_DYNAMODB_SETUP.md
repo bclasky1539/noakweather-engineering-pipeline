@@ -490,6 +490,9 @@ aws dynamodb list-tables --region us-east-1
 ```
 ---
 
+## Maintenance
+
 **Document Version:** 1.0  
-**Last Updated:** January 21, 2026,  
-**Project:** weather-platform (weather-storage module)
+**Last Updated:** January 25, 2026,  
+**Author:** NoakWeather Engineering Team  
+**Project:** NoakWeather Engineering Pipeline (weather-storage module)

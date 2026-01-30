@@ -194,14 +194,15 @@ FM282000 06008KT P6SM SCT040 BKN250
 - **Version Control**: Track changes to referenced documents
 
 ### Link Verification
-Last verified: July 17, 2025
+**Last Verified:** January 25, 2026,  
+**Author:** NoakWeather Engineering Team 
 
-**Next review due**: September 17, 2025
+**Next review due**: March 25, 2026,
 
 ## Related Documentation
-- [Code Standards](./CODE_STANDARDS.md) - Development guidelines
-- [Domain Model](../README.md#domain-model) - Architecture overview
-- [API Documentation](../README.md#api-usage) - Usage examples
+- [Code Standards](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/CODE_STANDARDS.md) - Development guidelines
+- [Domain Model](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/README.md#domain-model) - Architecture overview
+- [API Documentation](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/README.md#api-usage) - Usage examples
 
 ---
 

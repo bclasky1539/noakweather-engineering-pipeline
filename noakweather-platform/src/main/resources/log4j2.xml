@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <!-- Define log directory location
+             Priority: 1. NOAKWEATHER_LOG_DIR env var (recommended)
+                      2. maven.multiModuleProjectDirectory (when running from parent)
+                      3. user.dir/../logs (fallback when running from child) -->
+        <Property name="log.dir">${env:NOAKWEATHER_LOG_DIR:-${sys:maven.multiModuleProjectDirectory:-${sys:user.dir}/..}/logs}</Property>
+        <Property name="log.pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%t] %logger{36} - %msg%n</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- Console output for all modules -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
+        </Console>
+
+        <!-- Main application log file (all modules) -->
+        <RollingFile name="RollingFile"
+                     fileName="${log.dir}/noakweather.log"
+                     filePattern="${log.dir}/archive/noakweather-%d{yyyy-MM-dd-HH-mm-ss}-%i.log.gz"
+                     immediateFlush="true">
+            <PatternLayout pattern="${log.pattern}"/>
+            <Policies>
+                <!-- Roll over on application startup -->
+                <OnStartupTriggeringPolicy />
+                <!-- Roll over daily at midnight -->
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <!-- Roll over when file reaches 10MB -->
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${log.dir}/archive" maxDepth="1">
+                    <IfFileName glob="noakweather-*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <!-- Error log file (only ERROR and FATAL) -->
+        <RollingFile name="ErrorFile"
+                     fileName="${log.dir}/noakweather-error.log"
+                     filePattern="${log.dir}/archive/noakweather-error-%d{yyyy-MM-dd-HH-mm-ss}-%i.log.gz">
+            <PatternLayout pattern="${log.pattern}"/>
+            <Policies>
+                <OnStartupTriggeringPolicy />
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+        </RollingFile>
+
+        <!-- DynamoDB operations log (optional - for debugging) -->
+        <RollingFile name="DynamoDbFile"
+                     fileName="${log.dir}/dynamodb.log"
+                     filePattern="${log.dir}/archive/dynamodb-%d{yyyy-MM-dd-HH-mm-ss}-%i.log.gz">
+            <PatternLayout pattern="${log.pattern}"/>
+            <Policies>
+                <OnStartupTriggeringPolicy />
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="5MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="7"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Root logger - all modules (console + file) -->
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Root>
+
+        <!-- Weather platform modules -->
+        <Logger name="weather" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Logger>
+
+        <!-- DynamoDB repository operations (detailed logging) -->
+        <Logger name="weather.storage.repository.dynamodb" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="DynamoDbFile"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Logger>
+
+        <!-- Tools (like AddGSIsToAwsTable) -->
+        <Logger name="weather.storage.tools" level="info" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Logger>
+
+        <!-- Quiet down AWS SDK (only warnings and errors) -->
+        <Logger name="software.amazon.awssdk" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Logger>
+
+        <!-- Quiet down Apache HTTP client -->
+        <Logger name="org.apache.http" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Logger>
+
+        <!-- Quiet down Testcontainers (only in tests, but config applies) -->
+        <Logger name="org.testcontainers" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+
+        <!-- Quiet down Docker client used by Testcontainers -->
+        <Logger name="com.github.dockerjava" level="warn" additivity="false">
+            <AppenderRef ref="Console"/>
+        </Logger>
+    </Loggers>
+</Configuration>

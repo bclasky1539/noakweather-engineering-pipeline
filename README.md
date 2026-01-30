@@ -21,7 +21,7 @@ Source-agnostic weather data platform with Lambda Architecture implementation:
 - **weather-common**: Shared models and interfaces (source-agnostic)
 - **weather-ingestion**: Universal data collection and S3 upload (Speed Layer)
 - **weather-processing**: Stream and batch processing (Batch Layer)
-- **weather-storage**: Multi-backend storage (Snowflake, DynamoDB, S3)
+- **weather-storage**: Multi-backend storage (Snowflake, DynamoDB, S3) with Phase 4 GSI implementation
 - **weather-analytics**: Universal analytics and reporting (Serving Layer)
 - **weather-infrastructure**: AWS CDK infrastructure as code
 
@@ -32,7 +32,7 @@ Original NOAA-specific METAR/TAF decoder (maintained for reference and gradual m
 
 The platform implements **Lambda Architecture** to handle both real-time and batch processing:
 
-- **Speed Layer**: Real-time ingestion of weather data from multiple sources → S3
+- **Speed Layer**: Real-time ingestion of weather data from multiple sources → S3 → DynamoDB with time-bucket GSI
 - **Batch Layer**: Historical data processing and reprocessing
 - **Serving Layer**: Unified query interface combining real-time and batch views
 
@@ -45,8 +45,9 @@ The platform implements **Lambda Architecture** to handle both real-time and bat
 - **JUnit 5**: Comprehensive testing framework
 - **JaCoCo**: Code coverage analysis
 - **SonarQube**: Code quality and security scanning
-- **Log4j2/Logback**: Enterprise logging
+- **Log4j2/Logback**: Enterprise logging with centralized configuration
 - **GitHub Actions**: CI/CD pipeline
+- **LocalStack**: Local DynamoDB testing with Testcontainers
 
 ## What is METAR?
 
@@ -119,16 +120,108 @@ mvn clean verify sonar:sonar \
   -Dsonar.login=$SONAR_TOKEN
 ```
 
+## Documentation
+
+### Setup Guides
+
+- **[AWS IAM User Setup for DynamoDB](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/AWS_IAM_DYNAMODB_SETUP.md)** - Complete guide for creating AWS IAM users with DynamoDB permissions
+    - IAM user creation and permission setup
+    - Access key generation and secure storage
+    - AWS credentials file configuration
+    - Security best practices and troubleshooting
+
+- **[Logging Configuration Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/LOGGING_SETUP.md)** - Centralized logging configuration for multi-module projects
+    - Log4j2 master configuration
+    - Maven resources plugin setup
+    - Environment variable configuration
+    - Log rotation and retention policies
+
+### Deployment Guides
+
+- **[Phase 4 GSI Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/PHASE_4_GSI_DEPLOYMENT_GUIDE.md)** - Zero-downtime DynamoDB GSI deployment
+    - Pre-deployment checklist
+    - Step-by-step deployment instructions
+    - Rollback procedures
+    - Performance benchmarks (50x improvement)
+
+### Technical Documentation
+
+- **[Code Standards](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/CODE_STANDARDS.md)** - Comprehensive coding standards and best practices
+  - Package organization and architecture principles
+  - Naming conventions and code structure
+  - Error handling patterns and testing standards
+  - Git workflow and quality metrics
+  - Continuous integration requirements
+
+- **[Weather Format References](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/WEATHER_FORMAT_REFERENCES.md)** - METAR/TAF format specifications
+  - Official ICAO and FAA standards
+  - Complete format structure diagrams
+  - Weather element reference guide
+  - Live data feeds and validation tools
+  - Parsing considerations and implementation notes
+
+- **Architecture Decisions** - Lambda Architecture design patterns
+  - Speed Layer: Real-time data ingestion
+  - Batch Layer: Historical data processing
+  - Serving Layer: Query interface design
+
+### API Documentation
+
+- **DynamoDB Repository API** (weather-storage module)
+  - CRUD operations for weather data
+  - Time-bucket GSI query methods
+  - Batch operations and statistics
+  - Integration with AWS SDK v2
+
+- **Parser API** (weather-processing module)
+  - Universal parser interface
+  - NOAA METAR/TAF parsers
+  - Parse result handling
+  - Error handling patterns
+
+## Phase 4 Features (Latest)
+
+### DynamoDB Time-Bucket GSI Implementation
+
+**Performance Improvements:**
+- 50x faster time-range queries using `time-bucket-index` GSI
+- Hourly time buckets for optimal query performance
+- Backward-compatible table scan fallback
+- Zero-downtime deployment support
+
+**Technical Details:**
+```
+GSI Schema:
+- Index Name: time-bucket-index
+- Partition Key: time_bucket (String, "YYYY-MM-DD-HH")
+- Sort Key: observation_time (Number, epoch seconds)
+- Projection: ALL
+- Billing: On-demand
+
+Query Performance:
+- Table Scan: O(n) - ~200ms for 10,000 items
+- GSI Query: O(m) - ~4ms for same result (50x faster!)
+```
+
+**Deployment Strategy:**
+1. Deploy code with GSI support + fallback → Works immediately using table scan
+2. Add GSI to production table → ~5 minutes to create
+3. Queries automatically switch to GSI → 50x performance improvement
+4. Zero downtime throughout entire process
+
+See [Phase 4 Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/PHASE_4_CORRECTED_DEPLOYMENT_GUIDE.md) for details.
+
 ## Development Workflow
 
 This project follows a phased migration approach:
 
-1. **Phase 1** (Current): Multi-module structure with empty platform modules
-2. **Phase 2**: Migrate NOAA models to source-agnostic models in weather-common
-3. **Phase 3**: Build universal ingestion layer
-4. **Phase 4**: Implement storage and processing layers
-5. **Phase 5**: Add analytics and serving layer
-6. **Phase 6**: Deprecate legacy module
+1. **Phase 1** (Complete): Multi-module structure with platform foundation
+2. **Phase 2** (Complete): NOAA models and parsers
+3. **Phase 3** (Complete): Universal ingestion layer with S3 upload
+4. **Phase 4** (Complete): DynamoDB storage with time-bucket GSI and comprehensive testing
+5. **Phase 5** (Next): Analytics and serving layer
+6. **Phase 6** (Planned): Additional data sources
+7. **Phase 7** (Planned): Legacy deprecation
 
 ## Running Legacy METAR/TAF Decoder
 
@@ -145,6 +238,41 @@ The legacy decoder retrieves METAR and TAF data from NOAA or local files.
 cd noakweather-legacy
 ./weth.sh m KCLT Y I
 ```
+## Running DynamoDB Integration Tools
+
+### Add GSI to AWS Production Table
+
+```bash
+cd noakweather-platform/weather-storage
+
+# Add time-bucket-index GSI to production table
+mvn exec:java -Dexec.mainClass="weather.storage.tools.AddGSIsToAwsTable"
+
+# Expected output:
+# ✓ Table status verified: ACTIVE
+# ✓ No existing GSI found (safe to add)
+# ✓ Creating time-bucket-index GSI...
+# ✓ Waiting for GSI to become ACTIVE...
+# ✓ GSI deployment successful!
+# ✓ Query performance improved 50x
+```
+
+See [AWS IAM User Setup Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/AWS_IAM_DYNAMODB_SETUP.md) for AWS credentials setup.
+
+## Project Statistics
+
+**Current Status (v1.13.0-SNAPSHOT):**
+- **Total Tests**: 221 (weather-storage) + additional tests in other modules
+- **Code Coverage**: 90%+ overall (DynamoDB repository ~90%, parsers 85%+)
+- **Build Time**: ~21 seconds for weather-storage module
+- **Lines of Code**: ~15,000+ lines across platform modules
+- **Zero Failures**: All tests passing
+
+**Test Infrastructure:**
+- LocalStack for DynamoDB testing
+- Testcontainers for container management
+- JUnit 5 with AssertJ assertions
+- Comprehensive integration and unit tests
 
 ## Contributing
 
@@ -155,13 +283,35 @@ cd noakweather-legacy
 
 ## License
 
-Apache License 2.0 - See [LICENSE](LICENSE) for details
+Apache License 2.0 - See [LICENSE](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/LICENSE) for details
 
 ## Project Status
 
-**Active Development** - Currently in Phase 1 of platform migration
+**Active Development** - Phase 4 Complete, Phase 5 In Progress
 
----
+### Recent Milestones
+
+**Phase 4 Complete (January 2026)**
+- DynamoDB time-bucket GSI implementation
+- 50x performance improvement on time-range queries
+- Zero-downtime deployment support
+- Comprehensive integration test suite (221 tests)
+- Production-ready with complete documentation
+
+### Next Milestones
+
+**Phase 5 - Analytics & Serving Layer**
+- Query interface combining real-time + batch views
+- Analytics dashboard
+- API endpoints for weather data access
+- Real-time + batch view reconciliation
+
+## Support & Contact
 
 **Maintainer**: Brian Clasky (quark95cos@noayok.com)
+
+**Resources:**
+- [GitHub Repository](https://github.com/bclasky1539/noakweather-engineering-pipeline)
+- [Issue Tracker](https://github.com/bclasky1539/noakweather-engineering-pipeline/issues)
+- [Documentation](https://github.com/bclasky1539/noakweather-engineering-pipeline/tree/main/docs)
 
