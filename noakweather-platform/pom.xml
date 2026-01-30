@@ -74,7 +74,14 @@
         <sonar.projectKey>bclasky1539_noakweather-engineering-pipeline</sonar.projectKey>
         <sonar.projectName>Noakweather Engineering Pipeline</sonar.projectName>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.coverage.exclusions>**/Main.java</sonar.coverage.exclusions>
+
+        <!-- SonarQube Coverage Exclusions -->
+        <!-- Exclude utility tools, examples, and main application classes from coverage -->
+        <sonar.coverage.exclusions>
+            **/Main.java,
+            **/weather/storage/examples/**/*,
+            **/weather/storage/tools/**/*
+        </sonar.coverage.exclusions>
     </properties>
 
     <!-- Dependency Management -->

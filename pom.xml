@@ -34,10 +34,7 @@
         <sonar.coverage.exclusions>
             **/Main.java,
             **/weather/storage/examples/**/*,
-            **/weather/storage/tools/**/*,
-            **/AddGSIsToAwsTable.java,
-            **/TestLogRollover.java,
-            **/QuickDynamoDbTest.java
+            **/weather/storage/tools/**/*
         </sonar.coverage.exclusions>
 
         <maven.compiler.release>17</maven.compiler.release>
