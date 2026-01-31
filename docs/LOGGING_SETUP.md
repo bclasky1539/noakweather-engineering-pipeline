@@ -38,7 +38,7 @@ noakweather-engineering-pipeline/
 ## Prerequisites
 
 - Unix-like operating system (macOS, Linux) or Git Bash on Windows
-- Maven 3.6+
+- Maven 3.8+
 - Java 17+
 - Shell access to set environment variables
 

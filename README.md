@@ -209,7 +209,7 @@ Query Performance:
 3. Queries automatically switch to GSI → 50x performance improvement
 4. Zero downtime throughout entire process
 
-See [Phase 4 Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/PHASE_4_CORRECTED_DEPLOYMENT_GUIDE.md) for details.
+See [Phase 4 Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/PHASE_4_GSI_DEPLOYMENT_GUIDE.md) for details.
 
 ## Development Workflow
 
