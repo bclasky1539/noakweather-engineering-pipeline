@@ -18,15 +18,20 @@ package weather.ingestion.service;
 
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherData;
+import weather.model.WeatherDataSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -41,7 +46,7 @@ import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for S3UploadService using Mockito.
- * UPDATED: Now includes tests for dual storage functionality.
+ * UPDATED: Comprehensive coverage for dual storage functionality.
  *
  * @author bclasky1539
  *
@@ -52,6 +57,12 @@ class S3UploadServiceTest {
     @Mock
     private S3Client s3Client;
 
+    @Captor
+    private ArgumentCaptor<PutObjectRequest> putObjectRequestCaptor;
+
+    @Captor
+    private ArgumentCaptor<RequestBody> requestBodyCaptor;
+
     private S3UploadService uploadService;
 
     private static final String TEST_BUCKET = "test-weather-bucket";
@@ -61,7 +72,7 @@ class S3UploadServiceTest {
         uploadService = new S3UploadService(s3Client, TEST_BUCKET);
     }
 
-    // ===== NEW: Dual Storage Tests =====
+    // ===== NEW: Comprehensive Dual Storage Tests =====
 
     @Test
     void testUploadWeatherDataDual() throws IOException {
@@ -98,6 +109,74 @@ class S3UploadServiceTest {
     }
 
     @Test
+    void testUploadWeatherDataDual_VerifyContentTypes() throws IOException {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KLAX");
+
+        PutObjectResponse response = PutObjectResponse.builder()
+                .eTag("test-etag")
+                .build();
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(response);
+
+        // Act
+        uploadService.uploadWeatherDataDual(weatherData);
+
+        // Assert
+        verify(s3Client, times(2)).putObject(putObjectRequestCaptor.capture(), any(RequestBody.class));
+
+        List<PutObjectRequest> requests = putObjectRequestCaptor.getAllValues();
+        assertEquals(2, requests.size());
+
+        // First request should be raw text
+        PutObjectRequest rawRequest = requests.get(0);
+        assertEquals("text/plain", rawRequest.contentType());
+        assertTrue(rawRequest.key().contains("raw-data"));
+        assertTrue(rawRequest.key().endsWith(".txt"));
+
+        // Second request should be JSON
+        PutObjectRequest jsonRequest = requests.get(1);
+        assertEquals("application/json", jsonRequest.contentType());
+        assertTrue(jsonRequest.key().contains("speed-layer"));
+        assertTrue(jsonRequest.key().endsWith(".json"));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_VerifyMetadata() throws IOException {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KCLT");
+
+        PutObjectResponse response = PutObjectResponse.builder()
+                .eTag("test-etag")
+                .build();
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(response);
+
+        // Act
+        uploadService.uploadWeatherDataDual(weatherData);
+
+        // Assert
+        verify(s3Client, times(2)).putObject(putObjectRequestCaptor.capture(), any(RequestBody.class));
+
+        List<PutObjectRequest> requests = putObjectRequestCaptor.getAllValues();
+
+        // Both requests should have metadata
+        for (PutObjectRequest request : requests) {
+            assertNotNull(request.metadata());
+            assertEquals("NOAA", request.metadata().get("source"));
+            assertEquals("KCLT", request.metadata().get("station-id"));
+        }
+
+        // Raw request has specific metadata
+        assertEquals("METAR", requests.get(0).metadata().get("data-type"));
+
+        // JSON request has specific metadata
+        assertEquals("METAR", requests.get(1).metadata().get("report-type"));
+    }
+
+    @Test
     void testUploadWeatherDataDual_NullWeatherData() {
         // Act & Assert
         IOException exception = assertThrows(IOException.class,
@@ -105,6 +184,156 @@ class S3UploadServiceTest {
 
         assertTrue(exception.getMessage().contains("null"));
         verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_NullRawData() {
+        // Arrange - Create WeatherData with null raw data
+        NoaaWeatherData weatherData = new NoaaWeatherData("KJFK", Instant.now(), "METAR");
+        weatherData.setRawData(null); // This should trigger validation
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Raw data cannot be null or empty"));
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_EmptyRawData() {
+        // Arrange - Create WeatherData with empty raw data
+        NoaaWeatherData weatherData = new NoaaWeatherData("KJFK", Instant.now(), "METAR");
+        weatherData.setRawData(""); // This should trigger validation
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Raw data cannot be null or empty"));
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_NullStationId() {
+        // Arrange - Create WeatherData with null station ID
+        NoaaWeatherData weatherData = new NoaaWeatherData(null, Instant.now(), "METAR");
+        weatherData.setRawData("METAR KJFK 251651Z 28016KT");
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Station ID cannot be null or empty"));
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_EmptyStationId() {
+        // Arrange - Create WeatherData with empty station ID
+        NoaaWeatherData weatherData = new NoaaWeatherData("", Instant.now(), "METAR");
+        weatherData.setRawData("METAR KJFK 251651Z 28016KT");
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Station ID cannot be null or empty"));
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_EmptyDataType() {
+        // Arrange - Create WeatherData with empty data type
+        NoaaWeatherData weatherData = new NoaaWeatherData("KJFK", Instant.now(), "");
+        weatherData.setRawData("METAR KJFK 251651Z 28016KT");
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Data type cannot be null or empty"));
+        verify(s3Client, never()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    // NOTE: testUploadWeatherDataDual_NullIngestionTime removed because:
+    // - WeatherData.ingestionTime is final and always initialized in constructor
+    // - getIngestionTime() can never return null
+    // - The validation check in uploadRawDataWithPartitioning() is unreachable code
+
+    @Test
+    void testUploadWeatherDataDual_RawUploadFailsS3Exception() {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KJFK");
+
+        S3Exception s3Exception = (S3Exception) S3Exception.builder()
+                .message("Access Denied")
+                .awsErrorDetails(AwsErrorDetails.builder()
+                        .errorCode("AccessDenied")
+                        .errorMessage("Access Denied")
+                        .build())
+                .build();
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(s3Exception);
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Failed to upload raw data"));
+
+        // Only one putObject call (the failed raw upload)
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_RawUploadFailsRuntimeException() {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KJFK");
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenThrow(new RuntimeException("Network error"));
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        assertTrue(exception.getMessage().contains("Failed to upload raw data to S3"));
+
+        // Only one putObject call
+        verify(s3Client, times(1)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
+    }
+
+    @Test
+    void testUploadWeatherDataDual_JsonUploadFailsAfterRawSucceeds() {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KJFK");
+
+        PutObjectResponse successResponse = PutObjectResponse.builder()
+                .eTag("test-etag")
+                .build();
+
+        // Use RuntimeException instead of S3Exception to avoid awsErrorDetails() mocking issues
+        // Production code handles both exception types the same way
+        RuntimeException uploadFailure = new RuntimeException("S3 quota exceeded");
+
+        // First call (raw text) succeeds, second call (JSON) fails
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(successResponse)  // Raw upload succeeds
+                .thenThrow(uploadFailure);    // JSON upload fails
+
+        // Act & Assert
+        IOException exception = assertThrows(IOException.class,
+                () -> uploadService.uploadWeatherDataDual(weatherData));
+
+        // Verify error message indicates failure
+        assertTrue(exception.getMessage().contains("Failed to upload") ||
+                        exception.getMessage().contains("S3 upload failed"),
+                "Expected error about upload failure, got: " + exception.getMessage());
+
+        // Both putObject calls should have been made (raw succeeded, JSON failed)
+        verify(s3Client, times(2)).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 
     @Test
@@ -201,7 +430,6 @@ class S3UploadServiceTest {
         S3UploadService.DualStorageResult result = uploadService.uploadWeatherDataDual(weatherData);
 
         // Assert - extract timestamp from both keys
-        // Keys should have format: .../STATION_YYYYMMDD_HHMM.ext
         String rawTimestamp = extractTimestamp(result.rawTextKey());
         String jsonTimestamp = extractTimestamp(result.jsonKey());
 
@@ -591,7 +819,8 @@ class S3UploadServiceTest {
     private WeatherData createTestWeatherData(String stationId) {
         try {
             NoaaWeatherData data = new NoaaWeatherData(stationId, Instant.now(), "METAR");
-            data.setRawData("{\"test\": \"data\"}");
+            data.setRawData("METAR " + stationId + " 251651Z 28016KT 10SM FEW250 22/12 A3015");
+            data.setSource(WeatherDataSource.NOAA);
             return data;
         } catch (Exception e) {
             throw new RuntimeException("Failed to create test data", e);
