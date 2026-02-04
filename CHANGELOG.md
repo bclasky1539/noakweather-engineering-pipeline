@@ -7,6 +7,116 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.14.0-SNAPSHOT - February 03, 2026
+
+#### Weather Ingestion Module - Dual Storage Implementation for NOAA Data
+
+**Added:**
+- **Dual Storage System** - Simultaneous storage of raw text and JSON formats
+    - Raw text files stored in `raw-data/{source}/{type}/{year}/{month}/{day}/` structure
+    - JSON files stored in `speed-layer/{source}/{type}/{year}/{month}/{day}/` structure
+    - Consistent date partitioning across both storage types
+    - File naming: `{station}_{timestamp}.{ext}` where timestamp is `yyyyMMdd_HHmm`
+
+- **S3UploadService Enhancements** (weather-ingestion)
+    - `uploadWeatherDataDual()` - Recommended method for NOAA data ingestion with dual storage
+    - `uploadRawDataWithPartitioning()` - Enhanced raw data upload with date partitioning
+    - `DualStorageResult` record - Immutable result containing both S3 keys (raw text + JSON)
+        - Compact constructor with validation
+        - Ensures both keys are non-null and non-empty
+        - Accessor methods: `rawTextKey()`, `jsonKey()`
+    - Enhanced metadata tagging for both raw text and JSON uploads
+    - Comprehensive parameter validation in all upload methods
+
+- **Enhanced Metadata Tracking** (weather-ingestion)
+    - `s3_raw_key` - S3 key for raw text file location
+    - `s3_json_key` - S3 key for JSON file location
+    - `s3_key` - Legacy field maintained for backward compatibility (points to JSON)
+    - `storage_format` - Set to "dual" to indicate both formats stored
+    - `processor_version` - Updated to "2.1"
+
+- **Documentation** (weather-ingestion)
+    - `S3_BUCKET_SETUP.md` - Comprehensive S3 bucket configuration guide
+        - AWS CLI and Console setup instructions
+        - Lifecycle policies for cost optimization
+        - Bucket structure and partitioning examples
+        - Security best practices
+        - Troubleshooting guide
+    - `SINGLE_STATION_INTEGRATION_TEST.md` - Step-by-step integration testing procedures
+        - Pre-flight checklist
+        - Test execution instructions
+        - Validation commands
+        - Success criteria
+        - Troubleshooting scenarios
+
+**Changed:**
+- **S3UploadService** (weather-ingestion)
+    - `uploadWeatherDataDual()` now the recommended method for NOAA data ingestion
+    - Enhanced partitioning structure matches between raw-data and speed-layer paths
+    - Improved metadata tagging with source, station-id, data-type, and ingestion-time
+    - Added comprehensive validation in `uploadRawDataWithPartitioning()` for all parameters
+    - Updated S3 content types: `text/plain` for raw text, `application/json` for JSON
+
+- **SpeedLayerProcessor** (weather-ingestion)
+    - Updated to use dual storage by default via `uploadWeatherDataDual()`
+    - Processor version incremented from "2.0" to "2.1"
+    - Enhanced metadata enrichment with `storage_format` field
+    - Both S3 keys now stored in processed WeatherData metadata
+    - Updated statistics output to indicate dual storage enabled
+    - Improved logging with both raw and JSON file paths
+
+- **S3 Bucket Structure** (weather-ingestion)
+    - Standardized date partitioning: `{year}/{month}/{day}/` for both storage types
+    - File naming convention: `{station}_{timestamp}.{ext}`
+    - Timestamp format: `yyyyMMdd_HHmm` (UTC timezone)
+    - Consistent metadata across both raw and JSON uploads
+    - Example raw path: `raw-data/noaa/metar/2026/02/03/KCLT_20260203_1430.txt`
+    - Example JSON path: `speed-layer/noaa/metar/2026/02/03/KCLT_20260203_1430.json`
+
+**Technical Details:**
+- **Dual Storage Benefits:**
+    - Raw text enables long-term archival and reprocessing
+    - JSON enables fast querying and analysis
+    - Both formats stored simultaneously in single transaction
+    - Date partitioning optimizes query performance and cost
+
+- **File Format Specifications:**
+    - Raw text files: `.txt` extension with `text/plain` content type
+    - JSON files: `.json` extension with `application/json` content type
+    - Both include comprehensive S3 metadata for tracking and filtering
+
+- **Time Handling:**
+    - All timestamps in UTC for consistency
+    - Date partitioning uses ingestion time (not observation time)
+    - Supports month/year boundary transitions correctly
+
+- **Backward Compatibility:**
+    - Existing single-storage deployments continue to work
+    - Legacy `s3_key` metadata field maintained (points to JSON)
+    - New deployments should use `uploadWeatherDataDual()` method
+    - Graceful handling of missing dual storage fields
+
+**Migration Notes:**
+- New deployments should use `uploadWeatherDataDual()` for NOAA data
+- Existing code using `uploadWeatherData()` (JSON-only) continues to work
+- Legacy `s3_key` field maintained for backward compatibility
+- Update lifecycle policies to handle both `raw-data/` and `speed-layer/` prefixes
+- Recommended lifecycle:
+    - Speed layer JSON: Delete after 30 days (recent data only)
+    - Raw data text: Archive to Glacier after 90 days (long-term storage)
+
+**Build & Quality:**
+- All existing tests passing (0 failures, 0 errors)
+- No breaking changes to public APIs
+- Requires Java 16+ for record types (`DualStorageResult`)
+- AWS SDK S3 client configuration unchanged
+
+**Notes:**
+- Dual storage implementation complete and production-ready
+- Comprehensive documentation enables smooth deployment
+- Integration test guide validates end-to-end functionality
+- Ready for production deployment with monitoring and lifecycle policies
+
 ### Version 1.13.0-SNAPSHOT - January 28, 2026
 
 #### Weather Storage Module - Phase 4 GSI Implementation & DynamoDB Integration Testing

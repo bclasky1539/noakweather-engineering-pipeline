@@ -130,6 +130,20 @@ mvn clean verify sonar:sonar \
     - AWS credentials file configuration
     - Security best practices and troubleshooting
 
+- **[S3 Bucket Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/S3_BUCKET_SETUP.md)** - Comprehensive guide for configuring S3 buckets for dual-storage weather data
+  - AWS CLI and Console bucket creation
+  - Lifecycle policies for cost optimization (30-day retention, Glacier archival)
+  - Bucket structure and date partitioning examples
+  - Security best practices (encryption, public access blocking)
+  - Environment variable configuration and troubleshooting
+
+- **[Single Station Integration Test](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/SINGLE_STATION_INTEGRATION_TEST.md)** - Step-by-step guide for testing dual-storage NOAA data ingestion
+  - Pre-flight checklist (AWS credentials, S3 access, Maven build)
+  - Test execution for KCLT (Charlotte Douglas International)
+  - Validation commands for raw text and JSON files
+  - Success criteria and verification steps
+  - Troubleshooting common issues
+
 - **[Logging Configuration Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/LOGGING_SETUP.md)** - Centralized logging configuration for multi-module projects
     - Log4j2 master configuration
     - Maven resources plugin setup
