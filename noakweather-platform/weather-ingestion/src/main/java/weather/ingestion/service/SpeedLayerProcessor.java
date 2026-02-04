@@ -32,12 +32,12 @@ import java.util.concurrent.*;
 /**
  * Speed Layer Processor for Lambda Architecture.
  * <p>
- * REFACTORED to be completely generic - works with ANY weather data source.
+ * UPDATED: Now uses DUAL STORAGE (raw text + JSON) for NOAA data
  * <p>
  * Responsibilities (GENERIC ONLY):
  * 1. Enrich weather data with generic metadata
  * 2. Tag data with ProcessingLayer.SPEED_LAYER
- * 3. Upload to S3 for low-latency access
+ * 3. Upload to S3 in BOTH raw text and JSON formats
  * <p>
  * NOT responsible for:
  * - Source-specific validation (handled by orchestrators)
@@ -90,16 +90,16 @@ public class SpeedLayerProcessor {
     /**
      * Processes a single weather data record through the speed layer.
      * <p>
-     * This is the core processing method - completely generic.
+     * UPDATED: Now uses DUAL STORAGE - uploads both raw text and JSON to S3
      * <p>
      * Flow:
      * 1. Enrich with generic metadata (timestamp, processor info)
      * 2. Tag with SPEED_LAYER
-     * 3. Upload to S3
-     * 4. Return processed data with S3 location
+     * 3. Upload to S3 in BOTH formats (raw text + JSON)
+     * 4. Return processed data with both S3 locations
      *
      * @param weatherData the weather data to process (already validated by caller)
-     * @return the processed WeatherData with S3 location added
+     * @return the processed WeatherData with both S3 locations added
      * @throws IOException if S3 upload fails
      */
     public WeatherData processWeatherData(WeatherData weatherData) throws IOException {
@@ -117,15 +117,24 @@ public class SpeedLayerProcessor {
         // Step 2: Tag with Speed Layer
         weatherData.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
 
-        // Step 3: Upload to S3
-        String s3Key = s3Service.uploadWeatherData(weatherData);
-        weatherData.addMetadata("s3_key", s3Key);
+        // Step 3: Upload to S3 in BOTH formats (DUAL STORAGE)
+        S3UploadService.DualStorageResult result = s3Service.uploadWeatherDataDual(weatherData);
+
+        // Store both S3 keys in metadata
+        // NOTE: Using record accessor methods (no "get" prefix)
+        weatherData.addMetadata("s3_raw_key", result.rawTextKey());
+        weatherData.addMetadata("s3_json_key", result.jsonKey());
+
+        // Keep legacy "s3_key" for backward compatibility (points to JSON)
+        weatherData.addMetadata("s3_key", result.jsonKey());
+
         weatherData.addMetadata("processing_duration_ms",
                 Duration.between(startTime, Instant.now()).toMillis());
 
         Duration duration = Duration.between(startTime, Instant.now());
-        logger.info("Processed weather data for station {} in {}ms (S3: {})",
-                weatherData.getStationId(), duration.toMillis(), s3Key);
+        logger.info("Processed weather data for station {} in {}ms (Raw: {}, JSON: {})",
+                weatherData.getStationId(), duration.toMillis(),
+                result.rawTextKey(), result.jsonKey());
 
         return weatherData;
     }
@@ -205,6 +214,7 @@ public class SpeedLayerProcessor {
      * - validation_timestamp: current timestamp
      * - processor: "SpeedLayerProcessor"
      * - processor_version: version identifier
+     * - storage_format: "dual" (indicating both raw text and JSON)
      *
      * @param weatherData the weather data to enrich
      */
@@ -212,7 +222,8 @@ public class SpeedLayerProcessor {
         weatherData.addMetadata("validated", "true");
         weatherData.addMetadata("validation_timestamp", LocalDateTime.now().toString());
         weatherData.addMetadata("processor", "SpeedLayerProcessor");
-        weatherData.addMetadata("processor_version", "2.0");
+        weatherData.addMetadata("processor_version", "2.1"); // Updated version for dual storage
+        weatherData.addMetadata("storage_format", "dual"); // NEW: indicates both formats stored
 
         logger.debug("Enriched weather data with generic metadata for station: {}",
                 weatherData.getStationId());
@@ -230,7 +241,8 @@ public class SpeedLayerProcessor {
                 "max_concurrent_requests", maxConcurrentRequests,
                 "executor_active_threads", executor.getActiveCount(),
                 "executor_queue_size", executor.getQueue().size(),
-                "executor_completed_tasks", executor.getCompletedTaskCount()
+                "executor_completed_tasks", executor.getCompletedTaskCount(),
+                "storage_format", "dual" // NEW: indicates dual storage enabled
         );
     }
 

@@ -40,7 +40,7 @@ import static org.mockito.Mockito.*;
 /**
  * Unit tests for SpeedLayerProcessor using Mockito.
  * <p>
- * Updated for refactored generic processor that works with ANY weather data source.
+ * UPDATED: Tests updated for dual storage functionality and record-based DualStorageResult.
  *
  * @author bclasky1539
  *
@@ -82,15 +82,21 @@ class SpeedLayerProcessorTest {
         customProcessor.shutdown();
     }
 
-    // ===== processWeatherData() Tests =====
+    // ===== processWeatherData() Tests - UPDATED for Dual Storage =====
 
     @Test
     void testProcessWeatherData_Success() throws IOException {
         // Arrange
         WeatherData weatherData = createTestWeatherData("KJFK", "METAR");
-        String s3Key = "speed-layer/noaa/metar/2025/01/12/KJFK_123456.json";
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class))).thenReturn(s3Key);
+        // Mock dual storage result
+        S3UploadService.DualStorageResult dualResult =
+                new S3UploadService.DualStorageResult(
+                        "raw-data/noaa/metar/2025/02/02/KJFK_20250202_1430.txt",
+                        "speed-layer/noaa/metar/2025/02/02/KJFK_20250202_1430.json"
+                );
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class))).thenReturn(dualResult);
 
         // Act
         WeatherData result = processor.processWeatherData(weatherData);
@@ -100,20 +106,28 @@ class SpeedLayerProcessorTest {
         assertEquals("KJFK", result.getStationId());
         assertEquals(ProcessingLayer.SPEED_LAYER, result.getProcessingLayer());
 
-        // Verify metadata enrichment
+        // Verify metadata enrichment - UPDATED for dual storage
         assertTrue(result.getMetadata().containsKey("validated"));
         assertTrue(result.getMetadata().containsKey("validation_timestamp"));
         assertTrue(result.getMetadata().containsKey("processor"));
         assertTrue(result.getMetadata().containsKey("processor_version"));
-        assertTrue(result.getMetadata().containsKey("s3_key"));
+        assertTrue(result.getMetadata().containsKey("storage_format"));  // NEW
+        assertTrue(result.getMetadata().containsKey("s3_raw_key"));      // NEW
+        assertTrue(result.getMetadata().containsKey("s3_json_key"));     // NEW
+        assertTrue(result.getMetadata().containsKey("s3_key"));          // Legacy
         assertTrue(result.getMetadata().containsKey("processing_duration_ms"));
 
         assertEquals("true", result.getMetadata().get("validated"));
         assertEquals("SpeedLayerProcessor", result.getMetadata().get("processor"));
-        assertEquals("2.0", result.getMetadata().get("processor_version"));
-        assertEquals(s3Key, result.getMetadata().get("s3_key"));
+        assertEquals("2.1", result.getMetadata().get("processor_version"));  // UPDATED from 2.0
+        assertEquals("dual", result.getMetadata().get("storage_format"));    // NEW
 
-        verify(s3Service, times(1)).uploadWeatherData(any(WeatherData.class));
+        // Verify both S3 keys are stored
+        assertEquals(dualResult.rawTextKey(), result.getMetadata().get("s3_raw_key"));
+        assertEquals(dualResult.jsonKey(), result.getMetadata().get("s3_json_key"));
+        assertEquals(dualResult.jsonKey(), result.getMetadata().get("s3_key"));  // Legacy points to JSON
+
+        verify(s3Service, times(1)).uploadWeatherDataDual(any(WeatherData.class));
     }
 
     @Test
@@ -123,7 +137,7 @@ class SpeedLayerProcessorTest {
                 () -> processor.processWeatherData(null));
 
         assertEquals("Weather data cannot be null", exception.getMessage());
-        verify(s3Service, never()).uploadWeatherData(any());
+        verify(s3Service, never()).uploadWeatherDataDual(any());
     }
 
     @Test
@@ -131,7 +145,7 @@ class SpeedLayerProcessorTest {
         // Arrange
         WeatherData weatherData = createTestWeatherData("KJFK", "METAR");
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class)))
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class)))
                 .thenThrow(new IOException("S3 upload failed"));
 
         // Act & Assert
@@ -146,7 +160,10 @@ class SpeedLayerProcessorTest {
         // Arrange
         WeatherData weatherData = createTestWeatherData("KLGA", "TAF");
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class))).thenReturn("s3://key");
+        S3UploadService.DualStorageResult dualResult =
+                new S3UploadService.DualStorageResult("raw-key", "json-key");
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class))).thenReturn(dualResult);
 
         // Act
         WeatherData result = processor.processWeatherData(weatherData);
@@ -157,9 +174,11 @@ class SpeedLayerProcessorTest {
         assertTrue(metadata.containsKey("validation_timestamp"));
         assertTrue(metadata.containsKey("processor"));
         assertTrue(metadata.containsKey("processor_version"));
+        assertTrue(metadata.containsKey("storage_format"));  // NEW
 
-        // Verify processor version
-        assertEquals("2.0", metadata.get("processor_version"));
+        // Verify processor version UPDATED to 2.1
+        assertEquals("2.1", metadata.get("processor_version"));
+        assertEquals("dual", metadata.get("storage_format"));
     }
 
     @Test
@@ -168,7 +187,10 @@ class SpeedLayerProcessorTest {
         WeatherData weatherData = createTestWeatherData("KCLT", "METAR");
         weatherData.setProcessingLayer(null); // Start with no layer
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class))).thenReturn("s3://key");
+        S3UploadService.DualStorageResult dualResult =
+                new S3UploadService.DualStorageResult("raw-key", "json-key");
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class))).thenReturn(dualResult);
 
         // Act
         WeatherData result = processor.processWeatherData(weatherData);
@@ -177,7 +199,34 @@ class SpeedLayerProcessorTest {
         assertEquals(ProcessingLayer.SPEED_LAYER, result.getProcessingLayer());
     }
 
-    // ===== processWeatherDataBatch() Tests =====
+    @Test
+    void testProcessWeatherData_BothS3KeysStored() throws IOException {
+        // Arrange
+        WeatherData weatherData = createTestWeatherData("KORD", "METAR");
+
+        S3UploadService.DualStorageResult dualResult =
+                new S3UploadService.DualStorageResult(
+                        "raw-data/noaa/metar/2025/02/02/KORD_20250202_1500.txt",
+                        "speed-layer/noaa/metar/2025/02/02/KORD_20250202_1500.json"
+                );
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class))).thenReturn(dualResult);
+
+        // Act
+        WeatherData result = processor.processWeatherData(weatherData);
+
+        // Assert - verify both keys are stored correctly
+        assertEquals("raw-data/noaa/metar/2025/02/02/KORD_20250202_1500.txt",
+                result.getMetadata().get("s3_raw_key"));
+        assertEquals("speed-layer/noaa/metar/2025/02/02/KORD_20250202_1500.json",
+                result.getMetadata().get("s3_json_key"));
+
+        // Legacy s3_key should point to JSON
+        assertEquals(result.getMetadata().get("s3_json_key"),
+                result.getMetadata().get("s3_key"));
+    }
+
+    // ===== processWeatherDataBatch() Tests - UPDATED for Dual Storage =====
 
     @Test
     void testProcessWeatherDataBatch_Success() throws IOException {
@@ -188,10 +237,17 @@ class SpeedLayerProcessorTest {
                 createTestWeatherData("KEWR", "METAR")
         );
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class)))
-                .thenReturn("s3://key1")
-                .thenReturn("s3://key2")
-                .thenReturn("s3://key3");
+        S3UploadService.DualStorageResult result1 =
+                new S3UploadService.DualStorageResult("raw1", "json1");
+        S3UploadService.DualStorageResult result2 =
+                new S3UploadService.DualStorageResult("raw2", "json2");
+        S3UploadService.DualStorageResult result3 =
+                new S3UploadService.DualStorageResult("raw3", "json3");
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class)))
+                .thenReturn(result1)
+                .thenReturn(result2)
+                .thenReturn(result3);
 
         // Act
         List<WeatherData> results = processor.processWeatherDataBatch(inputData);
@@ -202,10 +258,13 @@ class SpeedLayerProcessorTest {
         for (WeatherData data : results) {
             assertEquals(ProcessingLayer.SPEED_LAYER, data.getProcessingLayer());
             assertTrue(data.getMetadata().containsKey("validated"));
+            assertTrue(data.getMetadata().containsKey("s3_raw_key"));  // NEW
+            assertTrue(data.getMetadata().containsKey("s3_json_key")); // NEW
             assertTrue(data.getMetadata().containsKey("s3_key"));
+            assertEquals("dual", data.getMetadata().get("storage_format")); // NEW
         }
 
-        verify(s3Service, times(3)).uploadWeatherData(any(WeatherData.class));
+        verify(s3Service, times(3)).uploadWeatherDataDual(any(WeatherData.class));
     }
 
     @Test
@@ -215,7 +274,7 @@ class SpeedLayerProcessorTest {
 
         // Assert
         assertTrue(results.isEmpty());
-        verify(s3Service, never()).uploadWeatherData(any());
+        verify(s3Service, never()).uploadWeatherDataDual(any());
     }
 
     @Test
@@ -225,7 +284,7 @@ class SpeedLayerProcessorTest {
 
         // Assert
         assertTrue(results.isEmpty());
-        verify(s3Service, never()).uploadWeatherData(any());
+        verify(s3Service, never()).uploadWeatherDataDual(any());
     }
 
     @Test
@@ -236,22 +295,24 @@ class SpeedLayerProcessorTest {
                 createTestWeatherData("KLGA", "METAR")
         );
 
+        S3UploadService.DualStorageResult successResult =
+                new S3UploadService.DualStorageResult("raw-key", "json-key");
+
         // First upload succeeds, second fails
-        when(s3Service.uploadWeatherData(any(WeatherData.class)))
-                .thenReturn("s3://key1")
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class)))
+                .thenReturn(successResult)
                 .thenThrow(new IOException("Upload failed"));
 
         // Act
         List<WeatherData> results = processor.processWeatherDataBatch(inputData);
 
         // Assert - only successful one should be returned
-        // Note: Due to parallel processing, we can't guarantee which station succeeds
         assertEquals(1, results.size());
         String resultStationId = results.get(0).getStationId();
         assertTrue(resultStationId.equals("KJFK") || resultStationId.equals("KLGA"),
                 "Result should be either KJFK or KLGA, but was: " + resultStationId);
 
-        verify(s3Service, times(2)).uploadWeatherData(any(WeatherData.class));
+        verify(s3Service, times(2)).uploadWeatherDataDual(any(WeatherData.class));
     }
 
     @Test
@@ -262,7 +323,7 @@ class SpeedLayerProcessorTest {
                 createTestWeatherData("KLGA", "METAR")
         );
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class)))
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class)))
                 .thenThrow(new IOException("Upload failed"));
 
         // Act
@@ -271,7 +332,7 @@ class SpeedLayerProcessorTest {
         // Assert - no successful results
         assertTrue(results.isEmpty());
 
-        verify(s3Service, times(2)).uploadWeatherData(any(WeatherData.class));
+        verify(s3Service, times(2)).uploadWeatherDataDual(any(WeatherData.class));
     }
 
     @Test
@@ -282,19 +343,24 @@ class SpeedLayerProcessorTest {
                 createTestWeatherData("KLGA", "TAF")
         );
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class)))
-                .thenReturn("s3://key1")
-                .thenReturn("s3://key2");
+        S3UploadService.DualStorageResult result1 =
+                new S3UploadService.DualStorageResult("raw1", "json1");
+        S3UploadService.DualStorageResult result2 =
+                new S3UploadService.DualStorageResult("raw2", "json2");
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class)))
+                .thenReturn(result1)
+                .thenReturn(result2);
 
         // Act
         List<WeatherData> results = processor.processWeatherDataBatch(inputData);
 
         // Assert - should handle both types
         assertEquals(2, results.size());
-        verify(s3Service, times(2)).uploadWeatherData(any(WeatherData.class));
+        verify(s3Service, times(2)).uploadWeatherDataDual(any(WeatherData.class));
     }
 
-    // ===== getStatistics() Tests =====
+    // ===== getStatistics() Tests - UPDATED =====
 
     @Test
     void testGetStatistics() {
@@ -307,15 +373,21 @@ class SpeedLayerProcessorTest {
         assertTrue(stats.containsKey("executor_active_threads"));
         assertTrue(stats.containsKey("executor_queue_size"));
         assertTrue(stats.containsKey("executor_completed_tasks"));
+        assertTrue(stats.containsKey("storage_format"));  // NEW
 
         assertEquals(10, stats.get("max_concurrent_requests"));
+        assertEquals("dual", stats.get("storage_format"));  // NEW
     }
 
     @Test
     void testGetStatistics_AfterProcessing() throws IOException {
         // Arrange
         WeatherData weatherData = createTestWeatherData("KJFK", "METAR");
-        when(s3Service.uploadWeatherData(any(WeatherData.class))).thenReturn("s3://key");
+
+        S3UploadService.DualStorageResult dualResult =
+                new S3UploadService.DualStorageResult("raw-key", "json-key");
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class))).thenReturn(dualResult);
 
         // Act
         processor.processWeatherData(weatherData);
@@ -373,7 +445,7 @@ class SpeedLayerProcessorTest {
         assertNotNull(stats);
     }
 
-    // ===== Integration Tests =====
+    // ===== Integration Tests - UPDATED =====
 
     @Test
     void testFullProcessingWorkflow() throws IOException {
@@ -381,8 +453,13 @@ class SpeedLayerProcessorTest {
         WeatherData inputData = createTestWeatherData("KCLT", "METAR");
         inputData.addMetadata("custom_field", "custom_value");
 
-        String expectedS3Key = "speed-layer/noaa/metar/2025/01/12/KCLT_123456.json";
-        when(s3Service.uploadWeatherData(any(WeatherData.class))).thenReturn(expectedS3Key);
+        S3UploadService.DualStorageResult dualResult =
+                new S3UploadService.DualStorageResult(
+                        "raw-data/noaa/metar/2025/02/02/KCLT_20250202_1430.txt",
+                        "speed-layer/noaa/metar/2025/02/02/KCLT_20250202_1430.json"
+                );
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class))).thenReturn(dualResult);
 
         // Act
         WeatherData result = processor.processWeatherData(inputData);
@@ -399,9 +476,13 @@ class SpeedLayerProcessorTest {
         // Generic metadata added
         assertEquals("true", result.getMetadata().get("validated"));
         assertEquals("SpeedLayerProcessor", result.getMetadata().get("processor"));
+        assertEquals("2.1", result.getMetadata().get("processor_version"));  // UPDATED
+        assertEquals("dual", result.getMetadata().get("storage_format"));    // NEW
 
-        // S3 key added
-        assertEquals(expectedS3Key, result.getMetadata().get("s3_key"));
+        // BOTH S3 keys added
+        assertEquals(dualResult.rawTextKey(), result.getMetadata().get("s3_raw_key"));
+        assertEquals(dualResult.jsonKey(), result.getMetadata().get("s3_json_key"));
+        assertEquals(dualResult.jsonKey(), result.getMetadata().get("s3_key"));  // Legacy
 
         // Processing duration tracked
         assertTrue(result.getMetadata().containsKey("processing_duration_ms"));
@@ -416,21 +497,26 @@ class SpeedLayerProcessorTest {
         WeatherData openWeatherData = createTestWeatherData("LONDON", "CURRENT");
         openWeatherData.setSource(WeatherDataSource.OPENWEATHERMAP);
 
-        when(s3Service.uploadWeatherData(any(WeatherData.class)))
-                .thenReturn("s3://key1")
-                .thenReturn("s3://key2");
+        S3UploadService.DualStorageResult result1 =
+                new S3UploadService.DualStorageResult("raw1", "json1");
+        S3UploadService.DualStorageResult result2 =
+                new S3UploadService.DualStorageResult("raw2", "json2");
+
+        when(s3Service.uploadWeatherDataDual(any(WeatherData.class)))
+                .thenReturn(result1)
+                .thenReturn(result2);
 
         // Act
-        WeatherData result1 = processor.processWeatherData(noaaData);
-        WeatherData result2 = processor.processWeatherData(openWeatherData);
+        WeatherData processedNoaa = processor.processWeatherData(noaaData);
+        WeatherData processedOpenWeather = processor.processWeatherData(openWeatherData);
 
         // Assert - processor works with any source
-        assertNotNull(result1);
-        assertNotNull(result2);
-        assertEquals(ProcessingLayer.SPEED_LAYER, result1.getProcessingLayer());
-        assertEquals(ProcessingLayer.SPEED_LAYER, result2.getProcessingLayer());
+        assertNotNull(processedNoaa);
+        assertNotNull(processedOpenWeather);
+        assertEquals(ProcessingLayer.SPEED_LAYER, processedNoaa.getProcessingLayer());
+        assertEquals(ProcessingLayer.SPEED_LAYER, processedOpenWeather.getProcessingLayer());
 
-        verify(s3Service, times(2)).uploadWeatherData(any(WeatherData.class));
+        verify(s3Service, times(2)).uploadWeatherDataDual(any(WeatherData.class));
     }
 
     // ===== Helper Methods =====
