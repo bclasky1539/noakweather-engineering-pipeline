@@ -212,7 +212,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
 
     @Test
     @DisplayName("Parser fallback - should handle unparseable data gracefully")
-    void testParserFallback() throws WeatherServiceException {
+    void testMetadataPresent() throws WeatherServiceException {
         // This test verifies that if parsing fails, we still get data
         // (with parsed=false in metadata)
 

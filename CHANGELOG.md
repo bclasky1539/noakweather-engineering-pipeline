@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - NoaaMetarParser and NoaaTafParser integrated into NoaaAviationWeatherClient
     - Parsing enabled by default for all METAR and TAF ingestion
     - Fallback mechanism preserves raw data when parsing fails
-- 
+
 - **Remark Field Enhancement (Phase 2)** - Top-level field population
     - `copyRemarksToTopLevel()` method extracts parsed remark data to top-level fields
     - All fields now directly accessible without navigating remarks object

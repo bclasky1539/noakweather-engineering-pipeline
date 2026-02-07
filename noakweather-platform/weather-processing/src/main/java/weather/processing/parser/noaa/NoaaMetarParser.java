@@ -214,18 +214,20 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String trimmed = rawData.trim();
 
         // Check if starts with date/time pattern (YYYY/MM/DD HH:MM format)
-        if (trimmed.matches("^\\d{4}/\\d{2}/\\d{2}\\s+.*")) {
+        // Fixed: Use \\S.* instead of .* to prevent ReDoS (require non-space after whitespace)
+        if (trimmed.matches("^\\d{4}/\\d{2}/\\d{2}\\s+\\S.*")) {
             return true;
         }
 
         // Check if METAR or SPECI appears at the start (not just anywhere)
-        if (trimmed.matches("^\\s*(METAR|SPECI)\\s+.*")) {
+        // Fixed: Use \\S.* instead of .* to prevent ReDoS
+        if (trimmed.matches("^\\s*(METAR|SPECI)\\s+\\S.*")) {
             return true;
         }
 
         // Check if starts with ICAO station code + observation time (KCLT 062252Z format)
-        // This is the standard format from NOAA's raw data files
-        return trimmed.matches("^[A-Z]{4}\\s+\\d{6}Z\\s+.*");
+        // Fixed: Use \\S.* instead of .* to prevent ReDoS
+        return trimmed.matches("^[A-Z]{4}\\s+\\d{6}Z\\s+\\S.*");
     }
 
     @Override
