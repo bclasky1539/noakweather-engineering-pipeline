@@ -16,13 +16,14 @@
  */
 package weather.ingestion.service.source.noaa;
 
-import weather.model.WeatherData;
-import weather.model.NoaaWeatherData;
-import weather.model.ProcessingLayer;
-import weather.model.WeatherDataSource;
+import weather.model.*;
 import weather.exception.WeatherServiceException;
 import weather.exception.ErrorType;
 import weather.ingestion.config.NoaaConfiguration;
+import weather.processing.parser.noaa.NoaaMetarParser;
+import weather.processing.parser.noaa.NoaaTafParser;
+import weather.processing.parser.common.ParseResult;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -35,10 +36,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Client for NOAA Aviation Weather TG FTP service.
  * Fetches raw METAR and TAF reports from NOAA's text data service.
+ * <p>
+ * UPDATED v2.0: Now integrates comprehensive METAR/TAF parsers from weather-processing module!
  * <p>
  * NOAA TG FTP Service:
  * - METAR: <a href="https://tgftp.nws.noaa.gov/data/observations/metar/stations/">...</a>{STATION_ID}.TXT
@@ -57,8 +61,15 @@ import java.util.List;
  * 2025/01/11 11:25
  * TAF KBUF 111125Z 1112/1212 31012G20KT P6SM BKN030
  *     FM111900 30015G25KT P6SM BKN020
+ * <p>
+ * NEW: Parsed Data Structure
+ * - Returns NoaaMetarData with fully populated conditions (wind, temp, pressure, etc.)
+ * - Returns NoaaTafData with forecast periods parsed
+ * - Preserves raw text in rawData field for audit/reprocessing
+ * - Falls back to unparsed data if parsing fails
  *
  * @author bclasky1539
+ * @version 2.0 - Integrated comprehensive parsers
  *
  */
 public class NoaaAviationWeatherClient {
@@ -69,6 +80,10 @@ public class NoaaAviationWeatherClient {
     private static final String MSG_REQUEST_INTERRUPTED = "Request interrupted";
     private static final String MSG_FAILED_METAR = "Failed to fetch METAR data";
     private static final String MSG_FAILED_TAF = "Failed to fetch TAF data";
+
+    private static final String FULL_RESPONSE = "full_response";
+    private static final String FETCH_TIMESTAMP = "fetch_timestamp";
+    private static final String PARSED = "parsed";
 
     private final HttpClient httpClient;
     private final NoaaConfiguration config;
@@ -97,7 +112,7 @@ public class NoaaAviationWeatherClient {
             logger.warn("Configuration validation failed - check noaa.properties");
         }
 
-        logger.info("NoaaAviationWeatherClient initialized: {}",
+        logger.info("NoaaAviationWeatherClient initialized with parsing enabled: {}",
                 config.getConfigurationSummary());
     }
 
@@ -134,9 +149,10 @@ public class NoaaAviationWeatherClient {
 
     /**
      * Fetches current METAR report for a single station.
+     * NEW: Returns fully parsed NoaaMetarData with all weather conditions populated!
      *
      * @param stationId ICAO station identifier (e.g., "KJFK", "KCLT")
-     * @return WeatherData object containing METAR report, or null if no data available
+     * @return WeatherData object containing fully parsed METAR report, or null if no data available
      * @throws WeatherServiceException if station code is invalid or request fails
      */
     public WeatherData fetchMetarReport(String stationId) throws WeatherServiceException {
@@ -200,8 +216,7 @@ public class NoaaAviationWeatherClient {
             if (!isValidStationCode(stationId)) {
                 throw new WeatherServiceException(
                         ErrorType.INVALID_STATION_CODE,
-                        "Station code must be 3-4 alphabetic characters",
-                        stationId
+                        "Invalid station code: " + stationId
                 );
             }
         }
@@ -227,10 +242,11 @@ public class NoaaAviationWeatherClient {
     }
 
     /**
-     * Fetches Terminal Aerodrome Forecast (TAF) report for a single station.
+     * Fetches current TAF (Terminal Aerodrome Forecast) for a single station.
+     * NEW: Returns fully parsed NoaaTafData with forecast periods!
      *
      * @param stationId ICAO station identifier (e.g., "KJFK", "KCLT")
-     * @return WeatherData object containing TAF report, or null if no data available
+     * @return WeatherData object containing fully parsed TAF forecast, or null if no data available
      * @throws WeatherServiceException if station code is invalid or request fails
      */
     public WeatherData fetchTafReport(String stationId) throws WeatherServiceException {
@@ -293,8 +309,7 @@ public class NoaaAviationWeatherClient {
             if (!isValidStationCode(stationId)) {
                 throw new WeatherServiceException(
                         ErrorType.INVALID_STATION_CODE,
-                        "Station code must be 3-4 alphabetic characters",
-                        stationId
+                        "Invalid station code: " + stationId
                 );
             }
         }
@@ -404,68 +419,181 @@ public class NoaaAviationWeatherClient {
     }
 
     /**
-     * Parses METAR raw text response into WeatherData object.
+     * Parses METAR raw text response into fully structured WeatherData object.
+     * NEW: Uses comprehensive NoaaMetarParser from weather-processing module!
      * <p>
      * Example input:
      * 2025/01/11 14:56
      * KCLT 111456Z 27008KT 10SM FEW250 06/M07 A3034 RMK AO2 SLP278 T00561072
+     * <p>
+     * Parsing includes:
+     * - Wind (direction, speed, gusts, variability)
+     * - Visibility (distance, unit, CAVOK)
+     * - Temperature and dewpoint
+     * - Pressure (altimeter, sea level)
+     * - Sky conditions (cloud layers)
+     * - Present weather (rain, snow, fog, etc.)
+     * - Remarks (automated station, peak wind, precipitation, etc.)
      *
      * @param rawText the raw response from NOAA
      * @param stationId the station identifier
-     * @return WeatherData object
+     * @return WeatherData object (NoaaMetarData with fully populated conditions)
      */
     private WeatherData parseMetarResponse(String rawText, String stationId) {
         // Extract the METAR line (typically second line after timestamp)
-        String[] lines = rawText.split("\n");
-        String metarLine = null;
+        String metarLine = extractMetarLine(rawText, stationId);
 
-        for (String line : lines) {
-            String trimmed = line.trim();
-            // METAR line starts with station ID
-            if (trimmed.startsWith(stationId.toUpperCase())) {
-                metarLine = trimmed;
-                break;
+        logger.debug("Parsing METAR for {}: {}", stationId, metarLine);
+
+        // Create new parser instance for thread safety
+        NoaaMetarParser metarParser = new NoaaMetarParser();
+        ParseResult<NoaaWeatherData> parseResult = metarParser.parse(metarLine);
+
+        if (parseResult.isSuccess()) {
+            Optional<NoaaWeatherData> optionalData = parseResult.getData();
+            if (optionalData.isPresent()) {
+                NoaaWeatherData parsedData = optionalData.get();
+
+                //  Set the fields that tests expect!
+                parsedData.setRawData(metarLine);
+                parsedData.setSource(WeatherDataSource.NOAA);
+                parsedData.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
+
+                // Add metadata about fetch
+                parsedData.addMetadata( FULL_RESPONSE, rawText);
+                parsedData.addMetadata(FETCH_TIMESTAMP, Instant.now().toString());
+                parsedData.addMetadata(PARSED, "true");
+                parsedData.addMetadata("parser_version", "2.0");
+
+                logger.info("Successfully parsed METAR for {} with all conditions", stationId);
+                return parsedData;
             }
         }
 
-        if (metarLine == null) {
-            logger.warn("Could not extract METAR line for station {}", stationId);
-            metarLine = rawText.replace("\n", " ").trim();
-        }
+        // Parsing failed - fallback to unparsed data
+        logger.warn("Failed to parse METAR for {}: {}. Falling back to unparsed data.",
+                stationId, parseResult.getErrorMessage());
 
-        // Create WeatherData object
-        NoaaWeatherData data = new NoaaWeatherData(
-                stationId.toUpperCase(),
-                Instant.now(),
-                "METAR"
-        );
+        // Create NoaaMetarData (specific subclass) as fallback
+        NoaaMetarData fallbackData = new NoaaMetarData();
+        fallbackData.setStationId(stationId.toUpperCase());
+        fallbackData.setObservationTime(Instant.now());
 
-        data.setRawData(metarLine);
-        data.setSource(WeatherDataSource.NOAA);
-        data.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
-        data.addMetadata("format", "TEXT");
-        data.addMetadata("full_response", rawText);
-        data.addMetadata("fetch_timestamp", Instant.now().toString());
+        fallbackData.setRawData(metarLine);
+        fallbackData.setSource(WeatherDataSource.NOAA);
+        fallbackData.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
+        fallbackData.addMetadata("format", "TEXT");
+        fallbackData.addMetadata( FULL_RESPONSE, rawText);
+        fallbackData.addMetadata(FETCH_TIMESTAMP, Instant.now().toString());
+        fallbackData.addMetadata(PARSED, "false");
+        fallbackData.addMetadata("parse_error", parseResult.getErrorMessage());
 
-        logger.debug("Parsed METAR for {}: {}", stationId, metarLine);
-
-        return data;
+        return fallbackData;
     }
 
     /**
-     * Parses TAF raw text response into WeatherData object.
+     * Parses TAF raw text response into fully structured WeatherData object.
+     * NEW: Uses comprehensive NoaaTafParser from weather-processing module!
      * <p>
      * Example input:
      * 2025/01/11 11:25
      * TAF KBUF 111125Z 1112/1212 31012G20KT P6SM BKN030
      *     FM111900 30015G25KT P6SM BKN020
+     * <p>
+     * Parsing includes:
+     * - Base forecast conditions
+     * - Forecast periods (FM, TEMPO, PROB, BECMG)
+     * - Valid time periods
+     * - Change indicators
      *
      * @param rawText the raw response from NOAA
      * @param stationId the station identifier
-     * @return WeatherData object
+     * @return WeatherData object (NoaaTafData with forecast periods parsed)
      */
     private WeatherData parseTafResponse(String rawText, String stationId) {
-        // TAF can be multi-line, extract full forecast
+        // Extract the complete TAF text (can be multi-line)
+        String tafText = extractTafText(rawText);
+
+        logger.debug("Parsing TAF for {}: {}", stationId, tafText);
+
+        // Create new parser instance for thread safety
+        NoaaTafParser tafParser = new NoaaTafParser();
+        ParseResult<NoaaWeatherData> parseResult = tafParser.parse(tafText);
+
+        if (parseResult.isSuccess()) {
+            Optional<NoaaWeatherData> optionalData = parseResult.getData();
+            if (optionalData.isPresent()) {
+                NoaaWeatherData parsedData = optionalData.get();
+
+                //  Set the fields that tests expect!
+                parsedData.setRawData(tafText);
+                parsedData.setSource(WeatherDataSource.NOAA);
+                parsedData.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
+
+                // Add metadata about fetch
+                parsedData.addMetadata( FULL_RESPONSE, rawText);
+                parsedData.addMetadata(FETCH_TIMESTAMP, Instant.now().toString());
+                parsedData.addMetadata(PARSED, "true");
+                parsedData.addMetadata("parser_version", "2.0");
+
+                logger.info("Successfully parsed TAF for {} with forecast periods", stationId);
+                return parsedData;
+            }
+        }
+
+        // Parsing failed - fallback to unparsed data
+        logger.warn("Failed to parse TAF for {}: {}. Falling back to unparsed data.",
+                stationId, parseResult.getErrorMessage());
+
+        // Create NoaaTafData (specific subclass) as fallback
+        NoaaTafData fallbackData = new NoaaTafData();
+        fallbackData.setStationId(stationId.toUpperCase());
+        fallbackData.setObservationTime(Instant.now());
+
+        fallbackData.setRawData(tafText);
+        fallbackData.setSource(WeatherDataSource.NOAA);
+        fallbackData.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
+        fallbackData.addMetadata("format", "TEXT");
+        fallbackData.addMetadata( FULL_RESPONSE, rawText);
+        fallbackData.addMetadata(FETCH_TIMESTAMP, Instant.now().toString());
+        fallbackData.addMetadata(PARSED, "false");
+        fallbackData.addMetadata("parse_error", parseResult.getErrorMessage());
+
+        return fallbackData;
+    }
+
+    /**
+     * Extracts the METAR line from the raw NOAA response.
+     * The METAR line typically starts with the station ID.
+     *
+     * @param rawText the raw response
+     * @param stationId the station identifier
+     * @return the extracted METAR line
+     */
+    private String extractMetarLine(String rawText, String stationId) {
+        String[] lines = rawText.split("\n");
+
+        for (String line : lines) {
+            String trimmed = line.trim();
+            // METAR line starts with station ID
+            if (trimmed.startsWith(stationId.toUpperCase())) {
+                return trimmed;
+            }
+        }
+
+        // Fallback: return everything as one line
+        logger.warn("Could not extract METAR line for station {}, using full response", stationId);
+        return rawText.replace("\n", " ").trim();
+    }
+
+    /**
+     * Extracts the complete TAF text from the raw NOAA response.
+     * TAF can be multi-line, so we need to capture all lines.
+     *
+     * @param rawText the raw response
+     * @return the extracted TAF text
+     */
+    private String extractTafText(String rawText) {
         String[] lines = rawText.split("\n");
         StringBuilder tafBuilder = new StringBuilder();
         boolean inTaf = false;
@@ -486,27 +614,11 @@ public class NoaaAviationWeatherClient {
         String tafText = tafBuilder.toString().trim();
 
         if (tafText.isEmpty()) {
-            logger.warn("Could not extract TAF text for station {}", stationId);
+            logger.warn("Could not extract TAF text, using full response");
             tafText = rawText.replace("\n", " ").trim();
         }
 
-        // Create WeatherData object
-        NoaaWeatherData data = new NoaaWeatherData(
-                stationId.toUpperCase(),
-                Instant.now(),
-                "TAF"
-        );
-
-        data.setRawData(tafText);
-        data.setSource(WeatherDataSource.NOAA);
-        data.setProcessingLayer(ProcessingLayer.SPEED_LAYER);
-        data.addMetadata("format", "TEXT");
-        data.addMetadata("full_response", rawText);
-        data.addMetadata("fetch_timestamp", Instant.now().toString());
-
-        logger.debug("Parsed TAF for {}: {}", stationId, tafText);
-
-        return data;
+        return tafText;
     }
 
     /**

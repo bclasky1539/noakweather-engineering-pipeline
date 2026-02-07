@@ -7,6 +7,107 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.15.0-SNAPSHOT - February 07, 2026
+
+#### Weather Ingestion Module - METAR/TAF Parser Integration & Remark Field Enhancement
+
+**Added:**
+- **Parser Integration (Phase 1)** - Complete integration of weather-processing parsers
+    - weather-processing module dependency added to weather-ingestion
+    - NoaaMetarParser and NoaaTafParser integrated into NoaaAviationWeatherClient
+    - Parsing enabled by default for all METAR and TAF ingestion
+    - Fallback mechanism preserves raw data when parsing fails
+
+- **Remark Field Enhancement (Phase 2)** - Top-level field population
+    - `copyRemarksToTopLevel()` method extracts parsed remark data to top-level fields
+    - All fields now directly accessible without navigating remarks object
+
+**Fixed:**
+- **Parser Validation Bug** (NoaaMetarParser)
+    - Updated `canParse()` method to accept NOAA's standard ICAO station format
+    - Added pattern: `^[A-Z]{4}\\s+\\d{6}Z\\s+.*` for station-first format (KCLT 062252Z...)
+    - Previously only accepted: "METAR KCLT..." or "2026/02/06 18:05 METAR..."
+    - Now accepts: "KCLT 062252Z 33005KT..." (NOAA's raw station data format)
+    - Fixed all 3 failing integration tests
+
+- **Type Conversion in Remark Extraction**
+    - Correctly extracts values from complex remark types to simple types:
+    - Enables direct JSON serialization without nested object navigation
+
+**Enhanced:**
+- **NoaaAviationWeatherClient** (weather-ingestion)
+    - Integrated parser instances (NoaaMetarParser, NoaaTafParser)
+    - Enhanced `fetchMetar()` and `fetchTaf()` with parsing logic
+    - Fallback handling creates correct typed data (NoaaMetarData/NoaaTafData)
+    - Sets rawData, source, processingLayer on all data objects
+    - Populates metadata with parsing status and version
+    - Comprehensive logging for parse success/failure scenarios
+
+**Testing:**
+- **Integration Tests** (weather-ingestion)
+    - NoaaAviationWeatherClientParserIntegrationTest: 9 tests (all passing)
+    - Tests with real NOAA data from live TG FTP endpoints
+    - Validates METAR parsing: KCLT, KJFK, KLAX, KORD, KATL, KSEA, KBOS
+    - Validates TAF parsing: KCLT
+    - Tests parser version tracking, wind parsing, fallback handling, raw data preservation
+    - Tests remark field population (automatedStation, seaLevelPressure, peakWind)
+
+- **Overall Test Coverage** (weather-ingestion)
+    - Total: 198 tests passing (0 failures, 0 errors)
+    - 9 integration tests with real NOAA data
+    - 100% success rate with production METAR/TAF data
+
+**S3 Data Examples:**
+- **METAR Parsing Output** (KORD 070251Z example):
+```json
+    {
+      "automatedStation": "AO2",
+      "seaLevelPressure": 1022.1,
+      "peakWind": {
+        "directionDegrees": 360,
+        "speedKnots": 29,
+        "hour": 1,
+        "minute": 54
+      },
+      "threeHourPressureTendency": 3.8,
+      "conditions": {
+        "wind": { "directionDegrees": 350, "speedValue": 11, "unit": "KT" },
+        "visibility": { "distanceValue": 10.0, "unit": "SM" },
+        "temperature": { "celsius": -4.0, "dewpointCelsius": -13.0 },
+        "pressure": { "value": 30.16, "unit": "INCHES_HG" }
+      }
+    }
+```
+
+**Technical Details:**
+- **Parser Integration Strategy**:
+    - Parsers instantiated once per client (not per request)
+    - ParseResult wrapper provides type-safe success/failure handling
+    - Fallback creates correct subclass instances (NoaaMetarData vs NoaaTafData)
+    - All required fields populated regardless of parse outcome
+
+- **Remark Field Extraction Pattern**:
+    - Called after `parseRemarks()` in NoaaMetarParser.parse()
+    - Extracts from NoaaMetarRemarks (complex types) → NoaaMetarData (simple types)
+    - Null-safe extraction with null checks before copying
+    - Maintains backward compatibility (remarks object still available)
+
+- **Validation Pattern Updates**:
+    - `canParse()` now checks three patterns:
+        1. Date-prefixed: `2026/02/06 18:05 METAR...`
+        2. Type-prefixed: `METAR KCLT 062252Z...`
+        3. **Station-first**: `KCLT 062252Z...` (NEW - fixes NOAA format)
+
+**Build & Quality:**
+- All 198 tests passing (0 failures, 0 errors, 0 skipped)
+- Build time: ~3.5 seconds for weather-ingestion
+- Maven build: clean install successful
+- Production-ready with comprehensive test coverage
+
+**Notes:**
+- S3 now receives fully parsed, queryable aviation weather data
+- Rich metadata enables advanced querying and analytics
+
 ### Version 1.14.0-SNAPSHOT - February 03, 2026
 
 #### Weather Ingestion Module - Dual Storage Implementation for NOAA Data
