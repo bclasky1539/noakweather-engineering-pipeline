@@ -427,12 +427,14 @@ class AbstractNoaaIngestionOrchestratorTest {
 
         TestNoaaOrchestrator spyOrchestrator = spy(orchestrator);
 
-        when(mockNoaaClient.fetchMetarReport(anyString())).thenAnswer(invocation -> {
+        // Use lenient() for stubs that may not be called during async execution
+        // (test verifies scheduling, not full execution)
+        lenient().when(mockNoaaClient.fetchMetarReport(anyString())).thenAnswer(invocation -> {
             String stationId = invocation.getArgument(0);
             return createMockWeatherData(stationId);
         });
 
-        when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class))).thenAnswer(invocation -> {
+        lenient().when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class))).thenAnswer(invocation -> {
             WeatherData input = invocation.getArgument(0);
             return createMockWeatherData(input.getStationId());
         });
