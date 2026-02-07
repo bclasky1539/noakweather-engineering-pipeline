@@ -8,7 +8,7 @@
     <parent>
         <groupId>weather</groupId>
         <artifactId>noakweather-platform</artifactId>
-        <version>1.14.0-SNAPSHOT</version>
+        <version>1.15.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>weather-ingestion</artifactId>
@@ -21,6 +21,11 @@
         <dependency>
             <groupId>weather</groupId>
             <artifactId>weather-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>weather</groupId>
+            <artifactId>weather-processing</artifactId>
             <version>${project.version}</version>
         </dependency>
 

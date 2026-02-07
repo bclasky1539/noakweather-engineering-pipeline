@@ -40,14 +40,14 @@ import static weather.processing.parser.noaa.RegExprConst.*;
 
 /**
  * Parser for NOAA METAR (Meteorological Aerodrome Report) data.
- *
+ * <p>
  * Extends NoaaAviationWeatherParser to inherit shared aviation weather parsing logic
  * for wind, visibility, present weather, sky conditions, and RVR.
- *
+ * <p>
  * METAR Format Example:
  * "2025/11/14 22:52
  *  METAR KJFK 142252Z 19005KT 10SM FEW100 FEW250 16/M03 A3012 RMK AO2 SLP214 T01611028"
- *
+ * <p>
  * Components:
  * - METAR: Report type
  * - KJFK: Station identifier (JFK Airport)
@@ -60,6 +60,7 @@ import static weather.processing.parser.noaa.RegExprConst.*;
  * - RMK: Remarks section
  *
  * @author bclasky1539
+ *
  */
 public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
@@ -101,6 +102,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             mainBody = parseMainBody(mainBody);
             remarks = parseRemarks(remarks);
+            copyRemarksToTopLevel();
 
             validateParsedData();
             buildAndSetConditions();
@@ -217,7 +219,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         // Check if METAR or SPECI appears at the start (not just anywhere)
-        return trimmed.matches("^\\s*(METAR|SPECI)\\s+.*");
+        if (trimmed.matches("^\\s*(METAR|SPECI)\\s+.*")) {
+            return true;
+        }
+
+        // Check if starts with ICAO station code + observation time (KCLT 062252Z format)
+        // This is the standard format from NOAA's raw data files
+        return trimmed.matches("^[A-Z]{4}\\s+\\d{6}Z\\s+.*");
     }
 
     @Override
@@ -355,7 +363,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Route to appropriate handler method based on handler name from registry.
-     *
+     * <p>
      * Handlers for shared aviation weather elements (wind, visibility, present weather,
      * sky conditions) are inherited from NoaaAviationWeatherParser.
      *
@@ -703,10 +711,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle temperature and dewpoint.
-     *
+     * <p>
      * Format: TT/DD or M[TT]/M[DD]
      * Examples: 22/12, M05/M12, 15/, //, XX/XX
-     *
+     * <p>
      * The 'M' prefix indicates negative (minus) temperature.
      * Special values (//, XX, MM) indicate missing data.
      */
@@ -747,7 +755,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse a temperature or dewpoint value from METAR format.
-     *
+     * <p>
      * Handles:
      * - M prefix for negative (e.g., "M05" → -5.0)
      * - Hyphen prefix for negative (e.g., "-05" → -5.0)
@@ -783,7 +791,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle altimeter/pressure setting.
-     *
+     * <p>
      * Formats:
      * - A3015 → 30.15 inHg (North America)
      * - Q1013 → 1013 hPa (International)
@@ -824,7 +832,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse pressure value and determine unit.
-     *
+     * <p>
      * Logic:
      * - "A" or "AA" prefix → inches of mercury (divide by 100)
      * - "Q" or "QNH" prefix → hectopascals
@@ -910,7 +918,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Determine pressure unit based on value heuristics.
-     *
+     * <p>
      * - 4 digits starting with 2 or 3 → inches Hg (e.g., 2992, 3015)
      * - 4 digits starting with 0 or 1 → hPa (e.g., 1013, 0998)
      * - 3 digits → hPa (e.g., 998)
@@ -967,7 +975,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle automated station type from remarks (AO1 or AO2).
-     *
+     * <p>
      * This is called by the pattern registry when AUTO_PATTERN matches.
      * The actual work is delegated to handleAutomatedStationType which
      * can be called standalone for sequential parsing.
@@ -997,7 +1005,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle the remarks section of the METAR using sequential parsing.
-     *
+     * <p>
      * This method processes remarks in order and stores any unparsed content
      * as free text. Called after the main body has been parsed.
      *
@@ -1051,8 +1059,75 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
+     * Copy commonly-accessed remark fields to top-level NoaaMetarData fields
+     * for convenient access without navigating through remarks object.
+     * Extracts values from complex remark types into simple types.
+     */
+    private void copyRemarksToTopLevel() {
+        // Guard against null weatherData (parsing failed before initialization)
+        if (weatherData == null) {
+            return;
+        }
+
+        NoaaMetarRemarks remarks = weatherData.getRemarks();
+        if (remarks == null) {
+            return;
+        }
+
+        // Copy automated station type (convert enum to String: "AO1" or "AO2")
+        if (remarks.automatedStationType() != null) {
+            weatherData.setAutomatedStation(remarks.automatedStationType().toString());
+        }
+
+        // Copy sea level pressure (extract hPa value from Pressure record)
+        if (remarks.seaLevelPressure() != null) {
+            weatherData.setSeaLevelPressure(remarks.seaLevelPressure().toHectopascals());
+        }
+
+        // Copy peak wind (PeakWind type matches - direct copy)
+        if (remarks.peakWind() != null) {
+            weatherData.setPeakWind(remarks.peakWind());
+        }
+
+        // Copy hourly precipitation (extract inches from PrecipitationAmount record)
+        if (remarks.hourlyPrecipitation() != null) {
+            weatherData.setHourlyPrecipitation(remarks.hourlyPrecipitation().inches());
+        }
+
+        // Copy 6-hour max temperature (extract celsius from Temperature record)
+        if (remarks.sixHourMaxTemperature() != null) {
+            weatherData.setSixHourMaxTemp(remarks.sixHourMaxTemperature().celsius());
+        }
+
+        // Copy 6-hour min temperature (extract celsius from Temperature record)
+        if (remarks.sixHourMinTemperature() != null) {
+            weatherData.setSixHourMinTemp(remarks.sixHourMinTemperature().celsius());
+        }
+
+        // Copy 24-hour max temperature (extract celsius from Temperature record)
+        if (remarks.twentyFourHourMaxTemperature() != null) {
+            weatherData.setTwentyFourHourMaxTemp(remarks.twentyFourHourMaxTemperature().celsius());
+        }
+
+        // Copy 24-hour min temperature (extract celsius from Temperature record)
+        if (remarks.twentyFourHourMinTemperature() != null) {
+            weatherData.setTwentyFourHourMinTemp(remarks.twentyFourHourMinTemperature().celsius());
+        }
+
+        // Copy 3-hour pressure tendency (extract hPa change from PressureTendency record)
+        if (remarks.pressureTendency() != null) {
+            weatherData.setThreeHourPressureTendency(remarks.pressureTendency().changeHectopascals());
+        }
+
+        // Copy wind shift (WindShift type matches - direct copy)
+        if (remarks.windShift() != null) {
+            weatherData.setWindShift(remarks.windShift());
+        }
+    }
+
+    /**
      * Handle automated station type remark for sequential parsing.
-     *
+     * <p>
      * Format: AO1 or AO2
      * - AO1 = Automated station WITHOUT precipitation discriminator
      * - AO2 = Automated station WITH precipitation discriminator
@@ -1096,15 +1171,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle sea level pressure remark for sequential parsing.
-     *
+     * <p>
      * Format: SLPppp where ppp is pressure in tenths of hectopascals
-     *
+     * <p>
      * Examples:
      * - SLP210 → 1021.0 hPa (ppp=210 < 500, so 1000 + 21.0)
      * - SLP982 → 998.2 hPa (ppp=982 >= 500, so 900 + 98.2)
      * - SLP145 → 1014.5 hPa
      * - SLPNO → Sea level pressure not available
-     *
+     * <p>
      * Decoding rules per Federal Meteorological Handbook No. 1:
      * - If ppp >= 500: Sea level pressure = 900 + (ppp / 10) hPa
      * - If ppp < 500: Sea level pressure = 1000 + (ppp / 10) hPa
@@ -1165,12 +1240,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle hourly temperature and dewpoint remark for sequential parsing.
-     *
+     * <p>
      * Format: TsnT'T'T'snT'dT'dT'd
      * - sn = sign (0=positive, 1=negative)
      * - T'T'T' = temperature in tenths of degrees (e.g., 233 = 23.3°C)
      * - snT'dT'dT'd = optional dewpoint with sign and tenths
-     *
+     * <p>
      * Examples:
      * - T02330139 → temp=+23.3°C, dewpoint=+13.9°C
      * - T10281015 → temp=-2.8°C, dewpoint=-1.5°C
@@ -1245,13 +1320,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle peak wind remark for sequential parsing.
-     *
+     * <p>
      * Format: PK WND dddff(f)/(hh)mm
      * - ddd = wind direction in degrees (optional)
      * - ff(f) = wind speed in knots, 2-3 digits (P prefix for speeds >99 knots)
      * - hh = hour of occurrence (optional)
      * - mm = minute of occurrence (optional)
-     *
+     * <p>
      * Examples:
      * - PK WND 28032/1530 → dir=280°, speed=32kt, time=15:30 UTC
      * - PK WND 32035/15 → dir=320°, speed=35kt, time=XX:15 UTC (hour missing)
@@ -1321,15 +1396,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle wind shift remark for sequential parsing.
-     *
+     * <p>
      * Format: WSHFT (hh)mm [FROPA]
      * - hh = hour of wind shift (optional)
      * - mm = minute of wind shift (required)
      * - FROPA = frontal passage indicator (optional)
-     *
+     * <p>
      * A wind shift is reported when wind direction changes by 45° or more
      * in less than 15 minutes, with sustained winds of 10 knots or more.
-     *
+     * <p>
      * Examples:
      * - WSHFT 1530 → hour=15, minute=30, no frontal passage
      * - WSHFT 1530 FROPA → hour=15, minute=30, with frontal passage
@@ -1387,14 +1462,14 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle variable visibility remark for sequential parsing.
-     *
+     * <p>
      * Format: VIS [DIR] minVmax [RWY]
      * - DIR = Optional direction (N, NE, E, SE, S, SW, W, NW)
      * - min = Minimum visibility (fraction, mixed, or whole number)
      * - V = "V" separator
      * - max = Maximum visibility (same formats as min)
      * - RWY = Optional runway/location qualifier
-     *
+     * <p>
      * Examples:
      * - VIS 1/2V2 → min=1/2 SM, max=2 SM
      * - VIS NE 2V4 → Northeast, min=2 SM, max=4 SM
@@ -1482,7 +1557,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse a visibility distance string into a Visibility object.
-     *
+     * <p>
      * Handles formats:
      * - Fractions: "1/2", "3/4"
      * - Mixed: "1 1/2", "2 1/4"
@@ -1536,12 +1611,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle tower or surface visibility remark for sequential parsing.
-     *
+     * <p>
      * Format: TWR VIS value OR SFC VIS value
      * - TWR VIS = Tower visibility
      * - SFC VIS = Surface visibility
      * - value = Visibility distance (fraction, mixed, or whole number)
-     *
+     * <p>
      * Examples:
      * - TWR VIS 1 1/2 → Tower visibility 1.5 SM
      * - SFC VIS 1/4 → Surface visibility 0.25 SM
@@ -1629,12 +1704,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle hourly precipitation amount remark.
-     *
+     * <p>
      * Format: P0015 = 0.15 inches in last hour
      * - P = Hourly precipitation indicator
      * - 4 digits = Amount in hundredths of inches
      * - //// = Trace precipitation
-     *
+     * <p>
      * Examples:
      * - P0015 → 0.15 inches
      * - P0009 → 0.09 inches
@@ -1678,13 +1753,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle 6-hour or 24-hour precipitation amount remark.
-     *
+     * <p>
      * Format: 60009 (6-hour) or 70125 (24-hour)
      * - 6 = 6-hour precipitation indicator
      * - 7 = 24-hour precipitation indicator
      * - 4-5 digits = Amount in hundredths of inches
      * - //// or ///// = Trace precipitation
-     *
+     * <p>
      * Examples:
      * - 60009 → 0.09 inches (6-hour)
      * - 70125 → 1.25 inches (24-hour)
@@ -1736,13 +1811,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle hail size remark for sequential parsing.
-     *
+     * <p>
      * Format: GR followed by size in inches
      * Examples:
      * - GR 1/2 → 0.5 inch hail
      * - GR 1 3/4 → 1.75 inch hail
      * - GR 2 → 2 inch hail
-     *
+     * <p>
      * Uses parseVisibilityDistance() to parse the size value since
      * the format is identical (fractions, mixed numbers, whole numbers).
      *
@@ -1799,7 +1874,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle weather begin/end time events for sequential parsing.
-     *
+     * <p>
      * Uses the existing BEGIN_END_WEATHER_PATTERN which captures:
      * - Intensity: int, int2
      * - Descriptor: desc (MI, PR, BC, DR, BL, SH, TS, FZ)
@@ -1808,18 +1883,18 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - Other: other (PO, SQ, FC, SS, DS, NSW)
      * - Begin time: begin (B marker), begint (time digits)
      * - End time: end (E marker), endt (time digits)
-     *
+     * <p>
      * Time format:
      * - 2 digits (05) → minute only (:05)
      * - 4 digits (1159) → hour and minute (11:59)
-     *
+     * <p>
      * Examples:
      * - RAB05 → Rain began at :05
      * - FZRAB1159E1240 → Freezing rain began 11:59, ended 12:40
      * - RAB15E30SNB30 → Rain began :15 ended :30; Snow began :30 (parsed as 2 events)
      * - -RAB05 → Light rain began :05
      * - +TSRAB20E45 → Heavy thunderstorm with rain began :20, ended :45
-     *
+     * <p>
      * Multiple events can be chained together (e.g., RAB15E30SNB30 contains two events).
      * This method will parse all chained events in a single pass.
      *
@@ -1867,7 +1942,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse a single weather event from the existing BEGIN_END_WEATHER_PATTERN matcher.
-     *
+     * <p>
      * Extracts data from your existing capture groups:
      * - int, int2: intensity markers
      * - desc: descriptor (TS, FZ, etc.)
@@ -1961,7 +2036,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse time digits which can be either 2 digits (mm) or 4 digits (hhmm).
-     *
+     * <p>
      * Format:
      * - 2 digits (05) → hour=null, minute=5
      * - 4 digits (1159) → hour=11, minute=59
@@ -1999,10 +2074,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Build the weather code from your existing pattern's capture groups.
-     *
+     * <p>
      * Combines descriptor, precipitation, obscuration, and other components
      * in the order they appear in the pattern.
-     *
+     * <p>
      * Weather codes can be:
      * - Just descriptor (e.g., "TS" for thunderstorm)
      * - Descriptor + precipitation (e.g., "FZRA", "TSRA")
@@ -2043,19 +2118,19 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle thunderstorm and cloud location remarks for sequential parsing.
-     *
+     * <p>
      * Uses the existing TS_CLD_LOC_PATTERN which captures:
      * - type: Cloud/phenomenon type (TS, CB, TCU, ACC, CBMAM, VIRGA)
      * - loc: Location qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR)
      * - dir: Primary direction (N, NE, E, SE, S, SW, W, NW)
      * - dir2: Secondary direction for range (e.g., N-NE)
      * - dirm: Movement direction (if MOV present)
-     *
+     * <p>
      * Examples:
      * - TS SE → Thunderstorm Southeast
      * - CB OHD MOV E → Cumulonimbus Overhead Moving East
      * - TCU DSNT N-NE → Towering Cumulus Distant North to Northeast
-     *
+     * <p>
      * Multiple occurrences can be present (e.g., "TS SE CB W").
      *
      * @param remarksText the remaining remarks text to process
@@ -2104,7 +2179,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse ThunderstormLocation from regex matcher.
-     *
+     * <p>
      * Extracts all captured groups from TS_CLD_LOC_PATTERN and creates
      * a ThunderstormLocation object.
      *
@@ -2210,7 +2285,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Handle 6-hour maximum/minimum temperature.
      * Format: 1sTTT (max) or 2sTTT (min)
      * where s=sign (0=positive, 1=negative), TTT=temp in tenths of degrees C.
-     *
+     * <p>
      * Examples:
      * - 10142 → Maximum: 14.2°C
      * - 11023 → Maximum: -2.3°C
@@ -2305,7 +2380,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Handle 24-hour maximum/minimum temperature.
      * Format: 4sTTTsTTT where s=sign (0=positive, 1=negative), TTT=temp in tenths °C
      * Reported at midnight local standard time.
-     *
+     * <p>
      * Examples:
      * - 400461006 → Max: 4.6°C, Min: -0.6°C
      * - 411231089 → Max: -12.3°C, Min: -8.9°C
@@ -2403,7 +2478,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Handle variable ceiling.
      * Format: CIG minVmax where values are in hundreds of feet.
-     *
+     * <p>
      * Examples:
      * - CIG 005V010 → 500-1000 feet
      * - CIG 020V035 → 2000-3500 feet
@@ -2452,12 +2527,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Handle ceiling height at second site.
      * Format: CIG height [LOC] where height is in hundreds of feet.
-     *
+     * <p>
      * Examples:
      * - CIG 002 RY11 → 200 ft at runway 11
      * - CIG 005 RWY06 → 500 ft at runway 06
      * - CIG 010 → 1000 ft (no location)
-     *
+     * <p>
      * IMPORTANT: This handler must be called AFTER handleVariableCeilingSequential
      * to avoid matching variable ceiling patterns (e.g., CIG 005V010).
      *
@@ -2504,11 +2579,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Handle obscuration layers.
      * Format: [Coverage] [Phenomenon] [Height]
-     *
+     * <p>
      * Examples:
      * - FEW FG 000 → Few fog at ground level
      * - SCT FU 010 → Scattered smoke at 1000 feet
-     *
+     * <p>
      * Multiple layers can be present: FEW FG 000 SCT FU 010
      *
      * @param remarksText remaining remarks text to process
@@ -2558,13 +2633,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Handle cloud type observations in okta format.
      * Format: [Intensity] CloudType [Oktas] [Location/Movement]
-     *
+     * <p>
      * Examples:
      * - SC1 → Stratocumulus 1 okta
      * - SC TR → Stratocumulus trace
      * - MDT CU OHD → Moderate cumulus overhead
      * - CI MOVG NE → Cirrus moving northeast
-     *
+     * <p>
      * Multiple cloud types can be present: SC1 AC2 CI
      *
      * @param remarksText remaining remarks text to process
