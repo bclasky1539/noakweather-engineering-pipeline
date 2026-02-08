@@ -101,6 +101,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             String remarks = parts[1];
 
             mainBody = parseMainBody(mainBody);
+            // Store unparsed tokens from main body (similar to freeText in remarks)
+            if (!mainBody.isBlank() && weatherData != null) {
+                weatherData.setUnparsedMainBody(mainBody.trim());
+            }
+
             remarks = parseRemarks(remarks);
             copyRemarksToTopLevel();
 
@@ -383,7 +388,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 case "tempDewpoint" -> handleTempDewpoint(matcher);
                 case "altimeter" -> handleAltimeter(matcher);
                 case "noSigChange" -> handleNoSigChange(matcher);
-                case "unparsed" -> handleUnparsed(matcher);
 
                 // Shared handlers (from base class)
                 case "wind" -> handleWind(matcher);
@@ -2849,11 +2853,5 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Invalid automated maintenance indicator: {}", matcher.group(0), e);
         }
-    }
-
-    // ==================== STUB HANDLERS (to be implemented) ====================
-
-    private void handleUnparsed(Matcher matcher) {
-        LOGGER.debug("Unparsed token: '{}'", matcher);
     }
 }

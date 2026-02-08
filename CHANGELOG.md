@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.16.0-SNAPSHOT - February 08, 2026
+
+#### Weather Model & Processing - Unparsed Main Body Token Capture
+
+**Added:**
+- **Unparsed Main Body Token Capture** - Production data preservation for unknown METAR tokens
+    - `unparsedMainBody` field in NoaaWeatherData for storing unrecognized main body tokens
+    - Getter/setter methods: `getUnparsedMainBody()`, `setUnparsedMainBody(String)`
+    - Automatic token storage after main body parsing in NoaaMetarParser
+    - Comprehensive test coverage with 8 new test cases in NoaaWeatherDataTest
+
+**Changed:**
+- **NoaaWeatherData** (weather-common)
+    - Added `unparsedMainBody` String field for token preservation
+    - Updated `equals()` and `hashCode()` to include unparsedMainBody field
+    - Maintains null-safe handling (unparsedMainBody can be null or empty)
+
+- **NoaaMetarParser** (weather-processing)
+    - Enhanced `parse()` method to store unparsed tokens after `parseMainBody()`
+    - Token storage occurs immediately after main body parsing (before remarks)
+    - Preserves unparsed content for debugging and future parser enhancements
+    - No override of parent class `logUnparsedTokens()` method (clean separation of concerns)
+
+**Testing:**
+- **NoaaWeatherDataTest** - 8 new comprehensive test cases
+    - Basic getter/setter functionality
+    - Null handling (field can be null)
+    - Empty string handling (field can be empty but not null)
+    - Whitespace preservation in tokens
+    - Multiple token storage (space-separated)
+    - Equals comparison with same unparsed content
+    - Inequality when unparsed content differs
+    - HashCode consistency for equal objects
+    - 100% coverage achieved for new methods
+
+**Technical Details:**
+- **Token Storage Strategy:**
+    - Storage occurs after `parseMainBody()` completes
+    - Mirrors remarks pattern: remarks stores freeText after `parseRemarks()`
+    - Logical flow: each parsing step handles its own unparsed content
+    - Safer: main body unparsed stored even if remarks parsing fails
+
+- **Architecture Benefits:**
+    - Production data preservation: Unknown tokens not lost
+    - Debugging support: Identifies parser gaps in production
+    - Future enhancement: Stored tokens can inform parser improvements
+    - Zero data loss: Raw text AND parsed structure both preserved
+
+**Notes:**
+- Phase 3 implementation complete and tested
+- No changes to parent class methods (clean inheritance)
+- Storage pattern consistent with existing remarks handling
+- Ready for production deployment with full test coverage
+- Enables data-driven parser improvement (analyze unparsed tokens in production)
+
 ### Version 1.15.0-SNAPSHOT - February 07, 2026
 
 #### Weather Ingestion Module - METAR/TAF Parser Integration & Remark Field Enhancement

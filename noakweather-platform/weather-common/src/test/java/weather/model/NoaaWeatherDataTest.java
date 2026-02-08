@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests NOAA-specific fields and WeatherConditions integration.
  *
  * @author bclasky1539
+ *
  */
 class NoaaWeatherDataTest {
 
@@ -909,5 +910,89 @@ class NoaaWeatherDataTest {
 
         assertThat(data.getVisibility()).isNotNull();
         assertThat(data.getVisibility().isCavok()).isTrue();
+    }
+
+    // ========== UNPARSED MAIN BODY TESTS (METAR-Specific) ==========
+
+    @Test
+    @DisplayName("Should set and get unparsed main body")
+    void testSetAndGetUnparsedMainBody() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        String unparsedTokens = "RETS";
+
+        data.setUnparsedMainBody(unparsedTokens);
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo(unparsedTokens);
+    }
+
+    @Test
+    @DisplayName("Should handle null unparsed main body")
+    void testUnparsedMainBodyNull() {
+        NoaaWeatherData data = new NoaaWeatherData();
+
+        data.setUnparsedMainBody(null);
+
+        assertThat(data.getUnparsedMainBody()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should handle empty unparsed main body")
+    void testUnparsedMainBodyEmpty() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        String emptyString = "";
+
+        data.setUnparsedMainBody(emptyString);
+
+        assertThat(data.getUnparsedMainBody())
+                .isNotNull()
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should handle whitespace in unparsed main body")
+    void testUnparsedMainBodyWithWhitespace() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        String tokensWithSpaces = "RETS UNKNOWN TOKEN";
+
+        data.setUnparsedMainBody(tokensWithSpaces);
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo(tokensWithSpaces);
+    }
+
+    @Test
+    @DisplayName("Should handle multiple unknown tokens")
+    void testMultipleUnparsedTokens() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        String multipleTokens = "RETS UNKNOWN XYZ123";
+
+        data.setUnparsedMainBody(multipleTokens);
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo(multipleTokens);
+    }
+
+    @Test
+    @DisplayName("Should include unparsed main body in equals comparison")
+    void testUnparsedMainBodyInEquals() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        data1.setUnparsedMainBody("RETS");
+
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+        data2.setUnparsedMainBody("RETS");
+
+        assertThat(data1)
+                .isEqualTo(data2)
+                .hasSameHashCodeAs(data2);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when unparsed main body differs")
+    void testUnparsedMainBodyNotEqual() {
+        NoaaWeatherData data1 = new NoaaWeatherData("KJFK", now, "METAR");
+        data1.setUnparsedMainBody("RETS");
+
+        NoaaWeatherData data2 = new NoaaWeatherData("KJFK", now, "METAR");
+        data2.setUnparsedMainBody("DIFFERENT");
+
+        assertThat(data1).isNotEqualTo(data2);
     }
 }

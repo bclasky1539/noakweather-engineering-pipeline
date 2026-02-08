@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for NoaaMetarData class.
- *
+ * <p>
  * Tests METAR-specific functionality only.
  * Base class functionality (including conditions) is tested in NoaaWeatherDataTest.
  *
@@ -540,4 +540,6 @@ class NoaaMetarDataTest {
 
         assertThat(data1).hasSameHashCodeAs(data2);
     }
+
+
 }

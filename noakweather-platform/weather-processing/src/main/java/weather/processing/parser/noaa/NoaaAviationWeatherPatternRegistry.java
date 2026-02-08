@@ -21,10 +21,10 @@ import java.util.regex.Pattern;
 
 /**
  * Registry of regex patterns and their handlers for METAR/TAF parsing.
- * 
+ * <p>
  * Uses IndexedLinkedHashMap to maintain pattern order and provide index-based access.
  * Pattern order is critical for sequential parsing - patterns are checked in sequence.
- * 
+ * <p>
  * Three types of registries:
  * - Main handlers: Core METAR body (before RMK)
  * - Remarks handlers: Remarks section (after RMK)
@@ -38,7 +38,7 @@ public class NoaaAviationWeatherPatternRegistry {
     /**
      * Get handlers for main METAR body (before RMK).
      * Patterns are ordered by typical METAR sequence.
-     * 
+     * <p>
      * METAR Format:
      * TYPE STATION DAY/TIME MODIFIER WIND VISIBILITY RVR WEATHER SKY TEMP PRESSURE NOSIG
      * 
@@ -99,16 +99,12 @@ public class NoaaAviationWeatherPatternRegistry {
         handlers.put(RegExprConst.NO_SIG_CHANGE_PATTERN, 
                 NoaaAviationWeatherPatternHandler.single("noSigChange"));
         
-        // Catch unparsed tokens
-        handlers.put(RegExprConst.UNPARSED_PATTERN, 
-                NoaaAviationWeatherPatternHandler.single("unparsed"));
-        
         return handlers;
     }
     
     /**
      * Get handlers for METAR remarks section (after RMK).
-     * 
+     * <p>
      * Remarks contain additional information such as:
      * - Automated station type (AO1, AO2)
      * - Sea level pressure (SLP)
@@ -223,7 +219,7 @@ public class NoaaAviationWeatherPatternRegistry {
     
     /**
      * Get handlers for TAF group patterns (BECMG, TEMPO, FM, PROB).
-     * 
+     * <p>
      * TAF (Terminal Aerodrome Forecast) groups indicate changes in conditions:
      * - BECMG: Becoming (gradual change)
      * - TEMPO: Temporary fluctuations
