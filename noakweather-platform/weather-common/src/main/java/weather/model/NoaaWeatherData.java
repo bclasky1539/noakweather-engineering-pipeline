@@ -77,6 +77,12 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     private String rawText;
 
     /**
+     * Unparsed tokens from main body of METAR.
+     * Similar to freeText in remarks section.
+     */
+    private String unparsedMainBody;
+
+    /**
      * Report modifier (AUTO, COR, AMD, etc.)
      */
     private String reportModifier;
@@ -261,6 +267,14 @@ public non-sealed class NoaaWeatherData extends WeatherData {
 
     public void setRawText(String rawText) {
         this.rawText = rawText;
+    }
+
+    public String getUnparsedMainBody() {
+        return unparsedMainBody;
+    }
+
+    public void setUnparsedMainBody(String unparsedMainBody) {
+        this.unparsedMainBody = unparsedMainBody;
     }
 
     public String getReportModifier() {
@@ -461,7 +475,8 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         return Objects.equals(reportType, that.reportType) &&
                 Objects.equals(conditions, that.conditions) &&
                 Objects.equals(runwayVisualRange, that.runwayVisualRange) &&
-                Objects.equals(rawText, that.rawText) &&
+                Objects.equals(rawText, that.rawText)  &&
+                Objects.equals(unparsedMainBody, that.unparsedMainBody) &&
                 Objects.equals(reportModifier, that.reportModifier) &&
                 Objects.equals(remarks, that.remarks);
     }
@@ -475,6 +490,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
                 conditions,
                 runwayVisualRange,
                 rawText,
+                unparsedMainBody,
                 reportModifier,
                 remarks
         );
