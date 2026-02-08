@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `unparsedMainBody` field in NoaaWeatherData for storing unrecognized main body tokens
     - Getter/setter methods: `getUnparsedMainBody()`, `setUnparsedMainBody(String)`
     - Automatic token storage after main body parsing in NoaaMetarParser
-    - Comprehensive test coverage with 8 new test cases in NoaaWeatherDataTest
+    - Comprehensive test coverage with 7 new test cases in NoaaWeatherDataTest
 
 **Changed:**
 - **NoaaWeatherData** (weather-common)
@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - No override of parent class `logUnparsedTokens()` method (clean separation of concerns)
 
 **Testing:**
-- **NoaaWeatherDataTest** - 8 new comprehensive test cases
+- **NoaaWeatherDataTest** - 7 new comprehensive test cases
     - Basic getter/setter functionality
     - Null handling (field can be null)
     - Empty string handling (field can be empty but not null)
