@@ -44,14 +44,15 @@ import java.time.LocalDateTime;
  * <p>
  * S3 Structure:
  *   s3://bucket-name/
- *     ├── raw-data/
- *     │   └── noaa/
- *     │       ├── metar/2025/02/02/KJFK_20250202_1430.txt
- *     │       └── taf/2025/02/02/KLGA_20250202_1430.txt
- *     └── speed-layer/
- *         └── noaa/
- *             ├── metar/2025/02/02/KJFK_20250202_1430.json
- *             └── taf/2025/02/02/KLGA_20250202_1430.json
+ *     └── bronze/
+ *         ├── raw-data/
+ *         │   └── noaa/
+ *         │       ├── metar/2025/02/02/KJFK_20250202_1430.txt
+ *         │       └── taf/2025/02/02/KLGA_20250202_1430.txt
+ *         └── speed-layer/
+ *              └── noaa/
+ *                  ├── metar/2025/02/02/KJFK_20250202_1430.json
+ *                  └── taf/2025/02/02/KLGA_20250202_1430.json
  * <p>
  * NEW FUNCTIONALITY - Not present in legacy system
  *
@@ -106,8 +107,8 @@ public class S3UploadService {
      * This is the RECOMMENDED method for NOAA data ingestion.
      * <p>
      * Stores:
-     * 1. Raw text: raw-data/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.txt
-     * 2. JSON: speed-layer/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.json
+     * 1. Raw text: bronze/raw-data/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.txt
+     * 2. JSON: bronze/speed-layer/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.json
      *
      * @param weatherData the weather data to upload
      * @return DualStorageResult containing both S3 keys
@@ -189,8 +190,8 @@ public class S3UploadService {
      * Enhanced version of uploadRawData with date partitioning.
      * Stores raw text in the same partitioned structure as JSON for consistency.
      * <p>
-     * Pattern: raw-data/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.txt
-     * Example: raw-data/noaa/metar/2025/02/02/KCLT_20250202_1430.txt
+     * Pattern: bronze/raw-data/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.txt
+     * Example: bronze/raw-data/noaa/metar/2025/02/02/KCLT_20250202_1430.txt
      *
      * @param source the data source (e.g., "NOAA", "OpenWeather")
      * @param rawData the raw data string
@@ -234,7 +235,7 @@ public class S3UploadService {
         String timestamp = ingestionDateTime.format(TIMESTAMP_FORMAT);
 
         // Build partitioned key (matches JSON structure but in raw-data/ prefix)
-        String s3Key = String.format("raw-data/%s/%s/%d/%02d/%02d/%s_%s.txt",
+        String s3Key = String.format("bronze/raw-data/%s/%s/%d/%02d/%02d/%s_%s.txt",
                 source.toLowerCase(),
                 dataType.toLowerCase(),
                 year, month, day,
@@ -310,9 +311,9 @@ public class S3UploadService {
 
     /**
      * Generates an S3 key (path) for a weather data record.
-     * Format: speed-layer/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.json
+     * Format: bronze/speed-layer/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.json
      * <p>
-     * Example: speed-layer/noaa/metar/2025/10/25/KJFK_20251025_1430.json
+     * Example: bronze/speed-layer/noaa/metar/2025/10/25/KJFK_20251025_1430.json
      *
      * @param weatherData the weather data
      * @return the S3 key
@@ -337,7 +338,7 @@ public class S3UploadService {
         String timestamp = ingestionDateTime.format(TIMESTAMP_FORMAT);
 
         // Build hierarchical key
-        return String.format("speed-layer/%s/%s/%d/%02d/%02d/%s_%s.json",
+        return String.format("bronze/speed-layer/%s/%s/%d/%02d/%02d/%s_%s.json",
                 source, reportType, year, month, day, stationId, timestamp);
     }
 
@@ -369,7 +370,7 @@ public class S3UploadService {
         }
 
         String timestamp = java.time.LocalDateTime.now().format(TIMESTAMP_FORMAT);
-        String s3Key = String.format("raw-data/%s/%s_%s.txt",
+        String s3Key = String.format("bronze/raw-data/%s/%s_%s.txt",
                 source.toLowerCase(), stationId, timestamp);
 
         try {
