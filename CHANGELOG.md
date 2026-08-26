@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Bronze layer JSON duplicate fields** (weather-common)
+  - Bronze layer JSON output contained duplicate fields (`dataType`, `wind`,
+    `visibility`, `temperature`, `pressure`, `skyConditions`, `presentWeather`,
+    `automated`) causing AWS Glue Spark `AnalysisException: Found duplicate
+      column(s) in the data schema` and blocking Bronze-to-Silver ETL processing
+  - Root cause: `NoaaWeatherData`, `NoaaMetarData`, and `NoaaTafData` exposed
+    convenience getters delegating to `WeatherConditions`, which Jackson
+    serialized both as nested `conditions.*` fields and as flattened
+    top-level properties via default bean introspection
+  - `getDataType()` overrides also duplicated the `dataType` property
+    already injected by `@JsonTypeInfo`'s polymorphic type discriminator
+  - Added `@JsonIgnore` to all convenience getters (`getWind()`,
+    `getVisibility()`, `getPresentWeather()`, `getSkyConditions()`,
+    `getTemperature()`, `getPressure()`, `getCeilingFeet()`) and
+    `getDataType()` overrides in `NoaaWeatherData`, `NoaaMetarData`, and
+    `NoaaTafData`
+  - Added `@JsonIgnore` to `isAutomated()` in `NoaaMetarData` (derived
+    boolean duplicating `automatedStation` information)
+  - `WeatherConditions` (via `getConditions()`) remains the single source
+    of truth for serialized weather condition data
+  - Verified with fresh Bronze JSON generation and `jq` duplicate-key check
+
 ### Version 1.16.0-SNAPSHOT - February 08, 2026
 
 #### Weather Model & Processing - Unparsed Main Body Token Capture

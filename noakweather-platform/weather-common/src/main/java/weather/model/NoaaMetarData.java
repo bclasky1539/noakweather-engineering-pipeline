@@ -16,6 +16,7 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import weather.model.components.remark.*;
 
@@ -237,6 +238,7 @@ public class NoaaMetarData extends NoaaWeatherData {
      *
      * @return true if automated
      */
+    @JsonIgnore
     public boolean isAutomated() {
         return automatedStation != null &&
                 (automatedStation.equals("AO1") || automatedStation.equals("AO2"));
@@ -264,7 +266,10 @@ public class NoaaMetarData extends NoaaWeatherData {
     // ========== OVERRIDES ==========
 
     @Override
-    public String getDataType() { return OBSERVATION_TYPE; }
+    @JsonIgnore
+    public String getDataType() {
+        return OBSERVATION_TYPE;
+    }
 
     @Override
     public String getSummary() {

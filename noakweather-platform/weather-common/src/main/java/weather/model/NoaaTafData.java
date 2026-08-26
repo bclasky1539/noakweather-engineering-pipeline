@@ -16,6 +16,7 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import weather.model.components.ForecastPeriod;
 import weather.model.components.ValidityPeriod;
@@ -41,8 +42,8 @@ import java.util.Objects;
  * <p>
  * Example TAF:
  * TAF AMD KCLT 151953Z 1520/1624 VRB02KT P6SM FEW250
- *      FM152100 21005KT P6SM SCT250
- *      TEMPO 3003/3011 P6SM -SHSN BKN040 BKN160
+ * FM152100 21005KT P6SM SCT250
+ * TEMPO 3003/3011 P6SM -SHSN BKN040 BKN160
  * <p>
  * Architecture:
  * - Uses ValidityPeriod for overall forecast validity
@@ -204,7 +205,7 @@ public class NoaaTafData extends NoaaWeatherData {
      * Convenience method to set both max temperature and its occurrence time.
      *
      * @param temperature max temperature in Celsius
-     * @param time when max temperature occurs
+     * @param time        when max temperature occurs
      */
     public void setMaxTemperatureForecast(Integer temperature, Instant time) {
         this.maxTemperature = temperature;
@@ -215,7 +216,7 @@ public class NoaaTafData extends NoaaWeatherData {
      * Convenience method to set both min temperature and its occurrence time.
      *
      * @param temperature min temperature in Celsius
-     * @param time when min temperature occurs
+     * @param time        when min temperature occurs
      */
     public void setMinTemperatureForecast(Integer temperature, Instant time) {
         this.minTemperature = temperature;
@@ -372,7 +373,10 @@ public class NoaaTafData extends NoaaWeatherData {
     }
 
     @Override
-    public String getDataType() { return "TAF"; }
+    @JsonIgnore
+    public String getDataType() {
+        return "TAF";
+    }
 
     @Override
     public String getSummary() {
