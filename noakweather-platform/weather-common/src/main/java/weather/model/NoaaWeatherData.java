@@ -16,6 +16,7 @@
  */
 package weather.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import weather.model.components.*;
 import weather.model.components.remark.NoaaMetarRemarks;
@@ -174,6 +175,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return wind, or null if no conditions
      */
+    @JsonIgnore
     public Wind getWind() {
         return conditions != null ? conditions.wind() : null;
     }
@@ -184,6 +186,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return visibility, or null if no conditions
      */
+    @JsonIgnore
     public Visibility getVisibility() {
         return conditions != null ? conditions.visibility() : null;
     }
@@ -194,6 +197,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return list of present weather, empty list if no conditions
      */
+    @JsonIgnore
     public List<PresentWeather> getPresentWeather() {
         return conditions != null && conditions.presentWeather() != null
                 ? conditions.presentWeather()
@@ -206,6 +210,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return immutable list of sky conditions, empty list if no conditions
      */
+    @JsonIgnore
     public List<SkyCondition> getSkyConditions() {
         return conditions != null && conditions.skyConditions() != null
                 ? List.copyOf(conditions.skyConditions())
@@ -218,6 +223,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return temperature, or null if no conditions
      */
+    @JsonIgnore
     public Temperature getTemperature() {
         return conditions != null ? conditions.temperature() : null;
     }
@@ -228,6 +234,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return pressure, or null if no conditions
      */
+    @JsonIgnore
     public Pressure getPressure() {
         return conditions != null ? conditions.pressure() : null;
     }
@@ -332,6 +339,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
      *
      * @return ceiling in feet, or null if no ceiling
      */
+    @JsonIgnore
     public Integer getCeilingFeet() {
         if (conditions == null) {
             return null;
@@ -422,6 +430,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     }
 
     @Override
+    @JsonIgnore
     public String getDataType() {
         return reportType != null ? reportType : "NOAA";
     }
@@ -475,7 +484,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         return Objects.equals(reportType, that.reportType) &&
                 Objects.equals(conditions, that.conditions) &&
                 Objects.equals(runwayVisualRange, that.runwayVisualRange) &&
-                Objects.equals(rawText, that.rawText)  &&
+                Objects.equals(rawText, that.rawText) &&
                 Objects.equals(unparsedMainBody, that.unparsedMainBody) &&
                 Objects.equals(reportModifier, that.reportModifier) &&
                 Objects.equals(remarks, that.remarks);
