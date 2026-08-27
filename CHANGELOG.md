@@ -5,17 +5,12 @@ All notable changes to the NoakWeather Engineering Pipeline project will be docu
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - feature/athena-integration-implementation_setup
+## [Unreleased]
 
 ### In Progress
 - Bronze-to-Silver Glue ETL job for METAR observations
 - Silver layer Athena table with partition projection
 - AWS Glue deployment infrastructure and IAM setup
-
-### Known Issues
-- Bronze layer JSON contains duplicate fields (dataType, wind, visibility,
-  temperature, pressure, skyConditions) causing Spark schema inference failures
-- Fix in progress: fix/bronze-layer-duplicate-fields branch
 
 ### Changed
 - Updated S3UploadService to use `bronze/` prefix (medallion architecture)
