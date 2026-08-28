@@ -1,0 +1,19 @@
+# AWS Glue ETL Job Dependencies
+# Note: Some packages are only available in AWS Glue runtime, not for local development
+
+# PySpark (AWS Glue 4.0 uses PySpark 3.3.0)
+pyspark==3.3.0
+
+# AWS SDK
+boto3>=1.26.0
+botocore>=1.29.0
+
+# For local development/testing (not needed in AWS Glue runtime)
+py4j==0.10.9.5  # Required by PySpark
+
+# Optional: For local Glue library emulation
+# aws-glue-libs  # Only available via AWS Glue Docker image or custom build
+
+# Data manipulation (if needed for testing)
+pandas>=2.0.0
+pyarrow>=12.0.0  # For Parquet file h

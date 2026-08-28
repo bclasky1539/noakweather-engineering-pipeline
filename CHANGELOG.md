@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Version 1.17.0-SNAPSHOT - August 27, 2026
+
+#### AWS Glue Bronze-to-Silver ETL Pipeline - METAR Observations
+
+**Added:**
+- **Bronze-to-Silver Glue ETL job for METAR observations** (glue-jobs)
+  - Verified working end-to-end: Bronze JSON → Silver Parquet → Athena queryable
+  - Silver layer Athena table with partition projection (data_source, year, month, day)
+  - AWS Glue deployment infrastructure and IAM setup
+
+**Changed:**
+- Updated S3UploadService to use `bronze/` prefix (medallion architecture)
+  - `raw-data/` → `bronze/raw-data/`
+  - `speed-layer/` → `bronze/speed-layer/`
+
+**Fixed:**
 - **Bronze layer JSON duplicate fields** (weather-common)
   - Bronze layer JSON output contained duplicate fields (`dataType`, `wind`,
     `visibility`, `temperature`, `pressure`, `skyConditions`, `presentWeather`,
@@ -28,7 +43,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     boolean duplicating `automatedStation` information)
   - `WeatherConditions` (via `getConditions()`) remains the single source
     of truth for serialized weather condition data
-  - Verified with fresh Bronze JSON generation and `jq` duplicate-key check
+
+- **Bronze-to-Silver Glue ETL transformation bugs** (glue-jobs)
+  - Explicit read schema replacing Spark's JSON schema inference, fixing
+    `AnalysisException: need struct type but got string` for empty
+    `presentWeather`/`skyConditions`/`runwayVisualRange` arrays (common in
+    real METARs with clear skies or no significant weather)
+  - Removed redundant `col()` wrapping around pre-defined `Column` objects
+    that caused `TypeError: Column is not iterable`
+  - Fixed `runwayVisualRange` field name mismatch (`runway`, not `runwayId`)
+  - Fixed missing `observation_summary` column (`Column 'summary' does not exist`)
+  - Fixed visibility unit conversion bug causing clear, good-visibility
+    observations to be misclassified as `LIFR` (raw statute-mile values
+    were compared directly against meter-based thresholds)
+  - Simplified output path to resolve Athena partition projection mismatch;
+    corrected `storage.location.template` TBLPROPERTIES to use Hive-style
+    `key=value` path segments matching the actual S3 partition layout
 
 ### Version 1.16.0-SNAPSHOT - February 08, 2026
 
