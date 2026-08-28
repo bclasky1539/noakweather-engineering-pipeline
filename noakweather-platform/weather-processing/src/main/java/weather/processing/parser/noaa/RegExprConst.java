@@ -21,9 +21,9 @@ import java.util.regex.Pattern;
 /**
  * Class representing the regular expressions used for decoding Metar and
  * TAF data
- * 
+ *
  * @author bclasky1539
- * 
+ *
  */
 public final class RegExprConst {
 
@@ -102,7 +102,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for multiple visibility formats
     public static final Pattern VISIBILITY_PATTERN = Pattern.compile(
-        "^(?<vis>(?<dist>[MP]?\\d{4}|////)(?<dir>[NSEW][EW]?|NDV)?|(?<distu>[MP]?(\\d+|\\d{1,2}/\\d{1,2}|\\d+\\s+\\d/\\d))(?<units>SM|KM|M|U)|NDV|CAVOK)\\s+"
+            "^(?<vis>(?<dist>[MP]?\\d{4}|////)(?<dir>[NSEW][EW]?|NDV)?|(?<distu>[MP]?(\\d+|\\d{1,2}/\\d{1,2}|\\d+\\s+\\d/\\d))(?<units>SM|KM|M|U)|NDV|CAVOK)\\s+"
     );
 
     /**
@@ -112,7 +112,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for runway visual range format
     public static final Pattern RUNWAY_PATTERN = Pattern.compile(
-        "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?\\s+"
+            "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?\\s+"
     );
 
     /**
@@ -122,7 +122,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for weather phenomena combinations
     public static final Pattern PRESENT_WEATHER_PATTERN = Pattern.compile(
-            "^(?<int>(VC|-|\\+)*)(?<desc>(MI|PR|BC|DR|BL|SH|TS|FZ)+)?(?<prec>(DZ|RA|SN|SG|IC|PL|GR|GS|UP|/)*)(?<obsc>BR|FG|FU|VA|DU|SA|HZ|PY)?(?<other>PO|SQ|FC|SS|DS|NSW|/+)?(?<int2>[-+])?\\s+"
+            "^(?<int>(?:VC|-|\\+)*+)(?<desc>(?:MI|PR|BC|DR|BL|SH|TS|FZ)++)?(?<prec>(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|/)*+)(?<obsc>BR|FG|FU|VA|DU|SA|HZ|PY)?(?<other>PO|SQ|FC|SS|DS|NSW|/++)?(?<int2>[-+])?\\s++"
     );
 
     /**
@@ -182,22 +182,22 @@ public final class RegExprConst {
 
     /**
      * Beginning and End of Precipitation/Weather Phenomena.
-     *
+     * <p>
      * Supports both minute-only and full timestamp formats:
      * - RAB05 → Rain began at :05 (2-digit format)
      * - FZRAB1159E1240 → Freezing rain began 11:59, ended 12:40 (4-digit format)
      * - RAB15E30 → Rain began :15, ended :30
      * - -RAB05 → Light rain began :05
      * - +TSRAB20E45 → Heavy thunderstorm with rain began :20, ended :45
-     *
+     * <p>
      * - Begin time: (?<begint>\\d{2,4}) allows 2 OR 4 digits
      * - End time: (?<endt>\\d{2,4}) allows 2 OR 4 digits
      * - Added word boundary (?=\\s|$) to prevent over-matching
-     *
+     * <p>
      * Time parsing logic (in handler):
      * - 2 digits (05) → minute only (:05)
      * - 4 digits (1159) → hour and minute (11:59)
-     *
+     * <p>
      * Complexity is required to capture weather type and flexible begin/end time formats.
      */
     @SuppressWarnings("java:S5843") // Complex regex required for precipitation timing format
@@ -231,7 +231,7 @@ public final class RegExprConst {
      */
     public static final Pattern WIND_SHIFT_PATTERN = Pattern.compile(
             "^WSHFT (?<hour>\\d{2})?(?<min>\\d{2})(\\s+(?<front>FROPA))?\\s*"
-            
+
     );
 
     /**
@@ -243,7 +243,7 @@ public final class RegExprConst {
     public static final Pattern TWR_SFC_VIS_PATTERN = Pattern.compile(
             "^(?<type>TWR VIS|SFC VIS)\\s+(?<dist>\\d+\\s\\d/\\d|\\d{1,2}/\\d{1,2}|\\d{1,2})?\\s*"
     );
-    
+
     /**
      * Variable Prevailing Visibility (VIS_vnvn vnvnVvxvxvx vxvx). Variable
      * prevailing visibility shall be coded in the format VIS_vn vnvnvnVvxvx
@@ -258,7 +258,7 @@ public final class RegExprConst {
     public static final Pattern VPV_SV_VSL_PATTERN = Pattern.compile(
             "^(?<vis>VIS)\\s+(?<dir>([NSEW]([EW])?))?\\s*(?<dist1>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+))?\\s*"
     );
-    
+
     /**
      * Lightning (Frequency_LTG(type)_[LOC]).
      * Example: "OCNL LTGICCG VC"
@@ -279,7 +279,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern TS_CLD_LOC_PATTERN = Pattern.compile(
-           "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?:(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
+            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?:(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
     );
 
     /**
@@ -297,7 +297,7 @@ public final class RegExprConst {
     public static final Pattern ICING_PATTERN = Pattern.compile(
             "^(?<type>ICG)((?<typeic>IC)?(?<typeip>IP)?)\\s(?<extra>\\w{4}\\s\\w{2})\\s+"
     );
-    
+
     /**
      * 6-hour maximum and minimum temperature in tenths degrees C format; 1sTTT
      * and 2sTTT
@@ -368,7 +368,7 @@ public final class RegExprConst {
      * Sky Conditions FEW = 1 to 2 oktas; SCT (Scattered) = 3 to 4 oktas; BKN
      * (Broken) = 5 to 7 oktas; OVC (Overcast) = 8 oktas;
      * Examples AC8SC1, CI TR, MDT CU OHD-ALQDS
-     * Complexity is required to capture cloud type, coverage in oktas, and location    
+     * Complexity is required to capture cloud type, coverage in oktas, and location
      */
     @SuppressWarnings("java:S5843") // Complex regex required for okta cloud format
     public static final Pattern CLOUD_OKTA_PATTERN = Pattern.compile(
@@ -392,7 +392,7 @@ public final class RegExprConst {
      */
     public static final Pattern PRESS_Q_PATTERN = Pattern.compile(
             "^(?<pressq>QFE|QNH|QNE)(?:(?<pressmm>\\d{3,4})(?:/(?<pressmb>\\d{3,4}))?)?\\s+"
-);
+    );
 
     /**
      * Automated Maintenance Data RVRNO: RVR missing; PWINO: precipitation
@@ -420,7 +420,7 @@ public final class RegExprConst {
     public static final Pattern GROUP_BECMG_TEMPO_PROB_PATTERN = Pattern.compile(
             "^(?<group>BECMG|TEMPO|PROB\\d{2})\\s+(?<obs>.+?)(?=\\s*$)"
     );
-    
+
     /**
      * Group - FM - From
      * Example: "FM121600"
@@ -505,7 +505,7 @@ public final class RegExprConst {
     /**
      * Hail size (GR followed by size in inches).
      * Format: GR 1/2, GR 3/4, GR 1, GR 1 3/4
-     *
+     * <p>
      * Examples:
      * - "GR 1/2" → 0.5 inch hail
      * - "GR 1 3/4" → 1.75 inch hail
@@ -518,7 +518,7 @@ public final class RegExprConst {
     /**
      * Variable Ceiling (CIG minVmax).
      * Ceiling varies between minimum and maximum heights in hundreds of feet.
-     *
+     * <p>
      * Examples:
      * - "CIG 005V010" → Ceiling 500-1000 feet
      * - "CIG 020V035" → Ceiling 2000-3500 feet
@@ -532,12 +532,12 @@ public final class RegExprConst {
      * Ceiling Height at Second Site (CIG height [LOC]).
      * Ceiling at a specific location (usually runway).
      * Height is in hundreds of feet, location is optional.
-     *
+     * <p>
      * Examples:
      * - "CIG 002 RY11" → Ceiling 200 ft at runway 11
      * - "CIG 005 RWY06" → Ceiling 500 ft at runway 06
      * - "CIG 010" → Ceiling 1000 ft (no location)
-     *
+     * <p>
      * NOTE: This pattern must be checked AFTER VARIABLE_CEILING_PATTERN
      * to avoid conflicts (variable ceiling has "V" separator).
      */
@@ -549,16 +549,16 @@ public final class RegExprConst {
     /**
      * Obscuration Layer ([Coverage] [Phenomenon] [Height]).
      * Represents obscuration like fog, mist, smoke at a specific height.
-     *
+     * <p>
      * Examples:
      * - "FEW FG 000" → Few fog at ground level
      * - "SCT FU 010" → Scattered smoke at 1000 feet
      * - "BKN BR 005" → Broken mist at 500 feet
-     *
+     * <p>
      * Coverage: FEW, SCT, BKN, OVC
      * Phenomenon: FG, BR, FU, HZ, DU, SA, VA, PY
      * Height: 3 digits (hundreds of feet)
-     *
+     * <p>
      * NOTE: Spaces distinguish this from SKY_CONDITION_PATTERN which has no spaces.
      */
     public static final Pattern OBSCURATION_PATTERN = Pattern.compile(

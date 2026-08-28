@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.time.ZoneId;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 
 /**
  * Service for uploading weather data to Amazon S3.
@@ -43,16 +44,16 @@ import java.time.LocalDateTime;
  * UPDATED: Now supports DUAL STORAGE - both raw text and JSON formats
  * <p>
  * S3 Structure:
- *   s3://bucket-name/
- *     └── bronze/
- *         ├── raw-data/
- *         │   └── noaa/
- *         │       ├── metar/2025/02/02/KJFK_20250202_1430.txt
- *         │       └── taf/2025/02/02/KLGA_20250202_1430.txt
- *         └── speed-layer/
- *              └── noaa/
- *                  ├── metar/2025/02/02/KJFK_20250202_1430.json
- *                  └── taf/2025/02/02/KLGA_20250202_1430.json
+ * s3://bucket-name/
+ * └── bronze/
+ * ├── raw-data/
+ * │   └── noaa/
+ * │       ├── metar/2025/02/02/KJFK_20250202_1430.txt
+ * │       └── taf/2025/02/02/KLGA_20250202_1430.txt
+ * └── speed-layer/
+ * └── noaa/
+ * ├── metar/2025/02/02/KJFK_20250202_1430.json
+ * └── taf/2025/02/02/KLGA_20250202_1430.json
  * <p>
  * NEW FUNCTIONALITY - Not present in legacy system
  *
@@ -73,7 +74,7 @@ public class S3UploadService {
      * Creates an S3UploadService with specified bucket and region.
      *
      * @param bucketName the S3 bucket name for weather data
-     * @param region the AWS region (e.g., "us-east-1")
+     * @param region     the AWS region (e.g., "us-east-1")
      */
     public S3UploadService(String bucketName, String region) {
         this.bucketName = bucketName;
@@ -92,7 +93,7 @@ public class S3UploadService {
     /**
      * Constructor for dependency injection (testing).
      *
-     * @param s3Client custom S3 client
+     * @param s3Client   custom S3 client
      * @param bucketName the S3 bucket name
      */
     public S3UploadService(S3Client s3Client, String bucketName) {
@@ -187,16 +188,29 @@ public class S3UploadService {
     }
 
     /**
+     * Validates that a required String parameter is neither null nor empty.
+     *
+     * @param value the data source (e.g., "NOAA", "OpenWeather")
+     * @param paramName the name of the parameter, used in the exception message
+     * @throws IOException if data source is empty
+     */
+    private static void requireNonEmpty(String value, String paramName) throws IOException {
+        if (value == null || value.isEmpty()) {
+            throw new IOException(paramName + " cannot be null or empty");
+        }
+    }
+
+    /**
      * Enhanced version of uploadRawData with date partitioning.
      * Stores raw text in the same partitioned structure as JSON for consistency.
      * <p>
      * Pattern: bronze/raw-data/{source}/{type}/{year}/{month}/{day}/{station}_{timestamp}.txt
      * Example: bronze/raw-data/noaa/metar/2025/02/02/KCLT_20250202_1430.txt
      *
-     * @param source the data source (e.g., "NOAA", "OpenWeather")
-     * @param rawData the raw data string
-     * @param stationId the station identifier
-     * @param dataType the data type (e.g., "METAR", "TAF")
+     * @param source        the data source (e.g., "NOAA", "OpenWeather")
+     * @param rawData       the raw data string
+     * @param stationId     the station identifier
+     * @param dataType      the data type (e.g., "METAR", "TAF")
      * @param ingestionTime the time data was ingested
      * @return the S3 key where data was stored
      * @throws IOException if upload fails
@@ -204,15 +218,9 @@ public class S3UploadService {
     private String uploadRawDataWithPartitioning(String source, String rawData,
                                                  String stationId, String dataType,
                                                  Instant ingestionTime) throws IOException {
-        if (source == null || source.isEmpty()) {
-            throw new IOException("Source cannot be null or empty");
-        }
-        if (rawData == null || rawData.isEmpty()) {
-            throw new IOException("Raw data cannot be null or empty");
-        }
-        if (stationId == null || stationId.isEmpty()) {
-            throw new IOException("Station ID cannot be null or empty");
-        }
+        requireNonEmpty(source, "Source");
+        requireNonEmpty(rawData, "Raw data");
+        requireNonEmpty(stationId, "Station ID");
         if (dataType == null || dataType.isEmpty()) {
             throw new IOException("Data type cannot be null or empty");
         }
@@ -349,27 +357,19 @@ public class S3UploadService {
      * NOTE: For NOAA data, use uploadWeatherDataDual() instead which provides
      * partitioned storage for both raw text and JSON.
      *
-     * @param source the data source (e.g., "noaa", "openweather")
-     * @param rawData the raw data string
+     * @param source    the data source (e.g., "noaa", "openweather")
+     * @param rawData   the raw data string
      * @param stationId the station identifier
      * @return the S3 key where data was stored
      * @throws IOException if upload fails
      */
     public String uploadRawData(String source, String rawData, String stationId) throws IOException {
         // Add null checks FIRST
-        if (source == null || source.isEmpty()) {
-            throw new IOException("Source cannot be null or empty");
-        }
+        requireNonEmpty(source, "Source");
+        requireNonEmpty(rawData, "Raw data");
+        requireNonEmpty(stationId, "Station ID");
 
-        if (rawData == null || rawData.isEmpty()) {
-            throw new IOException("Raw data cannot be null or empty");
-        }
-
-        if (stationId == null || stationId.isEmpty()) {
-            throw new IOException("Station ID cannot be null or empty");
-        }
-
-        String timestamp = java.time.LocalDateTime.now().format(TIMESTAMP_FORMAT);
+        String timestamp = java.time.LocalDateTime.now(ZoneOffset.UTC).format(TIMESTAMP_FORMAT);
         String s3Key = String.format("bronze/raw-data/%s/%s_%s.txt",
                 source.toLowerCase(), stationId, timestamp);
 
@@ -434,7 +434,7 @@ public class S3UploadService {
      * - Validation in compact constructor
      *
      * @param rawTextKey S3 key for the raw text file
-     * @param jsonKey S3 key for the JSON file
+     * @param jsonKey    S3 key for the JSON file
      */
     public record DualStorageResult(String rawTextKey, String jsonKey) {
         /**
