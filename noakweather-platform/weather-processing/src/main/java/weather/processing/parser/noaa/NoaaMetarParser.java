@@ -148,7 +148,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @return array with [mainBody, remarks]
      */
     private String[] splitMainBodyAndRemarks(String token) {
-        String[] parts = token.split("\\s+RMK\\s+", 2);
+        @SuppressWarnings("java:S8786")
+        String[] parts = token.split("\\s++RMK\\s++", 2);
         String mainBody = parts[0];
         String remarks = parts.length > 1 ? parts[1] : "";
         return new String[]{mainBody, remarks};

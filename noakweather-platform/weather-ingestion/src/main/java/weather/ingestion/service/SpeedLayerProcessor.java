@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
+import java.time.ZoneOffset;
 
 /**
  * Speed Layer Processor for Lambda Architecture.
@@ -75,7 +76,7 @@ public class SpeedLayerProcessor {
     /**
      * Creates a SpeedLayerProcessor with custom concurrency limit.
      *
-     * @param s3Service the S3 upload service
+     * @param s3Service             the S3 upload service
      * @param maxConcurrentRequests maximum number of concurrent S3 uploads
      */
     public SpeedLayerProcessor(S3UploadService s3Service, int maxConcurrentRequests) {
@@ -220,7 +221,7 @@ public class SpeedLayerProcessor {
      */
     private void enrichWithMetadata(WeatherData weatherData) {
         weatherData.addMetadata("validated", "true");
-        weatherData.addMetadata("validation_timestamp", LocalDateTime.now().toString());
+        weatherData.addMetadata("validation_timestamp", LocalDateTime.now(ZoneOffset.UTC).toString());
         weatherData.addMetadata("processor", "SpeedLayerProcessor");
         weatherData.addMetadata("processor_version", "2.1"); // Updated version for dual storage
         weatherData.addMetadata("storage_format", "dual"); // NEW: indicates both formats stored

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.17.1-SNAPSHOT - August 28, 2026
+
+#### SonarCloud Maintainability and Reliability Fixes
+
+**Fixed:**
+- **Implicit time zone in timestamp generation** (weather-ingestion)
+  - `S3UploadService` and `SpeedLayerProcessor` used `LocalDateTime.now()`
+    without specifying a zone, implicitly relying on the JVM's default
+    system time zone (SonarCloud java:S8688)
+  - Both now explicitly use `LocalDateTime.now(ZoneOffset.UTC)`, consistent
+    with the platform's UTC-based timestamp convention
+
+- **Duplicated null/empty validation logic** (weather-ingestion)
+  - `S3UploadService` had a 9-line null/empty check pattern duplicated
+    across multiple methods for `source`, `rawData`, and `stationId`
+  - Extracted into a shared `requireNonEmpty(String value, String paramName)`
+    helper, applied consistently across all three parameters at both
+    `uploadRawData()` and `uploadRawDataWithPartitioning()`
+
+- **Non-linear regex backtracking risk** (weather-processing)
+  - `RegExprConst.PRESENT_WEATHER_PATTERN` chained multiple optional,
+    alternation-based repeating groups, a pattern shape that can exhibit
+    catastrophic backtracking on malformed input (SonarCloud java:S8786)
+  - Rewrote repeating groups with possessive quantifiers and non-capturing
+    groups to eliminate backtracking ambiguity while preserving identical
+    matching behavior for valid input
+  - `NoaaMetarParser`'s simple `\s+RMK\s+` split pattern was flagged by
+    the same rule but assessed as a false positive (no alternation, no
+    nested quantifiers); suppressed with `@SuppressWarnings("java:S8786")`
+
+- **Dangling Javadoc comment** (weather-processing)
+  - Removed an orphaned Javadoc block in `WeatherParserTest` that was not
+    properly attached to the class declaration (SonarCloud java:S8491)
+
+**Testing:**
+- Full test suite passing (0 failures, 0 errors) after fixes, including
+  regression coverage for the validation logic extraction (8 previously
+  passing `S3UploadServiceTest` cases initially broke when the duplicate
+  extraction only covered `source` and omitted `rawData`/`stationId`
+  validation; corrected before commit)
+
 ### Version 1.17.0-SNAPSHOT - August 27, 2026
 
 #### AWS Glue Bronze-to-Silver ETL Pipeline - METAR Observations
