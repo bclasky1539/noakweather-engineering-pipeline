@@ -559,7 +559,7 @@ CREATE TABLE IF NOT EXISTS noakweather.bronze_metar_noaa (
 
     -- Runway visual range
     runwayVisualRange ARRAY<STRUCT
-        runwayId:STRING,
+        runway:STRING,
         visualRangeFeet:INT,
         variableLow:INT,
         variableHigh:INT,
@@ -730,7 +730,7 @@ SELECT
    m.conditions.visibility.distanceValue as visibility,
    m.metadata.processor_version,
    m.metadata.parser_version,
-   runway.runwayId,
+   runway.runway,
    runway.visualRangeFeet,
    runway.trend,
    runway.variablelow,
@@ -898,7 +898,7 @@ TBLPROPERTIES (
     'projection.day.type'='integer',
     'projection.day.range'='01,31',
     'projection.day.digits'='2',
-    'storage.location.template'='s3://noakweather-data/silver/observations/${data_source}/${year}/${month}/${day}'
+    'storage.location.template'='s3://noakweather-data/silver/observations/data_source=${data_source}/year=${year}/month=${month}/day=${day}'
 );
 ```
 
@@ -907,183 +907,434 @@ TBLPROPERTIES (
 Create file: `glue-jobs/bronze_to_silver_metar.py`
 ```python
 """
-AWS Glue Job: Bronze to Silver METAR Transformation
-Purpose: Standardize raw NOAA METAR data into unified schema
-Author: NoakWeather Data Engineering Team
-Last Updated: 2026-02-08
+AWS Glue ETL Job: Bronze to Silver - METAR Observations
+Purpose: Transform raw NOAA METAR data into standardized, validated Parquet format
+Author: NoakWeather Engineering Team
+Last Updated: 2026-08-27
+
+Transformations:
+- Flatten nested JSON structures
+- Standardize units (all temps in Celsius, winds in knots, pressure in hPa)
+- Calculate flight categories (VFR/MVFR/IFR/LIFR)
+- Compute data quality scores
+- Convert to Parquet with Snappy compression
+
+Notes:
+- Uses an explicit schema on read instead of relying on Spark's JSON schema
+  inference. Present weather, sky conditions, and runway visual range are
+  frequently empty arrays in real-world METARs (clear skies, no significant
+  weather, no RVR reported). Spark cannot infer an element type from an
+  empty array and silently falls back to array<string>, which then fails
+  later when the transformation tries to access struct fields on those
+  elements. An explicit schema avoids this entirely, regardless of whether
+  the arrays are empty or populated in any given file.
+- Flight category thresholds (VFR/MVFR/IFR/LIFR) must be evaluated against
+  visibility already converted to meters. The raw conditions.visibility.
+  distanceValue field is in whatever unit the source reported (commonly
+  statute miles "SM" for NOAA), so it cannot be compared directly against
+  meter-based thresholds. visibility_meters_expr performs the same M/SM
+  conversion used for the visibility_meters output column; it is defined
+  as its own expression (not referenced by the visibility_meters alias)
+  because Spark evaluates every expression in a single select() against
+  the original input columns, not against sibling expressions being
+  computed in that same select() call.
 """
 
 import sys
-from awsglue.transforms import *
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
-from pyspark.sql import functions as F
-from pyspark.sql.types import *
-from pyspark.sql.window import Window
+from pyspark.sql.functions import (
+    col, lit, when, from_unixtime,
+    current_timestamp, size, concat_ws, expr
+)
+from pyspark.sql.types import (
+    StructType, StructField, StringType, DoubleType,
+    IntegerType, BooleanType, ArrayType
+)
 
-# Parse arguments
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'target_date'])
-target_date = args['target_date']  # Format: YYYY-MM-DD
-
-# Initialize Spark/Glue context
+# Initialize Glue context
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'source_date'])
 sc = SparkContext()
 glueContext = GlueContext(sc)
 spark = glueContext.spark_session
+
+# Set Spark to be case-sensitive to avoid column name conflicts
+spark.conf.set("spark.sql.caseSensitive", "true")
+
 job = Job(glueContext)
 job.init(args['JOB_NAME'], args)
 
-# Parse target date
-year, month, day = target_date.split('-')
+# Parameters
+SOURCE_DATE = args['source_date']  # Format: YYYY-MM-DD
+year, month, day = SOURCE_DATE.split('-')
 
-print(f"Processing Bronze → Silver for date: {target_date}")
+print(f"Processing Bronze METAR data for date: {SOURCE_DATE}")
 
-# Read from Bronze layer (JSON)
-bronze_path = f"s3://noakweather-data/bronze/noaa/metar/{year}/{month}/{day}/*.json"
-print(f"Reading from: {bronze_path}")
+# ============================================================================
+# EXPLICIT SCHEMA
+# Only fields actually used by the transformation below are included.
+# Any fields present in the JSON but not listed here are simply ignored
+# by Spark - this is not an exhaustive schema of the full Bronze record.
+# ============================================================================
 
-bronze_df = spark.read.json(bronze_path)
+wind_schema = StructType([
+    StructField("directionDegrees", IntegerType(), True),
+    StructField("speedKnots", IntegerType(), True),
+    StructField("gustValue", IntegerType(), True),
+    StructField("cardinalDirection", StringType(), True),
+    StructField("calm", BooleanType(), True),
+    StructField("variable", BooleanType(), True),
+])
 
-# Transform to Silver schema
-silver_df = (bronze_df
-    # Basic identification
-    .select(
-        F.col("id").alias("observation_id"),
-        F.col("stationId").alias("station_id"),
-        F.from_unixtime("observationTime").cast("timestamp").alias("observation_time"),
-        
-        # Source attribution
-        F.lit("NOAA").alias("data_source"),
-        F.lit(1).alias("source_priority"),
-        F.col("reportType").alias("report_type"),
-        
-        # Temperature (already in Celsius)
-        F.col("conditions.temperature.celsius").alias("temperature_celsius"),
-        F.col("conditions.temperature.dewpointCelsius").alias("dewpoint_celsius"),
-        F.col("conditions.temperature.relativeHumidity").alias("relative_humidity"),
-        F.col("conditions.temperature.heatIndex").alias("heat_index_celsius"),
-        
-        # Pressure - standardize to hPa
-        F.when(F.col("conditions.pressure.unit") == "HECTOPASCALS",
-               F.col("conditions.pressure.value"))
-         .when(F.col("conditions.pressure.unit") == "INCHES_HG",
-               F.col("conditions.pressure.value") * 33.8639)  # Convert inHg to hPa
-         .otherwise(None).alias("pressure_hpa"),
-        
-        F.col("seaLevelPressure").alias("sea_level_pressure_hpa"),
-        F.col("conditions.pressure.pressureAltitudeFeet").alias("pressure_altitude_feet"),
-        
-        # Wind (already in knots)
-        F.col("conditions.wind.directionDegrees").alias("wind_direction_degrees"),
-        F.col("conditions.wind.speedKnots").cast("double").alias("wind_speed_knots"),
-        F.col("conditions.wind.gustValue").cast("double").alias("wind_gust_knots"),
-        F.col("conditions.wind.calm").alias("wind_calm"),
-        
-        # Visibility - standardize to meters
-        F.when(F.col("conditions.visibility.unit") == "M",
-               F.col("conditions.visibility.distanceValue"))
-         .when(F.col("conditions.visibility.unit") == "SM",
-               F.col("conditions.visibility.distanceValue") * 1609.34)  # SM to meters
-         .otherwise(None).alias("visibility_meters"),
-        
-        F.col("conditions.visibility.vfr").alias("visibility_vfr"),
-        F.col("conditions.visibility.ifr").alias("visibility_ifr"),
-        
-        # Sky conditions
-        F.col("conditions.ceilingFeet").alias("ceiling_feet"),
-        
-        # Present weather - extract codes
-        F.expr("transform(conditions.presentWeather, x -> x.rawCode)").alias("present_weather_codes"),
-        F.col("summary").alias("weather_summary"),
-        
-        # Flight category (compute from conditions)
-        F.when((F.col("conditions.ceilingFeet") >= 3000) & 
-               (F.col("conditions.visibility.distanceValue") >= 5), "VFR")
-         .when((F.col("conditions.ceilingFeet") >= 1000) & 
-               (F.col("conditions.visibility.distanceValue") >= 3), "MVFR")
-         .when((F.col("conditions.ceilingFeet") >= 500) & 
-               (F.col("conditions.visibility.distanceValue") >= 1), "IFR")
-         .otherwise("LIFR").alias("flight_category"),
-        
-        F.col("conditions.likelyVMC").alias("likely_vmc"),
-        F.col("conditions.likelyIMC").alias("likely_imc"),
-        
-        # Metadata
-        F.from_unixtime("ingestionTime").cast("timestamp").alias("ingestion_time"),
-        F.current_timestamp().alias("processing_time"),
-        F.col("id").alias("bronze_record_id"),
-        
-        # Preserved raw data
-        F.col("rawText").alias("raw_observation_text")
-    )
-    
-    # Data quality validation
-    .withColumn("validation_errors", F.array())
-    
-    # Temperature range validation (-80°C to +60°C)
-    .withColumn("validation_errors",
-        F.when((F.col("temperature_celsius") < -80) | (F.col("temperature_celsius") > 60),
-               F.array_union(F.col("validation_errors"), F.array(F.lit("temperature_out_of_range"))))
-         .otherwise(F.col("validation_errors")))
-    
-    # Wind speed validation (< 200 knots)
-    .withColumn("validation_errors",
-        F.when(F.col("wind_speed_knots") > 200,
-               F.array_union(F.col("validation_errors"), F.array(F.lit("wind_speed_excessive"))))
-         .otherwise(F.col("validation_errors")))
-    
-    # Pressure validation (900-1100 hPa)
-    .withColumn("validation_errors",
-        F.when((F.col("pressure_hpa") < 900) | (F.col("pressure_hpa") > 1100),
-               F.array_union(F.col("validation_errors"), F.array(F.lit("pressure_out_of_range"))))
-         .otherwise(F.col("validation_errors")))
-    
-    # Validation passed flag
-    .withColumn("validation_passed", F.size("validation_errors") == 0)
-    
-    # Data completeness (percentage of non-null critical fields)
-    .withColumn("data_completeness_pct",
-        ((F.col("temperature_celsius").isNotNull().cast("int") +
-          F.col("pressure_hpa").isNotNull().cast("int") +
-          F.col("wind_speed_knots").isNotNull().cast("int") +
-          F.col("visibility_meters").isNotNull().cast("int")) / 4.0 * 100))
-    
-    # Quality score (0-100): weighted combination of completeness and validation
-    .withColumn("quality_score",
-        F.when(F.col("validation_passed"),
-               F.col("data_completeness_pct"))
-         .otherwise(F.col("data_completeness_pct") * 0.7))  # Penalize failed validation
-    
-    # Sky coverage in oktas (0-8 scale)
-    .withColumn("sky_coverage_oktas",
-        F.when(F.size("conditions.skyConditions") == 0, 0)
-         .otherwise(4))  # Simplified - could be enhanced with actual logic
-    
-    # Add partition columns
-    .withColumn("data_source", F.lit("NOAA"))
-    .withColumn("year", F.lit(year))
-    .withColumn("month", F.lit(month))
-    .withColumn("day", F.lit(day))
+visibility_schema = StructType([
+    StructField("distanceValue", DoubleType(), True),
+    StructField("unit", StringType(), True),
+    StructField("lessThan", BooleanType(), True),
+    StructField("cavok", BooleanType(), True),
+    StructField("vfr", BooleanType(), True),
+    StructField("ifr", BooleanType(), True),
+])
+
+present_weather_element_schema = StructType([
+    StructField("rawCode", StringType(), True),
+    StructField("intensityDescription", StringType(), True),
+    StructField("thunderstorm", BooleanType(), True),
+])
+
+sky_condition_element_schema = StructType([
+    StructField("heightFeet", IntegerType(), True),
+    StructField("coverage", StringType(), True),
+    StructField("cumulonimbus", BooleanType(), True),
+    StructField("toweringCumulus", BooleanType(), True),
+])
+
+temperature_schema = StructType([
+    StructField("celsius", DoubleType(), True),
+    StructField("dewpointCelsius", DoubleType(), True),
+    StructField("spread", DoubleType(), True),
+    StructField("relativeHumidity", DoubleType(), True),
+    StructField("heatIndex", DoubleType(), True),
+])
+
+pressure_schema = StructType([
+    StructField("value", DoubleType(), True),
+    StructField("unit", StringType(), True),
+    StructField("pressureAltitudeFeet", DoubleType(), True),
+])
+
+conditions_schema = StructType([
+    StructField("wind", wind_schema, True),
+    StructField("visibility", visibility_schema, True),
+    StructField("presentWeather", ArrayType(present_weather_element_schema), True),
+    StructField("skyConditions", ArrayType(sky_condition_element_schema), True),
+    StructField("temperature", temperature_schema, True),
+    StructField("pressure", pressure_schema, True),
+    StructField("ceilingFeet", IntegerType(), True),
+])
+
+rvr_element_schema = StructType([
+    StructField("runway", StringType(), True),
+    StructField("visualRangeFeet", IntegerType(), True),
+    StructField("variableLow", IntegerType(), True),
+    StructField("variableHigh", IntegerType(), True),
+])
+
+metadata_schema = StructType([
+    StructField("processor_version", StringType(), True),
+])
+
+remarks_schema = StructType([
+    StructField("seaLevelPressure", StructType([
+        StructField("value", DoubleType(), True),
+    ]), True),
+    StructField("automatedStationType", StringType(), True),
+])
+
+bronze_schema = StructType([
+    StructField("dataType", StringType(), True),
+    StructField("id", StringType(), True),
+    StructField("stationId", StringType(), True),
+    StructField("observationTime", DoubleType(), True),
+    StructField("ingestionTime", DoubleType(), True),
+    StructField("latitude", DoubleType(), True),
+    StructField("longitude", DoubleType(), True),
+    StructField("elevationFeet", IntegerType(), True),
+    StructField("rawText", StringType(), True),
+    StructField("summary", StringType(), True),
+    StructField("unparsedMainBody", StringType(), True),
+    StructField("automated", BooleanType(), True),
+    StructField("metadata", metadata_schema, True),
+    StructField("remarks", remarks_schema, True),
+    StructField("conditions", conditions_schema, True),
+    StructField("runwayVisualRange", ArrayType(rvr_element_schema), True),
+])
+
+# ============================================================================
+# READ FROM BRONZE LAYER
+# ============================================================================
+
+bronze_df = spark.read \
+    .schema(bronze_schema) \
+    .json(f"s3://noakweather-data/bronze/speed-layer/noaa/metar/{year}/{month}/{day}/")
+
+# Rename dataType to observation_type_raw immediately
+bronze_df = bronze_df.withColumnRenamed("dataType", "observation_type_raw")
+
+print(f"Loaded {bronze_df.count()} records from Bronze layer")
+
+# ============================================================================
+# TRANSFORMATION: Flatten and standardize
+# ============================================================================
+
+# Define column references (these are already Column objects - do NOT wrap
+# them in col() again anywhere below, just use the variable directly)
+present_weather_col = col("conditions.presentWeather")
+sky_conditions_col = col("conditions.skyConditions")
+runway_visual_range_col = col("runwayVisualRange")
+ceiling_feet_col = col("conditions.ceilingFeet")
+pressure_value_col = col("conditions.pressure.value")
+visibility_distanceValue_col = col("conditions.visibility.distanceValue")
+visibility_unit_col = col("conditions.visibility.unit")
+
+# Visibility converted to meters, for use in flight category / fog / marginal
+# VFR / low IFR threshold comparisons below. Must match the conversion logic
+# used for the visibility_meters output column (see select() below) - see
+# module docstring for why this can't just reference visibility_meters by name.
+visibility_meters_expr = (
+    when(visibility_unit_col == "M", visibility_distanceValue_col)
+    .when(visibility_unit_col == "SM", visibility_distanceValue_col * lit(1609.34))
+    .otherwise(visibility_distanceValue_col)
 )
 
-# Show sample for debugging
-print("Sample transformed records:")
-silver_df.select("station_id", "observation_time", "temperature_celsius", 
-                 "quality_score", "validation_passed").show(5, False)
+# noinspection PyTypeChecker
+silver_df = bronze_df.select(
+    # Core identification
+    col("id").alias("observation_id"),
+    col("observation_type_raw").alias("observation_type"),
+    col("stationId").alias("station_id"),
 
-# Write to Silver layer (Parquet)
-output_path = f"s3://noakweather-data/silver/observations/"
-print(f"Writing to: {output_path}")
+    # Timestamps
+    from_unixtime(col("observationTime")).cast("timestamp").alias("observation_time"),
+    from_unixtime(col("ingestionTime")).cast("timestamp").alias("ingestion_time"),
+    current_timestamp().alias("processing_time"),
 
-(silver_df
-    .write
-    .mode("append")
-    .partitionBy("data_source", "year", "month", "day")
-    .parquet(output_path)
+    # Location
+    col("latitude"),
+    col("longitude"),
+    (col("elevationFeet") * lit(0.3048)).cast(IntegerType()).alias("elevation_meters"),
+
+    # Temperature (already in Celsius from Bronze)
+    col("conditions.temperature.celsius").cast(DoubleType()).alias("temperature_celsius"),
+    col("conditions.temperature.dewpointCelsius").cast(DoubleType()).alias("dewpoint_celsius"),
+    col("conditions.temperature.spread").cast(DoubleType()).alias("temperature_spread_celsius"),
+    col("conditions.temperature.relativeHumidity").cast(DoubleType()).alias("relative_humidity_percent"),
+    col("conditions.temperature.heatIndex").cast(DoubleType()).alias("heat_index_celsius"),
+
+    # Wind (already in knots from Bronze)
+    col("conditions.wind.directionDegrees").cast(IntegerType()).alias("wind_direction_degrees"),
+    col("conditions.wind.speedKnots").cast(IntegerType()).alias("wind_speed_knots"),
+    col("conditions.wind.gustValue").cast(IntegerType()).alias("wind_gust_knots"),
+    col("conditions.wind.cardinalDirection").alias("wind_cardinal_direction"),
+    col("conditions.wind.calm").cast(BooleanType()).alias("is_wind_calm"),
+    col("conditions.wind.variable").cast(BooleanType()).alias("is_wind_variable"),
+
+    # Visibility (convert to meters if needed)
+    when(visibility_unit_col == "M",
+         visibility_distanceValue_col)
+    .when(visibility_unit_col == "SM",
+          visibility_distanceValue_col * lit(1609.34))  # statute miles to meters
+    .otherwise(visibility_distanceValue_col)
+    .cast(DoubleType()).alias("visibility_meters"),
+
+    col("conditions.visibility.lessThan").cast(BooleanType()).alias("is_visibility_less_than"),
+    col("conditions.visibility.cavok").cast(BooleanType()).alias("is_cavok"),
+
+    # Pressure (convert to hPa if needed)
+    when(col("conditions.pressure.unit") == "HECTOPASCALS",
+         pressure_value_col)
+    .when(col("conditions.pressure.unit") == "INCHES_HG",
+          pressure_value_col * lit(33.8639))  # inHg to hPa
+    .otherwise(pressure_value_col)
+    .cast(DoubleType()).alias("pressure_hpa"),
+
+    col("conditions.pressure.pressureAltitudeFeet").cast(DoubleType()).alias("pressure_altitude_feet"),
+    col("remarks.seaLevelPressure.value").cast(DoubleType()).alias("sea_level_pressure_hpa"),
+    col("summary").alias("observation_summary"),
+
+    # Sky conditions
+    ceiling_feet_col.cast(IntegerType()).alias("ceiling_feet"),
+    (ceiling_feet_col * lit(0.3048)).cast(IntegerType()).alias("ceiling_meters"),
+
+    # Get the lowest cloud base from skyConditions array
+    when(size(sky_conditions_col) > lit(0),
+         sky_conditions_col[0].heightFeet)
+    .otherwise(None).cast(IntegerType()).alias("lowest_cloud_base_feet"),
+
+    # Determine overall sky coverage
+    when(size(sky_conditions_col) == lit(0), lit("CLR"))
+    .otherwise(sky_conditions_col[0].coverage)
+    .alias("sky_coverage"),
+
+    # Check for significant cloud types
+    when(size(sky_conditions_col) > lit(0),
+         sky_conditions_col[0].cumulonimbus)
+    .otherwise(lit(False)).cast(BooleanType()).alias("has_cumulonimbus"),
+
+    when(size(sky_conditions_col) > lit(0),
+         sky_conditions_col[0].toweringCumulus)
+    .otherwise(lit(False)).cast(BooleanType()).alias("has_towering_cumulus"),
+
+    # Weather phenomena
+    when(size(present_weather_col) > lit(0),
+         concat_ws(",", col("conditions.presentWeather.rawCode")))
+    .otherwise(None).alias("present_weather"),
+
+    when(size(present_weather_col) > lit(0),
+         present_weather_col[0].intensityDescription)
+    .otherwise(None).alias("weather_intensity"),
+
+    when(size(present_weather_col) > lit(0),
+         present_weather_col[0].thunderstorm)
+    .otherwise(lit(False)).cast(BooleanType()).alias("has_thunderstorm"),
+
+    (size(present_weather_col) > lit(0)).cast(BooleanType()).alias("has_precipitation"),
+
+    # Check for fog based on visibility (meters)
+    (visibility_meters_expr < lit(1000)).cast(BooleanType()).alias("has_fog"),
+
+    # Flight category calculation (thresholds are in meters)
+    when((visibility_meters_expr < lit(1609)) |
+         (ceiling_feet_col < lit(500)), lit("LIFR"))
+    .when((visibility_meters_expr < lit(4828)) |
+          (ceiling_feet_col < lit(1000)), lit("IFR"))
+    .when((visibility_meters_expr < lit(8045)) |
+          (ceiling_feet_col < lit(3000)), lit("MVFR"))
+    .otherwise(lit("VFR")).alias("flight_category"),
+
+    # Flight category booleans
+    col("conditions.visibility.vfr").cast(BooleanType()).alias("is_vfr"),
+    col("conditions.visibility.ifr").cast(BooleanType()).alias("is_ifr"),
+
+    # Marginal VFR and Low IFR (derived, thresholds in meters)
+    when((visibility_meters_expr >= lit(4828)) &
+         (visibility_meters_expr < lit(8045)), lit(True))
+    .otherwise(lit(False)).cast(BooleanType()).alias("is_marginal_vfr"),
+
+    when((visibility_meters_expr < lit(1609)) |
+         (ceiling_feet_col < lit(500)), lit(True))
+    .otherwise(lit(False)).cast(BooleanType()).alias("is_low_ifr"),
+
+    # RVR (take first element if array exists)
+    when(size(runway_visual_range_col) > lit(0),
+         runway_visual_range_col[0].runway)
+    .otherwise(None).alias("rvr_runway_id"),
+
+    when(size(runway_visual_range_col) > lit(0),
+         runway_visual_range_col[0].visualRangeFeet)
+    .otherwise(None).cast(IntegerType()).alias("rvr_visual_range_feet"),
+
+    when(size(runway_visual_range_col) > lit(0),
+         runway_visual_range_col[0].variableLow)
+    .otherwise(None).cast(IntegerType()).alias("rvr_variable_low_feet"),
+
+    when(size(runway_visual_range_col) > lit(0),
+         runway_visual_range_col[0].variableHigh)
+    .otherwise(None).cast(IntegerType()).alias("rvr_variable_high_feet"),
+
+    # Raw data preservation
+    col("rawText").alias("raw_text"),
+    col("unparsedMainBody").alias("unparsed_tokens"),
+
+    # Metadata
+    col("metadata.processor_version").alias("processor_version"),
+    col("automated").cast(BooleanType()).alias("is_automated"),
+    col("remarks.automatedStationType").alias("automated_station_type"),
+
+    # Partitions
+    lit(year).alias("year"),
+    lit(month).alias("month"),
+    lit(day).alias("day")
 )
 
-print(f"Successfully processed {silver_df.count()} records")
+# ============================================================================
+# DATA QUALITY SCORING
+# ============================================================================
+
+# Calculate completeness score (0-100)
+silver_df = silver_df.withColumn(
+    "has_temperature",
+    expr("temperature_celsius IS NOT NULL").cast(BooleanType())
+).withColumn(
+    "has_wind",
+    expr("wind_speed_knots IS NOT NULL").cast(BooleanType())
+).withColumn(
+    "has_pressure",
+    expr("pressure_hpa IS NOT NULL").cast(BooleanType())
+).withColumn(
+    "has_visibility",
+    expr("visibility_meters IS NOT NULL").cast(BooleanType())
+).withColumn(
+    "completeness_score",
+    (
+            when(col("has_temperature"), lit(25)).otherwise(lit(0)) +
+            when(col("has_wind"), lit(25)).otherwise(lit(0)) +
+            when(col("has_pressure"), lit(25)).otherwise(lit(0)) +
+            when(col("has_visibility"), lit(25)).otherwise(lit(0))
+    ).cast(DoubleType())
+)
+
+# Calculate quality score (0-100)
+silver_df = silver_df.withColumn(
+    "quality_score",
+    (
+        # Start with completeness
+        col("completeness_score") * lit(0.6) +
+        # Bonus for valid ranges
+        when((col("temperature_celsius") >= lit(-90)) &
+             (col("temperature_celsius") <= lit(60)), lit(10)).otherwise(lit(0)) +
+        when((col("wind_speed_knots") >= lit(0)) &
+             (col("wind_speed_knots") <= lit(200)), lit(10)).otherwise(lit(0)) +
+        when((col("pressure_hpa") >= lit(870)) &
+             (col("pressure_hpa") <= lit(1085)), lit(10)).otherwise(lit(0)) +
+        # Penalty for unparsed tokens
+        when(expr("unparsed_tokens IS NOT NULL"), lit(-10)).otherwise(lit(0))
+    ).cast(DoubleType())
+)
+
+# Validation flags
+silver_df = silver_df.withColumn(
+    "validation_flags",
+    concat_ws(",",
+              when((col("temperature_celsius") < lit(-90)) |
+                   (col("temperature_celsius") > lit(60)), lit("TEMP_OUT_OF_RANGE")).otherwise(None),
+              when((col("wind_speed_knots") < lit(0)) |
+                   (col("wind_speed_knots") > lit(200)), lit("WIND_OUT_OF_RANGE")).otherwise(None),
+              when((col("pressure_hpa") < lit(870)) |
+                   (col("pressure_hpa") > lit(1085)), lit("PRESSURE_OUT_OF_RANGE")).otherwise(None),
+              when(expr("unparsed_tokens IS NOT NULL"), lit("HAS_UNPARSED_TOKENS")).otherwise(None)
+              )
+)
+
+# Data source
+silver_df = silver_df.withColumn(
+    "data_source",
+    lit("noaa")
+)
+
+# ============================================================================
+# WRITE TO SILVER LAYER
+# ============================================================================
+
+output_path = "s3://noakweather-data/silver/observations/"
+
+silver_df.write \
+    .mode("overwrite") \
+    .partitionBy("data_source", "year", "month", "day") \
+    .parquet(output_path, compression="snappy")
+
+print(f"Successfully wrote {silver_df.count()} records to Silver layer: {output_path}")
 
 job.commit()
 ```
@@ -1092,16 +1343,16 @@ job.commit()
 ```bash
 # Upload Glue job script to S3
 aws s3 cp glue-jobs/bronze_to_silver_metar.py \
-    s3://noakweather-data/glue-scripts/bronze_to_silver_metar.py
+    s3://noakweather-glue-scripts/bronze_to_silver_metar.py
 
 # Create Glue job
 aws glue create-job \
-    --name noakweather-bronze-to-silver-metar \
+    --name bronze-to-silver-metar \
     --role AWSGlueServiceRole-NoakWeather \
-    --command "Name=glueetl,ScriptLocation=s3://noakweather-data/glue-scripts/bronze_to_silver_metar.py,PythonVersion=3" \
+    --command "Name=glueetl,ScriptLocation=s3://noakweather-glue-scripts/bronze_to_silver_metar.py,PythonVersion=3" \
     --default-arguments '{
         "--job-language":"python",
-        "--TempDir":"s3://noakweather-data/glue-temp/",
+        "--TempDir":"s3://noakweather-glue-scripts/temp/",
         "--enable-metrics":"true",
         "--enable-continuous-cloudwatch-log":"true",
         "--enable-spark-ui":"true",
@@ -1115,8 +1366,8 @@ aws glue create-job \
 
 # Run job for specific date
 aws glue start-job-run \
-    --job-name noakweather-bronze-to-silver-metar \
-    --arguments '{"--target_date":"2026-02-08"}'
+    --job-name bronze-to-silver-metar \
+    --arguments '{"--source_date":"2026-02-08"}'
 ```
 
 ### Verify Silver Layer
@@ -1124,7 +1375,7 @@ aws glue start-job-run \
 -- Check Silver data
 SELECT COUNT(*) as total_records
 FROM noakweather.silver_observations
-WHERE data_source = 'NOAA'
+WHERE data_source = 'noaa'
   AND year = '2026'
   AND month = '02'
   AND day = '08';
@@ -1727,7 +1978,7 @@ SELECT
     ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage
 FROM noakweather.silver_observations
 WHERE year = '2026' AND month = '02'
-  AND data_source = 'NOAA'
+  AND data_source = 'noaa'
 GROUP BY flight_category
 ORDER BY observation_count DESC;
 ```
@@ -1813,9 +2064,9 @@ Create a state machine to orchestrate Bronze → Silver → Gold:
       "Type": "Task",
       "Resource": "arn:aws:states:::glue:startJobRun.sync",
       "Parameters": {
-        "JobName": "noakweather-bronze-to-silver-metar",
+        "JobName": "bronze-to-silver-metar",
         "Arguments": {
-          "--target_date.$": "$.date"
+          "--source_date.$": "$.date"
         }
       },
       "Next": "SilverToGoldCurrentConditions"
@@ -1926,13 +2177,13 @@ Athena automatically publishes:
 ### Glue Job Monitoring
 ```bash
 # View Glue job runs
-aws glue get-job-runs --job-name noakweather-bronze-to-silver-metar
+aws glue get-job-runs --job-name bronze-to-silver-metar
 
 # View job metrics in CloudWatch
 aws cloudwatch get-metric-statistics \
   --namespace Glue \
   --metric-name glue.driver.aggregate.recordsRead \
-  --dimensions Name=JobName,Value=noakweather-bronze-to-silver-metar \
+  --dimensions Name=JobName,Value=bronze-to-silver-metar \
   --start-time 2026-02-08T00:00:00Z \
   --end-time 2026-02-08T23:59:59Z \
   --period 3600 \
