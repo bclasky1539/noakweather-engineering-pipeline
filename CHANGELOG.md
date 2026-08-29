@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.17.2-SNAPSHOT - August 28, 2026
+
+#### Additional SonarCloud Fixes - Modern Java Idioms
+
+**Fixed:**
+- **Anonymous classes on functional interfaces** (weather-common) (java:S9357)
+  - `WeatherValidatorTest` used anonymous inner class implementations of
+    the single-method `WeatherValidator<T>` functional interface in two
+    places; converted both to lambda expressions
+  - Flagged by a SonarCloud rule not previously present in the rule set
+    when this test file was last modified; retroactively surfaced once
+    a full analysis ran again after the `SONAR_TOKEN` fix earlier in
+    this cleanup effort
+
+- **`Arrays.asList()` with a single argument** (weather-common)
+  - `WeatherValidatorTest` used `Arrays.asList("...")` with a single
+    string literal argument in 5 places to construct validation error
+    lists
+  - Replaced with `List.of("...")`, the more idiomatic Java 9+
+    construct for small immutable lists; `Arrays.asList()` returns a
+    fixed-size but still partially-mutable (via `set()`) list, whereas
+    `List.of()` is fully immutable and disallows `null` elements,
+    better matching the intended use as a fixed validation-error list
+
+**Testing:**
+- Full test suite passing (0 failures, 0 errors) after all 7 changes,
+  confirming no downstream code depended on the mutable/nullable
+  semantics of the original `Arrays.asList()` calls or anonymous class
+  instances
+
 ### Version 1.17.1-SNAPSHOT - August 28, 2026
 
 #### SonarCloud Maintainability and Reliability Fixes
