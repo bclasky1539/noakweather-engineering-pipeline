@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.18.0-SNAPSHOT - August 29, 2026
+
+#### Build Tooling and Documentation Cleanup
+
+**Added:**
+- **`wethp.sh`** - Package script matching the style of `wethb.sh`/`wetht.sh`;
+  runs `mvn clean package -DskipTests` to produce jars. Only needed when
+  jars are actually required, not part of the normal build/test loop.
+- **`wethv.sh`** - Version bump script automating the 10-step manual
+  process used throughout the 1.17.x release cycle (`mvn versions:set`/
+  `versions:commit` scoped to `noakweather-platform` and its submodules,
+  root `pom.xml` update, and a hard safety check that
+  `noakweather-legacy/pom.xml` is never modified). Dry-run tested against
+  BSD/macOS sed specifically; required fixing two GNU-only sed extensions
+  (`0,/pattern/` address range, empty-regex `s//replacement/` reuse) and
+  adding post-substitution verification via `awk`, since `sed` exits 0
+  even on a silent no-op match failure.
+
+**Fixed:**
+- **`docs/ATHENA_SETUP.md`** documented an earlier, superseded draft of
+  the Bronze-to-Silver Glue script rather than the actual working
+  implementation
+  - Replaced the embedded Glue job code block wholesale with the real,
+    tested `bronze_to_silver_metar.py`
+  - Fixed `runwayId` → `runway` field name references
+  - Fixed the Silver table's `storage.location.template` to use
+    Hive-style `key=value` path segments
+  - Fixed S3 script upload/`ScriptLocation`/`TempDir` paths to match
+    the actual `noakweather-glue-scripts` bucket
+  - Fixed the Glue job name throughout (`bronze-to-silver-metar`, not
+    `noakweather-bronze-to-silver-metar`)
+  - Fixed the `--target_date` argument name to `--source_date`
+    throughout
+  - Fixed `data_source` filter casing (`'NOAA'` → `'noaa'`) in example
+    queries to match what the pipeline actually writes
+  - `docs/GLUE-DEPLOYMENT-GUIDE.md` was checked against the same
+    issues and found already correct; no changes needed
+
+**Changed:**
+- **`README.md`** refreshed after drifting significantly out of date
+  (still referenced `v1.13.0-SNAPSHOT` and "Phase 4 Complete" with no
+  mention of the Glue/Athena work)
+  - Added `glue-jobs` as a documented project component, with
+    Medallion Architecture (Bronze/Silver/Gold) alongside the existing
+    Lambda Architecture description
+  - Added AWS Glue, Athena, and PySpark to the technology stack
+  - Added a Development Scripts table covering all four `weth*.sh`
+    scripts
+  - Added missing links to `ATHENA_SETUP.md` and
+    `GLUE-DEPLOYMENT-GUIDE.md`
+  - Corrected "Building the Project" instructions, which showed
+    separate per-module build steps no longer reflecting actual usage
+  - Replaced hardcoded version/test-count/coverage numbers with a
+    pointer to `CHANGELOG.md` and the existing live SonarCloud badges
+  - Added a Recent Milestones entry for the Bronze-to-Silver ETL and
+    SonarCloud cleanup work
+  - Updated Phase 5 status from "(Next)" to "(In Progress)" with
+    sub-bullets reflecting what's actually complete
+
+**Testing:**
+- `wethb.sh`, `wetht.sh`, and `wethp.sh` all verified passing (exit 0)
+  after these changes
+
 ### Version 1.17.2-SNAPSHOT - August 28, 2026
 
 #### Additional SonarCloud Fixes - Modern Java Idioms

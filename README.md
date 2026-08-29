@@ -11,11 +11,13 @@ A multi-source weather data engineering platform built on Lambda Architecture pr
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=bclasky1539_noakweather-engineering-pipeline&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=bclasky1539_noakweather-engineering-pipeline)
 [![License](https://img.shields.io/github/license/bclasky1539/noakweather-engineering-pipeline)](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/LICENSE)
 
+For the current version, full change history, and detailed release notes, see [CHANGELOG.md](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/CHANGELOG.md). For current test coverage and code quality metrics, see the badges above (live from SonarCloud).
+
 ## Project Structure
 
 This project consists of two major components:
 
-### noakweather-platform (New Multi-Module Architecture)
+### noakweather-platform (Multi-Module Architecture)
 Source-agnostic weather data platform with Lambda Architecture implementation:
 
 - **weather-common**: Shared models and interfaces (source-agnostic)
@@ -25,22 +27,38 @@ Source-agnostic weather data platform with Lambda Architecture implementation:
 - **weather-analytics**: Universal analytics and reporting (Serving Layer)
 - **weather-infrastructure**: AWS CDK infrastructure as code
 
+### glue-jobs (Medallion Architecture - Data Lakehouse)
+AWS Glue PySpark ETL scripts implementing a Bronze → Silver → Gold medallion architecture for batch analytics, queryable via Amazon Athena:
+
+- **Bronze layer**: Raw JSON weather data (as ingested)
+- **Silver layer**: Standardized, validated, unit-converted Parquet data with computed quality scores and flight categories
+- **Gold layer** *(planned)*: Aggregated, query-optimized tables for the analytics/serving layer
+
+See [Athena Data Lakehouse Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/ATHENA_SETUP.md) and [Glue Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/GLUE-DEPLOYMENT-GUIDE.md) for full details.
+
 ### noakweather-legacy
 Original NOAA-specific METAR/TAF decoder (maintained for reference and gradual migration)
 
 ## Architecture
 
-The platform implements **Lambda Architecture** to handle both real-time and batch processing:
+The platform implements two complementary architectural patterns for different access needs:
 
+**Lambda Architecture** handles real-time, low-latency access:
 - **Speed Layer**: Real-time ingestion of weather data from multiple sources → S3 → DynamoDB with time-bucket GSI
 - **Batch Layer**: Historical data processing and reprocessing
 - **Serving Layer**: Unified query interface combining real-time and batch views
+
+**Medallion Architecture** handles batch analytics and historical querying:
+- **Bronze**: Raw ingested JSON in S3 (`bronze/speed-layer/...`)
+- **Silver**: AWS Glue-transformed, standardized Parquet data, queryable via Amazon Athena with partition projection
+- **Gold** *(planned)*: Aggregated, analytics-ready tables
 
 ### Technology Stack
 
 - **Java 17+**: Modern Java features and performance
 - **Maven**: Multi-module build management
-- **AWS Services**: S3, Lambda, DynamoDB, CloudWatch
+- **AWS Services**: S3, Lambda, DynamoDB, Glue, Athena, CloudWatch
+- **Apache Spark (PySpark)**: AWS Glue ETL transformations (Bronze → Silver)
 - **Snowflake**: Data warehouse for analytics
 - **JUnit 5**: Comprehensive testing framework
 - **JaCoCo**: Code coverage analysis
@@ -73,8 +91,21 @@ TAF (Terminal Aerodrome Forecast) is a weather forecast report format used in av
 
 - Java 17 or higher
 - Maven 3.8+
-- AWS CLI configured (for deployment)
+- Docker (required for `wetht.sh` - weather-storage's DynamoDB integration tests use Testcontainers)
+- AWS CLI configured (for deployment and Glue/Athena work)
 - Snowflake account (for data warehouse features)
+- Python 3.10 with PySpark (only if developing/testing Glue ETL scripts locally; AWS Glue itself handles this at runtime)
+
+### Development Scripts
+
+All scripts are run from the repository root:
+
+| Script                     | Purpose                                                                                                                                                              |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `./wethb.sh`               | Compile-only build check across the full reactor (fast sanity check)                                                                                                 |
+| `./wetht.sh`               | Full test suite with JaCoCo coverage (requires Docker running)                                                                                                       |
+| `./wethp.sh`               | Package into jars (`mvn clean package -DskipTests`) - only needed when jars are actually required, e.g. running an app locally                                       |
+| `./wethv.sh <new-version>` | Bump the project version across `noakweather-platform` and its submodules. `noakweather-legacy` has its own independent version and is never touched by this script. |
 
 ### Building the Project
 
@@ -83,31 +114,24 @@ TAF (Terminal Aerodrome Forecast) is a weather forecast report format used in av
 git clone https://github.com/bclasky1539/noakweather-engineering-pipeline.git
 cd noakweather-engineering-pipeline
 
-# Build and test legacy module
-cd noakweather-legacy
-./wethb.sh    # Build
-./wetht.sh    # Test with coverage
-mvn clean install
+# Quick compile check
+./wethb.sh
 
-# Build and test platform modules
-cd ../noakweather-platform
-./wethb.sh    # Build
-./wetht.sh    # Test with coverage
-mvn clean install
+# Run the full test suite
+./wetht.sh
 
-# Build entire project from root
-cd ..
-mvn clean install
+# Only when you need jars (e.g. to run an app locally)
+./wethp.sh
 ```
 
 ### Running Tests
 
 ```bash
 # Run tests with coverage
-mvn test jacoco:report
+./wetht.sh
 
-# View coverage report
-open target/site/jacoco/index.html
+# View coverage report for a specific module, e.g. weather-common
+open noakweather-platform/weather-common/target/site/jacoco/index.html
 ```
 
 ### Code Quality
@@ -125,10 +149,10 @@ mvn clean verify sonar:sonar \
 ### Setup Guides
 
 - **[AWS IAM User Setup for DynamoDB](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/AWS_IAM_DYNAMODB_SETUP.md)** - Complete guide for creating AWS IAM users with DynamoDB permissions
-    - IAM user creation and permission setup
-    - Access key generation and secure storage
-    - AWS credentials file configuration
-    - Security best practices and troubleshooting
+  - IAM user creation and permission setup
+  - Access key generation and secure storage
+  - AWS credentials file configuration
+  - Security best practices and troubleshooting
 
 - **[S3 Bucket Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/S3_BUCKET_SETUP.md)** - Comprehensive guide for configuring S3 buckets for dual-storage weather data
   - AWS CLI and Console bucket creation
@@ -137,7 +161,7 @@ mvn clean verify sonar:sonar \
   - Security best practices (encryption, public access blocking)
   - Environment variable configuration and troubleshooting
 
-- **[Single Station Integration Test](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/SINGLE_STATION_INTEGRATION_TEST.md)** - Step-by-step guide for testing dual-storage NOAA data ingestion
+- **[Single Station Integration Test](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/SINGLE_STATION_TEST_GUIDE.md)** - Step-by-step guide for testing dual-storage NOAA data ingestion
   - Pre-flight checklist (AWS credentials, S3 access, Maven build)
   - Test execution for KCLT (Charlotte Douglas International)
   - Validation commands for raw text and JSON files
@@ -145,18 +169,29 @@ mvn clean verify sonar:sonar \
   - Troubleshooting common issues
 
 - **[Logging Configuration Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/LOGGING_SETUP.md)** - Centralized logging configuration for multi-module projects
-    - Log4j2 master configuration
-    - Maven resources plugin setup
-    - Environment variable configuration
-    - Log rotation and retention policies
+  - Log4j2 master configuration
+  - Maven resources plugin setup
+  - Environment variable configuration
+  - Log rotation and retention policies
 
 ### Deployment Guides
 
+- **[AWS Athena Data Lakehouse Setup](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/ATHENA_SETUP.md)** - Medallion architecture (Bronze/Silver/Gold) setup on S3 and Athena
+  - S3 bucket structure, Athena workgroup, and Glue database setup
+  - Bronze and Silver layer DDL with partition projection
+  - The Bronze → Silver Glue ETL transformation script
+  - Query examples, orchestration, cost optimization, and troubleshooting
+
+- **[AWS Glue Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/GLUE-DEPLOYMENT-GUIDE.md)** - Deploying and running the Bronze → Silver Glue job
+  - Prerequisites, IAM role, and Glue job creation
+  - Running and verifying job output
+  - Monitoring and troubleshooting common Glue errors
+
 - **[Phase 4 GSI Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/PHASE_4_GSI_DEPLOYMENT_GUIDE.md)** - Zero-downtime DynamoDB GSI deployment
-    - Pre-deployment checklist
-    - Step-by-step deployment instructions
-    - Rollback procedures
-    - Performance benchmarks (50x improvement)
+  - Pre-deployment checklist
+  - Step-by-step deployment instructions
+  - Rollback procedures
+  - Performance benchmarks (50x improvement)
 
 ### Technical Documentation
 
@@ -174,10 +209,11 @@ mvn clean verify sonar:sonar \
   - Live data feeds and validation tools
   - Parsing considerations and implementation notes
 
-- **Architecture Decisions** - Lambda Architecture design patterns
+- **Architecture Decisions** - Lambda and Medallion Architecture design patterns
   - Speed Layer: Real-time data ingestion
   - Batch Layer: Historical data processing
   - Serving Layer: Query interface design
+  - Bronze/Silver/Gold: Data lakehouse layering for batch analytics
 
 ### API Documentation
 
@@ -193,37 +229,22 @@ mvn clean verify sonar:sonar \
   - Parse result handling
   - Error handling patterns
 
-## Phase 4 Features (Latest)
+## Recent Milestones
 
-### DynamoDB Time-Bucket GSI Implementation
+**Bronze-to-Silver Glue ETL Pipeline Complete (August 2026)**
+- AWS Glue PySpark ETL job transforming Bronze METAR JSON to standardized Silver Parquet
+- Explicit read schema, eliminating Spark JSON schema-inference failures on empty arrays (present weather, sky conditions, runway visual range)
+- Correct unit conversion for flight category / fog / marginal VFR / low IFR calculations
+- Athena Silver observations table with Hive-style partition projection (`data_source`, `year`, `month`, `day`)
+- Verified end-to-end: Bronze JSON → Silver Parquet → Athena queryable
+- SonarCloud maintainability and reliability cleanup (implicit time zones, duplicated validation logic, non-linear regex backtracking, modern lambda/`List.of()` idioms)
 
-**Performance Improvements:**
-- 50x faster time-range queries using `time-bucket-index` GSI
-- Hourly time buckets for optimal query performance
-- Backward-compatible table scan fallback
+**Phase 4 Complete (January 2026)**
+- DynamoDB time-bucket GSI implementation
+- 50x performance improvement on time-range queries
 - Zero-downtime deployment support
-
-**Technical Details:**
-```
-GSI Schema:
-- Index Name: time-bucket-index
-- Partition Key: time_bucket (String, "YYYY-MM-DD-HH")
-- Sort Key: observation_time (Number, epoch seconds)
-- Projection: ALL
-- Billing: On-demand
-
-Query Performance:
-- Table Scan: O(n) - ~200ms for 10,000 items
-- GSI Query: O(m) - ~4ms for same result (50x faster!)
-```
-
-**Deployment Strategy:**
-1. Deploy code with GSI support + fallback → Works immediately using table scan
-2. Add GSI to production table → ~5 minutes to create
-3. Queries automatically switch to GSI → 50x performance improvement
-4. Zero downtime throughout entire process
-
-See [Phase 4 Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/PHASE_4_GSI_DEPLOYMENT_GUIDE.md) for details.
+- Comprehensive integration test suite
+- Production-ready with complete documentation
 
 ## Development Workflow
 
@@ -233,7 +254,11 @@ This project follows a phased migration approach:
 2. **Phase 2** (Complete): NOAA models and parsers
 3. **Phase 3** (Complete): Universal ingestion layer with S3 upload
 4. **Phase 4** (Complete): DynamoDB storage with time-bucket GSI and comprehensive testing
-5. **Phase 5** (Next): Analytics and serving layer
+5. **Phase 5** (In Progress): Analytics and serving layer
+  - Bronze-to-Silver Glue ETL and Athena querying (Complete)
+  - Gold layer aggregation tables (Planned)
+  - Analytics dashboard and API endpoints (Planned)
+  - Real-time + batch view reconciliation (Planned)
 6. **Phase 6** (Planned): Additional data sources
 7. **Phase 7** (Planned): Legacy deprecation
 
@@ -273,20 +298,22 @@ mvn exec:java -Dexec.mainClass="weather.storage.tools.AddGSIsToAwsTable"
 
 See [AWS IAM User Setup Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/AWS_IAM_DYNAMODB_SETUP.md) for AWS credentials setup.
 
-## Project Statistics
+## Running the Bronze-to-Silver Glue ETL Job
 
-**Current Status (v1.13.0-SNAPSHOT):**
-- **Total Tests**: 221 (weather-storage) + additional tests in other modules
-- **Code Coverage**: 90%+ overall (DynamoDB repository ~90%, parsers 85%+)
-- **Build Time**: ~21 seconds for weather-storage module
-- **Lines of Code**: ~15,000+ lines across platform modules
-- **Zero Failures**: All tests passing
+```bash
+# Upload the transformation script (only needed after script changes)
+aws s3 cp glue-jobs/bronze_to_silver_metar.py s3://noakweather-glue-scripts/
 
-**Test Infrastructure:**
-- LocalStack for DynamoDB testing
-- Testcontainers for container management
-- JUnit 5 with AssertJ assertions
-- Comprehensive integration and unit tests
+# Run the job for a specific date
+aws glue start-job-run \
+  --job-name bronze-to-silver-metar \
+  --arguments '{"--source_date":"2026-08-27"}'
+
+# Check job status
+aws glue get-job-run --job-name bronze-to-silver-metar --run-id <JobRunId>
+```
+
+See the [Glue Deployment Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/GLUE-DEPLOYMENT-GUIDE.md) for full setup and troubleshooting.
 
 ## Contributing
 
@@ -301,24 +328,9 @@ Apache License 2.0 - See [LICENSE](https://github.com/bclasky1539/noakweather-en
 
 ## Project Status
 
-**Active Development** - Phase 4 Complete, Phase 5 In Progress
+**Active Development** - Phase 4 Complete, Phase 5 In Progress (Bronze-to-Silver ETL complete, Gold layer next)
 
-### Recent Milestones
-
-**Phase 4 Complete (January 2026)**
-- DynamoDB time-bucket GSI implementation
-- 50x performance improvement on time-range queries
-- Zero-downtime deployment support
-- Comprehensive integration test suite (221 tests)
-- Production-ready with complete documentation
-
-### Next Milestones
-
-**Phase 5 - Analytics & Serving Layer**
-- Query interface combining real-time + batch views
-- Analytics dashboard
-- API endpoints for weather data access
-- Real-time + batch view reconciliation
+See [CHANGELOG.md](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/CHANGELOG.md) for the complete, detailed version history.
 
 ## Support & Contact
 
