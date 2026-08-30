@@ -1,0 +1,14 @@
+# Normalize line endings to LF
+* text=auto
+
+# SQL files are being silently excluded from GitHub's language
+# detection (0 bytes reported via the GitHub API's /languages
+# endpoint despite 324 lines of real DDL in sql/). Explicit override
+# forces Linguist to recognize and count them.
+*.sql linguist-language=SQL linguist-detectable=true
+
+# Explicit hints for the other languages already detected correctly;
+# makes intent self-documenting and future-proofs against edge cases
+*.java linguist-language=Java
+*.py linguist-language=Python
+*.sh linguist-language=Shell
