@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.0-SNAPSHOT - September 2, 2026
+
+#### Worldwide METAR UAT Sweep and Tooling
+
+**Added:**
+- **`wethuat_metar_ingest.sh`** - UAT ingestion sweep script (repository root)
+  - Ingests METAR data for a curated, diverse set of worldwide stations
+    (spanning unit systems, hemispheres, climates, and reporting conventions),
+    then validates each station's resulting Bronze layer output
+  - Tracks ingestion and validation results separately, logging a
+    complete summary at the end
+  - Includes an initial check confirming `python3`/`boto3` availability
+    before starting, to fail fast with a clear diagnostic rather than
+    discovering a missing dependency after every station
+
+- **`glue-jobs/tools/analyze_bronze_station.py`** - Bronze layer validation tool
+  - Standalone local CLI tool (not deployed to AWS Glue) verifying a single
+    station/date's raw-data and speed-layer S3 output for structural
+    correctness: file presence, valid JSON, **duplicate JSON keys** (a direct
+    regression check against the historical Jackson serialization bug fixed
+    earlier), required fields, `dataType`/`stationId` match, and raw/JSON
+    content consistency
+  - Flags unparsed content (`unparsedMainBody`, `remarks.freeText`) as a
+    WARNING rather than a failure, since unrecognized real-world content is
+    exactly the signal this UAT process exists to surface
+  - Reuses `glue-jobs/requirements.txt` (boto3) rather than introducing a
+    separate dependency surface
+
+**UAT Findings:**
+- First full sweep (79 stations): 66 PASS, 13 WARN, 0 FAIL
+- Findings triaged into 11 GitHub issues (#53-#63), tracked via a new
+  `METAR UAT Remediation` Kanban project board and `UAT Round 1` milestone,
+  covering:
+  - A structural bug where remarks parsing silently corrupts downstream
+    content after an unmatched token, affecting even well-tested existing
+    features (Sea Level Pressure, precise temperature) on both US and
+    Canadian stations (#53)
+  - Missing-data placeholders (`//////`) incorrectly parsed as present
+    weather phenomena rather than recognized as absent data (#54)
+  - METAR trend forecast groups (TEMPO/BECMG/FM/PROB) not yet parsed in
+    the main body, beyond the existing NOSIG support (#55)
+  - Eight country/region-specific unsupported remark formats: secondary
+    altimeter repetition (Philippines/Taiwan), Canadian chained cloud-type
+    qualifiers and density altitude, Mexican supplementary groups, Jamaican
+    ceilometer remarks, Caribbean directional vicinity-weather remarks,
+    South American precipitation groups, and Norwegian/Arctic
+    wind-at-altitude remarks (#56, #57, #58-#62)
+  - Observation year currently derived from system clock rather than
+    parsed from NOAA's source data header line, a latent year-boundary
+    risk (#63)
+
+**Fixed:**
+- `glue-jobs/README.md`: corrected the documented Silver layer output path,
+  which still referenced the pre-fix double-partitioned structure
+  (`silver/observations/noaa/{year}/{month}/{day}/`) rather than the actual
+  Hive-style partitioned path; corrected the example Glue job creation
+  command's `--role` from a generic placeholder to the actual IAM role name;
+  removed leftover scratch text; documented the new `tools/` subdirectory
+
 ### Version 1.18.0-SNAPSHOT - August 29, 2026
 
 #### Build Tooling and Documentation Cleanup
