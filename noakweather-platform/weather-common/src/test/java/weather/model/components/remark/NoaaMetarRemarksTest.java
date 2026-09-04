@@ -3199,6 +3199,31 @@ class NoaaMetarRemarksTest {
         assertThat(remarks.cloudTypes().get(3).cloudType()).isEqualTo("CI");
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "CU, Cumulus",
+            "TCU, Towering Cumulus",
+            "CF, Cumuliform",
+            "ST, Stratus",
+            "SC, Stratocumulus",
+            "SF, Stratiform",
+            "NS, Nimbostratus",
+            "AS, Altostratus",
+            "AC, Altocumulus",
+            "CS, Cirrostratus",
+            "CC, Cirrocumulus",
+            "CI, Cirrus",
+            "ACC, Altocumulus Castellanus",
+            "ACSL, Altocumulus Standing Lenticular Cloud"
+    })
+    @DisplayName("Should generate correct description for all cloud type codes")
+    void testGetCloudTypeDescription_AllCodes(String code, String expectedDescription) {
+        CloudType cloudType = CloudType.of(code, 1);
+
+        assertThat(cloudType.getCloudTypeDescription())
+                .isEqualTo(expectedDescription);
+    }
+
     @Test
     @DisplayName("Should make defensive copy of cloud types list")
     void testBuilder_DefensiveCopyOfCloudTypes() {
