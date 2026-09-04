@@ -19,6 +19,7 @@ package weather.processing.parser.noaa;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.*;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.*;
@@ -28,9 +29,6 @@ import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.ParseResult;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.junit.jupiter.params.provider.CsvSource;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -43,14 +41,14 @@ import static org.assertj.core.api.Assertions.within;
 /**
  * Comprehensive tests for NoaaMetarParser.
  * Tests parsing logic with real METAR examples and edge cases.
- * 
+ *
  * @author bclasky1539
  *
  */
 class NoaaMetarParserTest {
-    
+
     private NoaaMetarParser parser;
-    
+
     @BeforeEach
     void setUp() {
         parser = new NoaaMetarParser();
@@ -87,15 +85,15 @@ class NoaaMetarParserTest {
     void testGetSourceType() {
         assertEquals("NOAA_METAR", parser.getSourceType());
     }
-    
+
     @Test
     @DisplayName("Should identify valid METAR data")
     void testCanParseValidMetar() {
         String metar = "METAR KJFK 251651Z 28016KT 10SM FEW250 22/12 A3015";
-        
+
         assertTrue(parser.canParse(metar));
     }
-    
+
     @Test
     @DisplayName("Should reject non-METAR data")
     void testCanParseInvalidData() {
@@ -103,82 +101,82 @@ class NoaaMetarParserTest {
         assertFalse(parser.canParse("This is not METAR data"));
         assertFalse(parser.canParse(""));
     }
-    
+
     @Test
     @DisplayName("Should reject null data")
     void testCanParseNull() {
         assertFalse(parser.canParse(null));
     }
-    
+
     @Test
     @DisplayName("Should reject empty data")
     void testCanParseEmpty() {
         assertFalse(parser.canParse(""));
         assertFalse(parser.canParse("   "));
     }
-    
+
     @Test
     @DisplayName("Should parse valid METAR successfully")
     void testParseValidMetar() {
         String metar = "METAR KJFK 251651Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2 SLP210";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         assertTrue(result.getData().isPresent());
-        
+
         NoaaWeatherData data = result.getData().get();
         assertEquals("KJFK", data.getStationId());
         assertEquals("METAR", data.getReportType());
         assertEquals(metar, data.getRawText());
         assertNotNull(data.getObservationTime());
     }
-    
+
     @Test
     @DisplayName("Should parse METAR with minimal data")
     void testParseMinimalMetar() {
         String metar = "METAR KLAX 251651Z";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertEquals("KLAX", data.getStationId());
     }
-    
+
     @Test
     @DisplayName("Should parse METAR with different station codes")
     void testParseVariousStations() {
         String[] stations = {"KJFK", "KLAX", "KORD", "KATL", "KDFW"};
-        
+
         for (String station : stations) {
             String metar = "METAR " + station + " 251651Z 28016KT 10SM";
             ParseResult<NoaaWeatherData> result = parser.parse(metar);
-            
+
             assertTrue(result.isSuccess());
             NoaaWeatherData data = extractData(result);
             assertEquals(station, data.getStationId());
         }
     }
-    
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   ", "  \t  ", "\n", "\r\n"})
     @DisplayName("Should fail when parsing invalid input")
     void testParseInvalidInput(String invalidInput) {
         ParseResult<NoaaWeatherData> result = parser.parse(invalidInput);
-    
+
         assertTrue(result.isFailure());
         assertEquals("Raw data cannot be null or empty", result.getErrorMessage());
     }
-    
+
     @Test
     @DisplayName("Should fail when data is not METAR")
     void testParseNonMetarData() {
         String taf = "TAF KJFK 251651Z 2517/2618 28016KT P6SM";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(taf);
-        
+
         assertTrue(result.isFailure());
         assertEquals("Data is not a valid METAR report", result.getErrorMessage());
     }
@@ -193,103 +191,103 @@ class NoaaMetarParserTest {
         assertTrue(result.isFailure());
         assertEquals("Failed to parse METAR data: Could not extract station ID from METAR", result.getErrorMessage());
     }
-    
+
     @Test
     @DisplayName("Should fail when station ID is invalid format")
     void testParseInvalidStationId() {
         String invalidMetar = "METAR K1X 251651Z 28016KT"; // Only 3 chars
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(invalidMetar);
-        
+
         assertTrue(result.isFailure());
         assertEquals("Failed to parse METAR data: Could not extract station ID from METAR", result.getErrorMessage());
     }
 
     @ParameterizedTest
     @CsvSource({
-        "'METAR  KJFK  251651Z  28016KT  10SM', KJFK",
-        "'METAR KORD 251651Z VRB03KT 10SM FEW250', KORD",
-        "'METAR PANC 251651Z 28016KT 10SM M05/M12 A3015', PANC"
+            "'METAR  KJFK  251651Z  28016KT  10SM', KJFK",
+            "'METAR KORD 251651Z VRB03KT 10SM FEW250', KORD",
+            "'METAR PANC 251651Z 28016KT 10SM M05/M12 A3015', PANC"
     })
     @DisplayName("Should parse METAR with various formats and extract correct station ID")
     void testParseMetarVariousFormats(String metar, String expectedStationId) {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-    
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertEquals(expectedStationId, data.getStationId());
     }
-    
+
     @Test
     @DisplayName("Should trim raw data when storing")
     void testRawDataIsTrimmed() {
         String metar = "  METAR KJFK 251651Z 28016KT  ";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertEquals(metar.trim(), data.getRawText());
     }
-    
+
     @Test
     @DisplayName("Should parse real-world METAR example - JFK")
     void testParseRealWorldJFK() {
         String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 RMK AO2 SLP201 T02330139";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertEquals("KJFK", data.getStationId());
         assertEquals("METAR", data.getReportType());
     }
-    
+
     @Test
     @DisplayName("Should parse real-world METAR example - LAX")
     void testParseRealWorldLAX() {
         String metar = "METAR KLAX 121853Z 26008KT 10SM FEW015 SCT250 21/16 A2990 RMK AO2 SLP127";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertEquals("KLAX", data.getStationId());
     }
- 
+
     @Test
     @DisplayName("Should parse METAR with remarks section")
     void testParseWithRemarks() {
         String metar = "METAR KATL 251651Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2 SLP210 T02220117";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertTrue(data.getRawText().contains("RMK"));
     }
-    
+
     @Test
     @DisplayName("Should set observation time when parsing")
     void testObservationTimeIsSet() {
         String metar = "METAR KJFK 251651Z 28016KT 10SM";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-        
+
         assertTrue(result.isSuccess());
         NoaaWeatherData data = extractData(result);
         assertNotNull(data.getObservationTime());
     }
-    
+
     @Test
     @DisplayName("Should handle parser internal exceptions gracefully")
     void testExceptionHandling() {
         // This would require mocking to truly test exception handling
         // For now, we verify that malformed data doesn't crash the parser
         String malformed = "METAR";
-        
+
         ParseResult<NoaaWeatherData> result = parser.parse(malformed);
-        
+
         assertTrue(result.isFailure());
         assertNotNull(result.getErrorMessage());
     }
@@ -2100,7 +2098,7 @@ class NoaaMetarParserTest {
         assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
 
         // SLP121 should be parsed
-        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertNotNull(data.getRemarks().seaLevelPressure(), "Sea level pressure should be parsed");
         assertEquals(1012.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
                 "SLP121 should decode to 1012.1 hPa");
 
@@ -2183,10 +2181,10 @@ class NoaaMetarParserTest {
         assertNotNull(data.getRemarks(), "Remarks should not be null");
 
         // No AO type
-        assertNull(data.getRemarks().automatedStationType(),"Automated station type should be null");
+        assertNull(data.getRemarks().automatedStationType(), "Automated station type should be null");
 
         // SLP210 should be parsed
-        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertNotNull(data.getRemarks().seaLevelPressure(), "Sea level pressure should be parsed");
         assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
                 "SLP210 should decode to 1021.0 hPa");
 
@@ -2268,7 +2266,7 @@ class NoaaMetarParserTest {
         assertEquals(AutomatedStationType.AO2, data.getRemarks().automatedStationType());
 
         // SLP201 should be parsed
-        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertNotNull(data.getRemarks().seaLevelPressure(), "Sea level pressure should be parsed");
         assertEquals(1020.1, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
                 "SLP201 should decode to 1020.1 hPa");
 
@@ -2291,10 +2289,10 @@ class NoaaMetarParserTest {
         assertNotNull(data.getRemarks());
 
         // No AO type
-        assertNull(data.getRemarks().automatedStationType(),"Should have no automated station type");
+        assertNull(data.getRemarks().automatedStationType(), "Should have no automated station type");
 
         // SLP210 should be parsed
-        assertNotNull(data.getRemarks().seaLevelPressure(),"Sea level pressure should be parsed");
+        assertNotNull(data.getRemarks().seaLevelPressure(), "Sea level pressure should be parsed");
         assertEquals(1021.0, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
                 "SLP210 should decode to 1021.0 hPa");
 
@@ -3357,7 +3355,7 @@ class NoaaMetarParserTest {
         assertNotNull(varVis.maximumVisibility(), "Maximum visibility should not be null: " + scenario);
         Double maxSM = varVis.maximumVisibility().toStatuteMiles();
         assertNotNull(maxSM, "Maximum visibility in SM should not be null: " + scenario);
-        assertEquals(expectedMax, maxSM, 0.01,"Maximum visibility mismatch: " + scenario);
+        assertEquals(expectedMax, maxSM, 0.01, "Maximum visibility mismatch: " + scenario);
 
         // Verify direction and location (empty string means null)
         if (!expectedDir.isEmpty()) {
@@ -7216,10 +7214,6 @@ class NoaaMetarParserTest {
         assertThat(fog.isGroundLevel()).isTrue();
     }
 
-    // ADD this test to verify sky conditions in main body don't interfere with obscuration in remarks
-
-    // ADD this test to verify sky conditions and obscuration layers don't interfere
-
     @Test
     @DisplayName("Should distinguish sky conditions from obscuration layers")
     void testParseObscurationLayer_WithSkyConditionsSameKeyword() {
@@ -7456,7 +7450,7 @@ class NoaaMetarParserTest {
 
     @Test
     @DisplayName("Should parse real-world METAR with cloud types - CYYZ example")
-    void testParseCloudType_RealWorld_CYYZ() {
+    void testParseCloudType_RealWorld_CYYZ_Spaced() {
         // Real METAR from CYYZ - NOTE: "TCU4AC1AC2" is a chained cloud type format
         // Our parser expects space-separated cloud types like "TCU4 AC1 AC2"
         String metar = "METAR CYYZ 052200Z 16008KT 15SM SCT065TCU BKN080 BKN160 25/18 A2976 RMK TCU4 AC1 AC2";
@@ -7508,6 +7502,174 @@ class NoaaMetarParserTest {
         assertThat(scTr.cloudType()).isEqualTo("SC");
         assertThat(scTr.location()).isEqualTo("TR");
         assertThat(scTr.isTrace()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should parse chained cloud types with no separator - two codes")
+    void testParseCloudType_Chained_TwoCodes() {
+        String metar = "METAR CYYZ 020000Z 07005KT 10SM FEW100 FEW260 22/20 A2995 RMK AC1CI1";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+
+        CloudType ac = data.getRemarks().cloudTypes().get(0);
+        assertThat(ac.cloudType()).isEqualTo("AC");
+        assertThat(ac.oktas()).isEqualTo(1);
+
+        CloudType ci = data.getRemarks().cloudTypes().get(1);
+        assertThat(ci.cloudType()).isEqualTo("CI");
+        assertThat(ci.oktas()).isEqualTo(1);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse chained cloud types with three-letter code - ACC")
+    void testParseCloudType_Chained_ThreeLetterCode() {
+        String metar = "METAR CYYZ 020000Z 07005KT 10SM FEW100 FEW260 22/20 A2995 RMK ACC1CI1";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+
+        CloudType acc = data.getRemarks().cloudTypes().get(0);
+        assertThat(acc.cloudType()).isEqualTo("ACC");
+        assertThat(acc.oktas()).isEqualTo(1);
+
+        CloudType ci = data.getRemarks().cloudTypes().get(1);
+        assertThat(ci.cloudType()).isEqualTo("CI");
+        assertThat(ci.oktas()).isEqualTo(1);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse chained cloud types with ACSL")
+    void testParseCloudType_Chained_ACSL() {
+        String metar = "METAR CYYZ 020000Z 07005KT 10SM FEW100 FEW260 22/20 A2995 RMK ACSL2CI1";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+
+        CloudType acsl = data.getRemarks().cloudTypes().get(0);
+        assertThat(acsl.cloudType()).isEqualTo("ACSL");
+        assertThat(acsl.oktas()).isEqualTo(2);
+
+        CloudType ci = data.getRemarks().cloudTypes().get(1);
+        assertThat(ci.cloudType()).isEqualTo("CI");
+        assertThat(ci.oktas()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("Should parse three chained cloud types - CYVR example")
+    void testParseCloudType_Chained_ThreeCodes() {
+        // Real METAR from CYVR: SC5AC1AC1
+        String metar = "METAR CYVR 020000Z 11011G16KT 30SM BKN061 BKN071 BKN140 19/13 A2976 RMK SC5AC1AC1";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes()).hasSize(3);
+
+        CloudType sc = data.getRemarks().cloudTypes().get(0);
+        assertThat(sc.cloudType()).isEqualTo("SC");
+        assertThat(sc.oktas()).isEqualTo(5);
+
+        CloudType ac1 = data.getRemarks().cloudTypes().get(1);
+        assertThat(ac1.cloudType()).isEqualTo("AC");
+        assertThat(ac1.oktas()).isEqualTo(1);
+
+        CloudType ac2 = data.getRemarks().cloudTypes().get(2);
+        assertThat(ac2.cloudType()).isEqualTo("AC");
+        assertThat(ac2.oktas()).isEqualTo(1);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse chained cloud types followed by other remarks - CYYZ real-world")
+    void testParseCloudType_Chained_WithFollowingRemarks() {
+        // The actual UAT finding: ACC1CI1 followed by SLP - confirms SLP is no
+        // longer blocked by a stuck cloud-code match after the Bug #1 fix
+        String metar = "METAR CYYZ 020000Z 07005KT 10SM FEW100 FEW260 22/20 A2995 RMK ACC1CI1 SLP142";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+        assertThat(data.getRemarks().cloudTypes().get(0).cloudType()).isEqualTo("ACC");
+        assertThat(data.getRemarks().cloudTypes().get(1).cloudType()).isEqualTo("CI");
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse real-world METAR with chained (no-space) cloud types - CYYZ example")
+    void testParseCloudType_RealWorld_CYYZ_Chained() {
+        // Same cloud types as the spaced-form test above, but reported with no
+        // separator at all - remarks formatting varies by source/station
+        String metar = "METAR CYYZ 052200Z 16008KT 15SM SCT065TCU BKN080 BKN160 25/18 A2976 RMK TCU4AC1AC2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getStationId()).isEqualTo("CYYZ");
+        assertThat(data.getRemarks().cloudTypes()).hasSize(3);
+
+        CloudType tcu = data.getRemarks().cloudTypes().get(0);
+        assertThat(tcu.cloudType()).isEqualTo("TCU");
+        assertThat(tcu.oktas()).isEqualTo(4);
+
+        CloudType ac1 = data.getRemarks().cloudTypes().get(1);
+        assertThat(ac1.cloudType()).isEqualTo("AC");
+        assertThat(ac1.oktas()).isEqualTo(1);
+
+        CloudType ac2 = data.getRemarks().cloudTypes().get(2);
+        assertThat(ac2.cloudType()).isEqualTo("AC");
+        assertThat(ac2.oktas()).isEqualTo(2);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    // ========== DENSITY ALTITUDE PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "1500, 'METAR CYYZ 020000Z 07005KT 10SM FEW100 FEW260 22/20 A2995 RMK SLP142 DENSITY ALT 1500FT'",
+            "700,  'METAR CYVR 020000Z 24008KT 15SM FEW040 SCT100 18/12 A2998 RMK SLP079 DENSITY ALT 700FT'",
+            "800,  'METAR CYUL 020000Z 32010KT 10SM SCT050 BKN090 15/08 A2985 RMK SLP165 DENSITY ALT 800FT'"
+    })
+    @DisplayName("Should parse density altitude remark - real-world (Issue #57)")
+    void testParseDensityAltitude(int expectedDensityAltFeet, String metar) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().densityAltitudeFeet()).isEqualTo(expectedDensityAltFeet);
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     // ========== AUTOMATED MAINTENANCE INDICATOR PARSING TESTS ==========

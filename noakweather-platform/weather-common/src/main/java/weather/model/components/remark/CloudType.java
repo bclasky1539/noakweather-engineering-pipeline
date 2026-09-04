@@ -18,53 +18,54 @@ package weather.model.components.remark;
 
 /**
  * Immutable value object representing a cloud type observation in METAR remarks.
- *
+ * <p>
  * Cloud types describe cloud formations using standard abbreviations with optional
  * okta coverage (eighths of sky covered), intensity, and location/movement.
- *
+ * <p>
  * Format: [Intensity] CloudType [Oktas] [Location/Movement]
- *
+ * <p>
  * Examples:
- *   "SC1" → CloudType("SC", 1, null, null, null)
- *   "SC TR" → CloudType("SC", null, null, "TR", null)
- *   "MDT CU OHD" → CloudType("CU", null, "MDT", "OHD", null)
- *   "AC8" → CloudType("AC", 8, null, null, null)
- *   "CI MOVG NE" → CloudType("CI", null, null, null, "NE")
- *
+ * "SC1" → CloudType("SC", 1, null, null, null)
+ * "SC TR" → CloudType("SC", null, null, "TR", null)
+ * "MDT CU OHD" → CloudType("CU", null, "MDT", "OHD", null)
+ * "AC8" → CloudType("AC", 8, null, null, null)
+ * "CI MOVG NE" → CloudType("CI", null, null, null, "NE")
+ * <p>
  * Cloud Type Codes:
- *   CU - Cumulus
- *   TCU - Towering Cumulus
- *   CF - Cumuliform
- *   ST - Stratus
- *   SC - Stratocumulus
- *   SF - Stratiform
- *   NS - Nimbostratus
- *   AS - Altostratus
- *   AC - Altocumulus
- *   CS - Cirrostratus
- *   CC - Cirrocumulus
- *   CI - Cirrus
- *
+ * CU - Cumulus
+ * TCU - Towering Cumulus
+ * CF - Cumuliform
+ * ST - Stratus
+ * SC - Stratocumulus
+ * SF - Stratiform
+ * NS - Nimbostratus
+ * AS - Altostratus
+ * AC - Altocumulus
+ * CS - Cirrostratus
+ * CC - Cirrocumulus
+ * CI - Cirrus
+ * ACC - Altocumulus Castellanus
+ * ACSL - Altocumulus Standing Lenticular Cloud
+ * <p>
  * Oktas: 1-8 (eighths of sky covered), null if not specified
- *
+ * <p>
  * Intensity:
- *   MDT - Moderate
- *
+ * MDT - Moderate
+ * <p>
  * Location:
- *   OHD - Overhead
- *   OHD-ALQDS - Overhead all quadrants
- *   ALQDS - All quadrants
- *   TR - Trace
- *
+ * OHD - Overhead
+ * OHD-ALQDS - Overhead all quadrants
+ * ALQDS - All quadrants
+ * TR - Trace
+ * <p>
  * Movement Direction:
- *   N, S, E, W, NE, NW, SE, SW
+ * N, S, E, W, NE, NW, SE, SW
  *
- * @param cloudType Cloud type code (CU, CI, AC, etc.) - required
- * @param oktas Coverage in eighths (1-8), null if not specified
- * @param intensity Intensity modifier (MDT), null if not specified
- * @param location Location indicator (OHD, TR, etc.), null if not specified
+ * @param cloudType         Cloud type code (CU, CI, AC, etc.) - required
+ * @param oktas             Coverage in eighths (1-8), null if not specified
+ * @param intensity         Intensity modifier (MDT), null if not specified
+ * @param location          Location indicator (OHD, TR, etc.), null if not specified
  * @param movementDirection Movement direction (N, NE, etc.), null if not specified
- *
  * @author bclasky1539
  *
  */
@@ -80,7 +81,7 @@ public record CloudType(
 
     // Valid cloud type codes
     private static final String[] VALID_CLOUD_TYPES = {
-            "CU", "TCU", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI"
+            "CU", "TCU", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"
     };
 
     // Valid intensity modifiers
@@ -299,6 +300,8 @@ public record CloudType(
             case "CS" -> "Cirrostratus";
             case "CC" -> "Cirrocumulus";
             case "CI" -> "Cirrus";
+            case "ACC" -> "Altocumulus Castellanus";
+            case "ACSL" -> "Altocumulus Standing Lenticular Cloud";
             default -> cloudType;
         };
     }
@@ -317,13 +320,13 @@ public record CloudType(
 
     /**
      * Get a human-readable summary of the cloud type.
-     *
+     * <p>
      * Examples:
-     *   "Stratocumulus (1/8)"
-     *   "Stratocumulus (trace)"
-     *   "Cumulus (moderate, overhead)"
-     *   "Altocumulus (8/8)"
-     *   "Cirrus (moving NE)"
+     * "Stratocumulus (1/8)"
+     * "Stratocumulus (trace)"
+     * "Cumulus (moderate, overhead)"
+     * "Altocumulus (8/8)"
+     * "Cirrus (moving NE)"
      *
      * @return formatted string describing the cloud type
      */
@@ -386,7 +389,7 @@ public record CloudType(
      * Factory method for cloud type with oktas.
      *
      * @param cloudType cloud type code
-     * @param oktas coverage in eighths
+     * @param oktas     coverage in eighths
      * @return new CloudType
      */
     public static CloudType of(String cloudType, int oktas) {
@@ -397,7 +400,7 @@ public record CloudType(
      * Factory method for cloud type with location.
      *
      * @param cloudType cloud type code
-     * @param location location indicator
+     * @param location  location indicator
      * @return new CloudType
      */
     public static CloudType withLocation(String cloudType, String location) {

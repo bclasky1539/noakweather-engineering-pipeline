@@ -46,7 +46,7 @@ import static weather.processing.parser.noaa.RegExprConst.*;
  * <p>
  * METAR Format Example:
  * "2025/11/14 22:52
- *  METAR KJFK 142252Z 19005KT 10SM FEW100 FEW250 16/M03 A3012 RMK AO2 SLP214 T01611028"
+ * METAR KJFK 142252Z 19005KT 10SM FEW100 FEW250 16/M03 A3012 RMK AO2 SLP214 T01611028"
  * <p>
  * Components:
  * - METAR: Report type
@@ -244,8 +244,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse token string using ordered pattern handlers from registry.
      *
-     * @param token The token string to parse
-     * @param handlers Ordered map of patterns and their handlers from NoaaAviationWeatherPatternRegistry
+     * @param token        The token string to parse
+     * @param handlers     Ordered map of patterns and their handlers from NoaaAviationWeatherPatternRegistry
      * @param handlersType Type of handlers ("MAIN" or "REMARK") for logging
      * @return Remaining unparsed token string
      */
@@ -273,7 +273,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Try all patterns against the token and return updated token after first match.
      *
-     * @param token Current token to parse
+     * @param token    Current token to parse
      * @param handlers Pattern handlers to try
      * @return Updated token after match, or original token if no match
      */
@@ -301,8 +301,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Try a single pattern against the token, applying it repeatedly if configured.
      *
-     * @param token Current token to parse
-     * @param pattern Pattern to try
+     * @param token       Current token to parse
+     * @param pattern     Pattern to try
      * @param handlerInfo Handler metadata
      * @return Updated token after all matches, or original token if no match
      */
@@ -376,7 +376,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * sky conditions) are inherited from NoaaAviationWeatherParser.
      *
      * @param handlerName The name of the handler from NoaaAviationWeatherPatternRegistry
-     * @param matcher The regex matcher with captured groups
+     * @param matcher     The regex matcher with captured groups
      */
     private void handlePattern(String handlerName, Matcher matcher) {
         try {
@@ -504,11 +504,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Internal helper record to pass RVR range values between methods.
      *
-     * @param visualRange Single value (null if variable)
-     * @param variableLow Variable low value (null if single)
+     * @param visualRange  Single value (null if variable)
+     * @param variableLow  Variable low value (null if single)
      * @param variableHigh Variable high value (null if single)
      */
-    private record RvrRange(Integer visualRange, Integer variableLow, Integer variableHigh) {}
+    private record RvrRange(Integer visualRange, Integer variableLow, Integer variableHigh) {
+    }
 
     /**
      * Override base class to provide full RVR handling for METAR.
@@ -569,7 +570,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse RVR values from matcher and add to weather data.
      *
-     * @param matcher The regex matcher
+     * @param matcher    The regex matcher
      * @param runwayName The runway identifier
      */
     private void parseAndAddRvr(Matcher matcher, String runwayName) {
@@ -601,7 +602,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse RVR numeric value.
      *
-     * @param value The string value to parse
+     * @param value      The string value to parse
      * @param runwayName The runway identifier (for logging)
      * @return Parsed integer or null if parsing fails
      */
@@ -639,7 +640,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse variable range from high value if present.
      *
-     * @param matcher The regex matcher
+     * @param matcher  The regex matcher
      * @param lowValue The low value already parsed
      * @return RvrRange object with appropriate values
      */
@@ -665,7 +666,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Extract trend indicator from unit group.
      *
-     * @param unit The unit group from regex
+     * @param unit       The unit group from regex
      * @param runwayName The runway identifier (for logging)
      * @return Trend indicator (N/D/U) or null
      */
@@ -691,9 +692,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Create RunwayVisualRange object and add to weather data.
      *
      * @param runwayName The runway identifier
-     * @param range The RVR range values
-     * @param prefix The M/P prefix
-     * @param trend The trend indicator
+     * @param range      The RVR range values
+     * @param prefix     The M/P prefix
+     * @param trend      The trend indicator
      */
     private void createAndAddRvr(String runwayName, RvrRange range, String prefix, String trend) {
         try {
@@ -769,7 +770,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - Missing indicators (//, XX, MM) → null
      * - Null or blank → null
      *
-     * @param sign the sign indicator ("M", "-", or null)
+     * @param sign   the sign indicator ("M", "-", or null)
      * @param digits the temperature digits (e.g., "05", "22")
      * @return temperature in Celsius, or null if missing/unknown
      */
@@ -848,9 +849,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - 4 digits starting with 0 or 1 → hectopascals
      * - 3 digits → hectopascals
      *
-     * @param unit1 Prefix unit indicator
+     * @param unit1       Prefix unit indicator
      * @param pressureStr Pressure digits
-     * @param unit2 Suffix unit indicator
+     * @param unit2       Suffix unit indicator
      * @return Pressure object, or null if invalid
      */
     private Pressure parsePressure(String unit1, String pressureStr, String unit2) {
@@ -887,7 +888,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Parse pressure with unit prefix (A, AA, Q, QNH).
      *
      * @param prefix Unit prefix
-     * @param value Pressure value
+     * @param value  Pressure value
      * @return Pressure object
      */
     private Pressure parsePressureWithPrefix(String prefix, int value) {
@@ -971,7 +972,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * This is a stub that logs when a pattern is matched by the registry.
      * The actual parsing is done by sequential handlers in handleRemarks().
      *
-     * @param matcher The regex matcher with captured groups
+     * @param matcher    The regex matcher with captured groups
      * @param remarkType The type of remark for logging
      */
     private void handleRemarkRegistry(Matcher matcher, String remarkType) {
@@ -1017,7 +1018,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * as free text. Called after the main body has been parsed.
      *
      * @param remarksText the remarks text (everything after RMK)
-     * @param metarData the METAR data object to populate
+     * @param metarData   the METAR data object to populate
      */
     private void handleRemarks(String remarksText, NoaaMetarData metarData) {
         if (remarksText == null || remarksText.isBlank()) {
@@ -1052,6 +1053,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handlePressureTendencySequential(remaining, remarksBuilder);
             remaining = handle6HourMaxMinTemperatureSequential(remaining, remarksBuilder);
             remaining = handle24HourMaxMinTemperatureSequential(remaining, remarksBuilder);
+            remaining = handleDensityAltitudeSequential(remaining, remarksBuilder);
             remaining = handleAutomatedMaintenanceSequential(remaining, remarksBuilder);
 
             // Continue while we're making progress
@@ -1141,7 +1143,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - A01/A02 = OCR error variants (O misread as 0)
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleAutomatedStationType(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1192,7 +1194,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - If ppp < 500: Sea level pressure = 1000 + (ppp / 10) hPa
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleSeaLevelPressureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1259,7 +1261,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - T0233 → temp=+23.3°C, dewpoint=not reported
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleHourlyTemperatureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1340,7 +1342,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - PK WND P100/2145 → dir=unknown, speed=100kt, time=21:45 UTC
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handlePeakWindSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1418,7 +1420,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - WSHFT 30 → hour=null, minute=30, no frontal passage
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleWindShiftSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1483,7 +1485,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - VIS 1 1/4V3 → min=1.25 SM, max=3 SM
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleVariableVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1630,7 +1632,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - TWR VIS 2 → Tower visibility 2 SM
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleTowerSurfaceVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1693,10 +1695,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Set the appropriate visibility field based on type.
      *
-     * @param type the visibility type (TWR VIS or SFC VIS)
+     * @param type       the visibility type (TWR VIS or SFC VIS)
      * @param visibility the parsed visibility
-     * @param distStr the original distance string (for logging)
-     * @param remarks the remarks builder to populate
+     * @param distStr    the original distance string (for logging)
+     * @param remarks    the remarks builder to populate
      */
     private void setVisibilityByType(String type, Visibility visibility, String distStr,
                                      NoaaMetarRemarks.Builder remarks) {
@@ -1723,7 +1725,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - P//// → Trace
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleHourlyPrecipitationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1773,7 +1775,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - 6//// → Trace (6-hour)
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleMultiHourPrecipitationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1817,6 +1819,42 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
+     * Handle density altitude remarks.
+     * Format: DENSITY ALT ####FT
+     * <p>
+     * Example: DENSITY ALT 1500FT → 1500 feet density altitude
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleDensityAltitudeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = DENSITY_ALTITUDE_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            try {
+                int densityAlt = Integer.parseInt(matcher.group("denalt"));
+                remarks.densityAltitudeFeet(densityAlt);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Density altitude: {}FT", densityAlt);
+                }
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Invalid density altitude value in remarks: {}", matcher.group(), e);
+            }
+
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
+    }
+
+    /**
      * Handle hail size remark for sequential parsing.
      * <p>
      * Format: GR followed by size in inches
@@ -1829,7 +1867,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * the format is identical (fractions, mixed numbers, whole numbers).
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleHailSizeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1906,7 +1944,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * This method will parse all chained events in a single pass.
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after all chained events are processed
      */
     private String handleWeatherEventsSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2039,7 +2077,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Helper record to return hour and minute components.
      */
-    private record TimeComponents(Integer hour, Integer minute) {}
+    private record TimeComponents(Integer hour, Integer minute) {
+    }
 
     /**
      * Parse time digits which can be either 2 digits (mm) or 4 digits (hhmm).
@@ -2092,10 +2131,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - Precipitation + obscuration (e.g., "RABR")
      * - Just obscuration (e.g., "BR", "FG")
      *
-     * @param descriptor Weather descriptor (may be null)
+     * @param descriptor    Weather descriptor (may be null)
      * @param precipitation Weather precipitation (may be null)
-     * @param obscuration Weather obscuration (may be null)
-     * @param other Other weather phenomena (may be null)
+     * @param obscuration   Weather obscuration (may be null)
+     * @param other         Other weather phenomena (may be null)
      * @return Combined weather code, or empty string if all are null/empty
      */
     private String buildWeatherCodeFromExistingGroups(
@@ -2141,7 +2180,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Multiple occurrences can be present (e.g., "TS SE CB W").
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after all cloud locations are processed
      */
     private String handleThunderstormLocationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2229,7 +2268,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * <p>Note: This remark appears at most once per METAR.
      *
      * @param remarksText the remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after pressure tendency is processed
      */
     private String handlePressureTendencySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2300,7 +2339,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - 21001 → Minimum: -0.1°C
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing
      */
     private String handle6HourMaxMinTemperatureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2361,9 +2400,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Add parsed 6-hour temperature to appropriate remarks field.
      *
-     * @param type temperature type ("1" = max, "2" = min)
+     * @param type        temperature type ("1" = max, "2" = min)
      * @param temperature the parsed temperature
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      */
     private void add6HourTemperatureToRemarks(String type, Temperature temperature, NoaaMetarRemarks.Builder remarks) {
         if ("1".equals(type)) {
@@ -2394,7 +2433,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - 400001000 → Max: 0.0°C, Min: -0.0°C
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing
      */
     private String handle24HourMaxMinTemperatureSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2491,7 +2530,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - CIG 020V035 → 2000-3500 feet
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing
      */
     private String handleVariableCeilingSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2544,7 +2583,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * to avoid matching variable ceiling patterns (e.g., CIG 005V010).
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing
      */
     private String handleCeilingSecondSiteSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2594,7 +2633,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Multiple layers can be present: FEW FG 000 SCT FU 010
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing
      */
     private String handleObscurationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2650,7 +2689,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Multiple cloud types can be present: SC1 AC2 CI
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing (never null)
      */
     private String handleCloudTypeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -2677,10 +2716,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Process a single cloud type pattern match.
      *
-     * @param matcher the pattern matcher (must not be null)
-     * @param matchEnd the end position of the match
+     * @param matcher   the pattern matcher (must not be null)
+     * @param matchEnd  the end position of the match
      * @param remaining the remaining text (must not be null)
-     * @param remarks the remarks builder (must not be null)
+     * @param remarks   the remarks builder (must not be null)
      * @return the remaining text after processing this match (never null)
      */
     private String processCloudTypeMatch(Matcher matcher, int matchEnd, String remaining,
@@ -2764,7 +2803,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Determine location and movement from pattern groups.
      *
-     * @param verb the verb group (may be null)
+     * @param verb              the verb group (may be null)
      * @param directionMovement the movement direction (may be null)
      * @param directionLocation the location qualifier (may be null)
      * @return array with [location, movement] - never null, but elements may be null
@@ -2800,7 +2839,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Handles: RVRNO, PWINO, PNO, FZRANO, TSNO, VISNO [LOC], CHINO [LOC], $
      *
      * @param remarksText the remaining remarks text
-     * @param remarks the remarks builder
+     * @param remarks     the remarks builder
      * @return remaining text after processing
      */
     private String handleAutomatedMaintenanceSequential(String remarksText,

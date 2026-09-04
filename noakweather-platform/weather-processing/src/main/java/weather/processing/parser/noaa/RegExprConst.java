@@ -361,7 +361,7 @@ public final class RegExprConst {
      * Example: "DENSITY ALT 800FT"
      */
     public static final Pattern DENSITY_ALTITUDE_PATTERN = Pattern.compile(
-            "^(?<type>DENSITY ALT) (?<denalt>\\d{1,5})(?<units>FT)\\s+"
+            "^(?<type>DENSITY ALT) (?<denalt>\\d{1,5})(?<units>FT)(?=\\s|$)"
     );
 
     /**
@@ -372,7 +372,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for okta cloud format
     public static final Pattern CLOUD_OKTA_PATTERN = Pattern.compile(
-            "^(?<intensity>MDT\\s+)?(?<cloud>(TCU|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI))(?<okta>[1-8](?=\\s|$))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD|TR)))?"
+            "^(?<intensity>MDT\\s+)?(?<cloud>(TCU|ACSL|ACC|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI))(?<okta>[1-8](?=\\s|$|[A-Z]))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD|TR)))?"
 
     );
 

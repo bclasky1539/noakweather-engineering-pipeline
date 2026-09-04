@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.1-SNAPSHOT - September 3, 2026
+
+#### UAT Round 1 Remediation - Cloud Type Parsing and Density Altitude (#53, #57)
+
+**Fixed:**
+- **Downstream parse corruption after unrecognized cloud type codes** (weather-common, weather-processing) (#53)
+  - `CloudType`'s `VALID_CLOUD_TYPES` was missing `ACC` (Altocumulus
+    Castellanus) and `ACSL` (Altocumulus Standing Lenticular Cloud), even
+    though `CLOUD_OKTA_PATTERN` already matched them at the regex level
+  - The mismatch caused `CloudType`'s constructor to throw
+    `IllegalArgumentException` during cloud type extraction, which
+    `processCloudTypeMatch()` caught and logged rather than surfaced —
+    silently dropping the cloud type from the result while still advancing
+    past it in the text, corrupting parsing of everything remaining in the
+    remarks string (including well-tested existing features like Sea Level
+    Pressure)
+  - Added `ACC` and `ACSL` to `VALID_CLOUD_TYPES` and
+    `getCloudTypeDescription()` in `CloudType.java`
+  - Broadened `CLOUD_OKTA_PATTERN`'s okta lookahead
+    (`(?=\s|$)` → `(?=\s|$|[A-Z])`) to correctly capture oktas digits in
+    chained, no-space-separated cloud type sequences (e.g. `AC1AC1CI1`)
+  - Reordered the cloud type alternation so `ACC`/`ACSL` are checked before
+    the shorter `AC` prefix.
+
+**Added:**
+- **`DENSITY ALT ####FT` remark parsing** (weather-common, weather-processing) (#57)
+  - `DENSITY_ALTITUDE_PATTERN` existed in `RegExprConst.java` but was
+    entirely unused and contained a latent bug: a trailing mandatory `\s+`
+    that would never match when the remark was the last token in the remarks
+    string (the common case in real-world Canadian METARs)
+  - Fixed the pattern to use a non-consuming lookahead
+    (`(?=\s|$)`) instead of mandatory trailing whitespace
+  - Added `densityAltitudeFeet` field to `NoaaMetarRemarks` (record,
+    builder, `isEmpty()`, `toString()`)
+  - Added `handleDensityAltitudeSequential()` handler in `NoaaMetarParser`,
+    wired into the `handleRemarks()` multi-pass chain
+
+**Testing:**
+- Added parameterized real-world regression tests (CYYZ, CYVR, CYUL) for
+  both chained cloud type parsing and density altitude extraction,
+  reflecting the exact station data found during the UAT sweep
+- Full reactor build (`wethb.sh` + `wetht.sh`) passing across all modules
+
+**Notes:**
+- Issues #53 and #57 are marked **Pending UAT** rather than Done — these
+  fixes are verified via unit tests and code review, but not yet confirmed
+  against the full worldwide UAT station corpus. Both issues will be closed
+  after a UAT re-run confirms the fixes hold across all previously affected
+  and unaffected stations.
+
 ### Version 1.19.0-SNAPSHOT - September 2, 2026
 
 #### Worldwide METAR UAT Sweep and Tooling
