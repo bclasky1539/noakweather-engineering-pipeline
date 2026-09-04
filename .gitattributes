@@ -7,8 +7,15 @@
 # forces Linguist to recognize and count them.
 *.sql linguist-language=SQL linguist-detectable=true
 
+# Make YAML files count in language statistics
+*.yml linguist-detectable=true
+*.yaml linguist-detectable=true
+
+# Make Shell scripts count in language statistics
+*.sh linguist-detectable=true
+
 # Explicit hints for the other languages already detected correctly;
 # makes intent self-documenting and future-proofs against edge cases
 *.java linguist-language=Java
 *.py linguist-language=Python
-*.sh linguist-language=Shell
+# *.sh linguist-language=Shell
