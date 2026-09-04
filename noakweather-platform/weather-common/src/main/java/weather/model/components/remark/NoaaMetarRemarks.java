@@ -28,43 +28,44 @@ import java.util.stream.Collectors;
 
 /**
  * Contains remarks (supplemental information) from a METAR or SPECI report.
- *
+ * <p>
  * Remarks appear after the "RMK" delimiter in METAR/SPECI reports and provide
  * additional meteorological information beyond the main observation body. All fields
  * are optional as remarks content varies by station and conditions.
- *
+ * <p>
  * This is an immutable record that uses the Builder pattern for construction
  * since all fields are optional.
- *
+ * <p>
  * Fields are nullable as not all remarks are present in every METAR.
- *
- *  * @param automatedStationType AO1 or AO2 indicator
- *  * @param seaLevelPressure Sea level pressure in hPa (SLP)
- *  * @param hourlyTemperature Hourly temperature and dewpoint (T-group)
- *  * @param peakWind Peak wind information
- *  * @param windShift Wind shift information
- *  * @param variableVisibility Variable visibility data
- *  * @param CeilingSecondSite Ceiling height at second observation site
- *  * @param obscurationLayers Obscuration Layer information
- *  * @param cloudTypes Cloud Type information
- *  * @param towerVisibility Tower visibility (if different from surface)
- *  * @param surfaceVisibility Surface visibility (if different from prevailing)
- *  * @param hourlyPrecipitation Hourly precipitation amount (P)
- *  * @param precipitation3Hour 3-hour precipitation amount
- *  * @param precipitation6Hour 6-hour precipitation amount
- *  * @param precipitation24Hour 24-hour precipitation amount
- *  * @param snowDepth Snow depth on ground
- *  * @param hailSize Hail size in inches
- *  * @param weatherEvents List of weather events (beginning/ending times)
- *  * @param thunderstormLocations List of thunderstorm/cloud locations
- *  * @param pressureTendency 3-hour pressure tendency
- *  * @param sixHourMaxTemperature 6-hour maximum temperature
- *  * @param sixHourMinTemperature 6-hour minimum temperature
- *  * @param twentyFourHourMaxTemperature 24-hour maximum temperature
- *  * @param twentyFourHourMinTemperature 24-hour minimum temperature
- *  * @param automatedMaintenanceIndicators List of Automated Maintenance Indicators
- *  * @param maintenanceRequired Boolean if maintanence is required
- *  * @param freeText Unparsed remarks text
+ * <p>
+ * * @param automatedStationType AO1 or AO2 indicator
+ * * @param seaLevelPressure Sea level pressure in hPa (SLP)
+ * * @param hourlyTemperature Hourly temperature and dewpoint (T-group)
+ * * @param peakWind Peak wind information
+ * * @param windShift Wind shift information
+ * * @param variableVisibility Variable visibility data
+ * * @param CeilingSecondSite Ceiling height at second observation site
+ * * @param obscurationLayers Obscuration Layer information
+ * * @param cloudTypes Cloud Type information
+ * * @param towerVisibility Tower visibility (if different from surface)
+ * * @param surfaceVisibility Surface visibility (if different from prevailing)
+ * * @param hourlyPrecipitation Hourly precipitation amount (P)
+ * * @param precipitation3Hour 3-hour precipitation amount
+ * * @param precipitation6Hour 6-hour precipitation amount
+ * * @param precipitation24Hour 24-hour precipitation amount
+ * * @param snowDepth Snow depth on ground
+ * * @param hailSize Hail size in inches
+ * * @param weatherEvents List of weather events (beginning/ending times)
+ * * @param thunderstormLocations List of thunderstorm/cloud locations
+ * * @param pressureTendency 3-hour pressure tendency
+ * * @param sixHourMaxTemperature 6-hour maximum temperature
+ * * @param sixHourMinTemperature 6-hour minimum temperature
+ * * @param twentyFourHourMaxTemperature 24-hour maximum temperature
+ * * @param twentyFourHourMinTemperature 24-hour minimum temperature
+ * * @param densityAltitudeFeet Density Altitude
+ * * @param automatedMaintenanceIndicators List of Automated Maintenance Indicators
+ * * @param maintenanceRequired Boolean if maintenance is required
+ * * @param freeText Unparsed remarks text
  *
  * @author bclasky1539
  *
@@ -94,6 +95,7 @@ public record NoaaMetarRemarks(
         Temperature sixHourMinTemperature,
         Temperature twentyFourHourMaxTemperature,
         Temperature twentyFourHourMinTemperature,
+        Integer densityAltitudeFeet,
         List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators,
         Boolean maintenanceRequired,
         String freeText
@@ -121,11 +123,11 @@ public record NoaaMetarRemarks(
      */
     public static NoaaMetarRemarks empty() {
         return new NoaaMetarRemarks(null, null, null, null,
-                null, null, null,null, null, List.of(),
-                List.of(), null,null, null,null,
-                null, null, List.of(), List.of(),null,
-                null, null,null,
-                null, List.of(),null, null);
+                null, null, null, null, null, List.of(),
+                List.of(), null, null, null, null,
+                null, null, List.of(), List.of(), null,
+                null, null, null,
+                null, null, List.of(), null, null);
     }
 
     /**
@@ -158,6 +160,7 @@ public record NoaaMetarRemarks(
                 && sixHourMinTemperature == null
                 && twentyFourHourMaxTemperature == null
                 && twentyFourHourMinTemperature == null
+                && densityAltitudeFeet == null
                 && (automatedMaintenanceIndicators == null || automatedMaintenanceIndicators.isEmpty())
                 && maintenanceRequired == null
                 && (freeText == null || freeText.isBlank());
@@ -211,6 +214,7 @@ public record NoaaMetarRemarks(
         private Temperature sixHourMinTemperature;
         private Temperature twentyFourHourMaxTemperature;
         private Temperature twentyFourHourMinTemperature;
+        private Integer densityAltitudeFeet;
         private List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators = new ArrayList<>();
         private Boolean maintenanceRequired;
         private String freeText;
@@ -448,6 +452,17 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Sets the Density Altitude.
+         *
+         * @param densityAltitudeFeet the density altitude
+         * @return this builder
+         */
+        public Builder densityAltitudeFeet(Integer densityAltitudeFeet) {
+            this.densityAltitudeFeet = densityAltitudeFeet;
+            return this;
+        }
+
+        /**
          * Sets the hail size.
          *
          * @param hailSize the hail size from GR group
@@ -650,6 +665,7 @@ public record NoaaMetarRemarks(
                     sixHourMinTemperature,
                     twentyFourHourMaxTemperature,
                     twentyFourHourMinTemperature,
+                    densityAltitudeFeet,
                     List.copyOf(automatedMaintenanceIndicators),
                     maintenanceRequired,
                     freeText
@@ -711,6 +727,7 @@ public record NoaaMetarRemarks(
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, twentyFourHourMinTemperature, "twentyFourHourMinTemp",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
+        addIfPresent(parts, densityAltitudeFeet, "densityAltitudeFeet", Object::toString);
         if (automatedMaintenanceIndicators != null && !automatedMaintenanceIndicators.isEmpty()) {
             parts.add("automatedMaintenance=" + automatedMaintenanceIndicators.stream()
                     .map(AutomatedMaintenanceIndicator::toString)
