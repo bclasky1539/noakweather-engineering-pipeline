@@ -3314,6 +3314,40 @@ class NoaaMetarRemarksTest {
         assertFalse(remarks.isEmpty());
     }
 
+    // ========== DENSITY ALTITUDE TESTS ==========
+
+    @Test
+    @DisplayName("Should build remarks with densityAltitudeFeet via builder")
+    void testBuilder_DensityAltitudeFeet() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .densityAltitudeFeet(1500)
+                .build();
+
+        assertThat(remarks.densityAltitudeFeet()).isEqualTo(1500);
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should handle null densityAltitudeFeet via builder")
+    void testBuilder_NullDensityAltitudeFeet() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .densityAltitudeFeet(null)
+                .build();
+
+        assertThat(remarks.densityAltitudeFeet()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should include densityAltitudeFeet in toString()")
+    void testToString_DensityAltitudeFeet() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .densityAltitudeFeet(1500)
+                .build();
+
+        String str = remarks.toString();
+        assertThat(str).contains("densityAltitudeFeet=1500");
+    }
+
     // ========== CORRECTED TESTS FOR NoaaMetarRemarksTest.java ==========
 
     @Test
