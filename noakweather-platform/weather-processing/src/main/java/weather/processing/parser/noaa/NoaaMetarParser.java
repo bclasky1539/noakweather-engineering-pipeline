@@ -21,7 +21,6 @@ import weather.model.NoaaWeatherData;
 import weather.model.components.*;
 import weather.model.components.remark.*;
 import weather.model.enums.AutomatedStationType;
-import weather.model.enums.PressureUnit;
 import weather.processing.parser.common.ParseResult;
 import weather.utils.IndexedLinkedHashMap;
 
@@ -68,7 +67,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     // Pressure Tendency Pattern Groups
     private static final String GROUP_TENDENCY_CODE = "tend";
-    private static final String GROUP_PRESSURE_CHANGE = "press";
     private static final String GROUP_HEIGHT_CODE = "height";
 
     // Pattern registry for METAR parsing
@@ -797,157 +795,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
     }
 
-    /**
-     * Handle altimeter/pressure setting.
-     * <p>
-     * Formats:
-     * - A3015 → 30.15 inHg (North America)
-     * - Q1013 → 1013 hPa (International)
-     * - QNH1013 → 1013 hPa
-     * - 2992INS → 29.92 inHg (older format)
-     * - //// → Missing
-     */
-    private void handleAltimeter(Matcher matcher) {
-        if (weatherData == null) {
-            return;
-        }
-
-        String unit1 = matcher.group("unit");
-        String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
-        String unit2 = matcher.group("unit2");
-
-        // Handle missing pressure
-        if ("////".equals(pressureStr)) {
-            LOGGER.debug("Altimeter: Missing (////)");
-            return;
-        }
-
-        try {
-            // Determine unit and parse pressure
-            Pressure pressure = parsePressure(unit1, pressureStr, unit2);
-
-            if (pressure != null) {
-                conditionsBuilder.pressure(pressure);
-
-                LOGGER.debug("Altimeter: {}", pressure.getSummary());
-            }
-
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse altimeter '{}': {}",
-                    matcher.group(0).trim(), e.getMessage());
-        }
-    }
-
-    /**
-     * Parse pressure value and determine unit.
-     * <p>
-     * Logic:
-     * - "A" or "AA" prefix → inches of mercury (divide by 100)
-     * - "Q" or "QNH" prefix → hectopascals
-     * - "INS" suffix → inches of mercury (divide by 100)
-     * - 4 digits starting with 2 or 3 → inches of mercury (divide by 100)
-     * - 4 digits starting with 0 or 1 → hectopascals
-     * - 3 digits → hectopascals
-     *
-     * @param unit1       Prefix unit indicator
-     * @param pressureStr Pressure digits
-     * @param unit2       Suffix unit indicator
-     * @return Pressure object, or null if invalid
-     */
-    private Pressure parsePressure(String unit1, String pressureStr, String unit2) {
-        if (pressureStr == null || pressureStr.isBlank()) {
-            return null;
-        }
-
-        // Handle OCR error: O → 0
-        String normalized = pressureStr.replace('O', '0');
-
-        try {
-            int pressureValue = Integer.parseInt(normalized);
-
-            // Determine unit based on prefix
-            if (unit1 != null && !unit1.isBlank()) {
-                return parsePressureWithPrefix(unit1, pressureValue);
-            }
-
-            // Determine unit based on suffix
-            if ("INS".equals(unit2)) {
-                return parseInchesHg(pressureValue);
-            }
-
-            // Determine unit based on value
-            return parsePressureByValue(pressureValue);
-
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid pressure format: {}", pressureStr);
-            return null;
-        }
-    }
-
-    /**
-     * Parse pressure with unit prefix (A, AA, Q, QNH).
-     *
-     * @param prefix Unit prefix
-     * @param value  Pressure value
-     * @return Pressure object
-     */
-    private Pressure parsePressureWithPrefix(String prefix, int value) {
-        return switch (prefix.toUpperCase()) {
-            case "A", "AA" -> parseInchesHg(value);
-            case "Q", "QNH" -> parseHectopascals(value);
-            default -> {
-                LOGGER.warn("Unknown pressure unit prefix: {}", prefix);
-                yield parsePressureByValue(value);
-            }
-        };
-    }
-
-    /**
-     * Parse pressure as inches of mercury.
-     * Value is divided by 100 (e.g., 3015 → 30.15 inHg).
-     *
-     * @param value Pressure value (e.g., 3015)
-     * @return Pressure in inches of mercury
-     */
-    private Pressure parseInchesHg(int value) {
-        double inHg = value / 100.0;
-        return new Pressure(inHg, PressureUnit.INCHES_HG);
-    }
-
-    /**
-     * Parse pressure as hectopascals.
-     *
-     * @param value Pressure value (e.g., 1013)
-     * @return Pressure in hectopascals
-     */
-    private Pressure parseHectopascals(int value) {
-        return new Pressure((double) value, PressureUnit.HECTOPASCALS);
-    }
-
-    /**
-     * Determine pressure unit based on value heuristics.
-     * <p>
-     * - 4 digits starting with 2 or 3 → inches Hg (e.g., 2992, 3015)
-     * - 4 digits starting with 0 or 1 → hPa (e.g., 1013, 0998)
-     * - 3 digits → hPa (e.g., 998)
-     *
-     * @param value Pressure value
-     * @return Pressure object
-     */
-    private Pressure parsePressureByValue(int value) {
-        // 4-digit values
-        if (value >= 1000) {
-            // 2xxx or 3xxx → inches of mercury
-            if (value >= 2000 && value < 4000) {
-                return parseInchesHg(value);
-            }
-            // 0xxx or 1xxx → hectopascals
-            return parseHectopascals(value);
-        }
-
-        // 3-digit values → assume hectopascals
-        return parseHectopascals(value);
-    }
 
     /**
      * Handle NOSIG (No Significant Change) indicator in main METAR body.
@@ -1039,6 +886,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleHourlyTemperatureSequential(remaining, remarksBuilder);
             remaining = handlePeakWindSequential(remaining, remarksBuilder);
             remaining = handleWindShiftSequential(remaining, remarksBuilder);
+            remaining = handleWindAtLocationSequential(remaining, remarksBuilder);
             remaining = handleVariableVisibilitySequential(remaining, remarksBuilder);
             remaining = handleVariableCeilingSequential(remaining, remarksBuilder);
             remaining = handleCeilingSecondSiteSequential(remaining, remarksBuilder);
@@ -1055,6 +903,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handle24HourMaxMinTemperatureSequential(remaining, remarksBuilder);
             remaining = handleDensityAltitudeSequential(remaining, remarksBuilder);
             remaining = handleAutomatedMaintenanceSequential(remaining, remarksBuilder);
+            remaining = handleSecondaryAltimeterSequential(remaining, remarksBuilder);
 
             // Continue while we're making progress
         } while (!Objects.equals(remaining, previous));
@@ -1467,6 +1316,90 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     remarksText.substring(0, Math.min(20, remarksText.length())), e);
             return remarksText.substring(matcher.end()).trim();
         }
+    }
+
+    /**
+     * Handle wind-at-location remarks (altitude or runway-specific wind readings).
+     * Format: WIND ####FT ddd(dd)KT or WIND RWY ## ddd(dd)KT
+     * Multiple entries may be chained in sequence.
+     * <p>
+     * Examples:
+     * - WIND 1400FT 23010KT → wind at 1400ft altitude
+     * - WIND RWY 26 00000KT → wind at runway 26
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleWindAtLocationSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = WIND_AT_LOCATION_PATTERN.matcher(remaining);
+
+        while (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+            remaining = processWindAtLocationMatch(matcher, matchEnd, remaining, remarks);
+            remaining = remaining.trim();
+            matcher = WIND_AT_LOCATION_PATTERN.matcher(remaining);
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Process a single wind-at-location pattern match.
+     *
+     * @param matcher   the pattern matcher (must not be null)
+     * @param matchEnd  the end position of the match
+     * @param remaining the remaining text (must not be null)
+     * @param remarks   the remarks builder (must not be null)
+     * @return the remaining text after processing this match (never null)
+     */
+    private String processWindAtLocationMatch(Matcher matcher, int matchEnd, String remaining,
+                                              NoaaMetarRemarks.Builder remarks) {
+        try {
+            WindAtLocation windAtLocation = buildWindAtLocation(matcher);
+            remarks.addWindAtLocation(windAtLocation);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Wind at location: {}", windAtLocation.getSummary());
+            }
+        } catch (IllegalArgumentException e) {
+            int endIndex = Math.min(matchEnd, remaining.length());
+            LOGGER.warn("Invalid wind-at-location in remarks: {}",
+                    remaining.substring(0, endIndex), e);
+        }
+
+        return remaining.substring(matchEnd).trim();
+    }
+
+    /**
+     * Extract wind-at-location components from a pattern matcher and construct
+     * the corresponding WindAtLocation value object.
+     *
+     * @param matcher the pattern matcher (must not be null)
+     * @return the constructed WindAtLocation (never null)
+     * @throws IllegalArgumentException if the matched data is invalid
+     */
+    private WindAtLocation buildWindAtLocation(Matcher matcher) {
+        String heightStr = matcher.group(GROUP_HEIGHT_CODE);
+        String runway = matcher.group("runway");
+        String dirStr = matcher.group("dir");
+        String speedStr = matcher.group("speed");
+        String gustStr = matcher.group("gust");
+        String unit = matcher.group("unit");
+
+        Integer height = heightStr != null ? Integer.parseInt(heightStr) : null;
+        Integer direction = "VRB".equals(dirStr) ? null : Integer.parseInt(dirStr);
+        int speed = Integer.parseInt(speedStr);
+        Integer gust = gustStr != null ? Integer.parseInt(gustStr) : null;
+
+        Wind wind = new Wind(direction, speed, gust, null, null, unit);
+
+        return new WindAtLocation(height, runway, wind);
     }
 
     /**
@@ -2325,6 +2258,65 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         // Use PressureTendency.fromMetar factory method
         return PressureTendency.fromMetar(tendencyCode, pressureChangeStr);
+    }
+
+    /**
+     * Handle secondary altimeter setting repeated inside the remarks section.
+     * Common in Philippines/Taiwan-region METARs where the main body reports
+     * altimeter in ICAO hPa format (Q####) and remarks repeat it in US-style
+     * inches of mercury (A####) as a redundant confirmation.
+     * <p>
+     * Example: RMK A2977 → 29.77 inHg
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleSecondaryAltimeterSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = ALTIMETER_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            processSecondaryAltimeterMatch(matcher, remarks);
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Process a single secondary altimeter pattern match, storing the parsed
+     * pressure on the remarks builder if valid.
+     *
+     * @param matcher the pattern matcher (must not be null)
+     * @param remarks the remarks builder (must not be null)
+     */
+    private void processSecondaryAltimeterMatch(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+        String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
+
+        if ("////".equals(pressureStr)) {
+            return;
+        }
+
+        String unit1 = matcher.group("unit");
+        String unit2 = matcher.group("unit2");
+
+        try {
+            Pressure pressure = parsePressure(unit1, pressureStr, unit2);
+            if (pressure != null) {
+                remarks.secondaryAltimeter(pressure);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Secondary altimeter: {}", pressure.getSummary());
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Failed to parse secondary altimeter in remarks: {}", matcher.group(0).trim(), e);
+        }
     }
 
     /**

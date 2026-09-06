@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import weather.model.components.Pressure;
 import weather.model.components.Temperature;
 import weather.model.components.Visibility;
+import weather.model.components.Wind;
 import weather.model.enums.AutomatedStationType;
 
 import java.util.ArrayList;
@@ -171,8 +172,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null,
-                null, null, null,
-                null, null, freeText
+                null, null, null, null,
+                null, null, null, freeText
         );
 
         assertEquals(stationType, remarks.automatedStationType());
@@ -229,9 +230,7 @@ class NoaaMetarRemarksTest {
         assertNotEquals(remarks1, remarks2);
     }
 
-    // Add these tests to NoaaMetarRemarksTest.java
-
-// ========== Tests for hasFrontalPassage() ==========
+    // ========== Tests for hasFrontalPassage() ==========
 
     @Test
     void testHasFrontalPassageTrue() {
@@ -263,7 +262,8 @@ class NoaaMetarRemarksTest {
         assertFalse(remarks.hasFrontalPassage());
     }
 
-// ========== Tests for isEmpty() edge cases ==========
+    // ========== Tests for isEmpty() edge cases ==========
+    // ========== Tests for isEmpty() edge cases ==========
 
     @Test
     void testIsEmptyWithOnlySeaLevelPressure() {
@@ -334,7 +334,7 @@ class NoaaMetarRemarksTest {
         assertThat(remarks.freeText()).isNotBlank();
     }
 
-// ========== Tests for record constructor with all field combinations ==========
+    // ========== Tests for record constructor with all field combinations ==========
 
     @Test
     void testRecordConstructorWithPeakWind() {
@@ -343,11 +343,11 @@ class NoaaMetarRemarksTest {
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, peakWind,
                 null, null, null, null, null,
-                null, null, null,
+                null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(peakWind, remarks.peakWind());
@@ -360,12 +360,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                windShift, null, null, null, null,
+                windShift, null,null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertNull(remarks.peakWind());
@@ -396,6 +396,228 @@ class NoaaMetarRemarksTest {
 
         String str = remarks.toString();
         assertTrue(str.contains("windShift"));
+    }
+
+    // ========== WIND AT LOCATION TESTS ==========
+
+    @Test
+    @DisplayName("Should create NoaaMetarRemarks with single wind at altitude")
+    void testBuilder_SingleWindAtAltitude() {
+        WindAtLocation windAtLocation = WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT"));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(windAtLocation)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).hasSize(1);
+        assertThat(remarks.windsAtLocation().get(0)).isEqualTo(windAtLocation);
+        assertThat(remarks.windsAtLocation().get(0).isAtAltitude()).isTrue();
+        assertThat(remarks.windsAtLocation().get(0).heightFeet()).isEqualTo(1400);
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should create NoaaMetarRemarks with single wind at runway (calm, 00000KT)")
+    void testBuilder_SingleWindAtRunway() {
+        WindAtLocation windAtLocation = WindAtLocation.atRunway("26", Wind.of(0, 0, "KT"));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(windAtLocation)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).hasSize(1);
+        assertThat(remarks.windsAtLocation().get(0)).isEqualTo(windAtLocation);
+        assertThat(remarks.windsAtLocation().get(0).isAtRunway()).isTrue();
+        assertThat(remarks.windsAtLocation().get(0).runway()).isEqualTo("26");
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should create NoaaMetarRemarks with multiple winds at location")
+    void testBuilder_MultipleWindsAtLocation() {
+        WindAtLocation windAtRunway = WindAtLocation.atRunway("32", Wind.variable(1, "KT"));
+        WindAtLocation windAtAltitude = WindAtLocation.atAltitude(1119, Wind.variable(3, "KT"));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(windAtRunway)
+                .addWindAtLocation(windAtAltitude)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).hasSize(2);
+        assertThat(remarks.windsAtLocation()).containsExactly(windAtRunway, windAtAltitude);
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should create NoaaMetarRemarks with windsAtLocation list via bulk setter")
+    void testBuilder_WindsAtLocationList() {
+        List<WindAtLocation> winds = List.of(
+                WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")),
+                WindAtLocation.atRunway("26", Wind.of(0, 0, "KT"))
+        );
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .windsAtLocation(winds)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).hasSize(2);
+        assertThat(remarks.windsAtLocation()).isEqualTo(winds);
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should add multiple winds at location via addWindsAtLocation bulk method")
+    void testBuilder_AddWindsAtLocationBulk() {
+        WindAtLocation wind1 = WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT"));
+        WindAtLocation wind2 = WindAtLocation.atRunway("26", Wind.of(0, 0, "KT"));
+        List<WindAtLocation> winds = List.of(wind1, wind2);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindsAtLocation(winds)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).hasSize(2);
+        assertThat(remarks.windsAtLocation()).containsExactly(wind1, wind2);
+    }
+
+    @Test
+    @DisplayName("Should handle null windsAtLocation list via bulk setter")
+    void testBuilder_NullWindsAtLocationList() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .windsAtLocation(null)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).isEmpty();
+        assertThat(remarks.windsAtLocation()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should handle empty windsAtLocation list")
+    void testBuilder_EmptyWindsAtLocationList() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .windsAtLocation(List.of())
+                .build();
+
+        assertThat(remarks.windsAtLocation()).isEmpty();
+        assertThat(remarks.windsAtLocation()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should handle null windAtLocation in addWindAtLocation")
+    void testBuilder_AddNullWindAtLocation() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(null)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should handle null list in addWindsAtLocation")
+    void testBuilder_AddWindsAtLocationNull() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindsAtLocation(null)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should make defensive copy of windsAtLocation list")
+    void testBuilder_DefensiveCopyOfWindsAtLocation() {
+        List<WindAtLocation> originalList = new ArrayList<>();
+        originalList.add(WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .windsAtLocation(originalList)
+                .build();
+
+        originalList.add(WindAtLocation.atRunway("26", Wind.of(0, 0, "KT")));
+
+        assertThat(remarks.windsAtLocation()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should be empty when windsAtLocation is null")
+    void testIsEmptyWithNullWindsAtLocation() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .windsAtLocation(null)
+                .build();
+
+        assertThat(remarks.windsAtLocation()).isEmpty();
+        // Note: isEmpty() returns false because List fields are initialized
+    }
+
+    @Test
+    @DisplayName("Should not be empty when only windsAtLocation is present")
+    void testIsEmptyWithOnlyWindsAtLocation() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")))
+                .build();
+
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should include windsAtLocation in toString()")
+    void testToString_WindsAtLocation() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")))
+                .build();
+
+        String str = remarks.toString();
+        assertThat(str)
+                .contains("windsAtLocation=")
+                .contains("1400ft");
+    }
+
+    @Test
+    @DisplayName("Should include multiple windsAtLocation with semicolon separator in toString()")
+    void testToString_MultipleWindsAtLocation() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addWindAtLocation(WindAtLocation.atRunway("32", Wind.variable(1, "KT")))
+                .addWindAtLocation(WindAtLocation.atAltitude(1119, Wind.variable(3, "KT")))
+                .build();
+
+        String str = remarks.toString();
+        assertThat(str)
+                .contains("windsAtLocation=")
+                .contains(";")
+                .contains("RWY 32")
+                .contains("1119ft");
+    }
+
+    @Test
+    @DisplayName("Should be equal when windsAtLocation are the same")
+    void testEqualityWithWindsAtLocation() {
+        WindAtLocation windAtLocation = WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT"));
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .addWindAtLocation(windAtLocation)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .addWindAtLocation(windAtLocation)
+                .build();
+
+        assertEquals(remarks1, remarks2);
+        assertEquals(remarks1.hashCode(), remarks2.hashCode());
+    }
+
+    @Test
+    @DisplayName("Should not be equal when windsAtLocation differ")
+    void testInequalityWithDifferentWindsAtLocation() {
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .addWindAtLocation(WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")))
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .addWindAtLocation(WindAtLocation.atRunway("26", Wind.of(0, 0, "KT")))
+                .build();
+
+        assertNotEquals(remarks1, remarks2);
     }
 
     // ========== Tests for isEmpty() with VariableVisibility ==========
@@ -436,12 +658,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, varVis, null, null, null,
+                null, null, varVis, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(varVis, remarks.variableVisibility());
@@ -642,12 +864,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, towerVis, null,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(towerVis, remarks.towerVisibility());
@@ -661,12 +883,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, surfaceVis,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertNull(remarks.towerVisibility());
@@ -681,12 +903,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, towerVis, surfaceVis,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(towerVis, remarks.towerVisibility());
@@ -694,7 +916,7 @@ class NoaaMetarRemarksTest {
     }
 
 
-// ========== Tests for builder with Tower/Surface Visibility ==========
+    // ========== Tests for builder with Tower/Surface Visibility ==========
 
     @Test
     @DisplayName("Should build remarks with towerVisibility via builder")
@@ -890,12 +1112,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 hourly, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null,
-                null
+                null, null
         );
 
         assertEquals(hourly, remarks.hourlyPrecipitation());
@@ -910,12 +1132,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, sixHour, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null,
-                null
+                null, null
         );
 
         assertNull(remarks.hourlyPrecipitation());
@@ -930,12 +1152,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, twentyFourHour, null, null, null,
                 null, null, null, null,
                 null, null, null, null,
-                null
+                null, null
         );
 
         assertNull(remarks.hourlyPrecipitation());
@@ -952,12 +1174,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 hourly, sixHour, twentyFourHour, null, null, null,
                 null, null, null, null,
                 null, null, null, null,
-                null
+                null, null
         );
 
         assertEquals(hourly, remarks.hourlyPrecipitation());
@@ -1200,12 +1422,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, hailSize, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(hailSize, remarks.hailSize());
@@ -1216,12 +1438,12 @@ class NoaaMetarRemarksTest {
     void testRecordConstructorWithNullHailSize() {
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertNull(remarks.hailSize());
@@ -1331,7 +1553,7 @@ class NoaaMetarRemarksTest {
     }
 
 
-// ========== Tests with Different Hail Sizes ==========
+    // ========== Tests with Different Hail Sizes ==========
 
     @Test
     @DisplayName("Should handle severe hail size")
@@ -1419,12 +1641,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 List.of(location), null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(1, remarks.thunderstormLocations().size());
@@ -1439,12 +1661,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 List.of(location1, location2), null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(2, remarks.thunderstormLocations().size());
@@ -1810,7 +2032,7 @@ class NoaaMetarRemarksTest {
         // Note: isEmpty() returns false because weatherEvents field is set to empty list
     }
 
-// ========== NEW Tests for record constructor with Weather Events ==========
+    // ========== NEW Tests for record constructor with Weather Events ==========
 
     @Test
     @DisplayName("Should create remarks with single weatherEvent via record constructor")
@@ -1819,12 +2041,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, List.of(event),
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(1, remarks.weatherEvents().size());
@@ -1839,12 +2061,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, List.of(event1, event2),
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(2, remarks.weatherEvents().size());
@@ -2225,12 +2447,12 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null, tendency, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(tendency, remarks.pressureTendency());
@@ -2241,12 +2463,12 @@ class NoaaMetarRemarksTest {
     void testRecordConstructorWithNullPressureTendency() {
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null,null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null, null, null, null,
                 null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertNull(remarks.pressureTendency());
@@ -2317,7 +2539,7 @@ class NoaaMetarRemarksTest {
         assertTrue(str.contains("Pressure tendency") || str.contains("pressureTendency"));
     }
 
-// ========== Tests for equality with Pressure Tendency ==========
+    // ========== Tests for equality with Pressure Tendency ==========
 
     @Test
     @DisplayName("Should be equal when pressureTendency is the same")
@@ -2461,6 +2683,104 @@ class NoaaMetarRemarksTest {
         assertEquals(1, remarks.weatherEvents().size());
         assertEquals(1, remarks.thunderstormLocations().size());
         assertFalse(remarks.isEmpty());
+    }
+
+    // ========== SECONDARY ALTIMETER TESTS ==========
+
+    @Test
+    @DisplayName("Should not be empty when only secondaryAltimeter is present")
+    void testIsEmptyWithOnlySecondaryAltimeter() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .secondaryAltimeter(Pressure.ofInchesHg(29.77))
+                .build();
+
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should build remarks with secondaryAltimeter via builder")
+    void testBuilder_SecondaryAltimeter() {
+        Pressure secondaryAltimeter = Pressure.ofInchesHg(29.77);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .secondaryAltimeter(secondaryAltimeter)
+                .build();
+
+        assertThat(remarks.secondaryAltimeter()).isEqualTo(secondaryAltimeter);
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should handle null secondaryAltimeter via builder")
+    void testBuilder_NullSecondaryAltimeter() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .secondaryAltimeter(null)
+                .build();
+
+        assertThat(remarks.secondaryAltimeter()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should build remarks with multiple fields including secondaryAltimeter")
+    void testBuilder_MultipleFieldsIncludingSecondaryAltimeter() {
+        AutomatedStationType stationType = AutomatedStationType.AO2;
+        Pressure slp = Pressure.hectopascals(1013.2);
+        Pressure secondaryAltimeter = Pressure.ofInchesHg(29.58);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(stationType)
+                .seaLevelPressure(slp)
+                .secondaryAltimeter(secondaryAltimeter)
+                .build();
+
+        assertThat(remarks.automatedStationType()).isEqualTo(stationType);
+        assertThat(remarks.seaLevelPressure()).isEqualTo(slp);
+        assertThat(remarks.secondaryAltimeter()).isEqualTo(secondaryAltimeter);
+        assertThat(remarks.isEmpty()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should include secondaryAltimeter in toString()")
+    void testToString_SecondaryAltimeter() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .secondaryAltimeter(Pressure.ofInchesHg(29.77))
+                .build();
+
+        String str = remarks.toString();
+        assertThat(str).contains("secondaryAltimeter");
+    }
+
+    @Test
+    @DisplayName("Should be equal when secondaryAltimeter is the same")
+    void testEqualityWithSecondaryAltimeter() {
+        Pressure secondaryAltimeter = Pressure.ofInchesHg(29.77);
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .secondaryAltimeter(secondaryAltimeter)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .secondaryAltimeter(secondaryAltimeter)
+                .build();
+
+        assertEquals(remarks1, remarks2);
+        assertEquals(remarks1.hashCode(), remarks2.hashCode());
+    }
+
+    @Test
+    @DisplayName("Should not be equal when secondaryAltimeter differs")
+    void testInequalityWithDifferentSecondaryAltimeter() {
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .secondaryAltimeter(Pressure.ofInchesHg(29.77))
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .secondaryAltimeter(Pressure.ofInchesHg(29.58))
+                .build();
+
+        assertNotEquals(remarks1, remarks2);
     }
 
     // ========== 6-HOUR MAX/MIN TEMPERATURE TESTS ==========
@@ -3483,7 +3803,7 @@ class NoaaMetarRemarksTest {
     }
 
 
-// BONUS: Additional edge case tests
+    // BONUS: Additional edge case tests
 
     @Test
     @DisplayName("toString should handle single obscurationLayer correctly")
@@ -3912,6 +4232,10 @@ class NoaaMetarRemarksTest {
         Temperature dewpoint = Temperature.of(11.7);
         PeakWind peakWind = new PeakWind(280, 32, 15, 30);
         WindShift windShift = new WindShift(15, 30, true);
+        List<WindAtLocation> windsAtLocation = List.of(
+                WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")),
+                WindAtLocation.atRunway("26", Wind.calm())
+        );
         Visibility min = Visibility.statuteMiles(0.5);
         Visibility max = Visibility.statuteMiles(2.0);
         VariableVisibility varVis = new VariableVisibility(min, max, null, null);
@@ -3938,6 +4262,7 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation location2 = ThunderstormLocation.withMovement("CB", "W", "E");
         List<ThunderstormLocation> thunderstormLocations = List.of(location1, location2);
         PressureTendency tendency = PressureTendency.of(2, 3.2);
+        Pressure secondaryAltimeter = Pressure.ofInchesHg(30.02);
         Temperature sixHourMaxTemp = Temperature.of(14.2);
         Temperature sixHourMinTemp = Temperature.of(-0.1);
         Temperature twentyFourHourMaxTemp = Temperature.of(4.6);
@@ -3951,13 +4276,13 @@ class NoaaMetarRemarksTest {
         String freeText = "Additional remarks";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                stationType, slp, temp, dewpoint, peakWind, windShift, varVis, variableCeiling, ceilingSecondSite,
+                stationType, slp, temp, dewpoint, peakWind, windShift, windsAtLocation, varVis, variableCeiling, ceilingSecondSite,
                 obscurationLayers, cloudTypes, towerVis, surfaceVis, hourly, sixHour, twentyFourHour, hailSize, weatherEvents,
-                thunderstormLocations, tendency, sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp,
+                thunderstormLocations, tendency, secondaryAltimeter, sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp,
                 twentyFourHourMinTemp, densityAltitudeFeet, automatedMaintenanceIndicators, maintenanceRequired, freeText
         );
 
-        // Verify first 13 fields
+        // Verify first 14 fields
         assertAll("First half of fields should be correctly set",
                 () -> assertEquals(stationType, remarks.automatedStationType()),
                 () -> assertEquals(slp, remarks.seaLevelPressure()),
@@ -3965,6 +4290,7 @@ class NoaaMetarRemarksTest {
                 () -> assertEquals(dewpoint, remarks.preciseDewpoint()),
                 () -> assertEquals(peakWind, remarks.peakWind()),
                 () -> assertEquals(windShift, remarks.windShift()),
+                () -> assertEquals(windsAtLocation, remarks.windsAtLocation()),
                 () -> assertEquals(varVis, remarks.variableVisibility()),
                 () -> assertEquals(variableCeiling, remarks.variableCeiling()),
                 () -> assertEquals(ceilingSecondSite, remarks.ceilingSecondSite()),
@@ -3984,6 +4310,10 @@ class NoaaMetarRemarksTest {
         Temperature dewpoint = Temperature.of(11.7);
         PeakWind peakWind = new PeakWind(280, 32, 15, 30);
         WindShift windShift = new WindShift(15, 30, true);
+        List<WindAtLocation> windsAtLocation = List.of(
+                WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT")),
+                WindAtLocation.atRunway("26", Wind.calm())
+        );
         Visibility min = Visibility.statuteMiles(0.5);
         Visibility max = Visibility.statuteMiles(2.0);
         VariableVisibility varVis = new VariableVisibility(min, max, null, null);
@@ -4010,6 +4340,7 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation location2 = ThunderstormLocation.withMovement("CB", "W", "E");
         List<ThunderstormLocation> thunderstormLocations = List.of(location1, location2);
         PressureTendency tendency = PressureTendency.of(2, 3.2);
+        Pressure secondaryAltimeter = Pressure.ofInchesHg(30.02);
         Temperature sixHourMaxTemp = Temperature.of(14.2);
         Temperature sixHourMinTemp = Temperature.of(-0.1);
         Temperature twentyFourHourMaxTemp = Temperature.of(4.6);
@@ -4023,13 +4354,13 @@ class NoaaMetarRemarksTest {
         String freeText = "Additional remarks";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                stationType, slp, temp, dewpoint, peakWind, windShift, varVis, variableCeiling, ceilingSecondSite,
+                stationType, slp, temp, dewpoint, peakWind, windShift, windsAtLocation, varVis, variableCeiling, ceilingSecondSite,
                 obscurationLayers, cloudTypes, towerVis, surfaceVis, hourly, sixHour, twentyFourHour, hailSize, weatherEvents,
-                thunderstormLocations, tendency, sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp,
+                thunderstormLocations, tendency, secondaryAltimeter, sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp,
                 twentyFourHourMinTemp, densityAltitudeFeet, automatedMaintenanceIndicators, maintenanceRequired, freeText
         );
 
-        // Verify remaining 15 fields
+        // Verify remaining 16 fields
         assertAll("Second half of fields should be correctly set",
                 () -> assertEquals(hourly, remarks.hourlyPrecipitation()),
                 () -> assertEquals(sixHour, remarks.sixHourPrecipitation()),
@@ -4038,6 +4369,7 @@ class NoaaMetarRemarksTest {
                 () -> assertEquals(weatherEvents, remarks.weatherEvents()),
                 () -> assertEquals(thunderstormLocations, remarks.thunderstormLocations()),
                 () -> assertEquals(tendency, remarks.pressureTendency()),
+                () -> assertEquals(secondaryAltimeter, remarks.secondaryAltimeter()),
                 () -> assertEquals(sixHourMaxTemp, remarks.sixHourMaxTemperature()),
                 () -> assertEquals(sixHourMinTemp, remarks.sixHourMinTemperature()),
                 () -> assertEquals(twentyFourHourMaxTemp, remarks.twentyFourHourMaxTemperature()),
