@@ -7,6 +7,82 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.2-SNAPSHOT - September 6, 2026
+
+#### UAT Round 1 Remediation - Present Weather, Secondary Altimeter, and Wind at Location (#54, #56, #62)
+
+**Fixed:**
+- **Missing-data slash placeholders misclassified as present weather** (weather-processing) (#54)
+  - `PRESENT_WEATHER_PATTERN`'s precipitation/other groups legitimately accept a
+    bare `/` to support partial-unknown weather codes, but this also allowed a
+    token consisting *entirely* of slashes (`//////`, `/////`) — the ICAO
+    convention for "this whole field is unavailable" — to be parsed as if it
+    were a real weather phenomenon
+  - Added a guard in the shared `handlePresentWeather()` (in
+    `NoaaAviationWeatherParser`, used by both METAR and TAF) to recognize and
+    skip pure-slash tokens rather than constructing a bogus `PresentWeather`
+    entry from the placeholder text
+  - Verified against the real-world MKJP UAT record
+
+**Changed:**
+- **Relocated altimeter/pressure parsing to the shared aviation-weather base
+  class** (weather-processing)
+  - `handleAltimeter()`, `parsePressure()`, and their supporting helpers were
+    previously METAR-only, in `NoaaMetarParser`; moved to
+    `NoaaAviationWeatherParser` so `NoaaTafParser` can inherit the same logic
+    (TAF-side wiring deferred to a later change)
+  - `GROUP_PRESSURE_CHANGE` restored to `private static final` after the move
+    temporarily widened it to a mutable field (SonarCloud java:S116)
+  - Added direct unit tests for the relocated logic in
+    `NoaaAviationWeatherParserTest` (A/Q/QNH/INS formats, value-based
+    heuristic, missing data, OCR `O`→`0` normalization), since prior coverage
+    only existed indirectly through METAR integration tests
+
+**Added:**
+- **Secondary altimeter setting repeated inside remarks** (weather-common,
+  weather-processing) (#56)
+  - Philippines/Taiwan-region METARs (RPLL, RCTP) repeat the altimeter inside
+    `RMK` in US-style inches-of-mercury format (`A####`) as a redundant
+    confirmation of the main body's ICAO hPa reading
+  - Fixed `ALTIMETER_PATTERN`'s trailing mandatory whitespace (same
+    last-token-in-string bug pattern as `DENSITY_ALTITUDE_PATTERN` in #57);
+    replaced with a non-consuming lookahead
+  - Added `secondaryAltimeter` (`Pressure`) field to `NoaaMetarRemarks`,
+    reusing the now-shared `parsePressure()` rather than duplicating
+    conversion logic
+  - Added `handleSecondaryAltimeterSequential()` in `NoaaMetarParser`
+
+- **Wind at a specific location (altitude or runway) reported in remarks**
+  (weather-common, weather-processing) (#62)
+  - Norwegian/Arctic-region METARs (ENSB, ENSD, ENSG, ENSH, ENSR) report wind
+    at a specific altitude (`WIND ####FT ddd(dd)KT`) or a specific runway
+    (`WIND RWY ## ddd(dd)KT`), distinct from surface wind, with multiple
+    entries sometimes chained in the same remarks string
+  - New `WindAtLocation` record (`weather.model.components.remark`) wraps the
+    existing `Wind` value object with an altitude/runway qualifier, avoiding
+    duplication of direction/speed/gust/VRB handling
+  - Added `WIND_AT_LOCATION_PATTERN` to `RegExprConst.java`, matching both
+    qualifier forms and supporting `VRB` direction
+  - Added `List<WindAtLocation> windsAtLocation` to `NoaaMetarRemarks`
+  - Added loop-based `handleWindAtLocationSequential()` /
+    `processWindAtLocationMatch()` in `NoaaMetarParser`, mirroring the
+    established chained-match pattern from `handleCloudTypeSequential`
+
+**Testing:**
+- Added `WindAtLocationTest.java` covering constructor validation, factory
+  methods, `getSummary()`, and equality
+- Added real-world regression tests in `NoaaMetarParserTest` for all five
+  Norwegian UAT stations, including chained runway+altitude and `VRB`
+  direction cases
+- Added builder-level tests in `NoaaMetarRemarksTest` for `secondaryAltimeter`
+  and `windsAtLocation` to close module-level coverage gaps (same class of
+  gap identified and fixed for `densityAltitudeFeet` under #57)
+
+**Notes:**
+- Issues #54, #56, and #62 are marked **Pending UAT** rather than Done —
+  verified via unit tests and code review, not yet confirmed against the full
+  worldwide UAT station set.
+
 ### Version 1.19.1-SNAPSHOT - September 3, 2026
 
 #### UAT Round 1 Remediation - Cloud Type Parsing and Density Altitude (#53, #57)

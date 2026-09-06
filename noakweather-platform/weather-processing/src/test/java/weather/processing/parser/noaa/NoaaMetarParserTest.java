@@ -3314,6 +3314,125 @@ class NoaaMetarParserTest {
         assertTrue(data.getRemarks().windShift().frontalPassage());
     }
 
+    // ========== WIND AT LOCATION TESTS (Issue #62) ==========
+
+    @Test
+    @DisplayName("Should parse single wind-at-altitude remark - ENSB real-world (Issue #62)")
+    void testParseWindAtLocation_SingleAltitude_ENSB() {
+        String metar = "METAR ENSB 042350Z 23012KT 7000 -SNRA SCT010 BKN020 02/M01 Q1003 RMK WIND 1400FT 23010KT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation()).hasSize(1);
+        WindAtLocation wind = data.getRemarks().windsAtLocation().get(0);
+        assertThat(wind.isAtAltitude()).isTrue();
+        assertThat(wind.heightFeet()).isEqualTo(1400);
+        assertThat(wind.wind().directionDegrees()).isEqualTo(230);
+        assertThat(wind.wind().speedValue()).isEqualTo(10);
+        assertThat(wind.wind().unit()).isEqualTo("KT");
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse chained runway and altitude wind remarks - ENSD real-world (Issue #62)")
+    void testParseWindAtLocation_ChainedRunwayAndAltitude_ENSD() {
+        String metar = "METAR ENSD 042350Z AUTO VRB01KT 9999 FEW075/// 10/09 Q0996 RMK WIND RWY 26 00000KT WIND 1126FT 00000KT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation()).hasSize(2);
+
+        WindAtLocation runwayWind = data.getRemarks().windsAtLocation().get(0);
+        assertThat(runwayWind.isAtRunway()).isTrue();
+        assertThat(runwayWind.runway()).isEqualTo("26");
+        assertThat(runwayWind.wind().directionDegrees()).isZero();
+        assertThat(runwayWind.wind().speedValue()).isZero();
+
+        WindAtLocation altitudeWind = data.getRemarks().windsAtLocation().get(1);
+        assertThat(altitudeWind.isAtAltitude()).isTrue();
+        assertThat(altitudeWind.heightFeet()).isEqualTo(1126);
+        assertThat(altitudeWind.wind().directionDegrees()).isZero();
+        assertThat(altitudeWind.wind().speedValue()).isZero();
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse single wind-at-altitude remark - ENSG real-world (Issue #62)")
+    void testParseWindAtLocation_SingleAltitude_ENSG() {
+        String metar = "METAR ENSG 042350Z AUTO VRB01KT 9999 SCT059/// BKN076/// OVC167/// 08/07 Q0996 RMK WIND 3806FT 18003KT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation()).hasSize(1);
+        WindAtLocation wind = data.getRemarks().windsAtLocation().get(0);
+        assertThat(wind.isAtAltitude()).isTrue();
+        assertThat(wind.heightFeet()).isEqualTo(3806);
+        assertThat(wind.wind().directionDegrees()).isEqualTo(180);
+        assertThat(wind.wind().speedValue()).isEqualTo(3);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse single wind-at-altitude remark - ENSH real-world (Issue #62)")
+    void testParseWindAtLocation_SingleAltitude_ENSH() {
+        String metar = "METAR ENSH 042350Z 01012KT 9999 NCD 11/08 Q0999 RMK WIND 0150FT 02011KT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation()).hasSize(1);
+        WindAtLocation wind = data.getRemarks().windsAtLocation().get(0);
+        assertThat(wind.isAtAltitude()).isTrue();
+        assertThat(wind.heightFeet()).isEqualTo(150);
+        assertThat(wind.wind().directionDegrees()).isEqualTo(20);
+        assertThat(wind.wind().speedValue()).isEqualTo(11);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse chained runway and altitude wind remarks with VRB direction - ENSR real-world (Issue #62)")
+    void testParseWindAtLocation_ChainedWithVrbDirection_ENSR() {
+        String metar = "METAR ENSR 042350Z AUTO 06002KT 9999 -DZ FEW007/// SCT012/// BKN019/// 08/06 Q1004 RMK WIND RWY 32 VRB01KT WIND 1119FT VRB03KT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation()).hasSize(2);
+
+        WindAtLocation runwayWind = data.getRemarks().windsAtLocation().get(0);
+        assertThat(runwayWind.isAtRunway()).isTrue();
+        assertThat(runwayWind.runway()).isEqualTo("32");
+        assertThat(runwayWind.wind().directionDegrees()).isNull();
+        assertThat(runwayWind.wind().hasVariableDirection()).isTrue();
+        assertThat(runwayWind.wind().speedValue()).isEqualTo(1);
+
+        WindAtLocation altitudeWind = data.getRemarks().windsAtLocation().get(1);
+        assertThat(altitudeWind.isAtAltitude()).isTrue();
+        assertThat(altitudeWind.heightFeet()).isEqualTo(1119);
+        assertThat(altitudeWind.wind().directionDegrees()).isNull();
+        assertThat(altitudeWind.wind().hasVariableDirection()).isTrue();
+        assertThat(altitudeWind.wind().speedValue()).isEqualTo(3);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
     // ========== VARIABLE VISIBILITY PARSING TESTS ==========
 
     @ParameterizedTest
@@ -6082,8 +6201,49 @@ class NoaaMetarParserTest {
                 .isNull();
     }
 
+    // ========== SECONDARY ALTIMETER PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "29.77, 'METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977'",
+            "29.58, 'METAR RCTP 020000Z 03006KT 9999 FEW010 BKN180 28/26 Q1001 NOSIG RMK A2958'"
+    })
+    @DisplayName("Should parse secondary altimeter in remarks - real-world (Issue #56)")
+    void testParseSecondaryAltimeter(double expectedInHg, String metar) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
+        assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(expectedInHg, within(0.01));
+        assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse main-body and secondary altimeter independently - RPLL")
+    void testParseMainBodyAndSecondaryAltimeter_RPLL() {
+        String metar = "METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        // Main body: Q1008 → hPa
+        assertThat(data.getPressure()).isNotNull();
+        assertThat(data.getPressure().value()).isEqualTo(1008.0, within(0.01));
+        assertThat(data.getPressure().unit()).isEqualTo(PressureUnit.HECTOPASCALS);
+
+        // Remarks: A2977 → inHg, separate field, doesn't overwrite main body
+        assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
+        assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(29.77, within(0.01));
+        assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
+    }
+
     // ========== 6-HOUR MAX/MIN TEMPERATURE PARSING TESTS ==========
-// Add these tests to NoaaMetarParserTest.java after the Pressure Tendency tests
 
     @ParameterizedTest
     @CsvSource({

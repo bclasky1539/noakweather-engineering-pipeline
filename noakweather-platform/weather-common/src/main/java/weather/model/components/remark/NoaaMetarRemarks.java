@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
  * * @param hourlyTemperature Hourly temperature and dewpoint (T-group)
  * * @param peakWind Peak wind information
  * * @param windShift Wind shift information
+ * * @param windsAtLocation Winds at a location
  * * @param variableVisibility Variable visibility data
  * * @param CeilingSecondSite Ceiling height at second observation site
  * * @param obscurationLayers Obscuration Layer information
@@ -58,6 +59,7 @@ import java.util.stream.Collectors;
  * * @param weatherEvents List of weather events (beginning/ending times)
  * * @param thunderstormLocations List of thunderstorm/cloud locations
  * * @param pressureTendency 3-hour pressure tendency
+ * * @param secondaryAltimeter Secondary altimeter reading
  * * @param sixHourMaxTemperature 6-hour maximum temperature
  * * @param sixHourMinTemperature 6-hour minimum temperature
  * * @param twentyFourHourMaxTemperature 24-hour maximum temperature
@@ -77,6 +79,7 @@ public record NoaaMetarRemarks(
         Temperature preciseDewpoint,
         PeakWind peakWind,
         WindShift windShift,
+        List<WindAtLocation> windsAtLocation,
         VariableVisibility variableVisibility,
         VariableCeiling variableCeiling,
         CeilingSecondSite ceilingSecondSite,
@@ -91,6 +94,7 @@ public record NoaaMetarRemarks(
         List<WeatherEvent> weatherEvents,
         List<ThunderstormLocation> thunderstormLocations,
         PressureTendency pressureTendency,
+        Pressure secondaryAltimeter,
         Temperature sixHourMaxTemperature,
         Temperature sixHourMinTemperature,
         Temperature twentyFourHourMaxTemperature,
@@ -123,10 +127,10 @@ public record NoaaMetarRemarks(
      */
     public static NoaaMetarRemarks empty() {
         return new NoaaMetarRemarks(null, null, null, null,
-                null, null, null, null, null, List.of(),
+                null, null, List.of(), null, null, null, List.of(),
                 List.of(), null, null, null, null,
                 null, null, List.of(), List.of(), null,
-                null, null, null,
+                null, null, null, null,
                 null, null, List.of(), null, null);
     }
 
@@ -142,6 +146,7 @@ public record NoaaMetarRemarks(
                 && preciseDewpoint == null
                 && peakWind == null
                 && windShift == null
+                && (windsAtLocation == null || windsAtLocation.isEmpty())
                 && variableVisibility == null
                 && variableCeiling == null
                 && ceilingSecondSite == null
@@ -156,6 +161,7 @@ public record NoaaMetarRemarks(
                 && (weatherEvents == null || weatherEvents.isEmpty())
                 && (thunderstormLocations == null || thunderstormLocations.isEmpty())
                 && pressureTendency == null
+                && secondaryAltimeter == null
                 && sixHourMaxTemperature == null
                 && sixHourMinTemperature == null
                 && twentyFourHourMaxTemperature == null
@@ -196,6 +202,7 @@ public record NoaaMetarRemarks(
         private Temperature preciseDewpoint;
         private PeakWind peakWind;
         private WindShift windShift;
+        private List<WindAtLocation> windsAtLocation = new ArrayList<>();
         private VariableVisibility variableVisibility;
         private VariableCeiling variableCeiling;
         private CeilingSecondSite ceilingSecondSite;
@@ -210,6 +217,7 @@ public record NoaaMetarRemarks(
         private List<WeatherEvent> weatherEvents = new ArrayList<>();
         private List<ThunderstormLocation> thunderstormLocations = new ArrayList<>();
         private PressureTendency pressureTendency;
+        private Pressure secondaryAltimeter;
         private Temperature sixHourMaxTemperature;
         private Temperature sixHourMinTemperature;
         private Temperature twentyFourHourMaxTemperature;
@@ -286,6 +294,43 @@ public record NoaaMetarRemarks(
          */
         public Builder windShift(WindShift windShift) {
             this.windShift = windShift;
+            return this;
+        }
+
+        /**
+         * Adds a single winds at a location.
+         *
+         * @param windsAtLocation the cloud type to add
+         * @return this builder
+         */
+        public Builder addWindAtLocation(WindAtLocation windsAtLocation) {
+            if (windsAtLocation != null) {
+                this.windsAtLocation.add(windsAtLocation);
+            }
+            return this;
+        }
+
+        /**
+         * Sets the winds at location list.
+         *
+         * @param windsAtLocation the winds at location
+         * @return this builder
+         */
+        public Builder windsAtLocation(List<WindAtLocation> windsAtLocation) {
+            this.windsAtLocation = windsAtLocation != null ? new ArrayList<>(windsAtLocation) : new ArrayList<>();
+            return this;
+        }
+
+        /**
+         * Adds multiple winds at location.
+         *
+         * @param windsAtLocation the winds at location to add
+         * @return this builder
+         */
+        public Builder addWindsAtLocation(List<WindAtLocation> windsAtLocation) {
+            if (windsAtLocation != null) {
+                this.windsAtLocation.addAll(windsAtLocation);
+            }
             return this;
         }
 
@@ -544,6 +589,19 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Sets the secondary altimeter setting repeated inside the remarks section.
+         * Common in Philippines/Taiwan-region METARs as a redundant confirmation
+         * of the main body's altimeter reading, in US-style inches of mercury.
+         *
+         * @param secondaryAltimeter the secondary altimeter pressure
+         * @return this builder
+         */
+        public Builder secondaryAltimeter(Pressure secondaryAltimeter) {
+            this.secondaryAltimeter = secondaryAltimeter;
+            return this;
+        }
+
+        /**
          * Set 6-hour maximum temperature.
          *
          * @param sixHourMaxTemperature maximum temperature in 6-hour period
@@ -647,6 +705,7 @@ public record NoaaMetarRemarks(
                     preciseDewpoint,
                     peakWind,
                     windShift,
+                    List.copyOf(windsAtLocation),
                     variableVisibility,
                     variableCeiling,
                     ceilingSecondSite,
@@ -661,6 +720,7 @@ public record NoaaMetarRemarks(
                     List.copyOf(weatherEvents),
                     List.copyOf(thunderstormLocations),
                     pressureTendency,
+                    secondaryAltimeter,
                     sixHourMaxTemperature,
                     sixHourMinTemperature,
                     twentyFourHourMaxTemperature,
@@ -689,6 +749,11 @@ public record NoaaMetarRemarks(
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, peakWind, "peakWind", Object::toString);
         addIfPresent(parts, windShift, "windShift", Object::toString);
+        if (windsAtLocation != null && !windsAtLocation.isEmpty()) {
+            parts.add("windsAtLocation=" + windsAtLocation.stream()
+                    .map(WindAtLocation::getSummary)
+                    .collect(Collectors.joining("; ")));
+        }
         addIfPresent(parts, variableVisibility, "variableVisibility", Object::toString);
         addIfPresent(parts, variableCeiling, "variableCeiling", VariableCeiling::getSummary);
         addIfPresent(parts, ceilingSecondSite, "ceilingSecondSite", CeilingSecondSite::getSummary);
@@ -719,6 +784,7 @@ public record NoaaMetarRemarks(
                     .collect(Collectors.joining("; ")));
         }
         addIfPresent(parts, pressureTendency, "pressureTendency", PressureTendency::getSummary);
+        addIfPresent(parts, secondaryAltimeter, "secondaryAltimeter", Pressure::getFormattedValue);
         addIfPresent(parts, sixHourMaxTemperature, "sixHourMaxTemp",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, sixHourMinTemperature, "sixHourMinTemp",

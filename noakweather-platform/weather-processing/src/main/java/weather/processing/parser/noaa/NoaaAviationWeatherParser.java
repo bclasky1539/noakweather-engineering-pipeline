@@ -19,6 +19,7 @@ package weather.processing.parser.noaa;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherConditions;
 import weather.model.components.*;
+import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.WeatherParser;
 
@@ -31,26 +32,25 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Abstract base class for NOAA aviation weather parsers (METAR and TAF).
- *
+ * <p>
  * Consolidates shared parsing logic for common aviation weather elements:
  * - Wind
  * - Visibility
  * - Present weather phenomena
  * - Sky conditions (clouds)
  * - Runway visual range
- *
+ * <p>
  * Design Philosophy:
  * - Single source of truth for aviation weather parsing
  * - Eliminates code duplication between METAR and TAF parsers
  * - Shared handlers implemented once, maintained once
  * - Subclasses handle report-specific logic (remarks, forecast periods, etc.)
- *
+ * <p>
  * Generic Type Parameter:
  * - T extends NoaaWeatherData: Allows type-safe access to specific data types
- *   (NoaaMetarData or NoaaTafData) without casting
+ * (NoaaMetarData or NoaaTafData) without casting
  *
  * @param <T> The specific weather data type (NoaaMetarData or NoaaTafData)
- *
  * @author bclasky1539
  *
  */
@@ -88,15 +88,17 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      */
     protected T weatherData;
 
+    protected static final String GROUP_PRESSURE_CHANGE = "press";
+
     // ==================== INITIALIZATION ====================
 
     /**
      * Initialize or reset shared parsing state for building weather conditions.
-     *
+     * <p>
      * Called by subclasses in two scenarios:
      * 1. During parse initialization (METAR and TAF)
      * 2. When starting a new forecast period (TAF only)
-     *
+     * <p>
      * This method resets the conditions builder and clears accumulated lists,
      * preparing to parse a new set of weather conditions.
      */
@@ -110,7 +112,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
     /**
      * Handle wind: "19005KT" or "19005G15KT" or "VRB02KT"
-     *
+     * <p>
      * Creates Wind object and adds to conditions builder.
      * Handles:
      * - Direction (degrees, VRB for variable, or null for calm)
@@ -195,10 +197,10 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * Create appropriate Wind object based on parsed values.
      *
      * @param directionStr original direction string for VRB check
-     * @param direction parsed direction value
-     * @param speed wind speed
-     * @param gust gust speed (optional)
-     * @param unit wind unit
+     * @param direction    parsed direction value
+     * @param speed        wind speed
+     * @param gust         gust speed (optional)
+     * @param unit         wind unit
      * @return Wind object, or null if invalid
      */
     private Wind createWind(String directionStr, Integer direction, Integer speed,
@@ -236,9 +238,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * Log wind data for debugging.
      *
      * @param direction wind direction
-     * @param speed wind speed
-     * @param gust gust speed
-     * @param unit wind unit
+     * @param speed     wind speed
+     * @param gust      gust speed
+     * @param unit      wind unit
      */
     private void logWindData(Integer direction, Integer speed, Integer gust, String unit) {
         if (direction != null && speed != null) {
@@ -251,7 +253,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
     /**
      * Handle visibility: "10SM", "9999", "1/2SM", "CAVOK", etc.
-     *
+     * <p>
      * Creates Visibility object and adds to conditions builder.
      * Handles:
      * - Special conditions (CAVOK, NDV)
@@ -374,7 +376,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * Log visibility parsing error with consistent message format.
      *
      * @param distanceStr The distance string that failed to parse
-     * @param e The NumberFormatException that occurred
+     * @param e           The NumberFormatException that occurred
      */
     private void logVisibilityParseError(String distanceStr, NumberFormatException e) {
         LOGGER.warn("Failed to parse visibility distance: '{}' - {}", distanceStr, e.getMessage());
@@ -420,7 +422,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     /**
      * Handle present weather phenomena.
      * Parses weather codes like: -RA, +TSRA, VCFG, BR, NSW
-     *
+     * <p>
      * Creates PresentWeather object and adds to list.
      * Multiple weather phenomena can be present in a single report.
      *
@@ -433,11 +435,18 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
         String weatherString = matcher.group(0).trim();
 
+        // ICAO missing-data placeholder: the entire token is slashes (e.g. "//////"),
+        // not a real weather phenomenon with an unknown subcomponent. Skip it rather
+        // than creating a bogus PresentWeather entry from the placeholder text itself.
+        if (!weatherString.isEmpty() && weatherString.chars().allMatch(c -> c == '/')) {
+            LOGGER.debug("Skipping missing-data placeholder in present weather: '{}'", weatherString);
+            return;
+        }
+
         try {
             PresentWeather presentWeather = PresentWeather.parse(weatherString);
             presentWeatherList.add(presentWeather);
 
-            // Determine primary phenomenon for logging
             String phenomenon = getPrimaryPhenomenon(presentWeather);
 
             LOGGER.debug("Present Weather: {} (Intensity: {}, Descriptor: {}, Phenomena: {})",
@@ -466,12 +475,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     /**
      * Handle sky condition (cloud layers).
      * Parses sky condition codes like: FEW250, SCT100, BKN050CB, OVC020, SKC, VV008
-     *
+     * <p>
      * Format: [COVERAGE][HEIGHT][TYPE]
      * - Coverage: SKC, CLR, FEW, SCT, BKN, OVC, VV, etc.
      * - Height: 3-4 digits (in hundreds of feet)
      * - Type: CB (cumulonimbus), TCU (towering cumulus), etc.
-     *
+     * <p>
      * Creates SkyCondition object and adds to list.
      * Multiple cloud layers can be present.
      *
@@ -554,7 +563,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * Heights are encoded as hundreds of feet (e.g., "050" = 5000 feet).
      *
      * @param heightStr the height string from METAR/TAF (could be null)
-     * @param coverage the sky coverage (used for validation)
+     * @param coverage  the sky coverage (used for validation)
      * @return height in feet, or null if not applicable
      */
     protected Integer parseHeight(String heightStr, SkyCoverage coverage) {
@@ -604,9 +613,161 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     }
 
     /**
+     * Handle altimeter/pressure setting.
+     * <p>
+     * Formats:
+     * - A3015 → 30.15 inHg (North America)
+     * - Q1013 → 1013 hPa (International)
+     * - QNH1013 → 1013 hPa
+     * - 2992INS → 29.92 inHg (older format)
+     * - //// → Missing
+     */
+    protected void handleAltimeter(Matcher matcher) {
+        if (weatherData == null) {
+            return;
+        }
+
+        String unit1 = matcher.group("unit");
+        String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
+        String unit2 = matcher.group("unit2");
+
+        // Handle missing pressure
+        if ("////".equals(pressureStr)) {
+            LOGGER.debug("Altimeter: Missing (////)");
+            return;
+        }
+
+        try {
+            // Determine unit and parse pressure
+            Pressure pressure = parsePressure(unit1, pressureStr, unit2);
+
+            if (pressure != null) {
+                conditionsBuilder.pressure(pressure);
+
+                LOGGER.debug("Altimeter: {}", pressure.getSummary());
+            }
+
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Failed to parse altimeter '{}': {}",
+                    matcher.group(0).trim(), e.getMessage());
+        }
+    }
+
+    /**
+     * Parse pressure value and determine unit.
+     * <p>
+     * Logic:
+     * - "A" or "AA" prefix → inches of mercury (divide by 100)
+     * - "Q" or "QNH" prefix → hectopascals
+     * - "INS" suffix → inches of mercury (divide by 100)
+     * - 4 digits starting with 2 or 3 → inches of mercury (divide by 100)
+     * - 4 digits starting with 0 or 1 → hectopascals
+     * - 3 digits → hectopascals
+     *
+     * @param unit1       Prefix unit indicator
+     * @param pressureStr Pressure digits
+     * @param unit2       Suffix unit indicator
+     * @return Pressure object, or null if invalid
+     */
+    protected Pressure parsePressure(String unit1, String pressureStr, String unit2) {
+        if (pressureStr == null || pressureStr.isBlank()) {
+            return null;
+        }
+
+        // Handle OCR error: O → 0
+        String normalized = pressureStr.replace('O', '0');
+
+        try {
+            int pressureValue = Integer.parseInt(normalized);
+
+            // Determine unit based on prefix
+            if (unit1 != null && !unit1.isBlank()) {
+                return parsePressureWithPrefix(unit1, pressureValue);
+            }
+
+            // Determine unit based on suffix
+            if ("INS".equals(unit2)) {
+                return parseInchesHg(pressureValue);
+            }
+
+            // Determine unit based on value
+            return parsePressureByValue(pressureValue);
+
+        } catch (NumberFormatException e) {
+            LOGGER.warn("Invalid pressure format: {}", pressureStr);
+            return null;
+        }
+    }
+
+    /**
+     * Parse pressure with unit prefix (A, AA, Q, QNH).
+     *
+     * @param prefix Unit prefix
+     * @param value  Pressure value
+     * @return Pressure object
+     */
+    private Pressure parsePressureWithPrefix(String prefix, int value) {
+        return switch (prefix.toUpperCase()) {
+            case "A", "AA" -> parseInchesHg(value);
+            case "Q", "QNH" -> parseHectopascals(value);
+            default -> {
+                LOGGER.warn("Unknown pressure unit prefix: {}", prefix);
+                yield parsePressureByValue(value);
+            }
+        };
+    }
+
+    /**
+     * Parse pressure as inches of mercury.
+     * Value is divided by 100 (e.g., 3015 → 30.15 inHg).
+     *
+     * @param value Pressure value (e.g., 3015)
+     * @return Pressure in inches of mercury
+     */
+    private Pressure parseInchesHg(int value) {
+        double inHg = value / 100.0;
+        return new Pressure(inHg, PressureUnit.INCHES_HG);
+    }
+
+    /**
+     * Parse pressure as hectopascals.
+     *
+     * @param value Pressure value (e.g., 1013)
+     * @return Pressure in hectopascals
+     */
+    private Pressure parseHectopascals(int value) {
+        return new Pressure((double) value, PressureUnit.HECTOPASCALS);
+    }
+
+    /**
+     * Determine pressure unit based on value heuristics.
+     * <p>
+     * - 4 digits starting with 2 or 3 → inches Hg (e.g., 2992, 3015)
+     * - 4 digits starting with 0 or 1 → hPa (e.g., 1013, 0998)
+     * - 3 digits → hPa (e.g., 998)
+     *
+     * @param value Pressure value
+     * @return Pressure object
+     */
+    private Pressure parsePressureByValue(int value) {
+        // 4-digit values
+        if (value >= 1000) {
+            // 2xxx or 3xxx → inches of mercury
+            if (value >= 2000 && value < 4000) {
+                return parseInchesHg(value);
+            }
+            // 0xxx or 1xxx → hectopascals
+            return parseHectopascals(value);
+        }
+
+        // 3-digit values → assume hectopascals
+        return parseHectopascals(value);
+    }
+
+    /**
      * Handle runway visual range (RVR).
      * Note: RVR is common in METAR but rare in TAF.
-     *
+     * <p>
      * Subclasses can override for specific RVR handling.
      *
      * @param matcher Regex matcher positioned at RVR group
@@ -643,7 +804,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * Log unparsed tokens for debugging.
      *
      * @param mainBody remaining main body tokens
-     * @param remarks remaining remark tokens
+     * @param remarks  remaining remark tokens
      */
     protected void logUnparsedTokens(String mainBody, String remarks) {
         if (LOGGER.isDebugEnabled() && mainBody != null && !mainBody.trim().isEmpty()) {

@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherConditions;
 import weather.model.components.*;
+import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.ParseResult;
 
@@ -38,10 +39,10 @@ import static weather.processing.parser.noaa.RegExprConst.*;
 
 /**
  * Tests for NoaaAviationWeatherParser base class functionality.
- *
+ * <p>
  * Since NoaaAviationWeatherParser is abstract, we test it through a concrete
  * test implementation that exposes the protected methods for testing.
- *
+ * <p>
  * Tests cover:
  * - Wind parsing
  * - Visibility parsing (all formats)
@@ -398,6 +399,38 @@ class NoaaAviationWeatherParserTest {
 
             assertThat(conditions.presentWeather()).hasSize(2);
         }
+
+        @Test
+        @DisplayName("handlePresentWeather should not create entry from missing-data slash placeholder - MKJP real-world (Issue #54)")
+        void testHandlePresentWeather_MissingDataSlashPlaceholder_MKJP() {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            String input = "////// ";
+            Matcher matcher = PRESENT_WEATHER_PATTERN.matcher(input);
+            assertThat(matcher.find()).isTrue();
+            parser.handlePresentWeather(matcher);
+
+            WeatherConditions conditions = parser.buildConditions();
+
+            assertThat(conditions.presentWeather()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("handlePresentWeather should not create entry from 5-slash missing-data placeholder - MKJP real-world (Issue #54)")
+        void testHandlePresentWeather_FiveSlashPlaceholder_MKJP() {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            String input = "///// ";
+            Matcher matcher = PRESENT_WEATHER_PATTERN.matcher(input);
+            assertThat(matcher.find()).isTrue();
+            parser.handlePresentWeather(matcher);
+
+            WeatherConditions conditions = parser.buildConditions();
+
+            assertThat(conditions.presentWeather()).isEmpty();
+        }
     }
 
     // ==================== SKY CONDITION TESTS ====================
@@ -497,6 +530,103 @@ class NoaaAviationWeatherParserTest {
 
             // Unknown coverage should be skipped
             assertThat(conditions.skyConditions()).isEmpty();
+        }
+    }
+
+    // ========== ALTIMETER/PRESSURE HANDLER TESTS (shared base-class logic) ==========
+    @Nested
+    @DisplayName("Altimeter/Pressure Parsing Tests")
+    class AltimeterPressureTests {
+
+        @Test
+        @DisplayName("handleAltimeter should parse North American A-prefix format")
+        void testHandleAltimeter_APrefix() {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            String input = "A3015 ";
+            Matcher matcher = ALTIMETER_PATTERN.matcher(input);
+            assertThat(matcher.find()).isTrue();
+            parser.handleAltimeter(matcher);
+
+            Pressure pressure = parser.buildConditions().pressure();
+
+            assertThat(pressure).isNotNull();
+            assertThat(pressure.value()).isEqualTo(30.15, within(0.01));
+            assertThat(pressure.unit()).isEqualTo(PressureUnit.INCHES_HG);
+        }
+
+        @ParameterizedTest
+        @CsvSource({
+                "'Q1013 ', 1013.0, 'International Q-prefix format'",
+                "'QNH1013 ', 1013.0, 'QNH format'",
+                "'998 ', 998.0, 'Value-based heuristic, no prefix/suffix'"
+        })
+        @DisplayName("handleAltimeter should parse hectopascal formats correctly")
+        void testHandleAltimeter_HectopascalFormats(String input, double expectedValue, String scenario) {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            Matcher matcher = ALTIMETER_PATTERN.matcher(input);
+            assertThat(matcher.find()).as(scenario).isTrue();
+            parser.handleAltimeter(matcher);
+
+            Pressure pressure = parser.buildConditions().pressure();
+
+            assertThat(pressure).as(scenario).isNotNull();
+            assertThat(pressure.value()).as(scenario).isEqualTo(expectedValue, within(0.01));
+            assertThat(pressure.unit()).as(scenario).isEqualTo(PressureUnit.HECTOPASCALS);
+        }
+
+        @Test
+        @DisplayName("handleAltimeter should parse older INS-suffix format")
+        void testHandleAltimeter_INSSuffix() {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            String input = "2992INS ";
+            Matcher matcher = ALTIMETER_PATTERN.matcher(input);
+            assertThat(matcher.find()).isTrue();
+            parser.handleAltimeter(matcher);
+
+            Pressure pressure = parser.buildConditions().pressure();
+
+            assertThat(pressure).isNotNull();
+            assertThat(pressure.value()).isEqualTo(29.92, within(0.01));
+            assertThat(pressure.unit()).isEqualTo(PressureUnit.INCHES_HG);
+        }
+
+        @Test
+        @DisplayName("handleAltimeter should not set pressure for missing data (////)")
+        void testHandleAltimeter_MissingData() {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            String input = "//// ";
+            Matcher matcher = ALTIMETER_PATTERN.matcher(input);
+            assertThat(matcher.find()).isTrue();
+            parser.handleAltimeter(matcher);
+
+            Pressure pressure = parser.buildConditions().pressure();
+
+            assertThat(pressure).isNull();
+        }
+
+        @Test
+        @DisplayName("handleAltimeter should normalize OCR error (O instead of 0)")
+        void testHandleAltimeter_OcrErrorNormalization() {
+            parser.initializeSharedState();
+            parser.weatherData = new TestWeatherData("TEST", Instant.now());
+
+            String input = "A3O15 ";
+            Matcher matcher = ALTIMETER_PATTERN.matcher(input);
+            assertThat(matcher.find()).isTrue();
+            parser.handleAltimeter(matcher);
+
+            Pressure pressure = parser.buildConditions().pressure();
+
+            assertThat(pressure).isNotNull();
+            assertThat(pressure.value()).isEqualTo(30.15, within(0.01));
         }
     }
 

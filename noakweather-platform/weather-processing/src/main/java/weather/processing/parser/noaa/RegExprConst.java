@@ -152,7 +152,7 @@ public final class RegExprConst {
      * Also: "QNH1013"
      */
     public static final Pattern ALTIMETER_PATTERN = Pattern.compile(
-            "^(?<unit>A{1,2}|Q|QNH)?(?<press>[\\dO]{3,4}|////)(?<unit2>INS)?\\s+"
+            "^(?<unit>A{1,2}|Q|QNH)?(?<press>[\\dO]{3,4}|////)(?<unit2>INS)?(?=\\s|$)"
     );
 
     /**
@@ -232,6 +232,20 @@ public final class RegExprConst {
     public static final Pattern WIND_SHIFT_PATTERN = Pattern.compile(
             "^WSHFT (?<hour>\\d{2})?(?<min>\\d{2})(\\s+(?<front>FROPA))?\\s*"
 
+    );
+
+    /**
+     * Wind at a specific location — altitude or runway (Norwegian/Arctic convention).
+     * Reports wind speed/direction at a specific altitude or runway, distinct
+     * from surface wind. Multiple entries can be chained in the same remarks
+     * string (e.g. one runway reading followed by one altitude reading).
+     * Example: "WIND 1400FT 23010KT", "WIND RWY 26 00000KT", "WIND RWY 32 VRB01KT"
+     * Complexity mirrors WIND_PATTERN to support the same direction/speed/gust/unit variations
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for wind format with all variations
+    public static final Pattern WIND_AT_LOCATION_PATTERN = Pattern.compile(
+            "^WIND\\s+(?:(?<height>\\d{3,5})FT|RWY\\s+(?<runway>\\d{1,2}[LRC]?))\\s+" +
+                    "(?<dir>\\d{3}|VRB)(?<speed>\\d{2,3})(G(?<gust>\\d{2,3}))?(?<unit>KTS?|MPS|KMH)(?=\\s|$)"
     );
 
     /**
