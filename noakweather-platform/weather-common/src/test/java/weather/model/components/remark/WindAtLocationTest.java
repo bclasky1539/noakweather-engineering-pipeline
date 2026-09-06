@@ -165,8 +165,9 @@ class WindAtLocationTest {
         WindAtLocation windAtLocation1 = WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT"));
         WindAtLocation windAtLocation2 = WindAtLocation.atAltitude(1400, Wind.of(230, 10, "KT"));
 
-        assertThat(windAtLocation1).isEqualTo(windAtLocation2);
-        assertThat(windAtLocation1.hashCode()).isEqualTo(windAtLocation2.hashCode());
+        assertThat(windAtLocation1)
+                .isEqualTo(windAtLocation2)
+                .hasSameHashCodeAs(windAtLocation2);
     }
 
     @Test
