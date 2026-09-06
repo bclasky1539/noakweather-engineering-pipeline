@@ -71,6 +71,11 @@ jobs:
             -Dsonar.projectName="Noakweather Engineering Pipeline" \
             -Dsonar.java.source=${{ matrix.java-version }}
 
+      # TEMPORARY DEBUG STEP - remove once report-task.txt path is confirmed
+      - name: Debug - list scanner working directory
+        if: matrix.java-version == 21
+        run: find noakweather-platform -iname "report-task.txt" 2>/dev/null || echo "report-task.txt not found anywhere under noakweather-platform"
+
       # Only poll/report the Quality Gate once per PR (Java 21 leg)
       - name: SonarQube Quality Gate Check
         if: matrix.java-version == 21
