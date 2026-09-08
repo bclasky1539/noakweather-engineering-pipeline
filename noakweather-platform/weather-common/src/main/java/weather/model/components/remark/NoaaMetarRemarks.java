@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
  * * @param peakWind Peak wind information
  * * @param windShift Wind shift information
  * * @param windsAtLocation Winds at a location
+ * * @param DirectionalWeather Directional Weather
  * * @param variableVisibility Variable visibility data
  * * @param CeilingSecondSite Ceiling height at second observation site
  * * @param obscurationLayers Obscuration Layer information
@@ -51,6 +52,9 @@ import java.util.stream.Collectors;
  * * @param towerVisibility Tower visibility (if different from surface)
  * * @param surfaceVisibility Surface visibility (if different from prevailing)
  * * @param hourlyPrecipitation Hourly precipitation amount (P)
+ * * @param ppGroupValue Raw value from "PP" precipitation-amount group; unit/scale
+ * *                      and time period unconfirmed, captured as-is pending
+ * *                      further research
  * * @param precipitation3Hour 3-hour precipitation amount
  * * @param precipitation6Hour 6-hour precipitation amount
  * * @param precipitation24Hour 24-hour precipitation amount
@@ -80,6 +84,7 @@ public record NoaaMetarRemarks(
         PeakWind peakWind,
         WindShift windShift,
         List<WindAtLocation> windsAtLocation,
+        DirectionalWeather directionalWeather,
         VariableVisibility variableVisibility,
         VariableCeiling variableCeiling,
         CeilingSecondSite ceilingSecondSite,
@@ -88,6 +93,7 @@ public record NoaaMetarRemarks(
         Visibility towerVisibility,
         Visibility surfaceVisibility,
         PrecipitationAmount hourlyPrecipitation,
+        Integer ppGroupValue,
         PrecipitationAmount sixHourPrecipitation,
         PrecipitationAmount twentyFourHourPrecipitation,
         HailSize hailSize,
@@ -127,8 +133,8 @@ public record NoaaMetarRemarks(
      */
     public static NoaaMetarRemarks empty() {
         return new NoaaMetarRemarks(null, null, null, null,
-                null, null, List.of(), null, null, null, List.of(),
-                List.of(), null, null, null, null,
+                null, null, List.of(), null,null, null, null,
+                List.of(), List.of(), null, null, null, null, null,
                 null, null, List.of(), List.of(), null,
                 null, null, null, null,
                 null, null, List.of(), null, null);
@@ -147,6 +153,7 @@ public record NoaaMetarRemarks(
                 && peakWind == null
                 && windShift == null
                 && (windsAtLocation == null || windsAtLocation.isEmpty())
+                && (directionalWeather == null)
                 && variableVisibility == null
                 && variableCeiling == null
                 && ceilingSecondSite == null
@@ -155,6 +162,7 @@ public record NoaaMetarRemarks(
                 && towerVisibility == null
                 && surfaceVisibility == null
                 && hourlyPrecipitation == null
+                && ppGroupValue == null
                 && sixHourPrecipitation == null
                 && twentyFourHourPrecipitation == null
                 && hailSize == null
@@ -203,6 +211,7 @@ public record NoaaMetarRemarks(
         private PeakWind peakWind;
         private WindShift windShift;
         private List<WindAtLocation> windsAtLocation = new ArrayList<>();
+        private DirectionalWeather directionalWeather;
         private VariableVisibility variableVisibility;
         private VariableCeiling variableCeiling;
         private CeilingSecondSite ceilingSecondSite;
@@ -211,6 +220,7 @@ public record NoaaMetarRemarks(
         private Visibility towerVisibility;
         private Visibility surfaceVisibility;
         private PrecipitationAmount hourlyPrecipitation;
+        private Integer ppGroupValue;
         private PrecipitationAmount sixHourPrecipitation;
         private PrecipitationAmount twentyFourHourPrecipitation;
         private HailSize hailSize;
@@ -331,6 +341,19 @@ public record NoaaMetarRemarks(
             if (windsAtLocation != null) {
                 this.windsAtLocation.addAll(windsAtLocation);
             }
+            return this;
+        }
+
+        /**
+         * Sets the present-weather phenomenon reported in remarks with optional
+         * compass direction(s), typically restating a vicinity or nearby-occurring
+         * phenomenon (e.g. VCSH E SE).
+         *
+         * @param directionalWeather the directional weather remark
+         * @return this builder
+         */
+        public Builder directionalWeather(DirectionalWeather directionalWeather) {
+            this.directionalWeather = directionalWeather;
             return this;
         }
 
@@ -471,6 +494,21 @@ public record NoaaMetarRemarks(
          */
         public Builder hourlyPrecipitation(PrecipitationAmount hourlyPrecipitation) {
             this.hourlyPrecipitation = hourlyPrecipitation;
+            return this;
+        }
+
+        /**
+         * Sets the raw value from the "PP" precipitation-amount group.
+         * Format, unit/scale, and time period are not fully confirmed at this
+         * time — the value is captured as-is (raw 3-digit integer) pending
+         * further research. Distinct from the standard single-P hourly
+         * precipitation group (see PrecipitationAmount).
+         *
+         * @param ppGroupValue the raw PP group value
+         * @return this builder
+         */
+        public Builder ppGroupValue(Integer ppGroupValue) {
+            this.ppGroupValue = ppGroupValue;
             return this;
         }
 
@@ -706,6 +744,7 @@ public record NoaaMetarRemarks(
                     peakWind,
                     windShift,
                     List.copyOf(windsAtLocation),
+                    directionalWeather,
                     variableVisibility,
                     variableCeiling,
                     ceilingSecondSite,
@@ -714,6 +753,7 @@ public record NoaaMetarRemarks(
                     towerVisibility,
                     surfaceVisibility,
                     hourlyPrecipitation,
+                    ppGroupValue,
                     sixHourPrecipitation,
                     twentyFourHourPrecipitation,
                     hailSize,
@@ -754,6 +794,7 @@ public record NoaaMetarRemarks(
                     .map(WindAtLocation::getSummary)
                     .collect(Collectors.joining("; ")));
         }
+        addIfPresent(parts, directionalWeather, "directionalWeather", DirectionalWeather::getSummary);
         addIfPresent(parts, variableVisibility, "variableVisibility", Object::toString);
         addIfPresent(parts, variableCeiling, "variableCeiling", VariableCeiling::getSummary);
         addIfPresent(parts, ceilingSecondSite, "ceilingSecondSite", CeilingSecondSite::getSummary);
@@ -770,6 +811,7 @@ public record NoaaMetarRemarks(
         addIfPresent(parts, towerVisibility, "towerVisibility", Visibility::getSummary);
         addIfPresent(parts, surfaceVisibility, "surfaceVisibility", Visibility::getSummary);
         addIfPresent(parts, hourlyPrecipitation, "hourlyPrecip", PrecipitationAmount::getDescription);
+        addIfPresent(parts, ppGroupValue, "ppGroupValue", Object::toString);
         addIfPresent(parts, sixHourPrecipitation, "sixHourPrecip", PrecipitationAmount::getDescription);
         addIfPresent(parts, twentyFourHourPrecipitation, "twentyFourHourPrecip", PrecipitationAmount::getDescription);
         addIfPresent(parts, hailSize, "hailSize", HailSize::getSummary);
