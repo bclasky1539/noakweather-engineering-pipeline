@@ -7,6 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.3-SNAPSHOT - September 8, 2026
+
+#### UAT Round 1 Remediation - Directional Weather and PP Precipitation Group (#60, #61)
+
+**Added:**
+- **Present-weather phenomenon restated in remarks with compass direction(s)**
+  (weather-common, weather-processing) (#60)
+  - Caribbean-region METARs (TNCM) restate a vicinity present-weather code
+    (e.g. `VCSH`) in remarks with one or more trailing compass directions
+    (`VCSH E SE`)
+  - Reuses the existing `PRESENT_WEATHER_PATTERN`/`PresentWeather.parse()`
+    rather than duplicating weather-code grammar.
+  - New `DirectionalWeather` record (`weather.model.components.remark`)
+    pairs a `PresentWeather` with an optional `List<String>` of directions;
+    a bare weather code with no trailing directions is still captured
+    (directions stays `null`) rather than falling through to `freeText`
+  - Added `DIRECTION_LIST_PATTERN` to `RegExprConst.java`
+  - Added `handleDirectionalWeatherSequential()` /
+    `processDirectionalWeatherMatch()` in `NoaaMetarParser`, deliberately
+    ordered **last** in the `handleRemarks()` chain since
+    `PRESENT_WEATHER_PATTERN` is broad/greedy and risks claiming tokens
+    meant for more specific handlers
+  - Fixed two real collisions surfaced by existing regression tests during
+    development:
+    - Bare `TS` (and `CB`/`TCU`/`ACC`/`CBMAM`/`VIRGA`) is ambiguous with
+      `TS_CLD_LOC_PATTERN`'s thunderstorm-location remarks (e.g. `TS SE`);
+      excluded these codes from directional-weather matching when they
+      appear with no other present-weather qualifiers, deferring to the
+      established thunderstorm-location handler
+    - `PRESENT_WEATHER_PATTERN`'s mandatory trailing whitespace (same
+      last-token-in-string bug pattern as #56/#57) meant a bare trailing
+      code (`RMK VCSH`, nothing after it) wouldn't match at all; worked
+      around locally in the remarks handler via a synthetic trailing-space
+      pad, without modifying the shared main-body pattern
+
+- **"PP" precipitation-amount group** (weather-common, weather-processing) (#61)
+  - South American METARs (SPJC) report precipitation via a `PP` + 3-digit
+    group (`PP000`), distinct from the existing US-style single-`P` hourly
+    group
+  - Format/unit/scale and time period could not be confirmed via available
+    research; rather than guess and risk a silently-wrong conversion
+    (`PrecipitationAmount`'s `periodHours` is a validated, non-nullable
+    `int` restricted to `{1, 3, 6, 24}` — no honest way to represent an
+    unknown period), the raw 3-digit value is captured as-is on a new
+    `ppGroupValue` (`Integer`) field, named after the literal token rather
+    than the region or an assumed unit, pending further research
+  - Added `PP_GROUP_PATTERN` to `RegExprConst.java` and
+    `handlePpGroupSequential()` in `NoaaMetarParser`, positioned between
+    the existing hourly and multi-hour precipitation handlers
+
+**Fixed:**
+- **`DIRECTION_LIST_PATTERN` catastrophic-backtracking risk** (weather-processing)
+  (java:S5998) — the repeating compass-direction group used an ordinary
+  (backtracking) quantifier over an alternation with shared prefixes
+  (`N`/`NE`/`NW`, `S`/`SE`/`SW`); changed to a possessive quantifier,
+  consistent with the existing fix in `PRESENT_WEATHER_PATTERN`
+
+**Testing:**
+- Added `DirectionalWeatherTest.java` covering constructor validation,
+  `hasDirections()`, `getSummary()`, and equality
+- Added real-world regression tests in `NoaaMetarParserTest` for TNCM
+  (with and without trailing directions) and SPJC (`PP000`, a non-zero
+  value, and alongside a standard `P####` group to confirm no collision)
+- Added builder-level tests in `NoaaMetarRemarksTest` for `directionalWeather`
+  and `ppGroupValue`
+- Full reactor build (`wethb.sh` + `wetht.sh`) passing across all modules
+
+**Notes:**
+- Issues #60 and #61 are marked **Pending UAT** rather than Done — verified
+  via unit tests and code review, not yet confirmed against the full
+  worldwide UAT station corpus.
+- Issue #63 (observation year not parsed from NOAA's source header line)
+  was investigated but deferred to its own branch: the fix requires
+  relocating TAF's existing `parseIssueDateTime()` mechanism to the shared
+  `NoaaAviationWeatherParser` base class so METAR and TAF consume the
+  identical header-line format consistently, rather than METAR growing a
+  separate, possibly-divergent implementation.
+
 ### Version 1.19.2-SNAPSHOT - September 6, 2026
 
 #### UAT Round 1 Remediation - Present Weather, Secondary Altimeter, and Wind at Location (#54, #56, #62)

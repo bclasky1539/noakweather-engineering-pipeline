@@ -27,8 +27,7 @@ import weather.utils.IndexedLinkedHashMap;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -895,6 +894,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleCloudTypeSequential(remaining, remarksBuilder);
             remaining = handleTowerSurfaceVisibilitySequential(remaining, remarksBuilder);
             remaining = handleHourlyPrecipitationSequential(remaining, remarksBuilder);
+            remaining = handlePpGroupSequential(remaining, remarksBuilder);
             remaining = handleMultiHourPrecipitationSequential(remaining, remarksBuilder);
             remaining = handleHailSizeSequential(remaining, remarksBuilder);
             remaining = handleWeatherEventsSequential(remaining, remarksBuilder);
@@ -904,6 +904,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleDensityAltitudeSequential(remaining, remarksBuilder);
             remaining = handleAutomatedMaintenanceSequential(remaining, remarksBuilder);
             remaining = handleSecondaryAltimeterSequential(remaining, remarksBuilder);
+            remaining = handleDirectionalWeatherSequential(remaining, remarksBuilder);
 
             // Continue while we're making progress
         } while (!Objects.equals(remaining, previous));
@@ -1403,6 +1404,97 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
+     * Handle a present-weather phenomenon restated in remarks with associated
+     * compass direction(s) — typically a vicinity phenomenon reported nearby.
+     * Reuses the same PRESENT_WEATHER_PATTERN and PresentWeather parsing as the
+     * main body, since the weather-code grammar is identical; only the trailing
+     * direction list is new.
+     * <p>
+     * Example: RMK VCSH E SE → showers in vicinity, east and southeast
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleDirectionalWeatherSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+
+        // PRESENT_WEATHER_PATTERN requires trailing whitespace, which is absent when
+        // the weather code is the last token in the remarks string. Pad with a
+        // synthetic trailing space so a bare trailing code (e.g. "VCSH") still
+        // matches, without modifying the shared pattern itself.
+        String searchText = remaining.contains(" ") ? remaining : remaining + " ";
+
+        Matcher weatherMatcher = PRESENT_WEATHER_PATTERN.matcher(searchText);
+
+        if (weatherMatcher.find() && weatherMatcher.start() == 0) {
+            remaining = processDirectionalWeatherMatch(weatherMatcher, remaining, remarks);
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Weather codes that are also valid thunderstorm/cloud-location type codes
+     * (TS_CLD_LOC_PATTERN). When PRESENT_WEATHER_PATTERN matches one of these
+     * bare (no intensity/precipitation/obscuration attached), the ambiguity is
+     * resolved in favor of the more specific thunderstorm-location handler.
+     */
+    private static final Set<String> THUNDERSTORM_LOCATION_CODES =
+            Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
+
+    /**
+     * Process a present-weather match in remarks, then attempt to consume a
+     * trailing direction list.
+     *
+     * @param weatherMatcher the present-weather pattern matcher (must not be null)
+     * @param remaining the remaining text (must not be null)
+     * @param remarks the remarks builder (must not be null)
+     * @return the remaining text after processing (never null)
+     */
+    private String processDirectionalWeatherMatch(Matcher weatherMatcher, String remaining,
+                                                  NoaaMetarRemarks.Builder remarks) {
+        String weatherCode = weatherMatcher.group(0).trim();
+
+        // Ambiguous with thunderstorm/cloud-location remarks (e.g. "TS SE") —
+        // defer to handleThunderstormLocationSequential rather than claiming it here.
+        if (THUNDERSTORM_LOCATION_CODES.contains(weatherCode)) {
+            return remaining;
+        }
+
+        int matchEnd = Math.min(weatherMatcher.end(), remaining.length());
+        String afterWeather = remaining.substring(matchEnd).trim();
+
+        List<String> directions = null;
+        String finalRemaining = afterWeather;
+
+        Matcher directionMatcher = DIRECTION_LIST_PATTERN.matcher(afterWeather);
+        if (directionMatcher.find() && directionMatcher.start() == 0) {
+            directions = Arrays.asList(directionMatcher.group(1).split("\\s+"));
+            finalRemaining = afterWeather.substring(directionMatcher.end()).trim();
+        }
+
+        try {
+            PresentWeather presentWeather = PresentWeather.parse(weatherCode);
+            DirectionalWeather directionalWeather = new DirectionalWeather(presentWeather, directions);
+            remarks.directionalWeather(directionalWeather);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Directional weather: {}", directionalWeather.getSummary());
+            }
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Failed to parse directional weather in remarks: {}", weatherCode, e);
+            return remaining;
+        }
+
+        return finalRemaining;
+    }
+
+    /**
      * Handle variable visibility remark for sequential parsing.
      * <p>
      * Format: VIS [DIR] minVmax [RWY]
@@ -1691,6 +1783,44 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     remarksText.substring(0, Math.min(20, remarksText.length())), e);
             return remarksText.substring(matcher.end()).trim();
         }
+    }
+
+    /**
+     * Handle the "PP" precipitation-amount group. Format and unit/scale are
+     * not fully confirmed at this time (research inconclusive) — the raw
+     * 3-digit value is captured as-is rather than converted to a specific
+     * unit. Distinct from the US-style single-P hourly precipitation group.
+     * <p>
+     * Example: PP000
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handlePpGroupSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = PP_GROUP_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            try {
+                int value = Integer.parseInt(matcher.group("value"));
+                remarks.ppGroupValue(value);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("PP group value (raw, unit unconfirmed): {}", value);
+                }
+            } catch (NumberFormatException e) {
+                LOGGER.warn("Invalid PP group value in remarks: {}", matcher.group(0), e);
+            }
+
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
     }
 
     /**

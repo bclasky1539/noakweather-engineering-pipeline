@@ -3314,10 +3314,10 @@ class NoaaMetarParserTest {
         assertTrue(data.getRemarks().windShift().frontalPassage());
     }
 
-    // ========== WIND AT LOCATION TESTS (Issue #62) ==========
+    // ========== WIND AT LOCATION TESTS ==========
 
     @Test
-    @DisplayName("Should parse single wind-at-altitude remark - ENSB real-world (Issue #62)")
+    @DisplayName("Should parse single wind-at-altitude remark - ENSB real-world")
     void testParseWindAtLocation_SingleAltitude_ENSB() {
         String metar = "METAR ENSB 042350Z 23012KT 7000 -SNRA SCT010 BKN020 02/M01 Q1003 RMK WIND 1400FT 23010KT";
 
@@ -3338,7 +3338,7 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse chained runway and altitude wind remarks - ENSD real-world (Issue #62)")
+    @DisplayName("Should parse chained runway and altitude wind remarks - ENSD real-world")
     void testParseWindAtLocation_ChainedRunwayAndAltitude_ENSD() {
         String metar = "METAR ENSD 042350Z AUTO VRB01KT 9999 FEW075/// 10/09 Q0996 RMK WIND RWY 26 00000KT WIND 1126FT 00000KT";
 
@@ -3365,7 +3365,7 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse single wind-at-altitude remark - ENSG real-world (Issue #62)")
+    @DisplayName("Should parse single wind-at-altitude remark - ENSG real-world")
     void testParseWindAtLocation_SingleAltitude_ENSG() {
         String metar = "METAR ENSG 042350Z AUTO VRB01KT 9999 SCT059/// BKN076/// OVC167/// 08/07 Q0996 RMK WIND 3806FT 18003KT";
 
@@ -3385,7 +3385,7 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse single wind-at-altitude remark - ENSH real-world (Issue #62)")
+    @DisplayName("Should parse single wind-at-altitude remark - ENSH real-world")
     void testParseWindAtLocation_SingleAltitude_ENSH() {
         String metar = "METAR ENSH 042350Z 01012KT 9999 NCD 11/08 Q0999 RMK WIND 0150FT 02011KT";
 
@@ -3405,7 +3405,7 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse chained runway and altitude wind remarks with VRB direction - ENSR real-world (Issue #62)")
+    @DisplayName("Should parse chained runway and altitude wind remarks with VRB direction - ENSR real-world")
     void testParseWindAtLocation_ChainedWithVrbDirection_ENSR() {
         String metar = "METAR ENSR 042350Z AUTO 06002KT 9999 -DZ FEW007/// SCT012/// BKN019/// 08/06 Q1004 RMK WIND RWY 32 VRB01KT WIND 1119FT VRB03KT";
 
@@ -3429,6 +3429,48 @@ class NoaaMetarParserTest {
         assertThat(altitudeWind.wind().directionDegrees()).isNull();
         assertThat(altitudeWind.wind().hasVariableDirection()).isTrue();
         assertThat(altitudeWind.wind().speedValue()).isEqualTo(3);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    // ========== DIRECTIONAL WEATHER TESTS ==========
+
+    @Test
+    @DisplayName("Should parse directional weather remark with directions - TNCM real-world")
+    void testParseDirectionalWeather_WithDirections_TNCM() {
+        String metar = "METAR TNCM 020000Z 09008KT 9999 FEW018 SCT300 29/24 A3000 RMK VCSH E SE";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().directionalWeather()).isNotNull();
+        DirectionalWeather directionalWeather = data.getRemarks().directionalWeather();
+
+        assertThat(directionalWeather.presentWeather()).isNotNull();
+        assertThat(directionalWeather.hasDirections()).isTrue();
+        assertThat(directionalWeather.directions()).containsExactly("E", "SE");
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse bare directional weather remark with no directions")
+    void testParseDirectionalWeather_BareCode_NoDirections() {
+        String metar = "METAR TNCM 020000Z 09008KT 9999 FEW018 SCT300 29/24 A3000 RMK VCSH";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().directionalWeather()).isNotNull();
+        DirectionalWeather directionalWeather = data.getRemarks().directionalWeather();
+
+        assertThat(directionalWeather.presentWeather()).isNotNull();
+        assertThat(directionalWeather.hasDirections()).isFalse();
+        assertThat(directionalWeather.directions()).isNull();
 
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -4240,6 +4282,38 @@ class NoaaMetarParserTest {
         assertTrue(precip.isTrace(), "Should be trace precipitation");
         assertEquals(1, precip.periodHours());
         assertNull(precip.inches(), "Trace should have null inches");
+    }
+
+    // ========== PP GROUP VALUE TESTS ==========
+
+    @Test
+    @DisplayName("Should parse PP group value - SPJC real-world")
+    void testParsePpGroupValue_SPJC() {
+        String metar = "METAR SPJC 020000Z 18008KT 9999 FEW020 22/18 A3005 RMK PP000";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().ppGroupValue()).isZero();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse PP group value alongside standard hourly precipitation without collision")
+    void testParsePpGroupValue_WithHourlyPrecipitation() {
+        String metar = "METAR SPJC 020000Z 18008KT 9999 FEW020 22/18 A3005 RMK P0010 PP000";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().hourlyPrecipitation().inches()).isEqualTo(0.10, within(0.01));
+        assertThat(data.getRemarks().ppGroupValue()).isZero();
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     // ========== 6-HOUR PRECIPITATION PARSING TESTS ==========
@@ -6208,7 +6282,7 @@ class NoaaMetarParserTest {
             "29.77, 'METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977'",
             "29.58, 'METAR RCTP 020000Z 03006KT 9999 FEW010 BKN180 28/26 Q1001 NOSIG RMK A2958'"
     })
-    @DisplayName("Should parse secondary altimeter in remarks - real-world (Issue #56)")
+    @DisplayName("Should parse secondary altimeter in remarks - real-world")
     void testParseSecondaryAltimeter(double expectedInHg, String metar) {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
@@ -7821,7 +7895,7 @@ class NoaaMetarParserTest {
             "700,  'METAR CYVR 020000Z 24008KT 15SM FEW040 SCT100 18/12 A2998 RMK SLP079 DENSITY ALT 700FT'",
             "800,  'METAR CYUL 020000Z 32010KT 10SM SCT050 BKN090 15/08 A2985 RMK SLP165 DENSITY ALT 800FT'"
     })
-    @DisplayName("Should parse density altitude remark - real-world (Issue #57)")
+    @DisplayName("Should parse density altitude remark - real-world")
     void testParseDensityAltitude(int expectedDensityAltFeet, String metar) {
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 

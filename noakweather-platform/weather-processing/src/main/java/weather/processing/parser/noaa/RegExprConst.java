@@ -156,6 +156,15 @@ public final class RegExprConst {
     );
 
     /**
+     * One or more space-separated compass directions following a present-weather
+     * remark, e.g. "E SE", "N NE S SW".
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for precipitation timing format
+    public static final Pattern DIRECTION_LIST_PATTERN = Pattern.compile(
+            "^((?:N|NE|E|SE|S|SW|W|NW)(?:\\s+(?:N|NE|E|SE|S|SW|W|NW))*+)(?=\\s|$)"
+    );
+
+    /**
      * No Significant Change (NOSIG)
      */
     public static final Pattern NO_SIG_CHANGE_PATTERN = Pattern.compile(
@@ -328,6 +337,18 @@ public final class RegExprConst {
      */
     public static final Pattern PRECIP_1HR_PATTERN = Pattern.compile(
             "^(?<type>P)(?<precip>\\d{4}|/{4})\\s*"
+    );
+
+    /**
+     * "PP" precipitation-amount group, distinct from the standard single-P
+     * hourly precipitation group (PRECIP_1HR_PATTERN). Format and semantics
+     * are not fully confirmed. The value is captured raw (3 digits) rather
+     * than converted, pending further research. Observed at SPJC (South America)
+     * but it may not be exclusive to that region.
+     * Example: "PP000"
+     */
+    public static final Pattern PP_GROUP_PATTERN = Pattern.compile(
+            "^PP(?<value>\\d{3})(?=\\s|$)"
     );
 
     /**
