@@ -32,6 +32,7 @@ import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.ParseResult;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.regex.Matcher;
 
 import static org.assertj.core.api.Assertions.*;
@@ -627,6 +628,76 @@ class NoaaAviationWeatherParserTest {
 
             assertThat(pressure).isNotNull();
             assertThat(pressure.value()).isEqualTo(30.15, within(0.01));
+        }
+    }
+
+    // ==================== ISSUE DATE AND TIME TESTS ================
+
+    @Nested
+    @DisplayName("Issue Date/Time Header Parsing Tests")
+    class IssueDateTimeParsingTests {
+
+        @Test
+        @DisplayName("parseIssueDateTime should parse header with time component and consume it")
+        void testParseIssueDateTime_WithTime() {
+            parser.initializeSharedState();
+
+            String token = "2026/09/08 16:00\nSPJC 081600Z 18014KT 9999 FEW018 25/20 Q1014";
+            String remaining = parser.parseIssueDateTime(token);
+
+            assertThat(parser.issueTime).isNotNull();
+            assertThat(parser.issueDateTime).isEqualTo(LocalDateTime.of(2026, 9, 8, 16, 0));
+            assertThat(remaining).isEqualTo("SPJC 081600Z 18014KT 9999 FEW018 25/20 Q1014");
+        }
+
+        @Test
+        @DisplayName("parseIssueDateTime should default to hour=0, minute=0 when time is absent")
+        void testParseIssueDateTime_NoTimeComponent() {
+            parser.initializeSharedState();
+
+            String token = "2026/09/08 \nSPJC 081600Z 18014KT";
+            String remaining = parser.parseIssueDateTime(token);
+
+            assertThat(parser.issueTime).isNotNull();
+            assertThat(parser.issueDateTime).isEqualTo(LocalDateTime.of(2026, 9, 8, 0, 0));
+            assertThat(remaining).isEqualTo("SPJC 081600Z 18014KT");
+        }
+
+        @Test
+        @DisplayName("parseIssueDateTime should return token unchanged when no header is present")
+        void testParseIssueDateTime_NoHeader() {
+            parser.initializeSharedState();
+
+            String token = "SPJC 081600Z 18014KT 9999 FEW018 25/20 Q1014";
+            String remaining = parser.parseIssueDateTime(token);
+
+            assertThat(parser.issueTime).isNull();
+            assertThat(parser.issueDateTime).isNull();
+            assertThat(remaining).isEqualTo(token);
+        }
+
+        @Test
+        @DisplayName("parseIssueDateTime should correctly parse real-world KATL header")
+        void testParseIssueDateTime_KATL() {
+            parser.initializeSharedState();
+
+            String token = "2026/09/08 16:52\nKATL 081652Z 11008G16KT 10SM FEW055";
+            String remaining = parser.parseIssueDateTime(token);
+
+            assertThat(parser.issueDateTime).isEqualTo(LocalDateTime.of(2026, 9, 8, 16, 52));
+            assertThat(remaining).isEqualTo("KATL 081652Z 11008G16KT 10SM FEW055");
+        }
+
+        @Test
+        @DisplayName("parseIssueDateTime should correctly parse real-world CYYZ header")
+        void testParseIssueDateTime_CYYZ() {
+            parser.initializeSharedState();
+
+            String token = "2026/09/08 17:00\nCYYZ 081700Z 16005KT 110V200 15SM";
+            String remaining = parser.parseIssueDateTime(token);
+
+            assertThat(parser.issueDateTime).isEqualTo(LocalDateTime.of(2026, 9, 8, 17, 0));
+            assertThat(remaining).isEqualTo("CYYZ 081700Z 16005KT 110V200 15SM");
         }
     }
 

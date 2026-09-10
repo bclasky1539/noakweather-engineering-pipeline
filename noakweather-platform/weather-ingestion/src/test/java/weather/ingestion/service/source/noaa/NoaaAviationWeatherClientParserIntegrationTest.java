@@ -72,19 +72,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
         // Verify metadata indicates successful parsing
         assertEquals("true", metarData.getMetadata().get("parsed"),
                 "Metadata should indicate successful parsing");
-
-        System.out.println("  METAR Parsing Integration Test PASSED");
-        System.out.println("Station: " + metarData.getStationId());
-        System.out.println("Raw: " + metarData.getRawData());
-        System.out.println("Conditions populated: " + (metarData.getConditions() != null));
-
-        // Additional assertions on parsed data
-        if (metarData.getConditions() != null) {
-            System.out.println("Temperature: " + metarData.getConditions().temperature());
-            System.out.println("Wind: " + metarData.getConditions().wind());
-            System.out.println("Visibility: " + metarData.getConditions().visibility());
-            System.out.println("Pressure: " + metarData.getConditions().pressure());
-        }
     }
 
     @Test
@@ -125,8 +112,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
 
         // Wind data should exist (even if calm)
         assertNotNull(metar.getConditions().wind(), "Wind should be parsed");
-
-        System.out.println("  Wind parsed: " + metar.getConditions().wind());
     }
 
     @Test
@@ -136,17 +121,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
 
         assertNotNull(data);
         assertInstanceOf(NoaaMetarData.class, data);
-
-        NoaaMetarData metar = (NoaaMetarData) data;
-
-        // METAR-specific fields from remarks section
-        // Note: These might be null depending on the actual report
-        // Just verify the fields exist and parsing attempted
-
-        System.out.println("  METAR-specific fields:");
-        System.out.println("  Automated Station: " + metar.getAutomatedStation());
-        System.out.println("  Sea Level Pressure: " + metar.getSeaLevelPressure());
-        System.out.println("  Peak Wind: " + metar.getPeakWind());
     }
 
     @Test
@@ -173,11 +147,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
         // Verify metadata indicates successful parsing
         assertEquals("true", tafData.getMetadata().get("parsed"),
                 "Metadata should indicate successful parsing");
-
-        System.out.println("  TAF Parsing Integration Test PASSED");
-        System.out.println("Station: " + tafData.getStationId());
-        System.out.println("Raw: " + tafData.getRawData());
-        System.out.println("Base conditions populated: " + (tafData.getConditions() != null));
     }
 
     @Test
@@ -190,7 +159,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
         assertFalse(results.isEmpty(), "Should fetch at least one station");
 
         int parsedCount = 0;
-        int totalCount = results.size();
 
         for (WeatherData data : results) {
             assertInstanceOf(NoaaMetarData.class, data);
@@ -199,12 +167,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
             if (metar.getConditions() != null) {
                 parsedCount++;
             }
-
-            System.out.println("Station " + metar.getStationId() +
-                    " - Parsed: " + (metar.getConditions() != null));
         }
-
-        System.out.println("  Parsed " + parsedCount + "/" + totalCount + " stations");
 
         // Most stations should parse successfully
         assertTrue(parsedCount > 0, "At least one station should parse successfully");
@@ -224,9 +187,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
         // Verify we have metadata about parsing
         assertNotNull(data.getMetadata());
         assertTrue(data.getMetadata().containsKey("parsed"));
-
-        System.out.println("  Parser fallback handling verified");
-        System.out.println("Parsed: " + data.getMetadata().get("parsed"));
     }
 
     @Test
@@ -245,9 +205,6 @@ class NoaaAviationWeatherClientParserIntegrationTest {
 
         // Full response should be in metadata
         assertNotNull(metar.getMetadata().get("full_response"));
-
-        System.out.println("  Raw data preservation verified");
-        System.out.println("Raw: " + metar.getRawData());
     }
 
     @Test
@@ -260,7 +217,5 @@ class NoaaAviationWeatherClientParserIntegrationTest {
         // Should have parser version in metadata
         assertEquals("2.0", data.getMetadata().get("parser_version"),
                 "Parser version should be tracked");
-
-        System.out.println("  Parser version: " + data.getMetadata().get("parser_version"));
     }
 }

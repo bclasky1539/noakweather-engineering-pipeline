@@ -23,12 +23,17 @@ import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.WeatherParser;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static weather.processing.parser.noaa.RegExprConst.MONTH_DAY_YEAR_PATTERN;
 
 /**
  * Abstract base class for NOAA aviation weather parsers (METAR and TAF).
@@ -58,6 +63,10 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         implements WeatherParser<NoaaWeatherData> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NoaaAviationWeatherParser.class);
+
+    // Header record date and time
+    protected Instant issueTime;
+    protected LocalDateTime issueDateTime;
 
     // Pattern for RVR M/P prefix
     private static final String RVR_PREFIX_PATTERN = "^[MP]";
@@ -109,6 +118,48 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     }
 
     // ==================== SHARED HANDLER METHODS ====================
+
+    /**
+     * Parse optional issue date/time header line preceding the METAR/TAF body.
+     * Format: "2025/12/15 20:57"
+     * <p>
+     * This is the authoritative source for observation year/month/day — the
+     * report body itself only encodes day/hour/minute (e.g. "081600Z"), never
+     * year or month. Falls back to system clock if this header is absent
+     * (handled by the caller, not here).
+     *
+     * @param token the raw text to check for a leading issue date/time header
+     * @return the remaining text after consuming the header, or the original
+     * token unchanged if no header was present
+     */
+    protected String parseIssueDateTime(String token) {
+        Matcher matcher = MONTH_DAY_YEAR_PATTERN.matcher(token);
+
+        if (matcher.find()) {
+            int year = Integer.parseInt(matcher.group("year"));
+            int month = Integer.parseInt(matcher.group("month"));
+            int day = Integer.parseInt(matcher.group("day"));
+
+            String time = matcher.group("time");
+            int hour = 0;
+            int minute = 0;
+
+            if (time != null) {
+                String[] timeParts = time.split(":");
+                hour = Integer.parseInt(timeParts[0]);
+                minute = Integer.parseInt(timeParts[1]);
+            }
+
+            this.issueDateTime = LocalDateTime.of(year, month, day, hour, minute);
+            this.issueTime = issueDateTime.toInstant(ZoneOffset.UTC);
+
+            LOGGER.debug("Parsed external issue time: {}", issueTime);
+
+            return token.substring(matcher.end()).trim();
+        }
+
+        return token;
+    }
 
     /**
      * Handle wind: "19005KT" or "19005G15KT" or "VRB02KT"
