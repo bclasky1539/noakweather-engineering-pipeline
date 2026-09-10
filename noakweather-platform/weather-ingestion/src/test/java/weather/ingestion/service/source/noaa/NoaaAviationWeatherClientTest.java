@@ -113,6 +113,62 @@ class NoaaAviationWeatherClientTest {
         assertTrue(exception.getMessage().contains("3-4 alphabetic characters"));
     }
 
+    // ========== HEADER LINE PRESERVATION TESTS ==========
+
+    @Test
+    void testFetchMetarReport_HeaderLinePreserved() throws WeatherServiceException {
+        String mockResponse = "2026/09/08 16:00\nKCLT 081600Z 27008KT 10SM FEW250 06/M07 A3034 RMK AO2 SLP278";
+
+        stubFor(get(urlEqualTo("/metar/stations/KCLT.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(mockResponse)));
+
+        WeatherData result = client.fetchMetarReport("KCLT");
+
+        assertNotNull(result);
+        // The header date should now be preserved in rawData (space-joined),
+        // not discarded, so the parser can derive the correct observation year
+        assertTrue(result.getRawData().startsWith("2026/09/08 16:00 KCLT"),
+                "Header line should be preserved and space-joined with the METAR body");
+    }
+
+    @Test
+    void testFetchMetarReport_NoHeaderLine_UnchangedBehavior() throws WeatherServiceException {
+        // No header — just the bare METAR line
+        String mockResponse = "KCLT 081600Z 27008KT 10SM FEW250 06/M07 A3034 RMK AO2 SLP278";
+
+        stubFor(get(urlEqualTo("/metar/stations/KCLT.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(mockResponse)));
+
+        WeatherData result = client.fetchMetarReport("KCLT");
+
+        assertNotNull(result);
+        assertEquals(mockResponse, result.getRawData(),
+                "With no header present, rawData should be exactly the METAR line, unchanged");
+    }
+
+    @Test
+    void testFetchMetarReport_StationLineNotFound_FallsBackToFullResponse() throws WeatherServiceException {
+        // Station ID doesn't appear in either line — should hit the fallback branch
+        String mockResponse = "2026/09/08 16:00\nSOME OTHER TEXT NOT STARTING WITH KCLT";
+
+        stubFor(get(urlEqualTo("/metar/stations/KCLT.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody(mockResponse)));
+
+        WeatherData result = client.fetchMetarReport("KCLT");
+
+        assertNotNull(result);
+        // Fallback joins all lines with a space
+        assertEquals("2026/09/08 16:00 SOME OTHER TEXT NOT STARTING WITH KCLT",
+                result.getRawData(),
+                "Fallback should join all lines with spaces when station line isn't found");
+    }
+
     // ===== METAR Fetching Tests =====
 
     @Test

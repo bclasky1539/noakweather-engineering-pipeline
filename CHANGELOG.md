@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.4-SNAPSHOT - September 10, 2026
+
+#### UAT Round 1 Remediation - Observation Year Not Parsed From Header (#63)
+
+**Fixed:**
+- **Observation year derived from system clock instead of NOAA's source header
+  line** (weather-processing, weather-ingestion) (#63)
+  - NOAA's raw METAR/TAF response includes a date/time header line preceding
+    the report body (e.g. `2026/09/08 16:00`), which is the only source for
+    the observation's year and month — the report body itself only ever
+    encodes day/hour/minute (`081600Z`), never year
+  - Root cause was upstream of the parser: `NoaaAviationWeatherClient`'s
+    `extractMetarLine()` deliberately discarded the header line, keeping only
+    the line starting with the station ID, so the year/month were never
+    available to the parser at all regardless of its own correctness
+  - Fixed `extractMetarLine()` to preserve the header, space-joining it with
+    the METAR body instead of dropping it (mirroring the method's own
+    pre-existing fallback behavior for the "station line not found" case)
+  - Relocated TAF's existing, already-correct `parseIssueDateTime()`
+    mechanism (and its `issueTime`/`issueDateTime` fields) from
+    `NoaaTafParser` to the shared `NoaaAviationWeatherParser` base class, so
+    METAR and TAF consume the identical header-line format consistently
+    rather than METAR growing a separate implementation
+  - Wired `parseIssueDateTime()` into `NoaaMetarParser.parseMainBody()` as
+    the first parsing step, matching how TAF already calls it at the start
+    of `parseTafHeader()`
+  - Removed `NoaaMetarParser`'s now-fully-superseded `handleIssueDateTime()`
+    and its `"monthDayYear"` dispatch case — `parseIssueDateTime()` always
+    consumes the header first, so the registry-driven dispatch path could
+    never fire; left the `MONTH_DAY_YEAR_PATTERN` registry entry itself in
+    place since removing it would require touching unrelated registry-order
+    tests for a change with no functional effect
+  - Fixed `canParse()`'s three validation regexes to use `DOTALL` mode
+    (`(?s)` inline flag), since `String.matches()`'s `.` doesn't cross
+    newlines by default — a raw two-line, `\n`-separated input (as opposed
+    to the ingestion client's now-space-joined form) was being rejected by
+    `canParse()` outright before this fix, independent of anything else in
+    this change
+  - Investigation initially assumed a dispatch-ordering bug in the existing
+    `handlePattern()`/registry mechanism; a baseline test against unmodified
+    `main` proved the real defect was that the two-line input was being
+    rejected by `canParse()` before reaching any dispatch logic at all,
+    which led to discovering the true root cause further upstream in
+    `extractMetarLine()`
+
+**Changed:**
+- **De-duplicated `NoaaAviationWeatherClient`** (weather-ingestion)
+  - `fetchMetarReports()`/`fetchTafReports()` consolidated into a shared
+    `fetchReports()` helper parameterized by a small `FetchFunction`
+    functional interface (needed since the per-station fetch methods declare
+    a checked `WeatherServiceException`, which `java.util.function.Function`
+    doesn't support)
+  - `parseMetarResponse()`/`parseTafResponse()` consolidated into a shared
+    `buildWeatherData()` helper plus an `applyCommonMetadata()` helper for
+    the fields common to both the successfully-parsed and fallback paths
+  - Removed leftover `System.out.println` debug statements from
+    `NoaaAviationWeatherClientParserIntegrationTest`
+  - Similar duplication identified in `NoaaTafParser`'s `tryParseTEMPO()`/
+    `tryParseBECMG()`/`tryParsePROB()` methods was deliberately left
+    unaddressed, deferred to the dedicated TAF work (see #55) rather than
+    risking unrelated changes to forecast change-group parsing logic on
+    this branch
+
+**Testing:**
+- Added direct unit tests for the relocated `parseIssueDateTime()` in
+  `NoaaAviationWeatherParserTest` (header with/without time component, no
+  header present, real-world KATL/CYYZ headers)
+- Added real-world regression tests in `NoaaMetarParserTest` for SPJC, KATL,
+  and CYYZ confirming correct year/month/day derivation, plus a no-header
+  fallback test confirming backward compatibility
+- Added tests in `NoaaAviationWeatherClientTest` confirming
+  `extractMetarLine()` preserves the header, behaves unchanged with no
+  header present, and falls back correctly when the station line isn't found
+- Full reactor build (`wethb.sh` + `wetht.sh`) passing across all modules,
+  including the `weather-ingestion` module's Mockito/WireMock-based suites
+
+**Notes:**
+- Issue #63 is marked **Pending UAT** rather than Done — verified via unit
+  tests and code review, not yet confirmed against the full worldwide UAT
+  station set.
+
 ### Version 1.19.3-SNAPSHOT - September 8, 2026
 
 #### UAT Round 1 Remediation - Directional Weather and PP Precipitation Group (#60, #61)
@@ -77,7 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Notes:**
 - Issues #60 and #61 are marked **Pending UAT** rather than Done — verified
   via unit tests and code review, not yet confirmed against the full
-  worldwide UAT station corpus.
+  worldwide UAT station set.
 - Issue #63 (observation year not parsed from NOAA's source header line)
   was investigated but deferred to its own branch: the fix requires
   relocating TAF's existing `parseIssueDateTime()` mechanism to the shared

@@ -30,6 +30,7 @@ import weather.model.enums.SkyCoverage;
 import weather.processing.parser.common.ParseResult;
 import org.junit.jupiter.params.ParameterizedTest;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -6315,6 +6316,89 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
         assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(29.77, within(0.01));
         assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
+    }
+
+    // ========== OBSERVATION YEAR FROM HEADER TESTS ==========
+
+    @Test
+    @DisplayName("Should derive observation year from header line, not system clock")
+    void testParseObservationYear_FromHeaderLine_SPJC() {
+        String rawMetar = "2026/09/08 16:00\n" +
+                "SPJC 081600Z 18014KT 9999 FEW018 25/20 Q1014 NOSIG RMK BIRD HAZARD RWY 16L/16R PP000";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(rawMetar);
+
+        assertTrue(result.isSuccess(), "Parse failed: " + result.getErrorMessage());
+        NoaaMetarData data = extractMetarData(result);
+
+        Instant observationTime = data.getObservationTime();
+        LocalDateTime observed = LocalDateTime.ofInstant(observationTime, ZoneOffset.UTC);
+
+        assertThat(observed.getYear()).isEqualTo(2026);
+        assertThat(observed.getMonthValue()).isEqualTo(9);
+        assertThat(observed.getDayOfMonth()).isEqualTo(8);
+        assertThat(observed.getHour()).isEqualTo(16);
+        assertThat(observed.getMinute()).isZero();
+    }
+
+    @Test
+    @DisplayName("Should derive observation year from header line - KATL real-world (Issue #63)")
+    void testParseObservationYear_FromHeaderLine_KATL() {
+        String rawMetar = "2026/09/08 16:52\n" +
+                "KATL 081652Z 11008G16KT 10SM FEW055 FEW075 FEW250 28/17 A3027 RMK AO2 SLP240 ACC SW T02830172";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(rawMetar);
+
+        assertTrue(result.isSuccess(), "Parse failed: " + result.getErrorMessage());
+        NoaaMetarData data = extractMetarData(result);
+
+        LocalDateTime observed = LocalDateTime.ofInstant(data.getObservationTime(), ZoneOffset.UTC);
+
+        assertThat(observed.getYear()).isEqualTo(2026);
+        assertThat(observed.getMonthValue()).isEqualTo(9);
+        assertThat(observed.getDayOfMonth()).isEqualTo(8);
+        assertThat(observed.getHour()).isEqualTo(16);
+        assertThat(observed.getMinute()).isEqualTo(52);
+    }
+
+    @Test
+    @DisplayName("Should derive observation year from header line - CYYZ real-world (Issue #63)")
+    void testParseObservationYear_FromHeaderLine_CYYZ() {
+        String rawMetar = "2026/09/08 17:00\n" +
+                "CYYZ 081700Z 16005KT 110V200 15SM FEW040 BKN260 25/13 A3023 RMK CU1CI7 CU TR SLP237 DENSITY ALT 1500FT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(rawMetar);
+
+        assertTrue(result.isSuccess(), "Parse failed: " + result.getErrorMessage());
+        NoaaMetarData data = extractMetarData(result);
+
+        LocalDateTime observed = LocalDateTime.ofInstant(data.getObservationTime(), ZoneOffset.UTC);
+
+        assertThat(observed.getYear()).isEqualTo(2026);
+        assertThat(observed.getMonthValue()).isEqualTo(9);
+        assertThat(observed.getDayOfMonth()).isEqualTo(8);
+        assertThat(observed.getHour()).isEqualTo(17);
+        assertThat(observed.getMinute()).isZero();
+    }
+
+    @Test
+    @DisplayName("Should still parse correctly when no header line is present (backward compatibility)")
+    void testParseObservationYear_NoHeaderLine_FallsBackGracefully() {
+        String rawMetar = "KJFK 081651Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(rawMetar);
+
+        assertTrue(result.isSuccess(), "Parse failed: " + result.getErrorMessage());
+        NoaaMetarData data = extractMetarData(result);
+
+        // No header present, so day/hour/minute still come from the body correctly;
+        // year/month fall back to reference-time logic (not asserted here, since
+        // that's inherently system-clock-dependent) — this test only confirms
+        // parsing doesn't break when the header is absent.
+        LocalDateTime observed = LocalDateTime.ofInstant(data.getObservationTime(), ZoneOffset.UTC);
+        assertThat(observed.getDayOfMonth()).isEqualTo(8);
+        assertThat(observed.getHour()).isEqualTo(16);
+        assertThat(observed.getMinute()).isEqualTo(51);
     }
 
     // ========== 6-HOUR MAX/MIN TEMPERATURE PARSING TESTS ==========

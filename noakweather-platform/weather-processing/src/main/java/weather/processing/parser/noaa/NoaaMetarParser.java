@@ -72,7 +72,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private final NoaaAviationWeatherPatternRegistry patternRegistry;
 
     // METAR-specific state
-    private Instant issueTime;
     private String reportType;
 
     public NoaaMetarParser() {
@@ -159,6 +158,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @return remaining unparsed tokens
      */
     private String parseMainBody(String mainBody) {
+        mainBody = parseIssueDateTime(mainBody);
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> mainHandlers =
                 patternRegistry.getMainHandlers();
         return parseWithHandlers(mainBody, mainHandlers, "MAIN");
@@ -218,19 +218,20 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         // Check if starts with date/time pattern (YYYY/MM/DD HH:MM format)
         // Fixed: Use \\S.* instead of .* to prevent ReDoS (require non-space after whitespace)
-        if (trimmed.matches("^\\d{4}/\\d{2}/\\d{2}\\s+\\S.*")) {
+        // DOTALL so a header line followed by a newline-separated body still matches
+        if (trimmed.matches("(?s)^\\d{4}/\\d{2}/\\d{2}\\s+\\S.*")) {
             return true;
         }
 
         // Check if METAR or SPECI appears at the start (not just anywhere)
         // Fixed: Use \\S.* instead of .* to prevent ReDoS
-        if (trimmed.matches("^\\s*(METAR|SPECI)\\s+\\S.*")) {
+        if (trimmed.matches("(?s)^\\s*(METAR|SPECI)\\s+\\S.*")) {
             return true;
         }
 
         // Check if starts with ICAO station code + observation time (KCLT 062252Z format)
         // Fixed: Use \\S.* instead of .* to prevent ReDoS
-        return trimmed.matches("^[A-Z]{4}\\s+\\d{6}Z\\s+\\S.*");
+        return trimmed.matches("(?s)^[A-Z]{4}\\s+\\d{6}Z\\s+\\S.*");
     }
 
     @Override
@@ -380,7 +381,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             switch (handlerName) {
                 // METAR-specific handlers
                 case "reportType" -> handleReportType(matcher);
-                case "monthDayYear" -> handleIssueDateTime(matcher);
                 case "station" -> handleStationAndObsTime(matcher);
                 case "reportModifier" -> handleReportModifier(matcher);
                 case "tempDewpoint" -> handleTempDewpoint(matcher);
@@ -422,30 +422,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private void handleReportType(Matcher matcher) {
         this.reportType = matcher.group(0).trim();
         LOGGER.debug("Report type: {}", reportType);
-    }
-
-    /**
-     * Handle issue date/time: "2025/11/14 22:52"
-     */
-    private void handleIssueDateTime(Matcher matcher) {
-        int year = Integer.parseInt(matcher.group("year"));
-        int month = Integer.parseInt(matcher.group("month"));
-        int day = Integer.parseInt(matcher.group("day"));
-
-        String time = matcher.group("time");
-        int hour = 0;
-        int minute = 0;
-
-        if (time != null) {
-            String[] timeParts = time.split(":");
-            hour = Integer.parseInt(timeParts[0]);
-            minute = Integer.parseInt(timeParts[1]);
-        }
-
-        LocalDateTime localDateTime = LocalDateTime.of(year, month, day, hour, minute);
-        this.issueTime = localDateTime.toInstant(ZoneOffset.UTC);
-
-        LOGGER.debug("Parsed issue time: {}", issueTime);
     }
 
     /**
@@ -1413,7 +1389,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Example: RMK VCSH E SE → showers in vicinity, east and southeast
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing (never null)
      */
     private String handleDirectionalWeatherSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
@@ -1452,8 +1428,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * trailing direction list.
      *
      * @param weatherMatcher the present-weather pattern matcher (must not be null)
-     * @param remaining the remaining text (must not be null)
-     * @param remarks the remarks builder (must not be null)
+     * @param remaining      the remaining text (must not be null)
+     * @param remarks        the remarks builder (must not be null)
      * @return the remaining text after processing (never null)
      */
     private String processDirectionalWeatherMatch(Matcher weatherMatcher, String remaining,
@@ -1794,7 +1770,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Example: PP000
      *
      * @param remarksText remaining remarks text to process
-     * @param remarks the remarks builder to populate
+     * @param remarks     the remarks builder to populate
      * @return the remaining text after processing (never null)
      */
     private String handlePpGroupSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {

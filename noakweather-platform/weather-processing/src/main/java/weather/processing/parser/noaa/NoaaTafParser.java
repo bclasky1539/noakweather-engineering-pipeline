@@ -38,15 +38,15 @@ import static weather.processing.parser.noaa.RegExprConst.*;
 
 /**
  * Parser for NOAA TAF (Terminal Aerodrome Forecast) data.
- *
+ * <p>
  * Extends NoaaAviationWeatherParser to inherit shared aviation weather parsing logic
  * for wind, visibility, present weather, sky conditions, and RVR.
- *
+ * <p>
  * TAF Format Example:
  * "TAF AMD KCLT 151953Z 1520/1624 VRB02KT P6SM FEW250
- *       FM152100 21005KT P6SM SCT250
- *       TEMPO 3003/3011 P6SM -SHSN BKN040"
- *
+ * FM152100 21005KT P6SM SCT250
+ * TEMPO 3003/3011 P6SM -SHSN BKN040"
+ * <p>
  * Components:
  * - TAF: Report type
  * - AMD: Amendment indicator (optional)
@@ -58,7 +58,7 @@ import static weather.processing.parser.noaa.RegExprConst.*;
  * - TEMPO: Temporary fluctuations during period
  * - BECMG: Gradual change during period
  * - PROB30/PROB40: Probabilistic conditions
- *
+ * <p>
  * Architecture:
  * - Parses TAF into base forecast + change groups
  * - Each period (base, FM, TEMPO, etc.) becomes a ForecastPeriod
@@ -75,8 +75,6 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     private final NoaaAviationWeatherPatternRegistry patternRegistry;
 
     // TAF-specific state
-    private Instant issueTime;
-    private LocalDateTime issueDateTime;
     private ValidityPeriod validityPeriod;
 
     // Current forecast period being built
@@ -207,7 +205,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
     /**
      * Parse TAF-specific header: type, modifier, station, issue time, validity.
-     *
+     * <p>
      * Example: "TAF AMD KCLT 151953Z 1520/1624"
      */
     private String parseTafHeader(String token) {
@@ -225,38 +223,6 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
         // Parse validity period (required for TAF)
         token = parseValidityPeriod(token);
-
-        return token;
-    }
-
-    /**
-     * Parse optional issue date/time: "2025/12/15 20:57"
-     */
-    private String parseIssueDateTime(String token) {
-        Matcher matcher = MONTH_DAY_YEAR_PATTERN.matcher(token);
-
-        if (matcher.find()) {
-            int year = Integer.parseInt(matcher.group("year"));
-            int month = Integer.parseInt(matcher.group("month"));
-            int day = Integer.parseInt(matcher.group("day"));
-
-            String time = matcher.group("time");
-            int hour = 0;
-            int minute = 0;
-
-            if (time != null) {
-                String[] timeParts = time.split(":");
-                hour = Integer.parseInt(timeParts[0]);
-                minute = Integer.parseInt(timeParts[1]);
-            }
-
-            this.issueDateTime = LocalDateTime.of(year, month, day, hour, minute);
-            this.issueTime = issueDateTime.toInstant(ZoneOffset.UTC);
-
-            LOGGER.debug("Parsed external issue time: {}", issueTime);
-
-            return token.substring(matcher.end()).trim();
-        }
 
         return token;
     }
