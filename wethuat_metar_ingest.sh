@@ -132,6 +132,9 @@ STATIONS=(
 
   # --- Pacific islands ---
   PHNL
+
+  # --- Stations with years in header from past ---
+  AGGM AVMI CXAF CZPS FNSA KQOG
 )
 
 TOTAL=${#STATIONS[@]}

@@ -7,6 +7,109 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### September 14, 2026 - UAT Tooling & Round 2 Findings
+
+*(No version bump — these changes are to UAT tooling and process,
+not to a versioned Maven artifact. Current artifact version remains
+1.19.4-SNAPSHOT.)*
+
+#### Worldwide METAR UAT Sweep — Round 2
+
+**Added:**
+- **New Kanban column: `Reviewed / No Action`** (placed ahead of Backlog)
+  - Tracks remarks/freeText findings that were reviewed and deliberately
+    left unparsed — the effort to structure them doesn't justify the
+    analytical value. Distinct from Backlog (intended eventually) and
+    from a bug (nothing is broken); revisit only if the same pattern
+    recurs at higher volume or a new use case needs it.
+
+- **`wethuat_metar_ingest.sh`**: added stations with non-current-year
+  observation dates to specifically exercise and verify the #63 fix
+
+**Fixed:**
+- **`glue-jobs/tools/analyze_bronze_station.py`**:
+  - Refactored `validate_station` into focused helper functions
+    (`_validate_file_presence`, `_download_text`,
+    `_parse_json_with_duplicate_check`, `_validate_required_fields`,
+    `_validate_raw_text_consistency`, `_validate_conditions_fields`,
+    `_check_soft_warnings`) to bring Cognitive Complexity from 30 to
+    under the 15 threshold (S3776)
+  - Fixed inconsistent `[:20]`/`[:40]` slice in the station-code-near-start
+    check (widened to `[:60]` to account for the `YYYY/MM/DD HH:MM ` header
+    prepended by the #63 fix; both the membership check and warning message
+    now use the same window)
+
+**UAT Findings — Confirmed Fixed (closed):**
+- #53: Remarks parsing silently corrupting downstream content after an
+  unmatched token — confirmed fixed for its original trigger (`DENSITY ALT`,
+  CYYZ); KDFW portion split into a new issue (see below), as it surfaced a
+  broader, still-open instance of the same failure class
+- #54: Missing-data placeholders (`//////`) correctly parsed as absent
+  data (`null`/`[]`) rather than misclassified as present weather (MKJP)
+- #56: Secondary altimeter setting (`A####`) in RMK section correctly
+  parsed as a distinct field from primary QNH pressure (RPLL)
+- #57: Canadian chained cloud-type-in-oktas qualifiers and trace-amount
+  (`TR`) remarks correctly parsed, including unseparated multi-code
+  chaining (CYUL, CYVR)
+- #62: Arctic/Norway wind-at-altitude remark (`WIND ####FT ######KT`)
+  correctly parsed into `windsAtLocation` (ENSB)
+
+**UAT Findings — Reviewed / No Action:**
+- #58: Mexican supplementary numeric groups and plain-language weather
+  remark (`8/963 HZY PCPN N AND 3TH QUAD`, MMMX) — mixes a WMO cloud-group
+  code with open-ended narrative text; narrative portion not expected to
+  become practically parseable
+- #59: Jamaican ceilometer remark (`CLD FROM CEILOMETER RWY 30 ...`,
+  MKJP) — confirmed as a recurring station-local convention (observed with
+  two different suffixes across two UAT runs); airport-specific format,
+  low return relative to effort
+- New: Caribbean intensity+phenomenon qualifier (`SLT HZ`, TNCM) —
+  likely "slight haze"; similar qualifier/phenomenon combinations expected
+  to recur across stations and are not being tracked individually
+
+**UAT Findings — Reopened / Still Open:**
+- #60: Caribbean directional vicinity-weather remark (`VCSH E SE`) —
+  left in Pending UAT; live conditions at TNCM during this run did not
+  include vicinity weather, so the original pattern remains untested
+- #61: South American precipitation amount group (`PP###`) — reopened to
+  Ready; new SPJC record shows `PP000` (the original fix target) failing
+  to parse again, this time as a downstream casualty of an unrelated
+  unmatched remark (`BIRD HAZARD RWY 16L/16R`), not a regression in the
+  `PP###` pattern itself. Cross-referenced with the new remarks-parsing
+  recovery issue (see below)
+- #63: Observation year parsing — confirmed fixed and verified across
+  multiple non-current years (AGGM/2024, FNSA/2025, AVMI/2023) via
+  epoch-to-date conversion cross-checked against each station's header
+  line. Left open (returned to Ready) as a placeholder: `observationTime`
+  is correctly computed but stored as a raw epoch value in Bronze
+  (appropriate for Bronze's source-fidelity role); Silver layer will need
+  to convert this to a proper timestamp and derive
+  `observation_year`/`month`/`day` partition columns once Bronze UAT is
+  fully signed off
+
+**New Issues Opened:**
+- Remarks parsing recovery mechanism (split from #53, cross-referenced
+  with #61): once the parser encounters an unmatched remarks segment, all
+  subsequent tokens — including ones that parse correctly elsewhere — are
+  lost to `freeText` rather than being skipped individually. Confirmed
+  across five independent stations and four different trigger types:
+  directional arc notation (KDFW: `E-S-SW`), narrative text (SPJC:
+  `BIRD HAZARD RWY 16L/16R`), an unwired lightning pattern (KMIA: `LTG`),
+  and an `AND`-chained thunderstorm-location group (KPHX: `AND SE-S`).
+  Recommended as a prerequisite fix before further individual remark-token
+  patterns are added
+- LTG (lightning) remark pattern defined (`LIGHTNING_PATTERN`,
+  `LightningMatcher.java`) but never invoked by `NoaaMetarParser.java` —
+  no `LTG...` remark is parsed in any form (KMIA, KAFW). `TSE09B13E46`
+  (thunderstorm-episode timing) also has no existing pattern
+
+**Next Steps:**
+- New branch `fix/remarks-parsing-recovery` (off `main`, post-merge of
+  this UAT round's tooling changes) to investigate the remarks-parsing
+  recovery mechanism via synthetic multi-remark test fixtures built from
+  real captured METAR examples, organized by source station for
+  provenance, before implementing a fix
+
 ### Version 1.19.4-SNAPSHOT - September 10, 2026
 
 #### UAT Round 1 Remediation - Observation Year Not Parsed From Header (#63)

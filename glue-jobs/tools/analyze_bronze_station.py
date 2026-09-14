@@ -41,6 +41,7 @@ import argparse
 from datetime import datetime
 
 import importlib.util
+from typing import Any, Callable
 
 if importlib.util.find_spec("boto3") is None:
     print("ERROR: boto3 is required. Install with: pip install boto3 --break-system-packages")
@@ -63,33 +64,33 @@ REQUIRED_CONDITIONS_FIELDS = ["wind", "visibility", "temperature", "pressure"]
 class ValidationReport:
     """Collects PASS/WARN/FAIL findings for a single station's validation run."""
 
-    def __init__(self, station, date_str):
+    def __init__(self, station, date_str) -> None:
         self.station = station
         self.date_str = date_str
         self.failures = []
         self.warnings = []
         self.info = []
 
-    def fail(self, message):
+    def fail(self, message) -> None:
         self.failures.append(message)
 
-    def warn(self, message):
+    def warn(self, message) -> None:
         self.warnings.append(message)
 
-    def note(self, message):
+    def note(self, message) -> None:
         self.info.append(message)
 
-    def result(self):
+    def result(self) -> str:
         if self.failures:
             return "FAIL"
         if self.warnings:
             return "WARN"
         return "PASS"
 
-    def exit_code(self):
+    def exit_code(self) -> int:
         return {"PASS": 0, "WARN": 2, "FAIL": 1}[self.result()]
 
-    def print_report(self):
+    def print_report(self) -> None:
         print(f"=== UAT Validation: {self.station} ({self.date_str}) ===")
         for line in self.info:
             print(f"  INFO: {line}")
@@ -100,7 +101,7 @@ class ValidationReport:
         print(f"UAT_RESULT: {self.result()}")
 
 
-def find_latest_object(s3, bucket, prefix, station):
+def find_latest_object(s3, bucket, prefix, station) -> tuple[str | None, int]:
     """Find the most recently modified object under prefix whose filename
     starts with '{station}_'. Returns (key, match_count); key is None if
     nothing matched."""
@@ -117,7 +118,7 @@ def find_latest_object(s3, bucket, prefix, station):
     return matches[0]["Key"], len(matches)
 
 
-def duplicate_key_pairs_hook(duplicates_log):
+def duplicate_key_pairs_hook(duplicates_log) -> Callable[[list], dict[Any, Any]]:
     """Returns a json.loads object_pairs_hook that records any duplicate
     keys found within a single JSON object, at any nesting level. This is
     a direct regression check for the Bronze layer duplicate-fields bug
@@ -135,7 +136,7 @@ def duplicate_key_pairs_hook(duplicates_log):
     return hook
 
 
-def get_nested(data, *path):
+def get_nested(data, *path) -> dict[Any, Any] | None:
     """Safely walk a nested dict, returning None if any level is missing."""
     current = data
     for key in path:
@@ -145,54 +146,74 @@ def get_nested(data, *path):
     return current
 
 
-def validate_station(s3, bucket, station, date_str):
+def validate_station(s3, bucket, station, date_str) -> ValidationReport:
     report = ValidationReport(station, date_str)
     year, month, day = date_str.split("-")
 
     raw_prefix = RAW_DATA_PREFIX_TEMPLATE.format(year=year, month=month, day=day)
     json_prefix = SPEED_LAYER_PREFIX_TEMPLATE.format(year=year, month=month, day=day)
 
-    raw_key, raw_count = find_latest_object(s3, bucket, raw_prefix, station)
-    json_key, json_count = find_latest_object(s3, bucket, json_prefix, station)
-
-    if raw_key is None:
-        report.fail(f"No raw-data file found under s3://{bucket}/{raw_prefix}")
-    elif raw_count > 1:
-        report.note(f"{raw_count} raw-data files found for this date; validating most recent ({raw_key})")
-
-    if json_key is None:
-        report.fail(f"No speed-layer JSON file found under s3://{bucket}/{json_prefix}")
-    elif json_count > 1:
-        report.note(f"{json_count} speed-layer files found for this date; validating most recent ({json_key})")
+    raw_key = _validate_file_presence(s3, bucket, raw_prefix, station, "raw-data", report)
+    json_key = _validate_file_presence(s3, bucket, json_prefix, station, "speed-layer JSON", report)
 
     if raw_key is None or json_key is None:
         return report  # Can't do content checks without both files
 
-    try:
-        raw_obj = s3.get_object(Bucket=bucket, Key=raw_key)
-        raw_text = raw_obj["Body"].read().decode("utf-8")
-    except ClientError as e:
-        report.fail(f"Failed to download raw-data file: {e}")
+    raw_text = _download_text(s3, bucket, raw_key, "raw-data file", report)
+    json_text = _download_text(s3, bucket, json_key, "speed-layer JSON file", report)
+    if raw_text is None or json_text is None:
         return report
 
-    try:
-        json_obj = s3.get_object(Bucket=bucket, Key=json_key)
-        json_text = json_obj["Body"].read().decode("utf-8")
-    except ClientError as e:
-        report.fail(f"Failed to download speed-layer JSON file: {e}")
+    data = _parse_json_with_duplicate_check(json_text, report)
+    if data is None:
         return report
 
+    _validate_required_fields(data, station, report)
+    _validate_raw_text_consistency(data, raw_text, station, report)
+    _validate_conditions_fields(data, report)
+    _check_soft_warnings(data, report)
+
+    return report
+
+
+def _validate_file_presence(s3, bucket, prefix, station, label, report) -> str | None:
+    """Locate the latest object under prefix for station; report fail/note as needed."""
+    key, count = find_latest_object(s3, bucket, prefix, station)
+    if key is None:
+        report.fail(f"No {label} file found under s3://{bucket}/{prefix}")
+    elif count > 1:
+        report.note(f"{count} {label} files found for this date; validating most recent ({key})")
+    return key
+
+
+def _download_text(s3, bucket, key, label, report) -> str | None:
+    """Download and decode an S3 object's body; report failure and return None on error."""
+    try:
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        return obj["Body"].read().decode("utf-8")
+    except ClientError as e:
+        report.fail(f"Failed to download {label}: {e}")
+        return None
+
+
+def _parse_json_with_duplicate_check(json_text, report)  -> dict[Any, Any] | None:
+    """Parse JSON, checking for duplicate keys (Jackson serialization regression check)."""
     duplicates_found = []
     try:
         data = json.loads(json_text, object_pairs_hook=duplicate_key_pairs_hook(duplicates_found))
     except json.JSONDecodeError as e:
         report.fail(f"speed-layer JSON is not valid JSON: {e}")
-        return report
+        return None
 
     if duplicates_found:
         unique_dupes = sorted(set(duplicates_found))
         report.fail(f"Duplicate JSON keys detected (Jackson serialization regression?): {unique_dupes}")
 
+    return data
+
+
+def _validate_required_fields(data, station, report) -> None:
+    """Check required top-level fields, dataType, stationId, and observationTime."""
     for field in REQUIRED_TOP_LEVEL_FIELDS:
         if field not in data:
             report.fail(f"Missing required top-level field: '{field}'")
@@ -207,11 +228,14 @@ def validate_station(s3, bucket, station, date_str):
     if not isinstance(obs_time, (int, float)):
         report.fail(f"observationTime is missing or not numeric: {obs_time!r}")
 
+
+def _validate_raw_text_consistency(data: dict, raw_text: str, station: str, report) -> None:
+    """Check rawText field presence, station code location, and dual-storage consistency."""
     raw_text_field = data.get("rawText")
     if not raw_text_field:
         report.fail("rawText field is missing or empty")
-    elif station not in raw_text_field[:20]:
-        report.warn(f"Station code '{station}' not found near start of rawText: {raw_text_field[:40]!r}")
+    elif station not in raw_text_field[:60]:
+        report.warn(f"Station code '{station}' not found near start of rawText: {raw_text_field[:60]!r}")
 
     if raw_text_field and raw_text.strip() != raw_text_field.strip():
         report.fail(
@@ -219,6 +243,9 @@ def validate_station(s3, bucket, station, date_str):
             "(dual storage inconsistency)"
         )
 
+
+def _validate_conditions_fields(data, report) -> None:
+    """Check required fields within the conditions object, if present."""
     conditions = data.get("conditions")
     if isinstance(conditions, dict):
         for field in REQUIRED_CONDITIONS_FIELDS:
@@ -226,7 +253,9 @@ def validate_station(s3, bucket, station, date_str):
                 report.fail(f"Missing required conditions field: 'conditions.{field}'")
     # (missing 'conditions' itself is already caught by REQUIRED_TOP_LEVEL_FIELDS)
 
-    # Soft/warning-level checks - interesting UAT signal, not bugs
+
+def _check_soft_warnings(data, report) -> None:
+    """Soft/warning-level checks - interesting UAT signal, not bugs."""
     unparsed = data.get("unparsedMainBody")
     if unparsed:
         report.warn(f"Unparsed main body tokens found: {unparsed!r}")
@@ -243,10 +272,8 @@ def validate_station(s3, bucket, station, date_str):
     if pressure_value is None:
         report.warn("No pressure reported (conditions.pressure.value is null)")
 
-    return report
 
-
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Validate a station's Bronze-layer UAT output")
     parser.add_argument("station", help="ICAO station code, e.g. KATL")
     parser.add_argument("date", help="Ingestion date (UTC), format YYYY-MM-DD")
