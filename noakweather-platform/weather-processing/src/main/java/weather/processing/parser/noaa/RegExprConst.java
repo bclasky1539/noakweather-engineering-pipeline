@@ -65,7 +65,7 @@ public final class RegExprConst {
      * Example: "KJFK 151800Z"
      */
     public static final Pattern STATION_AND_ISSUE_TIME_PATTERN = Pattern.compile(
-            "(?<station>[A-Z]{4})\\s+" +
+            "^(?<station>[A-Z]{4})\\s+" +
                     "(?<zday>\\d{2})(?<zhour>\\d{2})(?<zmin>\\d{2})Z"
     );
 
@@ -74,7 +74,7 @@ public final class RegExprConst {
      * Example: "1518/1624"
      */
     public static final Pattern VALIDITY_PERIOD_PATTERN = Pattern.compile(
-            "(?<from>\\d{4})/(?<to>\\d{4})"
+            "^(?<from>\\d{4})/(?<to>\\d{4})"
     );
 
     /**
@@ -443,7 +443,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for maintenance data format
     public static final Pattern AUTOMATED_MAINTENANCE_PATTERN = Pattern.compile(
-            "(?:(?<typeam>RVRNO|PWINO|PNO|FZRANO|TSNO|VISNO|CHINO)(?:\\s+(?<loc>RW?Y?\\d{1,2}[LCR]?|[NSEW]{1,2}))?|(?<typemc>\\$))(?:\\b|(?=\\s)|$)"
+            "^(?:(?<typeam>RVRNO|PWINO|PNO|FZRANO|TSNO|VISNO|CHINO)(?:\\s+(?<loc>RW?Y?\\d{1,2}[LCR]?|[NSEW]{1,2}))?|(?<typemc>\\$))(?:\\b|(?=\\s)|$)"
     );
 
     /**
@@ -461,7 +461,7 @@ public final class RegExprConst {
      * Example: "FM121600"
      */
     public static final Pattern GROUP_FM_PATTERN = Pattern.compile(
-            "^(?<group>FM)(?<daytime>\\\\d{6})\\\\s+(?<obs>.+?)(?=\\\\s*$)"
+            "^(?<group>FM)(?<daytime>\\d{6})\\s+(?<obs>.+?)(?=\\s*$)"
     );
 
     /**
@@ -628,7 +628,7 @@ public final class RegExprConst {
      * Matches RMK with at least one space on each side
      */
     public static final Pattern REMARKS_SEPARATOR = Pattern.compile(
-            "\\s+RMK(?=\\s)",  // RMK followed by space (using lookahead)
+            "^\\s+RMK(?=\\s)",  // RMK followed by space (using lookahead)
             Pattern.CASE_INSENSITIVE
     );
 }

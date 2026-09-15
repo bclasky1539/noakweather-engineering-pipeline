@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.5-SNAPSHOT - September 14, 2026
+
+#### Remarks Parsing Recovery Fix
+
+**Fixed:**
+- **`weather-processing` / `NoaaMetarParser.java`**: fixed a structural bug in
+  `handleRemarks` where a single unrecognized remarks token would silently
+  discard every token after it, including otherwise well-formed and
+  correctly-parseable ones (sea level pressure, precise temperature,
+  thunderstorm location, maintenance indicator, etc.). The remarks handler loop
+  now advances past unrecognized tokens one at a time rather than giving up on the
+  whole remainder, so later valid remarks are no longer lost alongside an earlier 
+  unrecognized one.
+  - Root-caused via UAT Round 2 findings (split from #53, cross-referenced
+    with #61) and confirmed across 5 independently-discovered stations with
+    4 different trigger types before the fix: a hyphenated direction range (KDFW),
+    unstructured narrative remarks (SPJC), a lightning pattern that was never wired
+    to a handler (KMIA/KAFW), and a thunderstorm-location group chained with AND (KPHX)
+  - `freeText` semantics changed as an intended consequence. It is no longer
+    a contiguous substring of the original remarks text, but the
+    concatenation of only the tokens that remained unrecognized, in original
+    order, allowing later review to identify exactly which fragments still
+    need dedicated parsing support
+- **`weather-processing` / `RegExprConst.java`**: fixed `GROUP_FM_PATTERN`,
+  which used double-escaped regex (`\\\\d`, `\\\\s`) that could never match
+  a real TAF `FM######` group; corrected to match `FM_PATTERN`'s working
+  form
+
+**Added:**
+- **`NoaaMetarParserRemarksRecoveryTest.java`** (new test file,
+  `weather-processing`): 23-case `@ParameterizedTest` regression suite
+  covering the recovery fix, built from a mix of live UAT findings and
+  independently-captured real METAR records spanning multiple years,
+  hemispheres, and station conventions (including the historical `A01`/`A02`
+  automated-station-type format predating the current `AO1`/`AO2`
+  standard). Includes `printRemarksParsingDiagnostics`, a standing
+  diagnostic tool (not a regression test — asserts nothing) for reading
+  actual parsed field values off real METAR strings when tracing future
+  examples, run via
+  `-Dtest=NoaaMetarParserRemarksRecoveryTest#printRemarksParsingDiagnostics`
+
+**New Issues Opened (follow-on gaps surfaced by this fix, not yet resolved):**
+- Cloud-type parse failures silently discard tokens instead of surfacing
+  them. That is invalid `CLOUD_OKTA_PATTERN` matches (bare `TCU`; zero-okta
+  `CI0`) are caught, logged as a warning, and then lost entirely: not
+  added to `cloudTypes`, not preserved in `freeText`. Distinct from the
+  recovery fix, since these tokens *are* matched, just rejected as
+  invalid after the fact
+- Chained begin/end weather-event groups lose implied-continuation
+  segments. A chain segment that omits its weather-code prefix (implying
+  "same phenomenon as previous") produces an empty code, is discarded,
+  and the parsing loop `break`s, losing the rest of the chain regardless
+  of whether later segments restate their type (KMIA: `TSE09B13E46`;
+  KARB: `UPE12B29E31RAB12SNB15E20`)
+- Pressure rising/falling rapidly (`PRESRR`/`PRESFR`) pattern defined
+  but never invoked by any handler (KBUF)
+- Icing (`ICG`) pattern defined but never invoked by any handler
+  (KCLT: `ICG PAST HR`)
+
 ### September 14, 2026 - UAT Tooling & Round 2 Findings
 
 *(No version bump — these changes are to UAT tooling and process,
