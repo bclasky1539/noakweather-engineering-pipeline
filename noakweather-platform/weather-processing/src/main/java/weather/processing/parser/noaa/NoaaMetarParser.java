@@ -849,13 +849,55 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         NoaaMetarRemarks.Builder remarksBuilder = NoaaMetarRemarks.builder();
         String remaining = remarksText.trim();
+        List<String> unparsedTokens = new ArrayList<>();
+
+
+        while (!remaining.isBlank()) {
+            remaining = runRemarkHandlerPasses(remaining, remarksBuilder);
+
+            if (remaining.isBlank()) {
+                break;
+            }
+
+            // No handler could make progress against the current leading token.
+            // Peel off one whitespace-delimited token as unparsed, then retry
+            // the full handler set against whatever follows — an unrecognized
+            // token shouldn't prevent later, otherwise-parseable tokens from
+            // being recognized.
+            int spaceIdx = remaining.indexOf(' ');
+            if (spaceIdx < 0) {
+                unparsedTokens.add(remaining);
+                remaining = "";
+            } else {
+                unparsedTokens.add(remaining.substring(0, spaceIdx));
+                remaining = remaining.substring(spaceIdx + 1).trim();
+            }
+        }
+
+        // Store any unparsed remarks as free text
+        if (!unparsedTokens.isEmpty()) {
+            remarksBuilder.freeText(String.join(" ", unparsedTokens));
+        }
+
+        metarData.setRemarks(remarksBuilder.build());
+    }
+
+    /**
+     * Run all remark handlers repeatedly against {@code remaining} until a full
+     * pass makes no further progress. Lets handlers fire in any order — a
+     * handler that only matches after an earlier one has consumed its token
+     * still gets a chance on a later pass within this segment.
+     *
+     * @param remaining      the remarks text to process
+     * @param remarksBuilder the remarks builder to populate
+     * @return the remaining text once no handler can make further progress
+     */
+    private String runRemarkHandlerPasses(String remaining, NoaaMetarRemarks.Builder remarksBuilder) {
         String previous;
 
-        // Multi-pass parsing to handle any order
         do {
             previous = remaining;
 
-            // Try each handler in sequence
             remaining = handleAutomatedStationType(remaining, remarksBuilder);
             remaining = handleSeaLevelPressureSequential(remaining, remarksBuilder);
             remaining = handleHourlyTemperatureSequential(remaining, remarksBuilder);
@@ -882,15 +924,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleSecondaryAltimeterSequential(remaining, remarksBuilder);
             remaining = handleDirectionalWeatherSequential(remaining, remarksBuilder);
 
-            // Continue while we're making progress
+            // Continue while we are making progress
         } while (!Objects.equals(remaining, previous));
 
-        // Store any unparsed remarks as free text
-        if (remaining != null && !remaining.isBlank()) {
-            remarksBuilder.freeText(remaining.trim());
-        }
-
-        metarData.setRemarks(remarksBuilder.build());
+        return remaining;
     }
 
     /**
