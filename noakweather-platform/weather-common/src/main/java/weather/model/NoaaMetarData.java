@@ -18,6 +18,10 @@ package weather.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import weather.model.components.Pressure;
+import weather.model.components.Temperature;
+import weather.model.components.Visibility;
+import weather.model.components.Wind;
 import weather.model.components.remark.*;
 
 import java.time.Instant;
@@ -289,32 +293,36 @@ public class NoaaMetarData extends NoaaWeatherData {
         StringBuilder sb = new StringBuilder("METAR ");
         sb.append(getStationId()).append(" ");
 
-        if (getWind() != null) {
-            sb.append("Wind: ").append(getWind().getCardinalDirection()).append(" ");
-            if (getWind().hasGusts()) {
-                sb.append("G").append(getWind().gustValue()).append(getWind().unit()).append(" ");
+        Wind wind = getWind();
+        if (wind != null) {
+            sb.append("Wind: ").append(wind.getCardinalDirection()).append(" ");
+            if (wind.hasGusts()) {
+                sb.append("G").append(wind.gustValue()).append(wind.unit()).append(" ");
             }
         }
 
-        if (getVisibility() != null) {
-            if (getVisibility().isCavok()) {
+        Visibility visibility = getVisibility();
+        if (visibility != null) {
+            if (visibility.isCavok()) {
                 sb.append("CAVOK ");
             } else {
-                sb.append("Vis: ").append(getVisibility().distanceValue())
-                        .append(getVisibility().unit()).append(" ");
+                sb.append("Vis: ").append(visibility.distanceValue())
+                        .append(visibility.unit()).append(" ");
             }
         }
 
-        if (getTemperature() != null) {
-            sb.append("Temp: ").append(getTemperature().celsius()).append("°C ");
-            if (getTemperature().dewpointCelsius() != null) {
-                sb.append("Dew: ").append(getTemperature().dewpointCelsius()).append("°C ");
+        Temperature temperature = getTemperature();
+        if (temperature != null) {
+            sb.append("Temp: ").append(temperature.celsius()).append("°C ");
+            if (temperature.dewpointCelsius() != null) {
+                sb.append("Dew: ").append(temperature.dewpointCelsius()).append("°C ");
             }
         }
 
-        if (getPressure() != null) {
-            sb.append("Press: ").append(getPressure().value())
-                    .append(getPressure().unit()).append(" ");
+        Pressure pressure = getPressure();
+        if (pressure != null) {
+            sb.append("Press: ").append(pressure.value())
+                    .append(pressure.unit()).append(" ");
         }
 
         return sb.toString().trim();
