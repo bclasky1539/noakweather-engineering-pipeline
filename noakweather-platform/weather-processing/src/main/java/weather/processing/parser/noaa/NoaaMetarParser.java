@@ -917,6 +917,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleHailSizeSequential(remaining, remarksBuilder);
             remaining = handleWeatherEventsSequential(remaining, remarksBuilder);
             remaining = handlePressureTendencySequential(remaining, remarksBuilder);
+            remaining = handlePressureRapidChangeSequential(remaining, remarksBuilder);
             remaining = handle6HourMaxMinTemperatureSequential(remaining, remarksBuilder);
             remaining = handle24HourMaxMinTemperatureSequential(remaining, remarksBuilder);
             remaining = handleDensityAltitudeSequential(remaining, remarksBuilder);
@@ -989,6 +990,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         // Copy 3-hour pressure tendency (extract hPa change from PressureTendency record)
         if (remarks.pressureTendency() != null) {
             weatherData.setThreeHourPressureTendency(remarks.pressureTendency().changeHectopascals());
+        }
+
+        // Copy pressure rapid change (PressureRapidChange type matches - direct copy)
+        if (remarks.pressureRapidChange() != null) {
+            weatherData.setPressureRapidChange(remarks.pressureRapidChange());
         }
 
         // Copy wind shift (WindShift type matches - direct copy)
@@ -2401,6 +2407,48 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         // Use PressureTendency.fromMetar factory method
         return PressureTendency.fromMetar(tendencyCode, pressureChangeStr);
+    }
+
+    /**
+     * Handle pressure rising or falling rapidly (PRESRR/PRESFR).
+     * <p>
+     * Format: PRES followed by R (rising) or F (falling), then a second
+     * letter that isn't semantically distinguished (commonly R, as in
+     * PRESRR/PRESFR).
+     * <p>
+     * Examples:
+     * - PRESFR → pressure falling rapidly
+     * - PRESRR → pressure rising rapidly
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handlePressureRapidChangeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = PRES_RF_RAPDLY_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            try {
+                String code = matcher.group("presrisfal");
+                PressureRapidChange change = PressureRapidChange.fromCode(code);
+                remarks.pressureRapidChange(change);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Pressure rapid change: {}", change);
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid pressure rapid change in remarks: {}", matcher.group(0), e);
+            }
+
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
     }
 
     /**

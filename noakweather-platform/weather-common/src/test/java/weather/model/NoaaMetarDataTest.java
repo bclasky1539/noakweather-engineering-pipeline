@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import weather.model.components.*;
 import weather.model.components.remark.PeakWind;
+import weather.model.components.remark.PressureRapidChange;
 import weather.model.components.remark.WindShift;
 import weather.model.enums.SkyCoverage;
 
@@ -185,6 +186,17 @@ class NoaaMetarDataTest {
     }
 
     @Test
+    @DisplayName("Should set and get pressure rapid change")
+    void testSetAndGetPressureRapidChange() {
+        NoaaMetarData data = new NoaaMetarData();
+        PressureRapidChange pressureRapidChange = PressureRapidChange.of("F");
+
+        data.setPressureRapidChange(pressureRapidChange);
+
+        assertThat(data.getPressureRapidChange()).isEqualTo(pressureRapidChange);
+    }
+
+    @Test
     @DisplayName("Should set and get automated station")
     void testSetAndGetAutomatedStation() {
         NoaaMetarData data = new NoaaMetarData();
@@ -192,6 +204,20 @@ class NoaaMetarDataTest {
         data.setAutomatedStation("AO2");
 
         assertThat(data.getAutomatedStation()).isEqualTo("AO2");
+    }
+
+    @Test
+    @DisplayName("Should not be equal when pressureRapidChange differs")
+    void testEquals_DifferentPressureRapidChange() {
+        Instant now = Instant.now();
+
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setPressureRapidChange(PressureRapidChange.of("R"));
+
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setPressureRapidChange(PressureRapidChange.of("F"));
+
+        assertThat(data1).isNotEqualTo(data2);
     }
 
     @Test

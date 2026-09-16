@@ -63,6 +63,7 @@ import java.util.stream.Collectors;
  * * @param weatherEvents List of weather events (beginning/ending times)
  * * @param thunderstormLocations List of thunderstorm/cloud locations
  * * @param pressureTendency 3-hour pressure tendency
+ * * @param pressureRapidChange Pressure Rapid Change falling or rising
  * * @param secondaryAltimeter Secondary altimeter reading
  * * @param sixHourMaxTemperature 6-hour maximum temperature
  * * @param sixHourMinTemperature 6-hour minimum temperature
@@ -100,6 +101,7 @@ public record NoaaMetarRemarks(
         List<WeatherEvent> weatherEvents,
         List<ThunderstormLocation> thunderstormLocations,
         PressureTendency pressureTendency,
+        PressureRapidChange pressureRapidChange,
         Pressure secondaryAltimeter,
         Temperature sixHourMaxTemperature,
         Temperature sixHourMinTemperature,
@@ -133,9 +135,9 @@ public record NoaaMetarRemarks(
      */
     public static NoaaMetarRemarks empty() {
         return new NoaaMetarRemarks(null, null, null, null,
-                null, null, List.of(), null,null, null, null,
+                null, null, List.of(), null, null, null, null,
                 List.of(), List.of(), null, null, null, null, null,
-                null, null, List.of(), List.of(), null,
+                null, null, List.of(), List.of(), null, null,
                 null, null, null, null,
                 null, null, List.of(), null, null);
     }
@@ -169,6 +171,7 @@ public record NoaaMetarRemarks(
                 && (weatherEvents == null || weatherEvents.isEmpty())
                 && (thunderstormLocations == null || thunderstormLocations.isEmpty())
                 && pressureTendency == null
+                && pressureRapidChange == null
                 && secondaryAltimeter == null
                 && sixHourMaxTemperature == null
                 && sixHourMinTemperature == null
@@ -227,6 +230,7 @@ public record NoaaMetarRemarks(
         private List<WeatherEvent> weatherEvents = new ArrayList<>();
         private List<ThunderstormLocation> thunderstormLocations = new ArrayList<>();
         private PressureTendency pressureTendency;
+        private PressureRapidChange pressureRapidChange;
         private Pressure secondaryAltimeter;
         private Temperature sixHourMaxTemperature;
         private Temperature sixHourMinTemperature;
@@ -627,6 +631,17 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Set pressure rising or falling rapidly (PRESRR/PRESFR).
+         *
+         * @param pressureRapidChange the pressure rapid-change indicator
+         * @return this builder
+         */
+        public Builder pressureRapidChange(PressureRapidChange pressureRapidChange) {
+            this.pressureRapidChange = pressureRapidChange;
+            return this;
+        }
+
+        /**
          * Sets the secondary altimeter setting repeated inside the remarks section.
          * Common in Philippines/Taiwan-region METARs as a redundant confirmation
          * of the main body's altimeter reading, in US-style inches of mercury.
@@ -760,6 +775,7 @@ public record NoaaMetarRemarks(
                     List.copyOf(weatherEvents),
                     List.copyOf(thunderstormLocations),
                     pressureTendency,
+                    pressureRapidChange,
                     secondaryAltimeter,
                     sixHourMaxTemperature,
                     sixHourMinTemperature,
@@ -826,6 +842,7 @@ public record NoaaMetarRemarks(
                     .collect(Collectors.joining("; ")));
         }
         addIfPresent(parts, pressureTendency, "pressureTendency", PressureTendency::getSummary);
+        addIfPresent(parts, pressureRapidChange, "pressureRapidChange", PressureRapidChange::getSummary);
         addIfPresent(parts, secondaryAltimeter, "secondaryAltimeter", Pressure::getFormattedValue);
         addIfPresent(parts, sixHourMaxTemperature, "sixHourMaxTemp",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));

@@ -57,6 +57,11 @@ public class NoaaMetarData extends NoaaWeatherData {
     private WindShift windShift;
 
     /**
+     * Pressure rising or falling rapidly indicator from remarks (PRESRR/PRESFR)
+     */
+    private PressureRapidChange pressureRapidChange;
+
+    /**
      * Automated station indicator (AO1, AO2)
      */
     private String automatedStation;
@@ -139,6 +144,14 @@ public class NoaaMetarData extends NoaaWeatherData {
 
     public void setWindShift(WindShift windShift) {
         this.windShift = windShift;
+    }
+
+    public PressureRapidChange getPressureRapidChange() {
+        return pressureRapidChange;
+    }
+
+    public void setPressureRapidChange(PressureRapidChange pressureRapidChange) {
+        this.pressureRapidChange = pressureRapidChange;
     }
 
     public String getAutomatedStation() {
@@ -340,6 +353,7 @@ public class NoaaMetarData extends NoaaWeatherData {
         return noSignificantChange == that.noSignificantChange &&
                 Objects.equals(peakWind, that.peakWind) &&
                 Objects.equals(windShift, that.windShift) &&
+                Objects.equals(pressureRapidChange, that.pressureRapidChange) &&
                 Objects.equals(automatedStation, that.automatedStation) &&
                 Objects.equals(seaLevelPressure, that.seaLevelPressure) &&
                 Objects.equals(hourlyPrecipitation, that.hourlyPrecipitation) &&
@@ -356,6 +370,7 @@ public class NoaaMetarData extends NoaaWeatherData {
                 super.hashCode(),
                 peakWind,
                 windShift,
+                pressureRapidChange,
                 automatedStation,
                 seaLevelPressure,
                 hourlyPrecipitation,
