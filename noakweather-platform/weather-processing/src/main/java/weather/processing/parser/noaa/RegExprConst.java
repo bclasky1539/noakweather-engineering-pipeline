@@ -309,7 +309,8 @@ public final class RegExprConst {
      * Pressure Rising or Falling Rapidly (PRESRR or PRESFR)
      */
     public static final Pattern PRES_RF_RAPDLY_PATTERN = Pattern.compile(
-            "^PRES(?<presrisfal>\\w)\\w\\s+"
+            "^PRES(?<presrisfal>\\w)\\w(?=\\s|$)"
+
     );
 
     /**

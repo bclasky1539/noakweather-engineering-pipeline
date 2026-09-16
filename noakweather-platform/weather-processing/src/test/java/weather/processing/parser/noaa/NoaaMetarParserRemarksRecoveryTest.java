@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
+import weather.model.components.remark.PressureRapidChange;
 import weather.processing.parser.common.ParseResult;
 
 import java.util.function.Consumer;
@@ -123,8 +124,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                 // add after one supervised run confirms exact freeText per case.
                 // Each still needs a case; several will also surface additional
                 // unwired-pattern findings (ICG confirmed via KCLT; watch for
-                // PRESFR, VSBY NE QUAD, F#/S# shorthand, and the UP-prefixed
-                // chained weather-event group in KARB).
+                // VSBY NE QUAD, F#/S# shorthand, and the UP-prefixed chained
+                // weather-event group in KARB).
 
                 arguments("KCLT-multipleGapsSurviveToMaintenanceAndTemp",
                         "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
@@ -252,14 +253,18 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
 
-                arguments("KBUF2016-PRESFRDoesNotBlockDownstream",
+                arguments("KBUF2016-PRESFRNowParsesCorrectly",
                         "2016/12/11 20:54 KBUF 112054Z 14007KT 1 3/4SM -SN BR OVC028 M03/M06 A3016 " +
                                 "RMK A02 PRESFR SLP225 P0000 60003 T10331056 58033 $",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().freeText()).isEqualTo("PRESFR");
+                            assertThat(data.getRemarks().freeText())
+                                    .as("PRESFR now has a dedicated handler and should no longer appear in freeText")
+                                    .isNull();
+                            assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1022.5);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(-3.3);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(-5.6);
+                            assertThat(data.getRemarks().sixHourPrecipitation()).isNotNull();
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
 
@@ -313,13 +318,14 @@ class NoaaMetarParserRemarksRecoveryTest {
         // mvn test -pl noakweather-platform/weather-processing -am -Dtest=NoaaMetarParserRemarksRecoveryTest#printRemarksParsingDiagnostics -Dsurefire.failIfNoSpecifiedTests=false
         // then check noakweather-platform/logs/noakweather.log for output.
         String[] raws = {
-                "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 PK WND 33035/1142 ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
+                "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 PK WND 33035/1142 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
         };
 
         for (String raw : raws) {
             NoaaMetarData data = parse(raw);
             LOGGER.info("=== {} ===", truncate(raw));
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
+            LOGGER.info("  pressureRapidChange: {}", data.getPressureRapidChange());
             LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");

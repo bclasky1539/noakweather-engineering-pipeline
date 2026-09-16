@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.6-SNAPSHOT - September 15, 2026
+
+#### Pressure Rising/Falling Rapidly (PRESRR/PRESFR) Support
+
+**Added:**
+- **`weather-common` / `PressureRapidChange.java`** (new enum,
+  `weather.model.components.remark`): represents the PRESRR/PRESFR remark
+  — pressure rising or falling rapidly. Binary indicator with no
+  associated magnitude, distinct from `PressureTendency` (which carries a
+  coded rate and change amount). `fromCode(String)`/`of(String)` parse
+  the single-letter code (`R`/`F`), rejecting `null` and any other value
+  with `IllegalArgumentException`; `getSummary()` returns a human-readable
+  description ("Rising rapidly"/"Falling rapidly")
+- **`weather-common` / `NoaaMetarRemarks.java`**: added `pressureRapidChange`
+  field (record component, builder setter, `toString()` entry) following
+  the same direct-copy pattern as `pressureTendency`/`secondaryAltimeter`
+- **`weather-common` / `NoaaMetarData.java`**: added top-level
+  `pressureRapidChange` field/getter/setter, mirroring `peakWind`/`windShift`;
+  included in `equals()`/`hashCode()`
+- **`weather-processing` / `NoaaMetarParser.java`**: added
+  `handlePressureRapidChangeSequential`, wired into `runRemarkHandlerPasses`
+  immediately after `handlePressureTendencySequential`; `copyRemarksToTopLevel()`
+  copies the parsed value onto `NoaaMetarData`
+
+**Fixed:**
+- **`weather-processing` / `RegExprConst.java`**: relaxed
+  `PRES_RF_RAPDLY_PATTERN`'s trailing-whitespace requirement (`\s+` →
+  `(?=\s|$)`) so `PRESFR`/`PRESRR` still matches when it is the last token
+  in the remarks string, consistent with the same fix already applied to
+  other single-token remark patterns
+
+**Verified:**
+- Confirmed via both `NoaaMetarParserTest` (parameterized cases, real-world
+  KORD and CYYZ records) and `NoaaMetarParserRemarksRecoveryTest`'s
+  `printRemarksParsingDiagnostics` diagnostic tool, run directly against
+  live 2026-09-15 UAT data: PRESFR/PRESRR now parses correctly with zero
+  regression on downstream remarks (SLP, precise temperature, cloud types,
+  maintenance indicator) that were previously confirmed unaffected by the
+  remarks-recovery fix (#74)
+- Updated `NoaaMetarParserRemarksRecoveryTest`'s KBUF2016 case, which
+  previously asserted `PRESFR` fell into `freeText` (correct prior to this
+  fix); now asserts `pressureRapidChange` parses and `freeText` is clear
+
 ### Version 1.19.5-SNAPSHOT - September 14, 2026
 
 #### Remarks Parsing Recovery Fix

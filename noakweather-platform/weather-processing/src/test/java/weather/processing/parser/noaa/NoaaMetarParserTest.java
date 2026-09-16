@@ -6276,6 +6276,248 @@ class NoaaMetarParserTest {
                 .isNull();
     }
 
+    // ========== PRESSURE RAPID CHANGE (PRESRR/PRESFR) PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KORD 151551Z 16009KT 7SM -RA FEW045 SCT075 OVC095 20/18 A3002 RMK AO2 RAB12 PRESFR SLP163 P0006 T02000178 $', FALLING, 'PRESFR - falling rapidly (KORD real-world)'",
+            "'METAR CYYZ 151500Z 14008KT 15SM OVC090 18/14 A3020 RMK AC8 PRESFR SLP228 DENSITY ALT 800FT', FALLING, 'PRESFR - falling rapidly (CYYZ real-world)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESRR', RISING, 'PRESRR - rising rapidly'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESFR', FALLING, 'PRESFR - falling rapidly'"
+    })
+    @DisplayName("Should parse pressure rising/falling rapidly (PRESRR/PRESFR)")
+    void testParsePressureRapidChange(String metar, PressureRapidChange expected, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks())
+                .as("Remarks should not be null: %s", scenario)
+                .isNotNull();
+
+        assertThat(data.getRemarks().pressureRapidChange())
+                .as("Pressure rapid change mismatch: %s", scenario)
+                .isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("Should parse PRESFR without blocking downstream remarks - KORD real-world")
+    void testParsePressureRapidChange_DoesNotBlockDownstream_KORD() {
+        String metar = "METAR KORD 151551Z 16009KT 7SM -RA FEW045 SCT075 OVC095 20/18 A3002 " +
+                "RMK AO2 RAB12 PRESFR SLP163 P0006 T02000178 $";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // Confirms the remarks-recovery fix: PRESFR (unrecognized before the fix)
+        // does not block SLP163, P0006, T02000178, or $ from parsing correctly
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1016.3, within(0.1));
+        assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().hourlyPrecipitation().inches()).isEqualTo(0.06, within(0.01));
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(20.0, within(0.1));
+        assertThat(data.getRemarks().maintenanceRequired()).isTrue();
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse PRESFR without blocking downstream remarks - CYYZ real-world")
+    void testParsePressureRapidChange_DoesNotBlockDownstream_CYYZ() {
+        String metar = "METAR CYYZ 151500Z 14008KT 15SM OVC090 18/14 A3020 " +
+                "RMK AC8 PRESFR SLP228 DENSITY ALT 800FT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1022.8, within(0.1));
+        assertThat(data.getRemarks().densityAltitudeFeet()).isEqualTo(800);
+        assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+        assertThat(data.getRemarks().cloudTypes().get(0).cloudType()).isEqualTo("AC");
+        assertThat(data.getRemarks().cloudTypes().get(0).oktas()).isEqualTo(8);
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse pressure rapid change with other remarks")
+    void testParsePressureRapidChange_WithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 PRESRR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.RISING);
+    }
+
+    @Test
+    @DisplayName("Should parse pressure rapid change in mixed remark order")
+    void testParsePressureRapidChange_MixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESFR AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // All should be parsed regardless of order
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should parse pressure rapid change at end of remarks")
+    void testParsePressureRapidChange_AtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 PRESRR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.RISING);
+    }
+
+    @Test
+    @DisplayName("Should parse pressure rapid change without other remarks")
+    void testParsePressureRapidChange_Alone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESFR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+
+        // Other remark fields should be null
+        assertThat(data.getRemarks().automatedStationType()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210', 'No pressure rapid change'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK', 'Empty remarks'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015', 'No RMK section'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESXX', 'Invalid rise/fall code'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRES', 'Missing rise/fall code entirely'"
+    })
+    @DisplayName("Should handle missing or invalid pressure rapid change")
+    void testParsePressureRapidChange_MissingOrInvalid(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().pressureRapidChange())
+                    .as("Pressure rapid change should be null: %s", scenario)
+                    .isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("Should use PressureRapidChange query/summary methods")
+    void testParsePressureRapidChange_QueryMethods() {
+        String risingMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESRR";
+        PressureRapidChange rising = extractMetarData(parser.parse(risingMetar))
+                .getRemarks().pressureRapidChange();
+        assertThat(rising).isEqualTo(PressureRapidChange.RISING);
+        assertThat(rising.getSummary()).isEqualTo("Rising rapidly");
+
+        String fallingMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESFR";
+        PressureRapidChange falling = extractMetarData(parser.parse(fallingMetar))
+                .getRemarks().pressureRapidChange();
+        assertThat(falling).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(falling.getSummary()).isEqualTo("Falling rapidly");
+    }
+
+    @Test
+    @DisplayName("Should copy pressure rapid change to top-level NoaaMetarData field")
+    void testParsePressureRapidChange_CopiedToTopLevel() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESFR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // copyRemarksToTopLevel() should mirror remarks.pressureRapidChange()
+        // onto the top-level NoaaMetarData field
+        assertThat(data.getPressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(data.getPressureRapidChange()).isEqualTo(data.getRemarks().pressureRapidChange());
+    }
+
+    @Test
+    @DisplayName("Should parse real-world METAR with PRESFR and complete remarks suite")
+    void testParsePressureRapidChange_CompleteRemarksSuite() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 PK WND 28032/1530 WSHFT 1545 FROPA " +
+                "P0015 60025 70125 GR 1 3/4 RAB15E30 TS SE 57035 PRESFR RVRNO PWINO $";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+
+        // Basic remarks
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+
+        // Wind-related
+        assertThat(data.getRemarks().peakWind()).isNotNull();
+        assertThat(data.getRemarks().windShift()).isNotNull();
+
+        // Precipitation
+        assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().sixHourPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourPrecipitation()).isNotNull();
+
+        // Weather phenomena
+        assertThat(data.getRemarks().hailSize()).isNotNull();
+        assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
+        assertThat(data.getRemarks().thunderstormLocations()).isNotEmpty();
+
+        // Pressure tendency
+        assertThat(data.getRemarks().pressureTendency()).isNotNull();
+
+        // **Pressure rapid change** - the NEW component
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+
+        // Automated maintenance
+        assertThat(data.getRemarks().automatedMaintenanceIndicators()).hasSize(3);
+        assertThat(data.getRemarks().maintenanceRequired()).isTrue();
+    }
+
     // ========== SECONDARY ALTIMETER PARSING TESTS ==========
 
     @ParameterizedTest
