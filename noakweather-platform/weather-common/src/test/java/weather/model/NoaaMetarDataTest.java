@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import weather.model.components.*;
+import weather.model.components.remark.Icing;
 import weather.model.components.remark.PeakWind;
 import weather.model.components.remark.PressureRapidChange;
 import weather.model.components.remark.WindShift;
@@ -216,6 +217,31 @@ class NoaaMetarDataTest {
 
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
         data2.setPressureRapidChange(PressureRapidChange.of("F"));
+
+        assertThat(data1).isNotEqualTo(data2);
+    }
+
+    @Test
+    @DisplayName("Should set and get icing")
+    void testSetAndGetIcing() {
+        NoaaMetarData data = new NoaaMetarData();
+        Icing icing = Icing.of(true, false, "PAST HR");
+
+        data.setIcing(icing);
+
+        assertThat(data.getIcing()).isEqualTo(icing);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when icing differs")
+    void testEquals_DifferentIcing() {
+        Instant now = Instant.now();
+
+        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
+        data1.setIcing(Icing.of(true, false, "PAST HR"));
+
+        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
+        data2.setIcing(Icing.of(false, true, "PAST HR"));
 
         assertThat(data1).isNotEqualTo(data2);
     }

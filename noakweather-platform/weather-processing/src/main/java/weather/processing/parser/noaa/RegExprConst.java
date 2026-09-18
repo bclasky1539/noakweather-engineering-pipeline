@@ -319,7 +319,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for icing format
     public static final Pattern ICING_PATTERN = Pattern.compile(
-            "^(?<type>ICG)((?<typeic>IC)?(?<typeip>IP)?)\\s(?<extra>\\w{4}\\s\\w{2})\\s+"
+            "^(?<type>ICG)((?<typeic>IC)?(?<typeip>IP)?)\\s(?<extra>\\w{4}\\s\\w{2})(?=\\s|$)"
     );
 
     /**

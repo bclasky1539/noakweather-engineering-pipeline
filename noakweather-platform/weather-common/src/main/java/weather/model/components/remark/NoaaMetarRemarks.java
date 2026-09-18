@@ -64,6 +64,7 @@ import java.util.stream.Collectors;
  * * @param thunderstormLocations List of thunderstorm/cloud locations
  * * @param pressureTendency 3-hour pressure tendency
  * * @param pressureRapidChange Pressure Rapid Change falling or rising
+ * * @param icing Icing information
  * * @param secondaryAltimeter Secondary altimeter reading
  * * @param sixHourMaxTemperature 6-hour maximum temperature
  * * @param sixHourMinTemperature 6-hour minimum temperature
@@ -102,6 +103,7 @@ public record NoaaMetarRemarks(
         List<ThunderstormLocation> thunderstormLocations,
         PressureTendency pressureTendency,
         PressureRapidChange pressureRapidChange,
+        Icing icing,
         Pressure secondaryAltimeter,
         Temperature sixHourMaxTemperature,
         Temperature sixHourMinTemperature,
@@ -138,7 +140,7 @@ public record NoaaMetarRemarks(
                 null, null, List.of(), null, null, null, null,
                 List.of(), List.of(), null, null, null, null, null,
                 null, null, List.of(), List.of(), null, null,
-                null, null, null, null,
+                null, null,null, null, null,
                 null, null, List.of(), null, null);
     }
 
@@ -172,6 +174,7 @@ public record NoaaMetarRemarks(
                 && (thunderstormLocations == null || thunderstormLocations.isEmpty())
                 && pressureTendency == null
                 && pressureRapidChange == null
+                && icing == null
                 && secondaryAltimeter == null
                 && sixHourMaxTemperature == null
                 && sixHourMinTemperature == null
@@ -231,6 +234,7 @@ public record NoaaMetarRemarks(
         private List<ThunderstormLocation> thunderstormLocations = new ArrayList<>();
         private PressureTendency pressureTendency;
         private PressureRapidChange pressureRapidChange;
+        private Icing icing;
         private Pressure secondaryAltimeter;
         private Temperature sixHourMaxTemperature;
         private Temperature sixHourMinTemperature;
@@ -642,6 +646,17 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Set icing (ICG) remark.
+         *
+         * @param icing the icing remark
+         * @return this builder
+         */
+        public Builder icing(Icing icing) {
+            this.icing = icing;
+            return this;
+        }
+
+        /**
          * Sets the secondary altimeter setting repeated inside the remarks section.
          * Common in Philippines/Taiwan-region METARs as a redundant confirmation
          * of the main body's altimeter reading, in US-style inches of mercury.
@@ -776,6 +791,7 @@ public record NoaaMetarRemarks(
                     List.copyOf(thunderstormLocations),
                     pressureTendency,
                     pressureRapidChange,
+                    icing,
                     secondaryAltimeter,
                     sixHourMaxTemperature,
                     sixHourMinTemperature,
@@ -843,6 +859,7 @@ public record NoaaMetarRemarks(
         }
         addIfPresent(parts, pressureTendency, "pressureTendency", PressureTendency::getSummary);
         addIfPresent(parts, pressureRapidChange, "pressureRapidChange", PressureRapidChange::getSummary);
+        addIfPresent(parts, icing, "icing", Icing::getSummary);
         addIfPresent(parts, secondaryAltimeter, "secondaryAltimeter", Pressure::getFormattedValue);
         addIfPresent(parts, sixHourMaxTemperature, "sixHourMaxTemp",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));

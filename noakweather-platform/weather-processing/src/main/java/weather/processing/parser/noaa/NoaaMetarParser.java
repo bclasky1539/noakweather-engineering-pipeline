@@ -918,6 +918,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleWeatherEventsSequential(remaining, remarksBuilder);
             remaining = handlePressureTendencySequential(remaining, remarksBuilder);
             remaining = handlePressureRapidChangeSequential(remaining, remarksBuilder);
+            remaining = handleIcingSequential(remaining, remarksBuilder);
             remaining = handle6HourMaxMinTemperatureSequential(remaining, remarksBuilder);
             remaining = handle24HourMaxMinTemperatureSequential(remaining, remarksBuilder);
             remaining = handleDensityAltitudeSequential(remaining, remarksBuilder);
@@ -995,6 +996,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         // Copy pressure rapid change (PressureRapidChange type matches - direct copy)
         if (remarks.pressureRapidChange() != null) {
             weatherData.setPressureRapidChange(remarks.pressureRapidChange());
+        }
+
+        // Copy icing (Icing type matches - direct copy)
+        if (remarks.icing() != null) {
+            weatherData.setIcing(remarks.icing());
         }
 
         // Copy wind shift (WindShift type matches - direct copy)
@@ -2443,6 +2449,49 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 }
             } catch (IllegalArgumentException e) {
                 LOGGER.warn("Invalid pressure rapid change in remarks: {}", matcher.group(0), e);
+            }
+
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Handle icing remark (ICG).
+     * <p>
+     * Format: ICG optionally followed by IC (icing in clouds) and/or IP
+     * (icing in precipitation), then a free-form qualifier.
+     * <p>
+     * Example:
+     * - ICG PAST HR → icing, qualifier "PAST HR"
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleIcingSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = ICING_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            try {
+                boolean inClouds = matcher.group("typeic") != null;
+                boolean inPrecipitation = matcher.group("typeip") != null;
+                String qualifier = matcher.group("extra");
+
+                Icing icing = new Icing(inClouds, inPrecipitation, qualifier);
+                remarks.icing(icing);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Icing: {}", icing.getSummary());
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid icing remark: {}", matcher.group(0), e);
             }
 
             remaining = remaining.substring(matcher.end()).trim();

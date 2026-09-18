@@ -1,6 +1,6 @@
 # NoakWeather Engineering Pipeline
 
-A multi-source weather data engineering platform built on Lambda Architecture principles, designed to collect, process, store, and analyze aviation weather data from multiple sources including NOAA, AWS, and potentially other providers.
+A multi-source weather data engineering platform built on Lambda Architecture principles, designed to collect, process, store, and analyze aviation weather data from multiple sources including NOAA and potentially other providers.
 
 ## Build Status
 

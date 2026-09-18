@@ -6518,6 +6518,184 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().maintenanceRequired()).isTrue();
     }
 
+    // ========== ICING (ICG) PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG PAST HR', false, false, 'PAST HR', 'Bare ICG with qualifier'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICGIC PAST HR', true, false, 'PAST HR', 'ICG in clouds'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICGIP PAST HR', false, true, 'PAST HR', 'ICG in precipitation'",
+            "'METAR KCLT 052204Z 18010KT 10SM A2989 RMK AO2 ICG PAST HR', false, false, 'PAST HR', 'KCLT real-world'"
+    })
+    @DisplayName("Should parse icing (ICG) remark")
+    void testParseIcing(String metar, boolean expectedInClouds, boolean expectedInPrecipitation,
+                        String expectedQualifier, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks())
+                .as("Remarks should not be null: %s", scenario)
+                .isNotNull();
+
+        assertThat(data.getRemarks().icing())
+                .as("Icing should not be null: %s", scenario)
+                .isNotNull();
+
+        Icing icing = data.getRemarks().icing();
+        assertThat(icing.inClouds()).as("inClouds mismatch: %s", scenario).isEqualTo(expectedInClouds);
+        assertThat(icing.inPrecipitation()).as("inPrecipitation mismatch: %s", scenario).isEqualTo(expectedInPrecipitation);
+        assertThat(icing.qualifier()).as("qualifier mismatch: %s", scenario).isEqualTo(expectedQualifier);
+    }
+
+    @Test
+    @DisplayName("Should parse ICG without blocking downstream remarks - KCLT real-world")
+    void testParseIcing_DoesNotBlockDownstream_KCLT() {
+        String metar = "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
+                "RMK AO2 ICG PAST HR PRESRR SLP210 T02780206 $";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // Confirms ICG (previously unrecognized) no longer blocks downstream
+        // remarks from parsing correctly
+        assertThat(data.getRemarks().icing()).isNotNull();
+        assertThat(data.getRemarks().icing().qualifier()).isEqualTo("PAST HR");
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.RISING);
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8, within(0.1));
+        assertThat(data.getRemarks().maintenanceRequired()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should parse icing with other remarks")
+    void testParseIcing_WithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 ICG PAST HR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+
+        assertThat(data.getRemarks().icing()).isNotNull();
+        assertThat(data.getRemarks().icing().qualifier()).isEqualTo("PAST HR");
+    }
+
+    @Test
+    @DisplayName("Should parse icing in mixed remark order")
+    void testParseIcing_MixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG PAST HR AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().icing()).isNotNull();
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should parse icing at end of remarks")
+    void testParseIcing_AtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 ICG PAST HR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().icing()).isNotNull();
+        assertThat(data.getRemarks().icing().qualifier()).isEqualTo("PAST HR");
+    }
+
+    @Test
+    @DisplayName("Should parse icing without other remarks")
+    void testParseIcing_Alone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG PAST HR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().icing()).isNotNull();
+
+        assertThat(data.getRemarks().automatedStationType()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210', 'No icing remark'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK', 'Empty remarks'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015', 'No RMK section'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG', 'Missing required qualifier'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG PST HR', 'Qualifier first word not 4 chars'"
+    })
+    @DisplayName("Should handle missing or invalid icing remark")
+    void testParseIcing_MissingOrInvalid(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().icing())
+                    .as("Icing should be null: %s", scenario)
+                    .isNull();
+        }
+    }
+
+    @Test
+    @DisplayName("Should use Icing query/summary methods")
+    void testParseIcing_QueryMethods() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICGIC PAST HR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        Icing icing = data.getRemarks().icing();
+        assertThat(icing).isNotNull();
+        assertThat(icing.inClouds()).isTrue();
+        assertThat(icing.hasQualifier()).isTrue();
+        assertThat(icing.getSummary()).isEqualTo("Icing in clouds (PAST HR)");
+    }
+
+    @Test
+    @DisplayName("Should copy icing to top-level NoaaMetarData field")
+    void testParseIcing_CopiedToTopLevel() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG PAST HR";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getIcing()).isEqualTo(data.getRemarks().icing());
+        assertThat(data.getIcing().qualifier()).isEqualTo("PAST HR");
+    }
+
     // ========== SECONDARY ALTIMETER PARSING TESTS ==========
 
     @ParameterizedTest

@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.7-SNAPSHOT - September 17, 2026
+
+#### Icing (ICG) Support
+
+**Added:**
+- **`weather-common` / `Icing.java`** (new record, `weather.model.components.remark`):
+  represents the ICG remark — icing observed, optionally qualified as in
+  clouds (`IC`) and/or in precipitation (`IP`), with a free-form qualifier .
+  `of(...)` factory method matches the project's established convention
+  (`PressureTendency.of`, `CloudType.of`, etc.); `getSummary()` gives a human-readable
+  description ("Icing in clouds (PAST HR)"); `hasQualifier()` for presence checks
+- **`weather-common` / `NoaaMetarRemarks.java`**: added `icing` field
+  (record component, builder setter, `toString()` entry), following the
+  same pattern as `pressureRapidChange`
+- **`weather-common` / `NoaaMetarData.java`**: added top-level `icing`
+  field/getter/setter, mirroring `pressureRapidChange`/`peakWind`/`windShift`;
+  included in `equals()`/`hashCode()` (left out of `toString()`, consistent
+  with the same fields)
+- **`weather-processing` / `NoaaMetarParser.java`**: added
+  `handleIcingSequential`, wired into `runRemarkHandlerPasses`;
+  `copyRemarksToTopLevel()` copies the parsed value onto `NoaaMetarData`
+
+**Fixed:**
+- **`weather-processing` / `RegExprConst.java`**: relaxed `ICING_PATTERN`'s
+  trailing-whitespace requirement (`\s+` → `(?=\s|$)`), same class of fix
+  already applied to `PRES_RF_RAPDLY_PATTERN` (#74), so `ICG ...` still
+  matches when it's the last content in the remarks string
+
+**Verified:**
+- Confirmed via `NoaaMetarParserTest` (parameterized cases, real-world
+  KCLT record) and `printRemarksParsingDiagnostics`, run directly against
+  the live KCLT record that originally surfaced this issue: `ICG PAST HR`
+  now parses correctly (`inClouds=false, inPrecipitation=false,
+  qualifier=PAST HR`), coexisting cleanly with the still-open LTG/TS/CB/TCU
+  gaps in the same remark — `freeText` now holds only the genuinely
+  unrecognized tokens
+- Updated `NoaaMetarParserRemarksRecoveryTest`'s KCLT case to reflect the
+  now-shorter `freeText` and assert the parsed `icing` value
+
+**New Issue Opened:**
+- `RegExprConstTest.java` — many established regex patterns (`CLOUD_OKTA_PATTERN`,
+  `TS_CLD_LOC_PATTERN`, `WIND_AT_LOCATION_PATTERN`, and others) lack direct
+  match-level tests, relying only on parser-level integration coverage.
+  Noticed while adding direct tests for `PRES_RF_RAPDLY_PATTERN` and
+  `ICING_PATTERN`. Low-priority cleanup task, not blocking.
+
+**Note:** `ICING_PATTERN` requires a qualifier — bare `ICG` alone does not
+match. Confirmed intentional given the only observed real-world format
+includes one; revisit if a qualifier-less `ICG` is ever observed in UAT.
+
 ### Version 1.19.6-SNAPSHOT - September 15, 2026
 
 #### Pressure Rising/Falling Rapidly (PRESRR/PRESFR) Support

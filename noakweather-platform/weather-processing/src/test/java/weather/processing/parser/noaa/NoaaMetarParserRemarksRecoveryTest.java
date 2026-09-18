@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
+import weather.model.components.remark.Icing;
 import weather.model.components.remark.PressureRapidChange;
 import weather.processing.parser.common.ParseResult;
 
@@ -126,13 +127,13 @@ class NoaaMetarParserRemarksRecoveryTest {
                 // unwired-pattern findings (ICG confirmed via KCLT; watch for
                 // VSBY NE QUAD, F#/S# shorthand, and the UP-prefixed chained
                 // weather-event group in KARB).
-
                 arguments("KCLT-multipleGapsSurviveToMaintenanceAndTemp",
                         "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
                                 "RMK AO2 ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .isEqualTo("ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E AND NW");
+                                    .isEqualTo("LTG DSNT NE-SE OCNL LTGICCC DSNT E AND NW");
+                            assertThat(data.getRemarks().icing()).isEqualTo(Icing.of(false, false, "PAST HR"));
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.6);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(3);
@@ -326,6 +327,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("=== {} ===", truncate(raw));
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
             LOGGER.info("  pressureRapidChange: {}", data.getPressureRapidChange());
+            LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
             LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");
