@@ -66,6 +66,11 @@ public class NoaaMetarData extends NoaaWeatherData {
     private PressureRapidChange pressureRapidChange;
 
     /**
+     * Icing information from remarks
+     */
+    private Icing icing;
+
+    /**
      * Automated station indicator (AO1, AO2)
      */
     private String automatedStation;
@@ -157,6 +162,10 @@ public class NoaaMetarData extends NoaaWeatherData {
     public void setPressureRapidChange(PressureRapidChange pressureRapidChange) {
         this.pressureRapidChange = pressureRapidChange;
     }
+
+    public Icing getIcing() { return icing; }
+
+    public void setIcing(Icing icing) { this.icing = icing; }
 
     public String getAutomatedStation() {
         return automatedStation;
@@ -362,6 +371,7 @@ public class NoaaMetarData extends NoaaWeatherData {
                 Objects.equals(peakWind, that.peakWind) &&
                 Objects.equals(windShift, that.windShift) &&
                 Objects.equals(pressureRapidChange, that.pressureRapidChange) &&
+                Objects.equals(icing, that.icing) &&
                 Objects.equals(automatedStation, that.automatedStation) &&
                 Objects.equals(seaLevelPressure, that.seaLevelPressure) &&
                 Objects.equals(hourlyPrecipitation, that.hourlyPrecipitation) &&
@@ -379,6 +389,7 @@ public class NoaaMetarData extends NoaaWeatherData {
                 peakWind,
                 windShift,
                 pressureRapidChange,
+                icing,
                 automatedStation,
                 seaLevelPressure,
                 hourlyPrecipitation,

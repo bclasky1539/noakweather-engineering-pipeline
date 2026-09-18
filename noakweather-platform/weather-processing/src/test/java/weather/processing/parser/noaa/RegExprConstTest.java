@@ -30,16 +30,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests for RegExprConst pattern compilation and basic matching behavior.
  * Validates that all regex patterns compile successfully and match expected inputs.
- * 
+ * <p>
  * Note: All patterns require trailing whitespace (\s+), so test inputs include spaces.
- * 
+ *
  * @author bclasky1539
  *
  */
 class RegExprConstTest {
-    
+
     // ========== CONSTRUCTOR TEST ==========
-    
+
     @Test
     void testConstructorThrowsException() {
         // Private constructor should throw UnsupportedOperationException
@@ -48,12 +48,12 @@ class RegExprConstTest {
             constructor.setAccessible(true);
             constructor.newInstance();
         })
-        .hasCauseInstanceOf(UnsupportedOperationException.class)
-        .hasStackTraceContaining("Utility class - do not instantiate");
+                .hasCauseInstanceOf(UnsupportedOperationException.class)
+                .hasStackTraceContaining("Utility class - do not instantiate");
     }
-    
+
     // ========== PATTERN COMPILATION TEST ==========
-    
+
     @Test
     void testAllPatternsCompile() {
         // If any pattern failed to compile, class loading would fail
@@ -63,127 +63,129 @@ class RegExprConstTest {
         assertThat(RegExprConst.TEMP_DEWPOINT_PATTERN).isNotNull();
         assertThat(RegExprConst.ALTIMETER_PATTERN).isNotNull();
         assertThat(RegExprConst.LIGHTNING_PATTERN).isNotNull();
+        assertThat(RegExprConst.PRES_RF_RAPDLY_PATTERN).isNotNull();
+        assertThat(RegExprConst.ICING_PATTERN).isNotNull();
     }
-    
+
     // ========== MAIN BODY PATTERNS ==========
-    
+
     @Test
     void testStationDayTimePattern() {
         String input = "KJFK 121851Z ";
         Matcher matcher = RegExprConst.STATION_DAY_TIME_VALTMPER_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("station")).isEqualTo("KJFK");
         assertThat(matcher.group("zday")).isEqualTo("12");
         assertThat(matcher.group("zhour")).isEqualTo("18");
         assertThat(matcher.group("zmin")).isEqualTo("51");
     }
-    
+
     @Test
     void testWindPattern() {
         String input = "28016KT ";
         Matcher matcher = RegExprConst.WIND_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("dir")).isEqualTo("280");
         assertThat(matcher.group("speed")).isEqualTo("16");
         assertThat(matcher.group("units")).isEqualTo("KT");
     }
-    
+
     @Test
     void testWindPattern_WithGusts() {
         String input = "18016G28KT ";
         Matcher matcher = RegExprConst.WIND_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("dir")).isEqualTo("180");
         assertThat(matcher.group("speed")).isEqualTo("16");
         assertThat(matcher.group("gust")).isEqualTo("28");
     }
-    
+
     @ParameterizedTest
     @ValueSource(strings = {"10SM ", "1/2SM ", "9999 ", "CAVOK "})
     void testVisibilityPattern(String input) {
         Matcher matcher = RegExprConst.VISIBILITY_PATTERN.matcher(input);
         assertThat(matcher.find()).isTrue();
     }
-    
+
     @Test
     void testTempDewpointPattern() {
         String input = "22/12 ";
         Matcher matcher = RegExprConst.TEMP_DEWPOINT_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("temp")).isEqualTo("22");
         assertThat(matcher.group("dewpt")).isEqualTo("12");
     }
-    
+
     @Test
     void testTempDewpointPattern_Negative() {
         String input = "M05/M12 ";
         Matcher matcher = RegExprConst.TEMP_DEWPOINT_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("signt")).isEqualTo("M");
         assertThat(matcher.group("temp")).isEqualTo("05");
         assertThat(matcher.group("signd")).isEqualTo("M");
         assertThat(matcher.group("dewpt")).isEqualTo("12");
     }
-    
+
     @Test
     void testAltimeterPattern_InchesHg() {
         String input = "A3015 ";
         Matcher matcher = RegExprConst.ALTIMETER_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("unit")).isEqualTo("A");
         assertThat(matcher.group("press")).isEqualTo("3015");
     }
-    
+
     @Test
     void testAltimeterPattern_Hectopascals() {
         String input = "Q1013 ";
         Matcher matcher = RegExprConst.ALTIMETER_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("unit")).isEqualTo("Q");
         assertThat(matcher.group("press")).isEqualTo("1013");
     }
-    
+
     @Test
     void testSkyConditionPattern() {
         String input = "FEW250 ";
         Matcher matcher = RegExprConst.SKY_CONDITION_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cover")).isEqualTo("FEW");
         assertThat(matcher.group("height")).isEqualTo("250");
     }
-    
+
     @Test
     void testSkyConditionPattern_WithCloudType() {
         String input = "BKN050CB ";
         Matcher matcher = RegExprConst.SKY_CONDITION_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cover")).isEqualTo("BKN");
         assertThat(matcher.group("height")).isEqualTo("050");
         assertThat(matcher.group("cloud")).isEqualTo("CB");
     }
-    
+
     @ParameterizedTest
     @ValueSource(strings = {"-RA ", "+TSRA ", "VCFG ", "BR ", "SHRA "})
     void testPresentWeatherPattern(String input) {
         Matcher matcher = RegExprConst.PRESENT_WEATHER_PATTERN.matcher(input);
         assertThat(matcher.find()).isTrue();
     }
-    
+
     @Test
     void testRunwayPattern() {
         // Runway pattern is complex - let's use a simpler format
         String input = "R06/1200FT ";
         Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("name")).isEqualTo("06");
         assertThat(matcher.group("lvalue")).isEqualTo("1200");
@@ -264,55 +266,55 @@ class RegExprConstTest {
     }
 
     // ========== REMARKS PATTERNS ==========
-    
+
     @Test
     void testAutoPattern() {
         String input = "AO2 ";
         Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("2");
     }
-    
+
     @Test
     void testSeaLevelPressurePattern() {
         String input = "SLP210 ";
         Matcher matcher = RegExprConst.SEALVL_PRESS_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("SLP");
         assertThat(matcher.group("press")).isEqualTo("210");
     }
-    
+
     @Test
     void testPeakWindPattern() {
         String input = "PK WND 28032/1530 ";
         Matcher matcher = RegExprConst.PEAK_WIND_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("dir")).isEqualTo("280");
         assertThat(matcher.group("speed")).isEqualTo("32");
         assertThat(matcher.group("hour")).isEqualTo("15");
         assertThat(matcher.group("min")).isEqualTo("30");
     }
-    
+
     @Test
     void testWindShiftPattern() {
         String input = "WSHFT 1530 ";
         Matcher matcher = RegExprConst.WIND_SHIFT_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("hour")).isEqualTo("15");
         assertThat(matcher.group("min")).isEqualTo("30");
     }
-    
+
     @Test
     void testTemp1HourPattern() {
         // Temperature pattern: T + sign + 3 digits + (sign + 3 digits for dewpoint)
         // Format: T[0|1]TTT[0|1]DDD where T=temp, D=dewpoint
         String input = "T00031139 ";  // Temp 3.0°C, Dewpoint -13.9°C
         Matcher matcher = RegExprConst.TEMP_1HR_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("T");
         assertThat(matcher.group("tsign")).isEqualTo("0");
@@ -320,33 +322,33 @@ class RegExprConstTest {
         assertThat(matcher.group("dsign")).isEqualTo("1");
         assertThat(matcher.group("dewpt")).isEqualTo("139");
     }
-    
+
     @Test
     void testPrecip1HourPattern() {
         String input = "P0015 ";
         Matcher matcher = RegExprConst.PRECIP_1HR_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("P");
         assertThat(matcher.group("precip")).isEqualTo("0015");
     }
-    
+
     @Test
     void testTemp6HourMaxMinPattern() {
         String input = "10142 ";
         Matcher matcher = RegExprConst.TEMP_6HR_MAX_MIN_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("1");
         assertThat(matcher.group("sign")).isEqualTo("0");
         assertThat(matcher.group("temp")).isEqualTo("142");
     }
-    
+
     @Test
     void testPressure3HourPattern() {
         String input = "52032 ";
         Matcher matcher = RegExprConst.PRESS_3HR_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("5");
         assertThat(matcher.group("tend")).isEqualTo("2");
@@ -617,32 +619,119 @@ class RegExprConstTest {
     }
 
     // ========== REPORT MODIFIER TEST ==========
-    
+
     @ParameterizedTest
     @ValueSource(strings = {"AUTO ", "COR ", "AMD "})
     void testReportModifierPattern(String input) {
         Matcher matcher = RegExprConst.REPORT_MODIFIER_PATTERN.matcher(input);
         assertThat(matcher.find()).isTrue();
     }
-    
+
+    // ========== PRESSURE RAPID CHANGE PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'PRESRR ', R, 'Rising rapidly'",
+            "'PRESFR ', F, 'Falling rapidly'"
+    })
+    @DisplayName("PRES_RF_RAPDLY_PATTERN should match rising/falling codes")
+    void testPressureRapidChangePattern(String input, String expectedCode, String scenario) {
+        Matcher matcher = RegExprConst.PRES_RF_RAPDLY_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("presrisfal"))
+                .as("Code should match: %s", scenario)
+                .isEqualTo(expectedCode);
+    }
+
+    @Test
+    @DisplayName("PRES_RF_RAPDLY_PATTERN should match at end of string (no trailing space)")
+    void testPressureRapidChangePattern_AtEndOfString() {
+        String input = "PRESFR";
+        Matcher matcher = RegExprConst.PRES_RF_RAPDLY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("presrisfal")).isEqualTo("F");
+    }
+
+// ========== ICING PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("ICING_PATTERN should match bare ICG with qualifier")
+    void testIcingPattern_Bare() {
+        String input = "ICG PAST HR ";
+        Matcher matcher = RegExprConst.ICING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("ICG");
+        assertThat(matcher.group("typeic")).isNull();
+        assertThat(matcher.group("typeip")).isNull();
+        assertThat(matcher.group("extra")).isEqualTo("PAST HR");
+    }
+
+    @Test
+    @DisplayName("ICING_PATTERN should match ICG with IC (in clouds)")
+    void testIcingPattern_InClouds() {
+        String input = "ICGIC PAST HR ";
+        Matcher matcher = RegExprConst.ICING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typeic")).isEqualTo("IC");
+        assertThat(matcher.group("typeip")).isNull();
+        assertThat(matcher.group("extra")).isEqualTo("PAST HR");
+    }
+
+    @Test
+    @DisplayName("ICING_PATTERN should match ICG with IP (in precipitation)")
+    void testIcingPattern_InPrecipitation() {
+        String input = "ICGIP PAST HR ";
+        Matcher matcher = RegExprConst.ICING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typeic")).isNull();
+        assertThat(matcher.group("typeip")).isEqualTo("IP");
+        assertThat(matcher.group("extra")).isEqualTo("PAST HR");
+    }
+
+    @Test
+    @DisplayName("ICING_PATTERN should match at end of string (no trailing space)")
+    void testIcingPattern_AtEndOfString() {
+        String input = "ICG PAST HR";
+        Matcher matcher = RegExprConst.ICING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("extra")).isEqualTo("PAST HR");
+    }
+
+    @Test
+    @DisplayName("ICING_PATTERN should not match bare ICG without qualifier")
+    void testIcingPattern_DoesNotMatchWithoutQualifier() {
+        String input = "ICG ";
+        Matcher matcher = RegExprConst.ICING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
     // ========== NO SIGNIFICANT CHANGE TEST ==========
-    
+
     @Test
     void testNoSigChangePattern() {
         String input = "NOSIG ";
         Matcher matcher = RegExprConst.NO_SIG_CHANGE_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("nosigchng")).isEqualTo("NOSIG");
     }
-    
+
     // ========== UNPARSED PATTERN TEST ==========
-    
+
     @Test
     void testUnparsedPattern() {
         String input = "UNKNOWN_TOKEN ";
         Matcher matcher = RegExprConst.UNPARSED_PATTERN.matcher(input);
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("unparsed")).isEqualTo("UNKNOWN_TOKEN");
     }
