@@ -4876,7 +4876,7 @@ class NoaaMetarParserTest {
         assertTrue(hailSize.isSevere(), "Exactly 1.0 inch should be severe");
     }
 
-    // ========== WEATHER EVENTS PARSING TESTS ==========
+    // ========== WEATHER EVENT PARSING TESTS ==========
 
     @ParameterizedTest
     @CsvSource({
@@ -5419,6 +5419,127 @@ class NoaaMetarParserTest {
         WeatherEvent event3 = data.getRemarks().weatherEvents().get(2);
         assertThat(event3.weatherCode()).isEqualTo("TSRA");
         assertThat(event3.intensity()).isEqualTo("+");
+    }
+
+    // ========== IMPLIED-CONTINUATION WEATHER EVENT TESTS (chained begin/end without restated type) ==========
+
+    @Test
+    @DisplayName("Should parse implied-continuation segment as second event of same type - KMIA real-world")
+    void testParseWeatherEvents_ImpliedContinuation_KMIA() {
+        String metar = "METAR KMIA 112253Z 15005KT 10SM FEW023 SCT050 BKN100 BKN220 29/24 A2998 " +
+                "RMK AO2 TSE09B13E46 SLP151";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().weatherEvents())
+                .as("Should have 2 chained TS events - one explicit, one implied continuation")
+                .hasSize(2);
+
+        // First event: TS ended :09
+        WeatherEvent first = data.getRemarks().weatherEvents().get(0);
+        assertThat(first.weatherCode()).isEqualTo("TS");
+        assertThat(first.beginMinute()).isNull();
+        assertThat(first.endMinute()).isEqualTo(9);
+
+        // Second event: implied continuation (B13E46), carries forward TS
+        WeatherEvent second = data.getRemarks().weatherEvents().get(1);
+        assertThat(second.weatherCode()).isEqualTo("TS");
+        assertThat(second.beginMinute()).isEqualTo(13);
+        assertThat(second.endMinute()).isEqualTo(46);
+
+        // Confirms the recovery fix + this fix together: SLP151 parses despite
+        // the chain that used to break parsing right before it
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1015.1, within(0.1));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse three chained events with implied continuation and independently-typed segments - KARB real-world")
+    void testParseWeatherEvents_ImpliedContinuationAndExplicitChain_KARB() {
+        String metar = "METAR KARB 301153Z 35022G31KT 10SM -RA BKN017 BKN025 OVC039 02/M01 A2948 " +
+                "RMK AO2 UPE12B29E31RAB12SNB15E20 SLP987";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().weatherEvents())
+                .as("Should have 4 events: UP ended :12, UP (implied) begin:29 end:31, RA begin :12, SN begin:15 end:20")
+                .hasSize(4);
+
+        List<WeatherEvent> events = data.getRemarks().weatherEvents();
+
+        // Event 1: UP ended :12
+        assertThat(events.get(0).weatherCode()).isEqualTo("UP");
+        assertThat(events.get(0).beginMinute()).isNull();
+        assertThat(events.get(0).endMinute()).isEqualTo(12);
+
+        // Event 2: implied continuation (B29E31), carries forward UP
+        assertThat(events.get(1).weatherCode()).isEqualTo("UP");
+        assertThat(events.get(1).beginMinute()).isEqualTo(29);
+        assertThat(events.get(1).endMinute()).isEqualTo(31);
+
+        // Event 3: RA began :12 (own explicit type, resets the carried-forward code)
+        assertThat(events.get(2).weatherCode()).isEqualTo("RA");
+        assertThat(events.get(2).beginMinute()).isEqualTo(12);
+        assertThat(events.get(2).endMinute()).isNull();
+
+        // Event 4: SN began :15, ended :20 (own explicit type)
+        assertThat(events.get(3).weatherCode()).isEqualTo("SN");
+        assertThat(events.get(3).beginMinute()).isEqualTo(15);
+        assertThat(events.get(3).endMinute()).isEqualTo(20);
+
+        // Confirms everything after the chain still parses correctly
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(998.7, within(0.1));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should carry forward type across multiple consecutive implied-continuation segments")
+    void testParseWeatherEvents_MultipleConsecutiveImpliedContinuations() {
+        // RAB05E10B15E20B25E30 - RA begins/ends three times, only the first
+        // segment restates the type; the next two are bare continuations
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK RAB05E10B15E20B25E30";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().weatherEvents()).hasSize(3);
+
+        List<WeatherEvent> events = data.getRemarks().weatherEvents();
+        assertThat(events).allSatisfy(event -> assertThat(event.weatherCode()).isEqualTo("RA"));
+
+        assertThat(events.get(0).beginMinute()).isEqualTo(5);
+        assertThat(events.get(0).endMinute()).isEqualTo(10);
+        assertThat(events.get(1).beginMinute()).isEqualTo(15);
+        assertThat(events.get(1).endMinute()).isEqualTo(20);
+        assertThat(events.get(2).beginMinute()).isEqualTo(25);
+        assertThat(events.get(2).endMinute()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("Should not treat a leading implied-continuation segment as valid with no prior type")
+    void testParseWeatherEvents_ImpliedContinuationWithNoPriorType_NotParsed() {
+        // B13E46 with nothing before it in the remarks - no fallback type
+        // available, should not be parsed as a weather event
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK B13E46";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().weatherEvents()).isEmpty();
+        }
     }
 
     // ========== THUNDERSTORM LOCATION PARSING TESTS ==========
