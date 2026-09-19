@@ -9,8 +9,10 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.Icing;
 import weather.model.components.remark.PressureRapidChange;
+import weather.model.components.remark.WeatherEvent;
 import weather.processing.parser.common.ParseResult;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -77,16 +79,25 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "29/24 A2998 RMK AO2 LTG DSNT W TSE09B13E46 SLP151 CB DSNT W-NW AND E MOV N T02940239 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .as("LTG (unwired), the chained B13E46 continuation, and AND-chain remnants " +
-                                            "should be the only unparsed tokens — SLP, thunderstorm location, and " +
+                                    .as("LTG (unwired), and AND-chain remnants " +
+                                            "should be the only unparsed tokens — SLP, thunderstorm location, " +
+                                            "the chained B13E46 continuation and " +
                                             "precise temp must all survive")
-                                    .isEqualTo("LTG DSNT W B13E46 AND E MOV N");
+                                    .isEqualTo("LTG DSNT W AND E MOV N");
                             assertThat(data.getSeaLevelPressure())
                                     .as("SLP151 must parse despite the earlier unrecognized LTG clause")
                                     .isEqualTo(1015.1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(29.4);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(23.9);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            assertThat(data.getRemarks().weatherEvents())
+                                    .as("TS ended :09, plus implied-continuation TS begin :13 end :46")
+                                    .hasSize(2);
+                            assertThat(data.getRemarks().weatherEvents().get(0).weatherCode()).isEqualTo("TS");
+                            assertThat(data.getRemarks().weatherEvents().get(0).endMinute()).isEqualTo(9);
+                            assertThat(data.getRemarks().weatherEvents().get(1).weatherCode()).isEqualTo("TS");
+                            assertThat(data.getRemarks().weatherEvents().get(1).beginMinute()).isEqualTo(13);
+                            assertThat(data.getRemarks().weatherEvents().get(1).endMinute()).isEqualTo(46);
                             assertThat(data.getRemarks().maintenanceRequired())
                                     .as("Trailing $ should parse despite everything ahead of it failing")
                                     .isTrue();
@@ -240,18 +251,36 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1014.6);
                         }),
 
-                // Confirms TSE09/UPE12-style leading segments now parse correctly; the
-                // chained continuation (B29E31...) without a restated weather type is a
-                // separate, still-open gap. See finding #2 above.
-                arguments("KARB-FirstChainedEventParsesRestSurvivesAsFreeText",
+                // Confirms TSE09/UPE12-style leading segments and the chained continuation (B29E31...)
+                // now parse correctly.
+                arguments("KARB-FullChainNowParsesIncludingImpliedContinuation",
                         "2011/01/30 12:30 KARB 301153Z 35022G31KT 10SM -RA BKN017 BKN025 OVC039 02/M01 A2948 " +
                                 "RMK A02 PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 SLP987 P0017 60043 70065 T00171011 10022 20017 56010 $",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().freeText()).isEqualTo("B29E31RAB12SNB15E20");
+                            assertThat(data.getRemarks().freeText())
+                                    .as("B29E31/RA/SN segments now all parse - nothing left unparsed")
+                                    .isNull();
                             assertThat(data.getSeaLevelPressure()).isEqualTo(998.7);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(1.7);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(-1.1);
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
+
+                            assertThat(data.getRemarks().weatherEvents())
+                                    .as("UP ended :12, implied-continuation UP begin :29 end :31, " +
+                                            "RA begin :12, SN begin :15 end :20")
+                                    .hasSize(4);
+
+                            List<WeatherEvent> events = data.getRemarks().weatherEvents();
+                            assertThat(events.get(0).weatherCode()).isEqualTo("UP");
+                            assertThat(events.get(0).endMinute()).isEqualTo(12);
+                            assertThat(events.get(1).weatherCode()).isEqualTo("UP");
+                            assertThat(events.get(1).beginMinute()).isEqualTo(29);
+                            assertThat(events.get(1).endMinute()).isEqualTo(31);
+                            assertThat(events.get(2).weatherCode()).isEqualTo("RA");
+                            assertThat(events.get(2).beginMinute()).isEqualTo(12);
+                            assertThat(events.get(3).weatherCode()).isEqualTo("SN");
+                            assertThat(events.get(3).beginMinute()).isEqualTo(15);
+                            assertThat(events.get(3).endMinute()).isEqualTo(20);
                         }),
 
                 arguments("KBUF2016-PRESFRNowParsesCorrectly",
@@ -319,7 +348,8 @@ class NoaaMetarParserRemarksRecoveryTest {
         // mvn test -pl noakweather-platform/weather-processing -am -Dtest=NoaaMetarParserRemarksRecoveryTest#printRemarksParsingDiagnostics -Dsurefire.failIfNoSpecifiedTests=false
         // then check noakweather-platform/logs/noakweather.log for output.
         String[] raws = {
-                "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 PK WND 33035/1142 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
+                "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 " +
+                        "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
         };
 
         for (String raw : raws) {
@@ -332,6 +362,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");
             LOGGER.info("  cloudTypes: {}", data.getRemarks() != null ? data.getRemarks().cloudTypes() : "n/a");
+            LOGGER.info("  weatherEvents: {}", data.getRemarks() != null ? data.getRemarks().weatherEvents() : "n/a");
             LOGGER.info("  maintenanceRequired: {}", data.getRemarks() != null ? data.getRemarks().maintenanceRequired() : "n/a");
             LOGGER.info(" ");
         }

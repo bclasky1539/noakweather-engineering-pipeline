@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.8-SNAPSHOT - September 18, 2026
+
+#### Chained Begin/End Weather Event Continuation Fix
+
+**Fixed:**
+- **`weather-processing` / `NoaaMetarParser.java`**: fixed `handleWeatherEventsSequential`/
+  `parseWeatherEventFromExistingPattern` to correctly handle chained
+  begin/end weather-event segments that omit their weather-code prefix
+  (implying "same phenomenon as the previous segment"). Previously, a
+  segment with begin/end times but no explicit type (e.g. `B13E46`
+  following `TSE09`) produced an empty weather code, was treated as
+  invalid, and caused the parsing loop to `break` losing not just that
+  segment but the entire rest of the chain, including later segments that
+  *did* restate their own type
+  - The handler now tracks the most recently seen *explicit* weather code
+    within a chain and falls back to it when a segment has no code of its
+    own; the fallback only advances from explicit codes, so multiple
+    consecutive bare continuations all correctly refer back to the
+    original type
+  - The bug was entirely in how the handler decided a match without an
+    explicit type was invalid rather than an implied continuation
+
+**Verified:**
+- Confirmed via `NoaaMetarParserTest` (real-world KMIA and KARB records,
+  plus synthetic cases for multi-segment carry-forward and the
+  no-prior-type rejection path) and `printRemarksParsingDiagnostics`, run
+  directly against live data:
+  - **KMIA** (`TSE09B13E46`): now produces two `WeatherEvent`s — `TS`
+    ended `:09`, and an implied-continuation `TS` begin `:13`/end `:46` —
+    previously the second segment was lost to `freeText`
+  - **KARB** (`UPE12B29E31RAB12SNB15E20`): now produces all four events —
+    `UP` ended `:12`, implied-continuation `UP` begin `:29`/end `:31`,
+    `RA` began `:12`, `SN` begin `:15`/end `:20`. Previously everything
+    from `B29E31` onward, including the independently-typed `RA`/`SN`
+    segments, was lost to `freeText`
+- Updated `NoaaMetarParserRemarksRecoveryTest`'s KMIA and KARB cases to
+  reflect the shorter/cleared `freeText` and assert the correctly
+  attributed `weatherEvents`
+
+**Note:** this fix is independent of and unrelated to the `AND`-chain/
+directional-arc gap tracked on the KDFW/#61 issue — that gap remains open.
+
 ### Version 1.19.7-SNAPSHOT - September 17, 2026
 
 #### Icing (ICG) Support

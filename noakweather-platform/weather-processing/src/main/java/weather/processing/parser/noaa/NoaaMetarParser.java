@@ -968,22 +968,22 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             weatherData.setHourlyPrecipitation(remarks.hourlyPrecipitation().inches());
         }
 
-        // Copy 6-hour max temperature (extract celsius from Temperature record)
+        // Copy 6-hour max temperature (extract Celsius from Temperature record)
         if (remarks.sixHourMaxTemperature() != null) {
             weatherData.setSixHourMaxTemp(remarks.sixHourMaxTemperature().celsius());
         }
 
-        // Copy 6-hour min temperature (extract celsius from Temperature record)
+        // Copy 6-hour min temperature (extract Celsius from Temperature record)
         if (remarks.sixHourMinTemperature() != null) {
             weatherData.setSixHourMinTemp(remarks.sixHourMinTemperature().celsius());
         }
 
-        // Copy 24-hour max temperature (extract celsius from Temperature record)
+        // Copy 24-hour max temperature (extract Celsius from Temperature record)
         if (remarks.twentyFourHourMaxTemperature() != null) {
             weatherData.setTwentyFourHourMaxTemp(remarks.twentyFourHourMaxTemperature().celsius());
         }
 
-        // Copy 24-hour min temperature (extract celsius from Temperature record)
+        // Copy 24-hour min temperature (extract Celsius from Temperature record)
         if (remarks.twentyFourHourMinTemperature() != null) {
             weatherData.setTwentyFourHourMinTemp(remarks.twentyFourHourMinTemperature().celsius());
         }
@@ -2043,23 +2043,37 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         String remaining = remarksText;
         Matcher matcher = BEGIN_END_WEATHER_PATTERN.matcher(remaining);
+        String lastWeatherCode = null;
 
-        // Process all chained events
-        while (matcher.find() && matcher.start() == 0) {
+        // Process all chained events. matcher.end() > 0 guards against a
+        // zero-width match (every group in BEGIN_END_WEATHER_PATTERN is
+        // optional) so the loop can't spin without consuming input.
+        while (matcher.find() && matcher.start() == 0 && matcher.end() > 0) {
             try {
-                WeatherEvent event = parseWeatherEventFromExistingPattern(matcher);
+                WeatherEvent event = parseWeatherEventFromExistingPattern(matcher, lastWeatherCode);
 
-                if (event != null) {
-                    remarks.addWeatherEvent(event);
-                    LOGGER.debug("Weather event: {}", event.getSummary());
-
-                    // Remove matched portion and continue
-                    remaining = remaining.substring(matcher.end()).trim();
-                    matcher = BEGIN_END_WEATHER_PATTERN.matcher(remaining);
-                } else {
+                if (event == null) {
                     // No valid event parsed, stop processing
                     break;
                 }
+
+                remarks.addWeatherEvent(event);
+                LOGGER.debug("Weather event: {}", event.getSummary());
+
+                // Only advance lastWeatherCode from an *explicit* code on
+                // this segment, not one that was just carried forward - so
+                // a chain of multiple bare continuations all keep referring
+                // back to the original type.
+                String explicitCode = buildWeatherCodeFromExistingGroups(
+                        matcher.group("desc"), matcher.group("prec"),
+                        matcher.group("obsc"), matcher.group("other"));
+                if (!explicitCode.isEmpty()) {
+                    lastWeatherCode = explicitCode;
+                }
+
+                // Remove matched portion and continue
+                remaining = remaining.substring(matcher.end()).trim();
+                matcher = BEGIN_END_WEATHER_PATTERN.matcher(remaining);
 
             } catch (IllegalArgumentException e) {
                 LOGGER.warn("Invalid weather event: {}",
@@ -2084,68 +2098,24 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - begin, begint: begin marker and time
      * - end, endt: end marker and time
      *
-     * @param matcher the matcher positioned at a weather event
+     * @param matcher             the matcher positioned at a weather event
+     * @param fallbackWeatherCode the last explicit weather code seen in this
+     *                            chain, or null if none
      * @return WeatherEvent object, or null if the match doesn't represent a valid event
      */
-    private WeatherEvent parseWeatherEventFromExistingPattern(Matcher matcher) {
-        // Extract intensity - prefer int2 (at end), fallback to int (at start)
-        String intensityEnd = matcher.group("int2");
-        String intensityStart = matcher.group("int");
-        String intensity = null;
+    private WeatherEvent parseWeatherEventFromExistingPattern(Matcher matcher, String fallbackWeatherCode) {
+        String intensity = extractWeatherEventIntensity(matcher);
 
-        if (intensityEnd != null && intensityEnd.matches("[-+]")) {
-            intensity = intensityEnd;
-        } else if (intensityStart != null && intensityStart.matches("[-+]")) {
-            intensity = intensityStart;
-        }
-
-        // Extract weather components
-        String descriptor = matcher.group("desc");
-        String precipitation = matcher.group("prec");
-        String obscuration = matcher.group("obsc");
-        String other = matcher.group("other");
-
-        // Build weather code from available components
-        String weatherCode = buildWeatherCodeFromExistingGroups(
-                descriptor, precipitation, obscuration, other
-        );
-
-        // If no weather code components, this isn't a valid weather event
-        if (weatherCode.isEmpty()) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("No weather code found in match: {}", matcher.group(0));
-            }
+        String weatherCode = resolveWeatherEventCode(matcher, fallbackWeatherCode);
+        if (weatherCode == null) {
             return null;
         }
 
-        // Extract begin time
-        String beginMarker = matcher.group("begin");
-        String beginTimeStr = matcher.group("begint");
+        TimeComponents beginTime = extractWeatherEventTime(matcher, "begin", "begint");
+        TimeComponents endTime = extractWeatherEventTime(matcher, "end", "endt");
 
-        Integer beginHour = null;
-        Integer beginMinute = null;
-
-        if (beginMarker != null && beginTimeStr != null) {
-            TimeComponents beginTime = parseTimeDigits(beginTimeStr);
-            beginHour = beginTime.hour();
-            beginMinute = beginTime.minute();
-        }
-
-        // Extract end time
-        String endMarker = matcher.group("end");
-        String endTimeStr = matcher.group("endt");
-
-        Integer endHour = null;
-        Integer endMinute = null;
-
-        if (endMarker != null && endTimeStr != null) {
-            TimeComponents endTime = parseTimeDigits(endTimeStr);
-            endHour = endTime.hour();
-            endMinute = endTime.minute();
-        }
-
-        // Must have at least a begin or end time
-        if (beginMinute == null && endMinute == null) {
+        // Must have at least a 'begin' or 'end' time
+        if (beginTime.minute() == null && endTime.minute() == null) {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("No begin or end time found in weather event: {}", matcher.group(0));
             }
@@ -2155,11 +2125,86 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         return new WeatherEvent(
                 weatherCode,
                 intensity,
-                beginHour,
-                beginMinute,
-                endHour,
-                endMinute
+                beginTime.hour(),
+                beginTime.minute(),
+                endTime.hour(),
+                endTime.minute()
         );
+    }
+
+    /**
+     * Extract intensity from a weather event match, preferring the trailing
+     * marker (int2) over the leading one (int).
+     *
+     * @param matcher the regex matcher with captured groups
+     * @return "-" or "+" if present, otherwise null
+     */
+    private String extractWeatherEventIntensity(Matcher matcher) {
+        String intensityEnd = matcher.group("int2");
+        String intensityStart = matcher.group("int");
+
+        if (intensityEnd != null && intensityEnd.matches("[-+]")) {
+            return intensityEnd;
+        }
+        if (intensityStart != null && intensityStart.matches("[-+]")) {
+            return intensityStart;
+        }
+        return null;
+    }
+
+    /**
+     * Resolve the weather code for a matched segment, falling back to the
+     * most recently seen explicit type in the same chain when this segment
+     * has no weather-code components of its own (an implied continuation,
+     * e.g. "B13E46" following "TSE09").
+     *
+     * @param matcher             the regex matcher with captured groups
+     * @param fallbackWeatherCode the last explicit weather code seen in this
+     *                            chain, or null if none
+     * @return the resolved weather code, or null if this segment has no code
+     * of its own and no fallback is available
+     */
+    private String resolveWeatherEventCode(Matcher matcher, String fallbackWeatherCode) {
+        String weatherCode = buildWeatherCodeFromExistingGroups(
+                matcher.group("desc"), matcher.group("prec"),
+                matcher.group("obsc"), matcher.group("other")
+        );
+
+        if (!weatherCode.isEmpty()) {
+            return weatherCode;
+        }
+
+        if (fallbackWeatherCode == null) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("No weather code found and no prior type to carry forward: {}", matcher.group(0));
+            }
+            return null;
+        }
+
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Implied continuation - carrying forward '{}': {}", fallbackWeatherCode, matcher.group(0));
+        }
+        return fallbackWeatherCode;
+    }
+
+    /**
+     * Extract a 'begin' or 'end' time component from a weather event match.
+     *
+     * @param matcher     the regex matcher with captured groups
+     * @param markerGroup the marker group name ("begin" or "end")
+     * @param timeGroup   the time digits group name ("begint" or "endt")
+     * @return the parsed TimeComponents, with null hour/minute if the marker
+     * or time digits are absent
+     */
+    private TimeComponents extractWeatherEventTime(Matcher matcher, String markerGroup, String timeGroup) {
+        String marker = matcher.group(markerGroup);
+        String timeStr = matcher.group(timeGroup);
+
+        if (marker != null && timeStr != null) {
+            return parseTimeDigits(timeStr);
+        }
+
+        return new TimeComponents(null, null);
     }
 
     /**
@@ -2219,10 +2264,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - Precipitation + obscuration (e.g., "RABR")
      * - Just obscuration (e.g., "BR", "FG")
      *
-     * @param descriptor    Weather descriptor (may be null)
-     * @param precipitation Weather precipitation (may be null)
-     * @param obscuration   Weather obscuration (may be null)
-     * @param other         Other weather phenomena (may be null)
+     * @param descriptor    Weather descriptor (it may be null)
+     * @param precipitation Weather precipitation (it may be null)
+     * @param obscuration   Weather obscuration (it may be null)
+     * @param other         Other weather phenomena (it may be null)
      * @return Combined weather code, or empty string if all are null/empty
      */
     private String buildWeatherCodeFromExistingGroups(
@@ -2502,7 +2547,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Handle secondary altimeter setting repeated inside the remarks section.
-     * Common in Philippines/Taiwan-region METARs where the main body reports
+     * Common in the Philippines/Taiwan-region METARs where the main body reports
      * altimeter in ICAO hPa format (Q####) and remarks repeat it in US-style
      * inches of mercury (A####) as a redundant confirmation.
      * <p>
@@ -3022,7 +3067,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse oktas string to Integer.
      *
-     * @param oktaStr the oktas string from the pattern (may be null)
+     * @param oktaStr the oktas string from the pattern (it may be null)
      * @return the parsed Integer or null if not present
      */
     private Integer parseOktas(String oktaStr) {
@@ -3035,9 +3080,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Determine location and movement from pattern groups.
      *
-     * @param verb              the verb group (may be null)
-     * @param directionMovement the movement direction (may be null)
-     * @param directionLocation the location qualifier (may be null)
+     * @param verb              the verb group (it may be null)
+     * @param directionMovement the movement direction (it may be null)
+     * @param directionLocation the location qualifier (it may be null)
      * @return array with [location, movement] - never null, but elements may be null
      */
     private String[] determineLocationAndMovement(String verb, String directionMovement, String directionLocation) {
@@ -3056,7 +3101,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Trim a string or return null if it's null or blank.
      *
-     * @param str the string to trim (may be null)
+     * @param str the string to trim (it may be null)
      * @return the trimmed string or null if blank/null
      */
     private String trimOrNull(String str) {
