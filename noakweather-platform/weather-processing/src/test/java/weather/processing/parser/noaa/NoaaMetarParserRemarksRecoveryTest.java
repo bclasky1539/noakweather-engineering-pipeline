@@ -155,10 +155,18 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2017/04/10 00:00 CYOW 160800Z 21004KT 8SM -TSRA BKN020 OVC100 20/18 A2966 " +
                                 "RMK SC5AC3 CB EMBDD LTGCG SE SLP044",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().freeText()).isEqualTo("EMBDD LTGCG SE");
+                            assertThat(data.getRemarks().freeText())
+                                    .as("CB EMBDD now parses as a CloudType; only LTGCG SE (unwired LTG variant) remains unparsed")
+                                    .isEqualTo("LTGCG SE");
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1004.4);
-                            assertThat(data.getRemarks().cloudTypes()).hasSize(2);
-                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            assertThat(data.getRemarks().cloudTypes())
+                                    .as("SC5, AC3, and now CB EMBDD - three cloud types")
+                                    .hasSize(3);
+                            assertThat(data.getRemarks().cloudTypes().get(2).cloudType()).isEqualTo("CB");
+                            assertThat(data.getRemarks().cloudTypes().get(2).location()).isEqualTo("EMBDD");
+                            assertThat(data.getRemarks().thunderstormLocations())
+                                    .as("CB is no longer claimed as a bare ThunderstormLocation")
+                                    .isEmpty();
                         }),
 
                 arguments("CYQX-F8DoesNotBlockSLP040",
@@ -182,16 +190,17 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1013.1);
                         }),
 
-                // BUG: bare TCU throws during CloudType construction (no oktas/intensity/
-                // location/movement) and is silently discarded — not in cloudTypes, not
-                // in freeText, only a WARNING log. See finding #1 above.
-                arguments("CYVR-TCUSilentlyDroppedOnInvalidCloudType",
+                arguments("CYVR-TCUEmbddNowParsesCorrectly",
                         "2017/04/10 00:00 CYVR 061843Z 09008KT 4SM -SHRA BR BKN006 BKN015 OVC040 RMK CF6SC2SC1 TCU EMBDD",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().freeText()).isEqualTo("EMBDD");
-                            assertThat(data.getRemarks().cloudTypes()).hasSize(3);
-                            // NOTE: TCU is silently lost here — not asserting its absence as
-                            // correct, just documenting current (buggy) behavior until #<new issue> is fixed.
+                            assertThat(data.getRemarks().freeText())
+                                    .as("TCU EMBDD now parses via the added EMBDD qualifier - no unparsed remnant")
+                                    .isNull();
+                            assertThat(data.getRemarks().cloudTypes())
+                                    .as("All four cloud types now parse, including TCU EMBDD")
+                                    .hasSize(4);
+                            assertThat(data.getRemarks().cloudTypes().get(3).cloudType()).isEqualTo("TCU");
+                            assertThat(data.getRemarks().cloudTypes().get(3).location()).isEqualTo("EMBDD");
                         }),
 
                 arguments("CYQB-AllTokensParse",
@@ -231,17 +240,18 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1000.2);
                         }),
 
-                // BUG: CI0 (zero oktas) fails CLOUD_OKTA_PATTERN's [1-8] range; CI is
-                // silently discarded (same as TCU above) and the orphaned "0" ends up
-                // alone in freeText, disconnected from its origin. See finding #1 above.
-                arguments("CYHZ-ZeroOktaCloudSilentlyDroppedOrphanedZeroInFreeText",
+                arguments("CYHZ-ZeroOktaCloudNowParsesCorrectly",
                         "2017/04/10 00:00 CYHZ 151100Z 00000KT 15SM BCFG FEW020 SCT100 SCT250 M00/M02 A3038 RMK CU1AS2CI0 SLP299",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().freeText()).isEqualTo("0");
+                            assertThat(data.getRemarks().freeText())
+                                    .as("CI0 now parses via widened okta range [0-8] - no orphaned fragment")
+                                    .isNull();
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1029.9);
-                            assertThat(data.getRemarks().cloudTypes()).hasSize(2);
-                            // NOTE: CI (0 oktas) is silently lost here — documenting current
-                            // (buggy) behavior until #<new issue> is fixed.
+                            assertThat(data.getRemarks().cloudTypes())
+                                    .as("All three chained cloud types now parse, including CI0")
+                                    .hasSize(3);
+                            assertThat(data.getRemarks().cloudTypes().get(2).cloudType()).isEqualTo("CI");
+                            assertThat(data.getRemarks().cloudTypes().get(2).oktas()).isZero();
                         }),
 
                 arguments("CYQX-F8DoesNotBlockSLP146",
@@ -348,13 +358,14 @@ class NoaaMetarParserRemarksRecoveryTest {
         // mvn test -pl noakweather-platform/weather-processing -am -Dtest=NoaaMetarParserRemarksRecoveryTest#printRemarksParsingDiagnostics -Dsurefire.failIfNoSpecifiedTests=false
         // then check noakweather-platform/logs/noakweather.log for output.
         String[] raws = {
-                "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 " +
+                "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD " +
                         "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
         };
 
         for (String raw : raws) {
             NoaaMetarData data = parse(raw);
             LOGGER.info("=== {} ===", truncate(raw));
+            LOGGER.info("*** {} ***", raw);
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
             LOGGER.info("  pressureRapidChange: {}", data.getPressureRapidChange());
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");

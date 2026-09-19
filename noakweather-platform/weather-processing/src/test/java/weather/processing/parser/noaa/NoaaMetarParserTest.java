@@ -6817,6 +6817,264 @@ class NoaaMetarParserTest {
         assertThat(data.getIcing().qualifier()).isEqualTo("PAST HR");
     }
 
+    // ========== CLOUD TYPE - CI0 AND EMBDD TESTS ==========
+
+    @Test
+    @DisplayName("Should parse zero-okta cloud type (CI0) - CYHZ real-world")
+    void testParseCloudType_ZeroOktas_CYHZ() {
+        String metar = "CYHZ 151100Z 00000KT 15SM BCFG FEW020 SCT100 SCT250 M00/M02 A3038 " +
+                "RMK CU1AS2CI0 SLP299";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes())
+                .as("All three chained cloud types should parse, including CI0")
+                .hasSize(3);
+
+        CloudType cu = data.getRemarks().cloudTypes().get(0);
+        assertThat(cu.cloudType()).isEqualTo("CU");
+        assertThat(cu.oktas()).isEqualTo(1);
+
+        CloudType as = data.getRemarks().cloudTypes().get(1);
+        assertThat(as.cloudType()).isEqualTo("AS");
+        assertThat(as.oktas()).isEqualTo(2);
+
+        CloudType ci = data.getRemarks().cloudTypes().get(2);
+        assertThat(ci.cloudType()).isEqualTo("CI");
+        assertThat(ci.oktas()).isZero();
+        assertThat(ci.hasOktaCoverage())
+                .as("Zero oktas should still report coverage present")
+                .isTrue();
+
+        // Confirms the whole record is clean - previously CI0 was silently
+        // discarded (CI eaten, orphaned "0" left in freeText)
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1029.9, within(0.1));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse cloud type with EMBDD location qualifier - CYVR real-world")
+    void testParseCloudType_Embdd_CYVR() {
+        String metar = "CYVR 061843Z 09008KT 4SM -SHRA BR BKN006 BKN015 OVC040 " +
+                "RMK CF6SC2SC1 TCU EMBDD";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes())
+                .as("All four cloud types should parse, including TCU EMBDD")
+                .hasSize(4);
+
+        CloudType cf = data.getRemarks().cloudTypes().get(0);
+        assertThat(cf.cloudType()).isEqualTo("CF");
+        assertThat(cf.oktas()).isEqualTo(6);
+
+        CloudType sc1 = data.getRemarks().cloudTypes().get(1);
+        assertThat(sc1.cloudType()).isEqualTo("SC");
+        assertThat(sc1.oktas()).isEqualTo(2);
+
+        CloudType sc2 = data.getRemarks().cloudTypes().get(2);
+        assertThat(sc2.cloudType()).isEqualTo("SC");
+        assertThat(sc2.oktas()).isEqualTo(1);
+
+        CloudType tcu = data.getRemarks().cloudTypes().get(3);
+        assertThat(tcu.cloudType()).isEqualTo("TCU");
+        assertThat(tcu.oktas()).isNull();
+        assertThat(tcu.location()).isEqualTo("EMBDD");
+
+        // Confirms the whole record is clean - previously TCU was silently
+        // discarded and EMBDD left orphaned in freeText
+        assertThat(data.getRemarks().freeText())
+                .as("TCU EMBDD now fully parses - no unparsed remnant")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should distinguish EMBDD location from TR location for same cloud type")
+    void testParseCloudType_EmbddDistinctFromTrace() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SC TR TCU EMBDD";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+
+        CloudType sc = data.getRemarks().cloudTypes().get(0);
+        assertThat(sc.location()).isEqualTo("TR");
+        assertThat(sc.isTrace()).isTrue();
+
+        CloudType tcu = data.getRemarks().cloudTypes().get(1);
+        assertThat(tcu.location()).isEqualTo("EMBDD");
+        assertThat(tcu.isTrace())
+                .as("EMBDD is not a trace indicator")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("Should still reject bare cloud type with no qualifier at all")
+    void testParseCloudType_BareCloudTypeStillRejected() {
+        // Confirms the validation in extractCloudTypeFromMatcher is unaffected
+        // by the CI0/EMBDD fix - a cloud type truly alone (no oktas, no
+        // location, no movement) is still invalid
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU AO2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().cloudTypes()).isEmpty();
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+    }
+
+    // ========== TCU/CB EMBDD vs THUNDERSTORM LOCATION AMBIGUITY TESTS ==========
+
+    @Test
+    @DisplayName("Should parse TCU EMBDD as CloudType, not as a bare ThunderstormLocation")
+    void testParseCloudType_TcuEmbddNotConsumedByThunderstormLocationHandler() {
+        String metar = "METAR CYVR 061843Z 09008KT 4SM -SHRA BR BKN006 BKN015 OVC040 " +
+                "RMK CF6SC2SC1 TCU EMBDD";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // TCU EMBDD must be claimed by the cloud-type handler, not the
+        // thunderstorm-location handler (which runs first in
+        // runRemarkHandlerPasses and would otherwise match a bare "TCU"
+        // alone, leaving "EMBDD" orphaned)
+        assertThat(data.getRemarks().thunderstormLocations())
+                .as("TCU EMBDD should not be claimed as a bare ThunderstormLocation")
+                .isEmpty();
+
+        assertThat(data.getRemarks().cloudTypes())
+                .as("TCU EMBDD should be claimed as a CloudType with EMBDD location")
+                .hasSize(4);
+
+        CloudType tcu = data.getRemarks().cloudTypes().get(3);
+        assertThat(tcu.cloudType()).isEqualTo("TCU");
+        assertThat(tcu.location()).isEqualTo("EMBDD");
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should still parse TCU as ThunderstormLocation when followed by a real location qualifier")
+    void testParseThunderstormLocation_TcuStillMatchesNormalQualifiers() {
+        // Confirms the EMBDD exclusion in TS_CLD_LOC_PATTERN doesn't regress
+        // legitimate TCU-with-location remarks
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU DSNT S";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("TCU");
+        assertThat(location.locationQualifier()).isEqualTo("DSNT");
+        assertThat(location.direction()).isEqualTo("S");
+
+        assertThat(data.getRemarks().cloudTypes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should parse CB EMBDD as CloudType via the same ambiguity fix")
+    void testParseCloudType_CbEmbdd() {
+        // CB is also in TS_CLD_LOC_PATTERN's type alternation, so this
+        // confirms the fix isn't specific to TCU
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB EMBDD";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).isEmpty();
+        assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+
+        CloudType cb = data.getRemarks().cloudTypes().get(0);
+        assertThat(cb.cloudType()).isEqualTo("CB");
+        assertThat(cb.location()).isEqualTo("EMBDD");
+    }
+
+    @Test
+    @DisplayName("Should parse CB EMBDD as CloudType, not as a bare ThunderstormLocation")
+    void testParseCloudType_CbEmbddNotConsumedByThunderstormLocationHandler() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB EMBDD";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // CB EMBDD must be claimed by the cloud-type handler, not the
+        // thunderstorm-location handler, same as TCU EMBDD above
+        assertThat(data.getRemarks().thunderstormLocations())
+                .as("CB EMBDD should not be claimed as a bare ThunderstormLocation")
+                .isEmpty();
+
+        assertThat(data.getRemarks().cloudTypes())
+                .as("CB EMBDD should be claimed as a CloudType with EMBDD location")
+                .hasSize(1);
+
+        CloudType cb = data.getRemarks().cloudTypes().get(0);
+        assertThat(cb.cloudType()).isEqualTo("CB");
+        assertThat(cb.location()).isEqualTo("EMBDD");
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should still parse CB as ThunderstormLocation when followed by a real location qualifier")
+    void testParseThunderstormLocation_CbStillMatchesNormalQualifiers() {
+        // Confirms adding CB to CLOUD_OKTA_PATTERN's alternation doesn't
+        // regress existing CB-with-location remarks
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB DSNT W-NW MOV E";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("CB");
+        assertThat(location.locationQualifier()).isEqualTo("DSNT");
+        assertThat(location.direction()).isEqualTo("W");
+        assertThat(location.directionRange()).isEqualTo("NW");
+        assertThat(location.movingDirection()).isEqualTo("E");
+
+        assertThat(data.getRemarks().cloudTypes()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should still parse CB OHD as ThunderstormLocation (KDFW-style real-world qualifier)")
+    void testParseThunderstormLocation_CbOhdStillMatches() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB OHD";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        assertThat(data.getRemarks().thunderstormLocations().get(0).locationQualifier()).isEqualTo("OHD");
+        assertThat(data.getRemarks().cloudTypes()).isEmpty();
+    }
+
     // ========== SECONDARY ALTIMETER PARSING TESTS ==========
 
     @ParameterizedTest

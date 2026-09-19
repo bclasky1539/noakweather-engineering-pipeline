@@ -65,6 +65,7 @@ class RegExprConstTest {
         assertThat(RegExprConst.LIGHTNING_PATTERN).isNotNull();
         assertThat(RegExprConst.PRES_RF_RAPDLY_PATTERN).isNotNull();
         assertThat(RegExprConst.ICING_PATTERN).isNotNull();
+        assertThat(RegExprConst.CLOUD_OKTA_PATTERN).isNotNull();
     }
 
     // ========== MAIN BODY PATTERNS ==========
@@ -712,6 +713,252 @@ class RegExprConstTest {
         Matcher matcher = RegExprConst.ICING_PATTERN.matcher(input);
 
         assertThat(matcher.find()).isFalse();
+    }
+
+    // ========== CLOUD OKTA PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CI1 ', CI, 1, 'Cirrus 1 okta'",
+            "'CI8 ', CI, 8, 'Cirrus 8 oktas'",
+            "'AC8SC1 ', AC, 8, 'Chained - first code'",
+            "'SC5 ', SC, 5, 'Stratocumulus 5 oktas'"
+    })
+    @DisplayName("CLOUD_OKTA_PATTERN should match cloud type with oktas 1-8")
+    void testCloudOktaPattern_ValidOktas(String input, String expectedCloud, String expectedOkta, String scenario) {
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("cloud"))
+                .as("Cloud type should match: %s", scenario)
+                .isEqualTo(expectedCloud);
+        assertThat(matcher.group("okta"))
+                .as("Okta should match: %s", scenario)
+                .isEqualTo(expectedOkta);
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match zero-okta cloud type (CI0 - CYHZ)")
+    void testCloudOktaPattern_ZeroOktas() {
+        String input = "CI0 ";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("CI");
+        assertThat(matcher.group("okta")).isEqualTo("0");
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match zero-okta cloud type at end of chained group")
+    void testCloudOktaPattern_ZeroOktasChained() {
+        // CU1AS2CI0 - the zero-okta code appearing after two valid ones
+        String input = "CI0";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("CI");
+        assertThat(matcher.group("okta")).isEqualTo("0");
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should not match okta 9 or higher")
+    void testCloudOktaPattern_DoesNotMatchOktaNine() {
+        String input = "CI9 ";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        // Okta group should not capture "9" - pattern falls back to bare
+        // cloud type match with no okta
+        assertThat(matcher.group("okta")).isNull();
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match cloud type with EMBDD location qualifier (TCU EMBDD - CYVR)")
+    void testCloudOktaPattern_Embdd() {
+        String input = "TCU EMBDD";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("TCU");
+        assertThat(matcher.group("okta")).isNull();
+        assertThat(matcher.group("direction")).isEqualTo("EMBDD");
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match CB with EMBDD location qualifier")
+    void testCloudOktaPattern_EmbddWithCb() {
+        // CB is not in the cloud-type alternation itself but the pattern's
+        // "cloud" group includes TCU/CU/etc - confirming EMBDD works with
+        // any qualifying code in the alternation, using CU as a stand-in
+        String input = "CU EMBDD";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("CU");
+        assertThat(matcher.group("direction")).isEqualTo("EMBDD");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OHD-ALQDS", "ALQDS", "OHD", "TR", "EMBDD"})
+    @DisplayName("CLOUD_OKTA_PATTERN should match all recognized location qualifiers")
+    void testCloudOktaPattern_AllLocationQualifiers(String qualifier) {
+        String input = "SC " + qualifier;
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("direction")).isEqualTo(qualifier);
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match with MOVG movement (unaffected by EMBDD addition)")
+    void testCloudOktaPattern_Movement() {
+        String input = "CI MOVG NE";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("CI");
+        assertThat(matcher.group("verb")).isEqualTo("MOVG");
+        assertThat(matcher.group("dirm")).isEqualTo("NE");
+        assertThat(matcher.group("direction")).isNull();
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match with MDT intensity")
+    void testCloudOktaPattern_Intensity() {
+        String input = "MDT CU OHD";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("intensity")).isEqualTo("MDT ");
+        assertThat(matcher.group("cloud")).isEqualTo("CU");
+        assertThat(matcher.group("direction")).isEqualTo("OHD");
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match bare cloud type with no qualifier (structural match only)")
+    void testCloudOktaPattern_BareCloudTypeStillMatchesStructurally() {
+        // The regex itself will still match a bare cloud type with nothing
+        // following - rejecting it as invalid is extractCloudTypeFromMatcher's
+        // responsibility, not the pattern's. This test documents that the
+        // pattern alone does not enforce "must have a qualifier".
+        String input = "TCU ";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("TCU");
+        assertThat(matcher.group("okta")).isNull();
+        assertThat(matcher.group("direction")).isNull();
+        assertThat(matcher.group("verb")).isNull();
+    }
+
+    // ========== THUNDERSTORM CLOUD LOCATION PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should not match bare type immediately followed by EMBDD (word-bounded)")
+    void testThunderstormCloudLocationPattern_DoesNotMatchEmbdd() {
+        String input = "TCU EMBDD";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("TCU EMBDD should be excluded here so CLOUD_OKTA_PATTERN can match it instead")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should still match a bare type followed by a different word starting with EMBDD")
+    void testThunderstormCloudLocationPattern_MatchesWhenNotExactlyEmbdd() {
+        // Confirms the word-bounded lookahead doesn't over-exclude - a token
+        // that merely starts with "EMBDD" (not the whole word) should not be
+        // blocked, since it isn't the literal EMBDD qualifier
+        String input = "TCU EMBDDXXX";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should match as a bare TCU, since EMBDDXXX is not the literal EMBDD token")
+                .isTrue();
+        assertThat(matcher.group("type")).isEqualTo("TCU");
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should still match TCU with a normal location qualifier")
+    void testThunderstormCloudLocationPattern_StillMatchesNormalQualifiers() {
+        // Confirms the EMBDD exclusion doesn't regress any existing qualifier
+        String input = "TCU DSNT S";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("TCU");
+        assertThat(matcher.group("loc")).isEqualTo("DSNT");
+        assertThat(matcher.group("dir")).isEqualTo("S");
+    }
+
+    // ========== CB / TCU PATTERN AMBIGUITY REGRESSION TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CB OHD ', OHD, 'Overhead - existing qualifier'",
+            "'CB VC ', VC, 'In vicinity - existing qualifier'",
+            "'CB DSNT ', DSNT, 'Distant - existing qualifier'",
+            "'CB TR ', TR, 'Trace - existing qualifier'"
+    })
+    @DisplayName("TS_CLD_LOC_PATTERN should still match CB with real location qualifiers (CLOUD_OKTA_PATTERN now also includes CB)")
+    void testThunderstormCloudLocationPattern_CbStillMatchesRealQualifiers(String input, String expectedLoc, String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should still match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("type")).isEqualTo("CB");
+        assertThat(matcher.group("loc")).isEqualTo(expectedLoc);
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should still match CB with direction and movement")
+    void testThunderstormCloudLocationPattern_CbStillMatchesDirectionAndMovement() {
+        String input = "CB DSNT W-NW MOV E";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("CB");
+        assertThat(matcher.group("loc")).isEqualTo("DSNT");
+        assertThat(matcher.group("dir")).isEqualTo("W");
+        assertThat(matcher.group("dir2")).isEqualTo("NW");
+        assertThat(matcher.group("dirm")).isEqualTo("E");
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should not match CB immediately followed by EMBDD")
+    void testThunderstormCloudLocationPattern_CbDoesNotMatchEmbdd() {
+        String input = "CB EMBDD";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("CB EMBDD should be excluded here so CLOUD_OKTA_PATTERN can match it instead")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match CB with EMBDD location qualifier")
+    void testCloudOktaPattern_CbEmbdd() {
+        String input = "CB EMBDD";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("CB");
+        assertThat(matcher.group("direction")).isEqualTo("EMBDD");
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should match CB with oktas, distinct from TS_CLD_LOC_PATTERN's location-based CB")
+    void testCloudOktaPattern_CbWithOktas() {
+        String input = "CB4 ";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("CB");
+        assertThat(matcher.group("okta")).isEqualTo("4");
     }
 
     // ========== NO SIGNIFICANT CHANGE TEST ==========

@@ -302,7 +302,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern TS_CLD_LOC_PATTERN = Pattern.compile(
-            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?:(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
+            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?:(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
     );
 
     /**
@@ -403,13 +403,12 @@ public final class RegExprConst {
     /**
      * Sky Conditions FEW = 1 to 2 oktas; SCT (Scattered) = 3 to 4 oktas; BKN
      * (Broken) = 5 to 7 oktas; OVC (Overcast) = 8 oktas;
-     * Examples AC8SC1, CI TR, MDT CU OHD-ALQDS
+     * Examples AC8SC1, CI0, CI TR, MDT CU OHD-ALQDS, TCU EMBDD
      * Complexity is required to capture cloud type, coverage in oktas, and location
      */
     @SuppressWarnings("java:S5843") // Complex regex required for okta cloud format
     public static final Pattern CLOUD_OKTA_PATTERN = Pattern.compile(
-            "^(?<intensity>MDT\\s+)?(?<cloud>(TCU|ACSL|ACC|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI))(?<okta>[1-8](?=\\s|$|[A-Z]))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD|TR)))?"
-
+            "^(?<intensity>MDT\\s+)?(?<cloud>(TCU|ACSL|ACC|CB|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI))(?<okta>[0-8](?=\\s|$|[A-Z]))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD|TR|EMBDD)))?"
     );
 
     /**

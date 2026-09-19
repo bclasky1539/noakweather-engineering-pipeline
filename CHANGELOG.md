@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.9-SNAPSHOT - September 19, 2026
+
+#### Cloud-Type Parse Failures No Longer Silently Discard Tokens (CI0, TCU/CB EMBDD)
+
+**Fixed:**
+- **`weather-processing` / `RegExprConst.java`**: `CLOUD_OKTA_PATTERN`
+  - Widened okta range `[1-8]` → `[0-8]` so zero-okta cloud types (e.g.
+    `CI0`, observed in Canadian METAR conventions) are captured
+  - Added `CB` to the cloud-type alternation (previously present only in
+    `TS_CLD_LOC_PATTERN`)
+  - Added `EMBDD` to the location/qualifier alternation, so cloud types
+    embedded in other cloud layers (e.g. `TCU EMBDD`, `CB EMBDD`,
+    observed at CYVR and CYOW) are captured
+- **`weather-processing` / `RegExprConst.java`**: `TS_CLD_LOC_PATTERN`
+  - Added a word-bounded negative lookahead (`(?!\s+EMBDD(?=\s|$))`)
+    after the type group, mirroring the existing `SF(?!C\s+VIS)`
+    precedent. Without it, a bare `TCU`/`CB` immediately followed by
+    `EMBDD` was ambiguously claimed by this pattern first (as a
+    location-less match, since this handler has no validation guard),
+    leaving `EMBDD` orphaned; the exclusion defers to `CLOUD_OKTA_PATTERN`
+    for this specific case while leaving every other `TCU`/`CB` qualifier
+    (`OHD`, `DSNT`, `MOV`, etc.) routing exactly as before
+- **`weather-common` / `CloudType.java`**: this record enforces its own
+  validation independent of the parser's regex - widening the pattern
+  alone was insufficient. Three separate whitelists/ranges needed
+  matching updates:
+  - `VALID_CLOUD_TYPES`: added `CB`
+  - `VALID_LOCATIONS`: added `EMBDD`
+  - `validateOktas`: lower bound relaxed from `oktas < 1` to `oktas < 0`,
+    allowing zero as a valid (if not yet semantically interpreted) okta
+    value
+  - `getCloudTypeDescription()`: added `"CB" -> "Cumulonimbus"`
+
+**Verified:**
+- Confirmed via `NoaaMetarParserTest` (real-world CYHZ, CYVR, and CYOW
+  records) and `printRemarksParsingDiagnostics`, run directly against
+  live data:
+  - **CYHZ** (`CU1AS2CI0`): all three chained cloud types now parse,
+    including `CI` with `oktas=0` - the previously orphaned `"0"`
+    fragment in `freeText` is gone
+  - **CYVR** (`CF6SC2SC1 TCU EMBDD`): all four cloud types now parse,
+    including `TCU` with `location=EMBDD`; confirmed `TCU` is not
+    misclaimed by the thunderstorm-location handler
+  - **CYOW** (`SC5AC3 CB EMBDD LTGCG SE`): `CB EMBDD` now parses as a
+    `CloudType`; only the still-unwired `LTGCG` variant remains in
+    `freeText`
+- Extended `CloudTypeTest`, `RegExprConstTest` (including regression
+  coverage confirming existing `CB`-with-real-qualifier remarks like
+  `CB OHD`/`CB DSNT W-NW MOV E` still route to `ThunderstormLocation`
+  unaffected), and `NoaaMetarParserTest`
+- Updated `NoaaMetarParserRemarksRecoveryTest`'s CYHZ and CYOW cases
+  (previously documenting the bug as expected behavior) to assert the
+  fixed parsing instead
+- **`CloudTypeTest.testInvalidOktas`** previously asserted `0` should be
+  rejected - correct under the old (buggy) validation rule, but now
+  actively wrong given `0` is valid data. Updated its value set (`0` →
+  `-5`) to preserve the test's actual intent (confirming genuinely
+  out-of-range values still throw) without asserting the old bug as
+  correct
+
+**Note:** the meaning of `oktas=0` is not assumed or interpreted at this
+layer (this record's job is faithful capture, not interpretation). The
+downstream layers may decide how to treat it.
+
 ### Version 1.19.8-SNAPSHOT - September 18, 2026
 
 #### Chained Begin/End Weather Event Continuation Fix
