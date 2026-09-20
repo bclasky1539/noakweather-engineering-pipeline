@@ -37,7 +37,7 @@ class CloudTypeTest {
     // ==================== Constructor and Validation Tests ====================
 
     @ParameterizedTest
-    @ValueSource(strings = {"CU", "TCU", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI"})
+    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI"})
     void testValidCloudTypes(String cloudType) {
         CloudType cloud = new CloudType(cloudType, null, null, null, null);
 
@@ -89,7 +89,7 @@ class CloudTypeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, -1, 9, 10, 100})
+    @ValueSource(ints = {-5, -1, 9, 10, 100})
     void testInvalidOktas(int invalidOktas) {
         assertThatThrownBy(() -> new CloudType("SC", invalidOktas, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -137,7 +137,7 @@ class CloudTypeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"OHD", "OHD-ALQDS", "ALQDS", "TR"})
+    @ValueSource(strings = {"OHD", "OHD-ALQDS", "ALQDS", "TR", "EMBDD"})
     void testValidLocation(String location) {
         CloudType cloud = new CloudType("AC", null, null, location, null);
 
@@ -286,6 +286,8 @@ class CloudTypeTest {
     @ParameterizedTest
     @CsvSource({
             "CU, Cumulus",
+            "TCU, Towering Cumulus",
+            "CB, Cumulonimbus",
             "CF, Cumuliform",
             "ST, Stratus",
             "SC, Stratocumulus",
@@ -463,6 +465,128 @@ class CloudTypeTest {
         assertThat(cloud.getSummary()).isEqualTo("Altocumulus (8/8)");
     }
 
+    // ==================== CB (Cumulonimbus) Tests ====================
+
+    @Test
+    @DisplayName("Should accept CB as valid cloud type")
+    void testCB_Valid() {
+        CloudType cb = CloudType.of("CB");
+
+        assertThat(cb.cloudType()).isEqualTo("CB");
+        assertThat(cb.oktas()).isNull();
+        assertThat(cb.intensity()).isNull();
+        assertThat(cb.location()).isNull();
+        assertThat(cb.movementDirection()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should create CB with oktas")
+    void testCB_WithOktas() {
+        CloudType cb4 = CloudType.of("CB", 4);
+
+        assertThat(cb4.cloudType()).isEqualTo("CB");
+        assertThat(cb4.oktas()).isEqualTo(4);
+        assertThat(cb4.hasOktaCoverage()).isTrue();
+        assertThat(cb4.getOktasFraction()).isEqualTo(0.5);
+    }
+
+    @Test
+    @DisplayName("Should normalize CB case")
+    void testCB_CaseInsensitive() {
+        CloudType lower = CloudType.of("cb");
+        CloudType mixed = CloudType.of("Cb");
+        CloudType upper = CloudType.of("CB");
+
+        assertThat(lower.cloudType()).isEqualTo("CB");
+        assertThat(mixed.cloudType()).isEqualTo("CB");
+        assertThat(upper.cloudType()).isEqualTo("CB");
+    }
+
+    @Test
+    @DisplayName("Should return correct description for CB")
+    void testCB_Description() {
+        CloudType cb = CloudType.of("CB");
+
+        assertThat(cb.getCloudTypeDescription()).isEqualTo("Cumulonimbus");
+    }
+
+    @Test
+    @DisplayName("Should format CB summary correctly")
+    void testCB_Summary() {
+        // CB with oktas
+        CloudType cb4 = CloudType.of("CB", 4);
+        assertThat(cb4.getSummary()).isEqualTo("Cumulonimbus (4/8)");
+
+        // CB with EMBDD location
+        CloudType cbEmbdd = CloudType.withLocation("CB", "EMBDD");
+        assertThat(cbEmbdd.getSummary()).isEqualTo("Cumulonimbus (embdd)");
+
+        // CB with oktas and location
+        CloudType cbComplete = new CloudType("CB", 6, null, "OHD", null);
+        assertThat(cbComplete.getSummary()).isEqualTo("Cumulonimbus (6/8, ohd)");
+
+        // CB with movement
+        CloudType cbMoving = new CloudType("CB", null, null, null, "E");
+        assertThat(cbMoving.getSummary()).isEqualTo("Cumulonimbus (moving E)");
+
+        // CB with intensity
+        CloudType cbIntense = new CloudType("CB", 8, "MDT", null, null);
+        assertThat(cbIntense.getSummary()).isEqualTo("mdt Cumulonimbus (8/8)");
+    }
+
+    @Test
+    @DisplayName("Should handle real-world CB EMBDD example - CYOW")
+    void testCB_RealWorldEmbdd() {
+        // From METAR: RMK CB EMBDD (CYOW)
+        CloudType cb = new CloudType("CB", null, null, "EMBDD", null);
+
+        assertThat(cb.cloudType()).isEqualTo("CB");
+        assertThat(cb.location()).isEqualTo("EMBDD");
+        assertThat(cb.hasLocation()).isTrue();
+        assertThat(cb.isOverhead()).isFalse();
+        assertThat(cb.isTrace()).isFalse();
+        assertThat(cb.isAllQuadrants()).isFalse();
+        assertThat(cb.getSummary()).isEqualTo("Cumulonimbus (embdd)");
+    }
+
+    @Test
+    @DisplayName("Should handle CB edge cases")
+    void testCB_EdgeCases() {
+        // CB with all fields
+        CloudType complete = new CloudType("CB", 8, "MDT", "OHD", "NW");
+        assertThat(complete.cloudType()).isEqualTo("CB");
+        assertThat(complete.oktas()).isEqualTo(8);
+        assertThat(complete.intensity()).isEqualTo("MDT");
+        assertThat(complete.location()).isEqualTo("OHD");
+        assertThat(complete.movementDirection()).isEqualTo("NW");
+        assertThat(complete.hasOktaCoverage()).isTrue();
+        assertThat(complete.hasIntensity()).isTrue();
+        assertThat(complete.hasLocation()).isTrue();
+        assertThat(complete.hasMovement()).isTrue();
+        assertThat(complete.isOverhead()).isTrue();
+
+        // CB with minimum valid oktas
+        CloudType min = CloudType.of("CB", 1);
+        assertThat(min.oktas()).isEqualTo(1);
+
+        // CB with maximum valid oktas
+        CloudType max = CloudType.of("CB", 8);
+        assertThat(max.oktas()).isEqualTo(8);
+    }
+
+    @Test
+    @DisplayName("Should handle CB equality correctly")
+    void testCB_Equality() {
+        CloudType cb1 = CloudType.of("CB", 4);
+        CloudType cb2 = CloudType.of("CB", 4);
+        CloudType cb3 = CloudType.of("CB", 5);
+
+        assertThat(cb1)
+                .isEqualTo(cb2)
+                .isNotEqualTo(cb3);
+        assertThat(cb1.hashCode()).hasSameHashCodeAs(cb2.hashCode());
+    }
+
     // ==================== Record Equality Tests ====================
 
     @Test
@@ -612,6 +736,7 @@ class CloudTypeTest {
     @CsvSource({
             "CU, Cumulus",
             "TCU, Towering Cumulus",
+            "CB, Cumulonimbus",
             "CF, Cumuliform",
             "ST, Stratus",
             "SC, Stratocumulus",

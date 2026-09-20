@@ -34,6 +34,7 @@ package weather.model.components.remark;
  * Cloud Type Codes:
  * CU - Cumulus
  * TCU - Towering Cumulus
+ * CB - Cumulonimbus
  * CF - Cumuliform
  * ST - Stratus
  * SC - Stratocumulus
@@ -81,7 +82,7 @@ public record CloudType(
 
     // Valid cloud type codes
     private static final String[] VALID_CLOUD_TYPES = {
-            "CU", "TCU", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"
+            "CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"
     };
 
     // Valid intensity modifiers
@@ -91,7 +92,7 @@ public record CloudType(
 
     // Valid location indicators
     private static final String[] VALID_LOCATIONS = {
-            "OHD", OVERHEAD_ALL_QUADRANTS_CODE, "ALQDS", "TR"
+            "OHD", OVERHEAD_ALL_QUADRANTS_CODE, "ALQDS", "TR", "EMBDD"
     };
 
     // Valid movement directions
@@ -140,7 +141,7 @@ public record CloudType(
      * @throws IllegalArgumentException if oktas is out of range
      */
     private static void validateOktas(Integer oktas) {
-        if (oktas != null && (oktas < 1 || oktas > 8)) {
+        if (oktas != null && (oktas < 0 || oktas > 8)) {
             throw new IllegalArgumentException("Oktas must be between 1 and 8: " + oktas);
         }
     }
@@ -290,6 +291,7 @@ public record CloudType(
         return switch (cloudType) {
             case "CU" -> "Cumulus";
             case "TCU" -> "Towering Cumulus";
+            case "CB" -> "Cumulonimbus";
             case "CF" -> "Cumuliform";
             case "ST" -> "Stratus";
             case "SC" -> "Stratocumulus";
