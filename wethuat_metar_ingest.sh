@@ -27,7 +27,7 @@
 # A validation failure for one station does not stop the sweep; every
 # station is attempted and every result is recorded in the summary.
 #
-# Usage: ./uat_metar_ingest.sh
+# Usage: ./wethuat_metar_ingest.sh
 # ============================================================================
 
 set -uo pipefail
@@ -93,8 +93,8 @@ TODAY=$(date -u +%Y-%m-%d)
 # ----------------------------------------------------------------------------
 STATIONS=(
   # --- North America (SM / inHg) ---
-  KATL KJFK KORD KDFW KDEN KSFO KSEA KMIA KBOS KLAX KPHX KMCO KIAH KAFW
-  CYYZ CYVR CYUL
+  KDLZ KATL KJFK KORD KDFW KDEN KSFO KSEA KMIA KBOS KLAX KPHX KMCO KIAH KAFW KFFO KCVS KBLF KALO KCKB
+  CYYZ CYVR CYUL CYZG
   MMMX
 
   # --- Caribbean / Central America ---

@@ -78,6 +78,7 @@ src/main/.DS_Store
 src/main/java/.DS_Store
 documentation/
 references/
+uat-discovery/
 
 # JaCoCo
 jacoco.exec
