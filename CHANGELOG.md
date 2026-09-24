@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.10-SNAPSHOT - September 24, 2026
+
+#### JDK 25 Support: CI Matrix, Local Toolchain, Dependency Compatibility
+
+**Added:**
+- **`.github/workflows/maven.yml`**: added JDK 25 to the CI test matrix
+  (now `[17, 21, 25]`). Part of this year's JDK support plan: adopt 25
+  now alongside the existing 17/21, sunset 17 next year to leave 21 and
+  25 as the supported pair. JaCoCo/Codecov reporting remains gated on
+  17 for now; will move once 17 is retired
+- Local dev toolchain standardized on Eclipse Adoptium Temurin builds
+  (17, 21, 25) via Homebrew casks, matching CI's `distribution: 'temurin'`
+  exactly rather than Homebrew's own generic `openjdk` formulas. Homebrew
+  `openjdk@17`/`openjdk@21`/`openjdk@25` formulas kept installed and
+  available as a fallback
+
+**Fixed:**
+- **`weather-ingestion/pom.xml`, `weather-storage/pom.xml`**: bumped
+  `mockito-core` and `mockito-junit-jupiter` from `5.14.2` to `5.23.0`.
+  `5.14.2` predates JDK 25 GA and its Byte Buddy engine could not
+  instrument JDK 25 classes (`MockitoException: Could not modify all
+  classes`), discovered while testing the project under Temurin 25
+  ahead of adding it to CI
+- **`noakweather-platform/pom.xml`**: added the JUnit 5 BOM
+  (`org.junit:junit-bom`) to `dependencyManagement`, bumped
+  `junit.version` from `5.11.4` to `5.13.4`, and removed the now-redundant
+  explicit `junit-jupiter`/`junit-jupiter-engine`/`junit-jupiter-params`
+  entries. The Mockito bump exposed a second, independent issue: with no
+  BOM, only `junit-jupiter-*` was pinned — `mockito-junit-jupiter:5.23.0`
+  pulled `junit-platform-commons`/`junit-platform-engine` transitively at
+  a newer version than the rest of the project used, producing a
+  `NoClassDefFoundError` for `OutputDirectoryProvider` in the forked
+  Surefire JVM. Importing the BOM keeps the whole JUnit 5 family
+  (Jupiter + Platform) aligned regardless of what any individual
+  dependency pulls in transitively
+
+**Verified:**
+- Full reactor build and test suite passing under both Temurin 17 and
+  Temurin 25 locally, before pushing the CI matrix change
+
 ### Version 1.19.9-SNAPSHOT - September 19, 2026
 
 #### Cloud-Type Parse Failures No Longer Silently Discard Tokens (CI0, TCU/CB EMBDD)
