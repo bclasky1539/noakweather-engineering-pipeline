@@ -54,7 +54,7 @@
         <!-- Dependency versions -->
         <aws-sdk.version>2.41.10</aws-sdk.version>
         <snowflake-jdbc.version>3.23.1</snowflake-jdbc.version>
-        <junit.version>5.11.4</junit.version>
+        <junit.version>5.13.4</junit.version>
         <assertj.version>3.24.2</assertj.version>
         <log4j.version>2.25.3</log4j.version>
         <jackson.version>2.18.2</jackson.version>
@@ -87,6 +87,16 @@
     <!-- Dependency Management -->
     <dependencyManagement>
         <dependencies>
+            <!-- JUnit 5 BOM - manages Jupiter + Platform together, keeping
+             them aligned even when a transitive dependency (like
+             mockito-junit-jupiter) pulls in a JUnit artifact directly -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <!-- AWS SDK BOM -->
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
@@ -167,24 +177,6 @@
             <!-- Using built-in java.net.http.HttpClient -->
 
             <!-- Testing Dependencies -->
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-engine</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-params</artifactId>
-                <version>${junit.version}</version>
-                <scope>test</scope>
-            </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
