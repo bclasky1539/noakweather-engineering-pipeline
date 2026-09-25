@@ -302,7 +302,7 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern TS_CLD_LOC_PATTERN = Pattern.compile(
-            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?<dirchain>[NSEW]{1,2}(?:-[NSEW]{1,2})*(?:\\s+AND\\s+[NSEW]{1,2}(?:-[NSEW]{1,2})*)*)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
+            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)?\\s*(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+)*+)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
     );
 
     /**
