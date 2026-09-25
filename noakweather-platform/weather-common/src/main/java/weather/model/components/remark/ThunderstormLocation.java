@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,22 @@
  */
 package weather.model.components.remark;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Represents location information for thunderstorms and significant cloud types
  * in METAR remarks.
- *
+ * <p>
  * Examples:
  * - TS SE → Thunderstorm Southeast
  * - CB OHD MOV E → Cumulonimbus Overhead Moving East
  * - TCU DSNT N-NE → Towering Cumulus Distant North to Northeast
  * - ACC VC W → Altocumulus Castellanus in Vicinity West
- *
+ * - CB DSNT E-S-SW → Cumulonimbus Distant, arc from East through South to Southwest
+ * - TCU N AND SW → Towering Cumulus reported both North and Southwest
+ * - CB DSNT N-E AND SE-S → Cumulonimbus Distant, two arcs: North-East and Southeast-South
+ * <p>
  * Cloud types:
  * - TS: Thunderstorm
  * - CB: Cumulonimbus
@@ -33,7 +39,7 @@ package weather.model.components.remark;
  * - ACC: Altocumulus Castellanus
  * - CBMAM: Cumulonimbus Mammatus
  * - VIRGA: Virga
- *
+ * <p>
  * Location qualifiers:
  * - OHD: Overhead
  * - VC: In vicinity (5-10 miles)
@@ -42,43 +48,58 @@ package weather.model.components.remark;
  * - TOP: At or above reference level
  * - TR: At all quadrants
  *
- * @param cloudType Type of cloud or phenomenon (TS, CB, TCU, ACC, CBMAM, VIRGA)
+ * @param cloudType         Type of cloud or phenomenon (TS, CB, TCU, ACC, CBMAM, VIRGA)
  * @param locationQualifier Optional qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR)
- * @param direction Primary direction (N, NE, E, SE, S, SW, W, NW)
- * @param directionRange Optional second direction for range (e.g., N-NE means North to Northeast)
- * @param movingDirection Direction of movement (if MOV present)
- *
+ * @param directionSegments Directions reported for this location. One or more
+ *                          segments, each a single compass point or a multi-point arc/range;
+ *                          multiple segments mean the same cloud type was reported at more
+ *                          than one place (AND-chained), e.g. "N-E AND SE-S". Empty if no
+ *                          direction was reported.
+ * @param movingDirection   Direction of movement (if MOV present)
  * @author bclasky1539
  *
  */
 public record ThunderstormLocation(
         String cloudType,
         String locationQualifier,
-        String direction,
-        String directionRange,
+        List<DirectionSegment> directionSegments,
         String movingDirection
 ) {
+    public ThunderstormLocation {
+        directionSegments = directionSegments == null
+                ? List.of()
+                : List.copyOf(directionSegments);
+    }
+
     /**
-     * Create a simple thunderstorm location with just type and direction.
+     * Create a simple thunderstorm location with just type and a single direction.
      *
      * @param cloudType the cloud type (TS, CB, etc.)
      * @param direction the direction (N, SE, etc.)
      * @return new ThunderstormLocation
      */
     public static ThunderstormLocation of(String cloudType, String direction) {
-        return new ThunderstormLocation(cloudType, null, direction, null, null);
+        return new ThunderstormLocation(
+                cloudType, null,
+                List.of(new DirectionSegment(List.of(direction))),
+                null
+        );
     }
 
     /**
-     * Create a thunderstorm location with movement.
+     * Create a thunderstorm location with a single direction and movement.
      *
-     * @param cloudType the cloud type
-     * @param direction the direction
+     * @param cloudType       the cloud type
+     * @param direction       the direction
      * @param movingDirection the direction of movement
      * @return new ThunderstormLocation
      */
     public static ThunderstormLocation withMovement(String cloudType, String direction, String movingDirection) {
-        return new ThunderstormLocation(cloudType, null, direction, null, movingDirection);
+        return new ThunderstormLocation(
+                cloudType, null,
+                List.of(new DirectionSegment(List.of(direction))),
+                movingDirection
+        );
     }
 
     /**
@@ -95,11 +116,8 @@ public record ThunderstormLocation(
             sb.append(" ").append(getLocationQualifierDescription());
         }
 
-        if (direction != null) {
-            sb.append(" ").append(direction);
-            if (directionRange != null) {
-                sb.append("-").append(directionRange);
-            }
+        if (hasDirections()) {
+            sb.append(" ").append(getDirectionsSummary());
         }
 
         if (movingDirection != null) {
@@ -158,20 +176,31 @@ public record ThunderstormLocation(
     }
 
     /**
-     * Check if this has a direction range (e.g., N-NE).
-     *
-     * @return true if directionRange is present
-     */
-    public boolean hasDirectionRange() {
-        return directionRange != null;
-    }
-
-    /**
      * Check if this has a location qualifier.
      *
      * @return true if locationQualifier is present
      */
     public boolean hasLocationQualifier() {
         return locationQualifier != null;
+    }
+
+    /**
+     * Check if any direction information is present.
+     *
+     * @return true if at least one direction segment is present
+     */
+    public boolean hasDirections() {
+        return !directionSegments.isEmpty();
+    }
+
+    /**
+     * Get the AND-joined, human-readable directions, e.g. "N-E AND SE-S".
+     *
+     * @return the directions summary, or empty string if none
+     */
+    public String getDirectionsSummary() {
+        return directionSegments.stream()
+                .map(DirectionSegment::getSummary)
+                .collect(Collectors.joining(" AND "));
     }
 }

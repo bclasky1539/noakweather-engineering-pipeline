@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.11-SNAPSHOT - September 25, 2026
+
+#### Fixed
+- **#69: AND-chain / directional arc in thunderstorm cloud location remarks** — `TS_CLD_LOC_PATTERN`'s
+  fixed `dir`/`dir2` capacity (max one direction plus one range) has been replaced with a repeatable
+  `dirchain` group, correctly parsing:
+  - Multipoint directional arcs (e.g. `CB DSNT E-S-SW`)
+  - `AND`-chained single directions (e.g. `TCU N AND SW`)
+  - `AND`-chained directional ranges (e.g. `CB DSNT N-E AND SE-S`)
+  - Confirmed via real-world captures: KDFW (three-point arc with movement), KPHX (AND-chained ranges),
+    KMIA (AND-chained singles)
+
+#### Changed
+- **`ThunderstormLocation`** (`weather.model.components.remark`): `direction`/`directionRange` fields
+  replaced with `List<DirectionSegment> directionSegments` (breaking change to the record's public
+  shape — no backward-compatible constructor retained). New `getDirectionsSummary()` and
+  `hasDirections()` methods added; `hasDirectionRange()` removed.
+- New `DirectionSegment` record (`weather.model.components.remark`) — represents a single directional
+  point or a multipoint range/arc within a `ThunderstormLocation`'s direction chain.
+
+#### Internal
+- `NoaaMetarParser.parseThunderstormLocationFromMatcher` updated to read the new `dirchain` group;
+  new `parseDirectionChain(String)` helper splits on `AND` and `-` to build the `DirectionSegment` list.
+- Test coverage: new `DirectionSegmentTest`, rewritten `ThunderstormLocationTest`, updated
+  `NoaaMetarRemarksTest`, `NoaaMetarParserTest`, `RegExprConstTest`, and
+  `NoaaMetarParserRemarksRecoveryTest` (KMIA, KPHX, KCLT recovery cases revised to reflect that
+  AND-chains no longer leave orphaned tokens in `freeText`).
+
 ### Version 1.19.10-SNAPSHOT - September 24, 2026
 
 #### JDK 25 Support: CI Matrix, Local Toolchain, Dependency Compatibility

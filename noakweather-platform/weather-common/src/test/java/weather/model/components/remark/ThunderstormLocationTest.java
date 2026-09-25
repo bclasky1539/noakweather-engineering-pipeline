@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +21,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * THUNDERSTORM LOCATION TESTS
  * ============================
- *
+ * <p>
  * Tests for ThunderstormLocation record and parsing functionality.
  *
  * @author bclasky1539
@@ -40,9 +42,8 @@ class ThunderstormLocationTest {
         ThunderstormLocation location = ThunderstormLocation.of("TS", "SE");
 
         assertThat(location.cloudType()).isEqualTo("TS");
-        assertThat(location.direction()).isEqualTo("SE");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("SE")));
         assertThat(location.locationQualifier()).isNull();
-        assertThat(location.directionRange()).isNull();
         assertThat(location.movingDirection()).isNull();
     }
 
@@ -52,28 +53,49 @@ class ThunderstormLocationTest {
         ThunderstormLocation location = ThunderstormLocation.withMovement("CB", "W", "E");
 
         assertThat(location.cloudType()).isEqualTo("CB");
-        assertThat(location.direction()).isEqualTo("W");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("W")));
         assertThat(location.movingDirection()).isEqualTo("E");
         assertThat(location.isMoving()).isTrue();
     }
 
     @Test
-    @DisplayName("Should create full thunderstorm location")
+    @DisplayName("Should create full thunderstorm location with a two-point range")
     void testFullLocation() {
         ThunderstormLocation location = new ThunderstormLocation(
-                "TS", "VC", "N", "NE", "E"
+                "TS", "VC", List.of(new DirectionSegment(List.of("N", "NE"))), "E"
         );
 
         assertThat(location.cloudType()).isEqualTo("TS");
         assertThat(location.locationQualifier()).isEqualTo("VC");
-        assertThat(location.direction()).isEqualTo("N");
-        assertThat(location.directionRange()).isEqualTo("NE");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("N", "NE")));
         assertThat(location.movingDirection()).isEqualTo("E");
 
         assertThat(location.isThunderstorm()).isTrue();
-        assertThat(location.hasDirectionRange()).isTrue();
+        assertThat(location.hasDirections()).isTrue();
         assertThat(location.hasLocationQualifier()).isTrue();
         assertThat(location.isMoving()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should handle no direction information")
+    void testNoDirections() {
+        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null, null);
+
+        assertThat(location.directionSegments()).isEmpty();
+        assertThat(location.hasDirections()).isFalse();
+        assertThat(location.getDirectionsSummary()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should defensively copy the direction segments list")
+    void testImmutability_DefensiveCopy() {
+        List<DirectionSegment> mutable = new java.util.ArrayList<>();
+        mutable.add(new DirectionSegment(List.of("N")));
+
+        ThunderstormLocation location = new ThunderstormLocation("TS", null, mutable, null);
+        mutable.add(new DirectionSegment(List.of("S")));
+
+        assertThat(location.directionSegments()).hasSize(1);
     }
 
     @ParameterizedTest
@@ -97,15 +119,17 @@ class ThunderstormLocationTest {
     @Test
     @DisplayName("Should generate summary with location qualifier")
     void testGetSummary_WithQualifier() {
-        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null, null, null);
+        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null, null);
 
         assertThat(location.getSummary()).isEqualTo("Thunderstorm Overhead");
     }
 
     @Test
-    @DisplayName("Should generate summary with direction range")
+    @DisplayName("Should generate summary with a two-point direction range")
     void testGetSummary_WithRange() {
-        ThunderstormLocation location = new ThunderstormLocation("CB", "DSNT", "N", "NE", null);
+        ThunderstormLocation location = new ThunderstormLocation(
+                "CB", "DSNT", List.of(new DirectionSegment(List.of("N", "NE"))), null
+        );
 
         assertThat(location.getSummary())
                 .contains("Cumulonimbus")
@@ -114,9 +138,56 @@ class ThunderstormLocationTest {
     }
 
     @Test
+    @DisplayName("Should generate summary with a three-point arc - KDFW real-world")
+    void testGetSummary_WithThreePointArc() {
+        ThunderstormLocation location = new ThunderstormLocation(
+                "CB", "DSNT", List.of(new DirectionSegment(List.of("E", "S", "SW"))), null
+        );
+
+        assertThat(location.getSummary())
+                .contains("Cumulonimbus")
+                .contains("Distant")
+                .contains("E-S-SW");
+    }
+
+    @Test
+    @DisplayName("Should generate summary with AND-chained single directions - KMIA real-world")
+    void testGetSummary_WithAndChainedSingleDirections() {
+        ThunderstormLocation location = new ThunderstormLocation(
+                "TCU", null,
+                List.of(new DirectionSegment(List.of("N")), new DirectionSegment(List.of("SW"))),
+                null
+        );
+
+        assertThat(location.getSummary())
+                .contains("Towering Cumulus")
+                .contains("N AND SW");
+    }
+
+    @Test
+    @DisplayName("Should generate summary with AND-chained ranges - KPHX real-world")
+    void testGetSummary_WithAndChainedRanges() {
+        ThunderstormLocation location = new ThunderstormLocation(
+                "CB", "DSNT",
+                List.of(
+                        new DirectionSegment(List.of("N", "E")),
+                        new DirectionSegment(List.of("SE", "S"))
+                ),
+                null
+        );
+
+        assertThat(location.getSummary())
+                .contains("Cumulonimbus")
+                .contains("Distant")
+                .contains("N-E AND SE-S");
+    }
+
+    @Test
     @DisplayName("Should generate summary with movement")
     void testGetSummary_WithMovement() {
-        ThunderstormLocation location = new ThunderstormLocation("TS", null, "SE", null, "E");
+        ThunderstormLocation location = new ThunderstormLocation(
+                "TS", null, List.of(new DirectionSegment(List.of("SE"))), "E"
+        );
 
         assertThat(location.getSummary())
                 .contains("Thunderstorm")
@@ -127,7 +198,9 @@ class ThunderstormLocationTest {
     @Test
     @DisplayName("Should generate complete summary")
     void testGetSummary_Complete() {
-        ThunderstormLocation location = new ThunderstormLocation("TCU", "VC", "W", "NW", "N");
+        ThunderstormLocation location = new ThunderstormLocation(
+                "TCU", "VC", List.of(new DirectionSegment(List.of("W", "NW"))), "N"
+        );
 
         String summary = location.getSummary();
         assertThat(summary)

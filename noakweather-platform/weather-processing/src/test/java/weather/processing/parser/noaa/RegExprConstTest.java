@@ -891,7 +891,7 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("TCU");
         assertThat(matcher.group("loc")).isEqualTo("DSNT");
-        assertThat(matcher.group("dir")).isEqualTo("S");
+        assertThat(matcher.group("dirchain")).isEqualTo("S");
     }
 
     // ========== CB / TCU PATTERN AMBIGUITY REGRESSION TESTS ==========
@@ -923,8 +923,7 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("CB");
         assertThat(matcher.group("loc")).isEqualTo("DSNT");
-        assertThat(matcher.group("dir")).isEqualTo("W");
-        assertThat(matcher.group("dir2")).isEqualTo("NW");
+        assertThat(matcher.group("dirchain")).isEqualTo("W-NW");
         assertThat(matcher.group("dirm")).isEqualTo("E");
     }
 
@@ -959,6 +958,63 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cloud")).isEqualTo("CB");
         assertThat(matcher.group("okta")).isEqualTo("4");
+    }
+
+    // ========== DIRECTIONAL ARC AND AND-CHAIN PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should match a three-point directional arc - KDFW real-world")
+    void testThunderstormCloudLocationPattern_ThreePointArc() {
+        String input = "CB E-S-SW";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("CB");
+        assertThat(matcher.group("dirchain")).isEqualTo("E-S-SW");
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should match AND-chained single directions - KMIA real-world")
+    void testThunderstormCloudLocationPattern_AndChainedSingleDirections() {
+        String input = "TCU N AND SW";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("TCU");
+        assertThat(matcher.group("dirchain")).isEqualTo("N AND SW");
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should match AND-chained ranges - KPHX real-world")
+    void testThunderstormCloudLocationPattern_AndChainedRanges() {
+        String input = "CB DSNT N-E AND SE-S";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("CB");
+        assertThat(matcher.group("loc")).isEqualTo("DSNT");
+        assertThat(matcher.group("dirchain")).isEqualTo("N-E AND SE-S");
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should match a two-point directional range (regression check)")
+    void testThunderstormCloudLocationPattern_TwoPointRange() {
+        String input = "TCU DSNT N-NE";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dirchain")).isEqualTo("N-NE");
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_PATTERN should match dirchain with movement following an AND-chain")
+    void testThunderstormCloudLocationPattern_AndChainWithMovement() {
+        String input = "CB N AND SW MOV E";
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dirchain")).isEqualTo("N AND SW");
+        assertThat(matcher.group("dirm")).isEqualTo("E");
     }
 
     // ========== NO SIGNIFICANT CHANGE TEST ==========
