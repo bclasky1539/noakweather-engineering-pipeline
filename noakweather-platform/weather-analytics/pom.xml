@@ -8,7 +8,7 @@
     <parent>
         <groupId>weather</groupId>
         <artifactId>noakweather-platform</artifactId>
-        <version>1.19.10-SNAPSHOT</version>
+        <version>1.19.11-SNAPSHOT</version>
     </parent>
 
     <artifactId>weather-analytics</artifactId>

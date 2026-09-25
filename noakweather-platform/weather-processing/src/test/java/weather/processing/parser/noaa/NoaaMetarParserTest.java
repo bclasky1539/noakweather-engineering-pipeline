@@ -5546,7 +5546,6 @@ class NoaaMetarParserTest {
 
     @ParameterizedTest
     @CsvSource({
-            // Simple cloud locations
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TS SE', TS, SE, 'Thunderstorm Southeast'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB W', CB, W, 'Cumulonimbus West'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU N', TCU, N, 'Towering Cumulus North'",
@@ -5577,9 +5576,9 @@ class NoaaMetarParserTest {
         assertThat(location.cloudType())
                 .as("Cloud type mismatch: %s", scenario)
                 .isEqualTo(expectedType);
-        assertThat(location.direction())
+        assertThat(location.directionSegments())
                 .as("Direction mismatch: %s", scenario)
-                .isEqualTo(expectedDir);
+                .containsExactly(new DirectionSegment(List.of(expectedDir)));
         assertThat(location.locationQualifier())
                 .as("Should have no location qualifier: %s", scenario)
                 .isNull();
@@ -5636,9 +5635,8 @@ class NoaaMetarParserTest {
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("TCU");
         assertThat(location.locationQualifier()).isEqualTo("DSNT");
-        assertThat(location.direction()).isEqualTo("N");
-        assertThat(location.directionRange()).isEqualTo("NE");
-        assertThat(location.hasDirectionRange()).isTrue();
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("N", "NE")));
+        assertThat(location.hasDirections()).isTrue();
         assertThat(location.movingDirection()).isNull();
     }
 
@@ -5657,7 +5655,7 @@ class NoaaMetarParserTest {
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("CB");
         assertThat(location.locationQualifier()).isEqualTo("OHD");
-        assertThat(location.direction()).isNull();
+        assertThat(location.hasDirections()).isFalse();
         assertThat(location.movingDirection()).isEqualTo("E");
         assertThat(location.isMoving()).isTrue();
     }
@@ -5676,16 +5674,14 @@ class NoaaMetarParserTest {
                 .as("Should have 2 thunderstorm locations")
                 .hasSize(2);
 
-        // First location: Thunderstorm Southeast
         ThunderstormLocation ts = data.getRemarks().thunderstormLocations().get(0);
         assertThat(ts.cloudType()).isEqualTo("TS");
-        assertThat(ts.direction()).isEqualTo("SE");
+        assertThat(ts.directionSegments()).containsExactly(new DirectionSegment(List.of("SE")));
         assertThat(ts.isThunderstorm()).isTrue();
 
-        // Second location: Cumulonimbus West
         ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(1);
         assertThat(cb.cloudType()).isEqualTo("CB");
-        assertThat(cb.direction()).isEqualTo("W");
+        assertThat(cb.directionSegments()).containsExactly(new DirectionSegment(List.of("W")));
     }
 
     @Test
@@ -5703,13 +5699,11 @@ class NoaaMetarParserTest {
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("TCU");
         assertThat(location.locationQualifier()).isEqualTo("DSNT");
-        assertThat(location.direction()).isEqualTo("N");
-        assertThat(location.directionRange()).isEqualTo("NE");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("N", "NE")));
         assertThat(location.movingDirection()).isEqualTo("E");
 
-        // Verify helper methods
         assertThat(location.hasLocationQualifier()).isTrue();
-        assertThat(location.hasDirectionRange()).isTrue();
+        assertThat(location.hasDirections()).isTrue();
         assertThat(location.isMoving()).isTrue();
     }
 
@@ -5724,18 +5718,16 @@ class NoaaMetarParserTest {
         assertThat(result.isSuccess()).isTrue();
         NoaaMetarData data = extractMetarData(result);
 
-        // Verify all remarks parsed
         assertThat(data.getRemarks()).isNotNull();
         assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
         assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
 
-        // Verify thunderstorm location
         assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("TS");
-        assertThat(location.direction()).isEqualTo("SE");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("SE")));
     }
 
     @Test
@@ -5748,7 +5740,6 @@ class NoaaMetarParserTest {
         assertThat(result.isSuccess()).isTrue();
         NoaaMetarData data = extractMetarData(result);
 
-        // All should be parsed regardless of order
         assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
         assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
         assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
@@ -5756,7 +5747,7 @@ class NoaaMetarParserTest {
 
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("CB");
-        assertThat(location.direction()).isEqualTo("W");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("W")));
     }
 
     @Test
@@ -5772,7 +5763,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("TS");
-        assertThat(location.direction()).isEqualTo("SE");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("SE")));
     }
 
     @ParameterizedTest
@@ -6972,8 +6963,6 @@ class NoaaMetarParserTest {
     @Test
     @DisplayName("Should still parse TCU as ThunderstormLocation when followed by a real location qualifier")
     void testParseThunderstormLocation_TcuStillMatchesNormalQualifiers() {
-        // Confirms the EMBDD exclusion in TS_CLD_LOC_PATTERN doesn't regress
-        // legitimate TCU-with-location remarks
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU DSNT S";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -6985,7 +6974,7 @@ class NoaaMetarParserTest {
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("TCU");
         assertThat(location.locationQualifier()).isEqualTo("DSNT");
-        assertThat(location.direction()).isEqualTo("S");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("S")));
 
         assertThat(data.getRemarks().cloudTypes()).isEmpty();
     }
@@ -7040,8 +7029,6 @@ class NoaaMetarParserTest {
     @Test
     @DisplayName("Should still parse CB as ThunderstormLocation when followed by a real location qualifier")
     void testParseThunderstormLocation_CbStillMatchesNormalQualifiers() {
-        // Confirms adding CB to CLOUD_OKTA_PATTERN's alternation doesn't
-        // regress existing CB-with-location remarks
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB DSNT W-NW MOV E";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -7053,8 +7040,7 @@ class NoaaMetarParserTest {
         ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
         assertThat(location.cloudType()).isEqualTo("CB");
         assertThat(location.locationQualifier()).isEqualTo("DSNT");
-        assertThat(location.direction()).isEqualTo("W");
-        assertThat(location.directionRange()).isEqualTo("NW");
+        assertThat(location.directionSegments()).containsExactly(new DirectionSegment(List.of("W", "NW")));
         assertThat(location.movingDirection()).isEqualTo("E");
 
         assertThat(data.getRemarks().cloudTypes()).isEmpty();
@@ -7073,6 +7059,158 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
         assertThat(data.getRemarks().thunderstormLocations().get(0).locationQualifier()).isEqualTo("OHD");
         assertThat(data.getRemarks().cloudTypes()).isEmpty();
+    }
+
+    // ========== DIRECTIONAL ARC AND AND-CHAIN THUNDERSTORM LOCATION TESTS (Issue #69) ==========
+
+    @Test
+    @DisplayName("Should parse three-point directional arc - KDFW real-world")
+    void testParseThunderstormLocation_ThreePointArc_KDFW() {
+        String metar = "2026/09/11 22:53 KDFW 112253Z 18021G34KT 7SM BKN070 BKN170 BKN250 32/21 A2977 " +
+                "RMK AO2 PK WND 17036/2242 SLP069 CB DSNT E-S-SW MOV SE T03220211";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("CB");
+        assertThat(location.locationQualifier()).isEqualTo("DSNT");
+        assertThat(location.directionSegments())
+                .containsExactly(new DirectionSegment(List.of("E", "S", "SW")));
+        assertThat(location.movingDirection()).isEqualTo("SE");
+        assertThat(location.isMoving()).isTrue();
+
+        // Confirms the arc no longer orphans downstream tokens (cross-referenced
+        // with #61's recovery-mechanism finding)
+        assertThat(data.getRemarks().peakWind()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1006.9, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(32.2, within(0.1));
+        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(21.1, within(0.1));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse AND-chained single directions - KMIA real-world")
+    void testParseThunderstormLocation_AndChainedSingleDirections_KMIA() {
+        String metar = "2026/09/15 15:53 KMIA 151553Z 11008KT 10SM SCT035TCU SCT300 33/22 A3009 " +
+                "RMK AO2 SLP188 TCU N AND SW T03280222";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("TCU");
+        assertThat(location.locationQualifier()).isNull();
+        assertThat(location.directionSegments())
+                .as("TCU reported to the N and to the SW, same cloud type, one reading")
+                .containsExactly(
+                        new DirectionSegment(List.of("N")),
+                        new DirectionSegment(List.of("SW"))
+                );
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1018.8, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(32.8, within(0.1));
+        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.2, within(0.1));
+        assertThat(data.getRemarks().freeText())
+                .as("AND SW no longer left orphaned in freeText")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse AND-chained directional ranges - KPHX real-world")
+    void testParseThunderstormLocation_AndChainedRanges_KPHX() {
+        String metar = "2026/09/11 22:51 KPHX 112251Z 30011G17KT 10SM FEW090 FEW130 SCT250 41/17 A2972 " +
+                "RMK AO2 SLP041 CB DSNT N-E AND SE-S T04060167";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("CB");
+        assertThat(location.locationQualifier()).isEqualTo("DSNT");
+        assertThat(location.directionSegments())
+                .containsExactly(
+                        new DirectionSegment(List.of("N", "E")),
+                        new DirectionSegment(List.of("SE", "S"))
+                );
+        assertThat(location.movingDirection()).isNull();
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1004.1, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(40.6, within(0.1));
+        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(16.7, within(0.1));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should still parse a simple two-point range without AND-chaining (regression check)")
+    void testParseThunderstormLocation_TwoPointRange_Regression() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU DSNT N-NE";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.directionSegments())
+                .containsExactly(new DirectionSegment(List.of("N", "NE")));
+    }
+
+    @Test
+    @DisplayName("Should parse AND-chain followed by movement")
+    void testParseThunderstormLocation_AndChainWithMovement() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB N AND SW MOV E";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.directionSegments())
+                .containsExactly(
+                        new DirectionSegment(List.of("N")),
+                        new DirectionSegment(List.of("SW"))
+                );
+        assertThat(location.movingDirection()).isEqualTo("E");
+        assertThat(location.isMoving()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should include AND-chain in getSummary() output")
+    void testParseThunderstormLocation_AndChainSummary() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB DSNT N-E AND SE-S";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.getSummary())
+                .contains("Cumulonimbus")
+                .contains("Distant")
+                .contains("N-E AND SE-S");
     }
 
     // ========== SECONDARY ALTIMETER PARSING TESTS ==========

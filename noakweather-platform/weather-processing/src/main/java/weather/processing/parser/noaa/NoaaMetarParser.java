@@ -68,6 +68,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final String GROUP_TENDENCY_CODE = "tend";
     private static final String GROUP_HEIGHT_CODE = "height";
 
+    private static final Pattern AND_SEPARATOR_PATTERN = Pattern.compile("\\sAND\\s");
+    private static final Pattern RANGE_SEPARATOR_PATTERN = Pattern.compile("-");
+
     // Pattern registry for METAR parsing
     private final NoaaAviationWeatherPatternRegistry patternRegistry;
 
@@ -2368,17 +2371,46 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private ThunderstormLocation parseThunderstormLocationFromMatcher(Matcher matcher) {
         String cloudType = matcher.group("type");
         String locationQualifier = matcher.group("loc");
-        String direction = matcher.group("dir");
-        String directionRange = matcher.group("dir2");
+        String dirchain = matcher.group("dirchain");
         String movingDirection = matcher.group("dirm");
+
+        List<DirectionSegment> directionSegments = parseDirectionChain(dirchain);
 
         return new ThunderstormLocation(
                 cloudType,
                 locationQualifier,
-                direction,
-                directionRange,
+                directionSegments,
                 movingDirection
         );
+    }
+
+    /**
+     * Parse a raw direction chain into a list of DirectionSegments.
+     * <p>
+     * A chain may contain one or more segments joined by "AND" (each
+     * segment describing a separate reported location for the same
+     * cloud type), and each segment may itself be a single compass
+     * point or a multi-point arc/range joined by hyphens.
+     * <p>
+     * Examples:
+     * - "E-S-SW" → one segment, a 3-point arc: [E, S, SW]
+     * - "N AND SW" → two segments, each a single point: [N], [SW]
+     * - "N-E AND SE-S" → two segments, each a 2-point range:
+     * [N, E], [SE, S]
+     *
+     * @param dirchain the raw direction chain text (may be null or blank)
+     * @return list of DirectionSegments, empty if dirchain has no content
+     */
+    private List<DirectionSegment> parseDirectionChain(String dirchain) {
+        if (dirchain == null || dirchain.isBlank()) {
+            return List.of();
+        }
+
+        return AND_SEPARATOR_PATTERN.splitAsStream(dirchain.trim())
+                .map(segment -> new DirectionSegment(
+                        Arrays.asList(RANGE_SEPARATOR_PATTERN.split(segment))
+                ))
+                .toList();
     }
 
     /**

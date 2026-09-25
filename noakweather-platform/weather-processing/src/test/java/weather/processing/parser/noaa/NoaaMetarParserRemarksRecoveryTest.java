@@ -7,9 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
-import weather.model.components.remark.Icing;
-import weather.model.components.remark.PressureRapidChange;
-import weather.model.components.remark.WeatherEvent;
+import weather.model.components.remark.*;
 import weather.processing.parser.common.ParseResult;
 
 import java.util.List;
@@ -79,17 +77,25 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "29/24 A2998 RMK AO2 LTG DSNT W TSE09B13E46 SLP151 CB DSNT W-NW AND E MOV N T02940239 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .as("LTG (unwired), and AND-chain remnants " +
-                                            "should be the only unparsed tokens — SLP, thunderstorm location, " +
-                                            "the chained B13E46 continuation and " +
-                                            "precise temp must all survive")
-                                    .isEqualTo("LTG DSNT W AND E MOV N");
+                                    .as("LTG (still unwired) is the only remaining unparsed token - " +
+                                            "the CB DSNT W-NW AND E MOV N chain now fully parses as one " +
+                                            "ThunderstormLocation with two direction segments and movement")
+                                    .isEqualTo("LTG DSNT W");
                             assertThat(data.getSeaLevelPressure())
                                     .as("SLP151 must parse despite the earlier unrecognized LTG clause")
                                     .isEqualTo(1015.1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(29.4);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(23.9);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(cb.cloudType()).isEqualTo("CB");
+                            assertThat(cb.locationQualifier()).isEqualTo("DSNT");
+                            assertThat(cb.directionSegments())
+                                    .containsExactly(
+                                            new DirectionSegment(List.of("W", "NW")),
+                                            new DirectionSegment(List.of("E"))
+                                    );
+                            assertThat(cb.movingDirection()).isEqualTo("N");
                             assertThat(data.getRemarks().weatherEvents())
                                     .as("TS ended :09, plus implied-continuation TS begin :13 end :46")
                                     .hasSize(2);
@@ -120,15 +126,28 @@ class NoaaMetarParserRemarksRecoveryTest {
                 // KPHX — confirms SLP and the first CB-location group parse
                 // BEFORE the AND-chain failure point (proves handlers do
                 // sequence correctly up to the actual gap).
-                arguments("KPHX-ParsesUpToAndChainGap",
+                arguments("KPHX-AndChainNowParsesCorrectly",
                         "2026/09/11 22:51 KPHX 112251Z 30011G17KT 10SM FEW090 FEW130 SCT250 " +
                                 "41/17 A2972 RMK AO2 SLP041 CB DSNT N-E AND SE-S T04060167",
                         (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("CB DSNT N-E AND SE-S now fully parses as one ThunderstormLocation " +
+                                            "with two direction-range segments")
+                                    .isNull();
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1004.1);
-                            assertThat(data.getRemarks().thunderstormLocations()).isNotEmpty();
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(cb.cloudType()).isEqualTo("CB");
+                            assertThat(cb.locationQualifier()).isEqualTo("DSNT");
+                            assertThat(cb.directionSegments())
+                                    .containsExactly(
+                                            new DirectionSegment(List.of("N", "E")),
+                                            new DirectionSegment(List.of("SE", "S"))
+                                    );
                             assertThat(data.getRemarks().preciseTemperature())
                                     .as("T04060167 must survive the AND SE-S gap ahead of it")
                                     .isNotNull();
+                            assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(40.6);
                         }),
 
                 // The remaining 15 examples (KCLT, CYOW, CYQX, CYYQ x3, CYVR x2,
@@ -143,11 +162,21 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "RMK AO2 ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .isEqualTo("LTG DSNT NE-SE OCNL LTGICCC DSNT E AND NW");
+                                    .as("Only the still-unwired LTG variants remain unparsed - " +
+                                            "TCU N-NE AND NW now fully parses as one ThunderstormLocation " +
+                                            "with two direction segments")
+                                    .isEqualTo("LTG DSNT NE-SE OCNL LTGICCC DSNT E");
                             assertThat(data.getRemarks().icing()).isEqualTo(Icing.of(false, false, "PAST HR"));
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.6);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(3);
+                            ThunderstormLocation tcu = data.getRemarks().thunderstormLocations().get(2);
+                            assertThat(tcu.cloudType()).isEqualTo("TCU");
+                            assertThat(tcu.directionSegments())
+                                    .containsExactly(
+                                            new DirectionSegment(List.of("N", "NE")),
+                                            new DirectionSegment(List.of("NW"))
+                                    );
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
 

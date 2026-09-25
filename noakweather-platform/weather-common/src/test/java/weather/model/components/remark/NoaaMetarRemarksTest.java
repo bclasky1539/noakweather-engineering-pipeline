@@ -1896,7 +1896,9 @@ class NoaaMetarRemarksTest {
     @Test
     @DisplayName("Should show thunderstorm location details in toString()")
     void testToStringThunderstormLocationDetails() {
-        ThunderstormLocation location = new ThunderstormLocation("CB", "OHD", null, null, "E");
+        ThunderstormLocation location = new ThunderstormLocation(
+                "CB", "OHD", null, "E"
+        );
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addThunderstormLocation(location)
@@ -1904,7 +1906,6 @@ class NoaaMetarRemarksTest {
 
         String str = remarks.toString();
         assertTrue(str.contains("thunderstormLocations"));
-        // Summary should include CB or thunderstormLocations
         assertTrue(str.contains("CB") || str.contains("thunderstormLocations"));
     }
 
@@ -1969,7 +1970,7 @@ class NoaaMetarRemarksTest {
     @Test
     @DisplayName("Should handle thunderstorm location with qualifier")
     void testThunderstormLocationWithQualifier() {
-        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null, null, null);
+        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null, null);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addThunderstormLocation(location)
@@ -1980,9 +1981,11 @@ class NoaaMetarRemarksTest {
     }
 
     @Test
-    @DisplayName("Should handle thunderstorm location with direction range")
+    @DisplayName("Should handle thunderstorm location with a two-point direction range")
     void testThunderstormLocationWithDirectionRange() {
-        ThunderstormLocation location = new ThunderstormLocation("CB", "DSNT", "N", "NE", null);
+        ThunderstormLocation location = new ThunderstormLocation(
+                "CB", "DSNT", List.of(new DirectionSegment(List.of("N", "NE"))), null
+        );
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addThunderstormLocation(location)
@@ -1990,9 +1993,8 @@ class NoaaMetarRemarksTest {
 
         assertEquals(1, remarks.thunderstormLocations().size());
         ThunderstormLocation stored = remarks.thunderstormLocations().get(0);
-        assertEquals("N", stored.direction());
-        assertEquals("NE", stored.directionRange());
-        assertTrue(stored.hasDirectionRange());
+        assertThat(stored.directionSegments()).containsExactly(new DirectionSegment(List.of("N", "NE")));
+        assertTrue(stored.hasDirections());
     }
 
     @Test
@@ -2013,7 +2015,9 @@ class NoaaMetarRemarksTest {
     @Test
     @DisplayName("Should handle complete thunderstorm location")
     void testCompleteThunderstormLocation() {
-        ThunderstormLocation location = new ThunderstormLocation("TCU", "VC", "W", "NW", "N");
+        ThunderstormLocation location = new ThunderstormLocation(
+                "TCU", "VC", List.of(new DirectionSegment(List.of("W", "NW"))), "N"
+        );
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addThunderstormLocation(location)
@@ -2023,8 +2027,7 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation stored = remarks.thunderstormLocations().get(0);
         assertEquals("TCU", stored.cloudType());
         assertEquals("VC", stored.locationQualifier());
-        assertEquals("W", stored.direction());
-        assertEquals("NW", stored.directionRange());
+        assertThat(stored.directionSegments()).containsExactly(new DirectionSegment(List.of("W", "NW")));
         assertEquals("N", stored.movingDirection());
     }
 
@@ -2468,8 +2471,7 @@ class NoaaMetarRemarksTest {
     })
     @DisplayName("Should generate correct description for all location qualifiers")
     void testGetSummary_AllLocationQualifiers(String qualifier, String expectedDescription, String scenario) {
-        ThunderstormLocation location = new ThunderstormLocation("TS", qualifier, null,
-                null, null);
+        ThunderstormLocation location = new ThunderstormLocation("TS", qualifier, null, null);
 
         String summary = location.getSummary();
         assertThat(summary)
@@ -2480,8 +2482,7 @@ class NoaaMetarRemarksTest {
     @Test
     @DisplayName("Should handle unknown location qualifier with default case")
     void testGetSummary_UnknownLocationQualifier() {
-        ThunderstormLocation location = new ThunderstormLocation("TS", "UNKNOWN", null,
-                null, null);
+        ThunderstormLocation location = new ThunderstormLocation("TS", "UNKNOWN", null, null);
 
         String summary = location.getSummary();
         assertThat(summary).contains("UNKNOWN");
@@ -2501,27 +2502,27 @@ class NoaaMetarRemarksTest {
     }
 
     @Test
-    @DisplayName("Should return true when direction range is present")
-    void testHasDirectionRange_True() {
-        ThunderstormLocation location = new ThunderstormLocation("CB", "DSNT", "N",
-                "NE", null);
+    @DisplayName("Should return true when direction information is present")
+    void testHasDirections_True() {
+        ThunderstormLocation location = new ThunderstormLocation(
+                "CB", "DSNT", List.of(new DirectionSegment(List.of("N", "NE"))), null
+        );
 
-        assertThat(location.hasDirectionRange()).isTrue();
+        assertThat(location.hasDirections()).isTrue();
     }
 
     @Test
-    @DisplayName("Should return false when direction range is null")
-    void testHasDirectionRange_False() {
-        ThunderstormLocation location = ThunderstormLocation.of("TS", "SE");
+    @DisplayName("Should return false when no direction information is present")
+    void testHasDirections_False() {
+        ThunderstormLocation location = new ThunderstormLocation("TS", null, null, null);
 
-        assertThat(location.hasDirectionRange()).isFalse();
+        assertThat(location.hasDirections()).isFalse();
     }
 
     @Test
     @DisplayName("Should return true when location qualifier is present")
     void testHasLocationQualifier_True() {
-        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null,
-                null, null);
+        ThunderstormLocation location = new ThunderstormLocation("TS", "OHD", null, null);
 
         assertThat(location.hasLocationQualifier()).isTrue();
     }
