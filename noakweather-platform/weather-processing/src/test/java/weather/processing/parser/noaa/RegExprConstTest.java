@@ -1913,6 +1913,85 @@ class RegExprConstTest {
         assertThat(matcher.group("dirm")).isEqualTo("E");
     }
 
+    // ========== LAST OBSERVATION / NEXT OBSERVATION PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'LAST STFD OBS/NEXT 261200Z ', 26, 12, 00, 'CYZG real-world'",
+            "'LAST STFD OBS / NEXT 271200 UTC ', 27, 12, 00, 'CYKG real-world, spaced slash and UTC'",
+            "'LAST STFD OBS/NEXT 101300Z ', 10, 13, 00, 'MANOBS example'"
+    })
+    @DisplayName("LAST_OBS_PATTERN should match staffed status across format variants")
+    void testLastObsPattern_StaffedVariants(String input, String expectedDay, String expectedHour,
+                                            String expectedMinute, String scenario) {
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("stfd"))
+                .as("Should be staffed: %s", scenario)
+                .isNotNull();
+        assertThat(matcher.group("day"))
+                .as("Day should match: %s", scenario)
+                .isEqualTo(expectedDay);
+        assertThat(matcher.group("hour"))
+                .as("Hour should match: %s", scenario)
+                .isEqualTo(expectedHour);
+        assertThat(matcher.group("minute"))
+                .as("Minute should match: %s", scenario)
+                .isEqualTo(expectedMinute);
+    }
+
+    @Test
+    @DisplayName("LAST_OBS_PATTERN should match non-staffed status with fused UTC suffix - MANOBS example")
+    void testLastObsPattern_NotStaffedFusedUtc() {
+        String input = "LAST OBS/NEXT 101300UTC ";
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("stfd")).isNull();
+        assertThat(matcher.group("day")).isEqualTo("10");
+        assertThat(matcher.group("hour")).isEqualTo("13");
+        assertThat(matcher.group("minute")).isEqualTo("00");
+    }
+
+    @Test
+    @DisplayName("LAST_OBS_PATTERN should match at end of string (no trailing space)")
+    void testLastObsPattern_AtEndOfString() {
+        String input = "LAST STFD OBS/NEXT 261200Z";
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("minute")).isEqualTo("00");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Z", "UTC"})
+    @DisplayName("LAST_OBS_PATTERN should match both fused time-zone suffixes")
+    void testLastObsPattern_BothFusedSuffixes(String suffix) {
+        String input = "LAST OBS/NEXT 101300" + suffix + " ";
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("day")).isEqualTo("10");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'LAST 261200Z ', 'Missing OBS/NEXT'",
+            "'LAST STFD OBS/NEXT 261200 ', 'Missing time-zone suffix'",
+            "'LAST STFD OBS/NEXT 26120Z ', 'Only five digits'"
+    })
+    @DisplayName("LAST_OBS_PATTERN should not match invalid formats")
+    void testLastObsPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
     // ========== NO SIGNIFICANT CHANGE TEST ==========
 
     @Test

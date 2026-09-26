@@ -71,6 +71,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final Pattern AND_SEPARATOR_PATTERN = Pattern.compile("\\sAND\\s");
     private static final Pattern RANGE_SEPARATOR_PATTERN = Pattern.compile("-");
 
+    /**
+     * Weather codes that are also valid thunderstorm/cloud-location type codes
+     * (TS_CLD_LOC_PATTERN). When PRESENT_WEATHER_PATTERN matches one of these
+     * bare (no intensity/precipitation/obscuration attached), the ambiguity is
+     * resolved in favor of the more specific thunderstorm-location handler.
+     */
+    private static final Set<String> THUNDERSTORM_LOCATION_CODES =
+            Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
+
     // Pattern registry for METAR parsing
     private final NoaaAviationWeatherPatternRegistry patternRegistry;
 
@@ -928,6 +937,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleAutomatedMaintenanceSequential(remaining, remarksBuilder);
             remaining = handleSecondaryAltimeterSequential(remaining, remarksBuilder);
             remaining = handleDirectionalWeatherSequential(remaining, remarksBuilder);
+            remaining = handleObservationProgramStatusSequential(remaining, remarksBuilder);
 
             // Continue while we are making progress
         } while (!Objects.equals(remaining, previous));
@@ -1467,15 +1477,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Weather codes that are also valid thunderstorm/cloud-location type codes
-     * (TS_CLD_LOC_PATTERN). When PRESENT_WEATHER_PATTERN matches one of these
-     * bare (no intensity/precipitation/obscuration attached), the ambiguity is
-     * resolved in favor of the more specific thunderstorm-location handler.
-     */
-    private static final Set<String> THUNDERSTORM_LOCATION_CODES =
-            Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
-
-    /**
      * Process a present-weather match in remarks, then attempt to consume a
      * trailing direction list.
      *
@@ -1520,6 +1521,56 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         return finalRemaining;
+    }
+
+    /**
+     * Handle Canadian MANOBS observation program status remark (LAST STFD
+     * OBS/NEXT or LAST OBS/NEXT).
+     * <p>
+     * Format: LAST [STFD] OBS/NEXT ddhhmm(Z|UTC)
+     * - STFD = optional staffed-program qualifier
+     * - ddhhmm = day, hour, minute of the next observation (UTC)
+     * - Z or UTC = time-zone suffix (fused or space-separated); not preserved,
+     *   since MANOBS times are always UTC
+     * <p>
+     * Examples:
+     * - LAST STFD OBS/NEXT 261200Z → staffed, next observation day 26 at 12:00
+     * - LAST OBS/NEXT 101300UTC → not staffed, next observation day 10 at 13:00
+     * - LAST STFD OBS / NEXT 271200 UTC → staffed, next observation day 27 at 12:00
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null)
+     */
+    private String handleObservationProgramStatusSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = LAST_OBS_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            try {
+                boolean staffed = matcher.group("stfd") != null;
+                int day = Integer.parseInt(matcher.group("day"));
+                int hour = Integer.parseInt(matcher.group("hour"));
+                int minute = Integer.parseInt(matcher.group("minute"));
+
+                ObservationProgramStatus status = ObservationProgramStatus.of(staffed, day, hour, minute);
+                remarks.observationProgramStatus(status);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Observation program status: {}", status.getSummary());
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid observation program status in remarks: {}", matcher.group(0), e);
+            }
+
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
     }
 
     /**
@@ -2389,8 +2440,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * <p>
      * A chain may contain one or more segments joined by "AND" (each
      * segment describing a separate reported location for the same
-     * cloud type), and each segment may itself be a single compass
-     * point or a multi-point arc/range joined by hyphens.
+     * cloud type). Also, each segment may itself be a single compass
+     * point or a multipoint arc/range joined by hyphens.
      * <p>
      * Examples:
      * - "E-S-SW" → one segment, a 3-point arc: [E, S, SW]
@@ -2398,7 +2449,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - "N-E AND SE-S" → two segments, each a 2-point range:
      * [N, E], [SE, S]
      *
-     * @param dirchain the raw direction chain text (may be null or blank)
+     * @param dirchain the raw direction chain text (it may be null or blank)
      * @return list of DirectionSegments, empty if dirchain has no content
      */
     private List<DirectionSegment> parseDirectionChain(String dirchain) {

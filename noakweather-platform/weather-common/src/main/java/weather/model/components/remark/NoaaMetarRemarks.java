@@ -73,6 +73,7 @@ import java.util.stream.Collectors;
  * * @param densityAltitudeFeet Density Altitude
  * * @param automatedMaintenanceIndicators List of Automated Maintenance Indicators
  * * @param maintenanceRequired Boolean if maintenance is required
+ * * @param observationProgramStatus Canadian MANOBS observation program status (LAST STFD OBS/NEXT)
  * * @param freeText Unparsed remarks text
  *
  * @author bclasky1539
@@ -112,6 +113,7 @@ public record NoaaMetarRemarks(
         Integer densityAltitudeFeet,
         List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators,
         Boolean maintenanceRequired,
+        ObservationProgramStatus observationProgramStatus,
         String freeText
 ) {
 
@@ -141,7 +143,7 @@ public record NoaaMetarRemarks(
                 List.of(), List.of(), null, null, null, null, null,
                 null, null, List.of(), List.of(), null, null,
                 null, null,null, null, null,
-                null, null, List.of(), null, null);
+                null, null, List.of(), null, null,null);
     }
 
     /**
@@ -183,6 +185,7 @@ public record NoaaMetarRemarks(
                 && densityAltitudeFeet == null
                 && (automatedMaintenanceIndicators == null || automatedMaintenanceIndicators.isEmpty())
                 && maintenanceRequired == null
+                && observationProgramStatus == null
                 && (freeText == null || freeText.isBlank());
     }
 
@@ -243,6 +246,7 @@ public record NoaaMetarRemarks(
         private Integer densityAltitudeFeet;
         private List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators = new ArrayList<>();
         private Boolean maintenanceRequired;
+        private ObservationProgramStatus observationProgramStatus;
         private String freeText;
 
         private Builder() {
@@ -657,8 +661,19 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Set Canadian MANOBS observation program status (LAST STFD OBS/NEXT remark).
+         *
+         * @param observationProgramStatus the observation program status
+         * @return this builder
+         */
+        public Builder observationProgramStatus(ObservationProgramStatus observationProgramStatus) {
+            this.observationProgramStatus = observationProgramStatus;
+            return this;
+        }
+
+        /**
          * Sets the secondary altimeter setting repeated inside the remarks section.
-         * Common in Philippines/Taiwan-region METARs as a redundant confirmation
+         * Common in the Philippines/Taiwan-region METARs as a redundant confirmation
          * of the main body's altimeter reading, in US-style inches of mercury.
          *
          * @param secondaryAltimeter the secondary altimeter pressure
@@ -800,6 +815,7 @@ public record NoaaMetarRemarks(
                     densityAltitudeFeet,
                     List.copyOf(automatedMaintenanceIndicators),
                     maintenanceRequired,
+                    observationProgramStatus,
                     freeText
             );
         }
@@ -876,6 +892,7 @@ public record NoaaMetarRemarks(
                     .collect(Collectors.joining("; ")));
         }
         addIfPresent(parts, maintenanceRequired, "maintenanceRequired", Object::toString);
+        addIfPresent(parts, observationProgramStatus, "observationProgramStatus", ObservationProgramStatus::getSummary);
         addFreeTextIfPresent(parts, freeText);
 
         return "NoaaMetarRemarks{" + String.join(", ", parts) + "}";

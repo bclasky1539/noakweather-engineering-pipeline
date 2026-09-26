@@ -283,6 +283,41 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().cloudTypes().get(2).oktas()).isZero();
                         }),
 
+                arguments("CYZG-ObservationProgramStatusAllTokensParse",
+                        "2026/09/25 21:00 CYZG 252100Z 17026KT 15SM -RA BKN024 BKN033TCU OVC095 06/05 A2975 " +
+                                "RMK SC5TCU1ACC2 LAST STFD OBS/NEXT 261200Z PRESFR SLP093",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("LAST STFD OBS/NEXT now parses - no unparsed remnant")
+                                    .isNull();
+                            assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+                            ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+                            assertThat(status.staffed()).isTrue();
+                            assertThat(status.day()).isEqualTo(26);
+                            assertThat(status.hour()).isEqualTo(12);
+                            assertThat(status.minute()).isZero();
+                            assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1009.3);
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(3);
+                        }),
+
+                arguments("CYKG-ObservationProgramStatusSpacedSlashAndUtc",
+                        "2026/09/26 16:00 CYKG 261600Z 28020G26KT 15SM BKN024 BKN034 06/02 A2979 " +
+                                "RMK SC5SC2 LAST STFD OBS / NEXT 271200 UTC SLP101",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("LAST STFD OBS / NEXT (spaced slash, space-separated UTC) now parses")
+                                    .isNull();
+                            assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+                            ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+                            assertThat(status.staffed()).isTrue();
+                            assertThat(status.day()).isEqualTo(27);
+                            assertThat(status.hour()).isEqualTo(12);
+                            assertThat(status.minute()).isZero();
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1010.1);
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+                        }),
+
                 arguments("CYQX-F8DoesNotBlockSLP146",
                         "2017/04/10 00:00 CYQX 151100Z 30007KT 1/8SM FZFG VV001 M02/M03 A2998 RMK F8 SLP146",
                         (Consumer<NoaaMetarData>) data -> {
@@ -404,6 +439,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  cloudTypes: {}", data.getRemarks() != null ? data.getRemarks().cloudTypes() : "n/a");
             LOGGER.info("  weatherEvents: {}", data.getRemarks() != null ? data.getRemarks().weatherEvents() : "n/a");
             LOGGER.info("  maintenanceRequired: {}", data.getRemarks() != null ? data.getRemarks().maintenanceRequired() : "n/a");
+            LOGGER.info("  observationProgramStatus: {}", data.getRemarks() != null ? data.getRemarks().observationProgramStatus() : "n/a");
             LOGGER.info(" ");
         }
     }
