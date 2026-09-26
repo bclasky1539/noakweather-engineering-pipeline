@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.12-SNAPSHOT - September 25, 2026
+
+#### Added
+- **#78: Direct match tests for previously untested `RegExprConst` patterns** — `RegExprConstTest.java`
+  now has dedicated `matcher.find()`-level coverage for patterns that had no direct assertions on their
+  matching behavior, despite SonarCloud reporting 100% line coverage on `RegExprConst.java` (a static
+  `Pattern.compile()` initializer executes once at class-load time regardless of whether `.matcher()`
+  is ever exercised, which was masking the actual gap):
+  - `WIND_AT_LOCATION_PATTERN`
+  - `PRESS_Q_PATTERN`
+  - `DENSITY_ALTITUDE_PATTERN`
+  - `VARIABLE_CEILING_PATTERN` / `CEILING_SECOND_SITE_PATTERN`
+  - `OBSCURATION_PATTERN`
+  - `AUTOMATED_MAINTENANCE_PATTERN`
+  - `PP_GROUP_PATTERN`
+  - `PRECIP_3HR_24HR_PATTERN`
+  - `TEMP_24HR_PATTERN`
+
+#### Documented
+- Two real pattern-overlap/partial-match ambiguities, surfaced while writing the above tests, are now
+  captured as explicit passing test cases rather than false negative-match assertions:
+  - `CEILING_SECOND_SITE_PATTERN` partially matches variable-ceiling-shaped input (e.g. `CIG 005V010`),
+    consuming only the height and leaving `V010` unconsumed
+  - `PRECIP_3HR_24HR_PATTERN` partially matches malformed trace-slash input (e.g. `6/A/B`), consuming
+    only a single leading slash
+
+#### Internal
+- Test-only change — no production code modified. `CLOUD_OKTA_PATTERN` and `TS_CLD_LOC_PATTERN` were not
+  revisited, as they already had substantial direct coverage from the #69 (directional arc/AND-chain) work.
+
 ### Version 1.19.11-SNAPSHOT - September 25, 2026
 
 #### Fixed
