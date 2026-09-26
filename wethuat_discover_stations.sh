@@ -33,14 +33,16 @@ gunzip "${BULK_FILE}.gz"
 echo "Snapshot saved: ${BULK_FILE}"
 echo ""
 
+# "PRESFR-PRESRR (#74)|PRESFR|PRESRR"
+# "Chained-begin-end-weather (#73)|\b(TS|RA|SN|DZ|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|FZ|MI|PR|BC|DR|BL|SH)[A-Z]{0,2}[BE][0-9]{2,4}([BE][0-9]{2,4})+\b"
 declare -a PATTERNS=(
-    "PRESFR-PRESRR (#74)|PRESFR|PRESRR"
     "ICG-with-qualifier (#75)|ICG [A-Z]{4} [A-Z]{2}"
     "ICG-without-qualifier (#75)|ICG"
-    "Chained-begin-end-weather (#73)|\b(TS|RA|SN|DZ|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|FZ|MI|PR|BC|DR|BL|SH)[A-Z]{0,2}[BE][0-9]{2,4}([BE][0-9]{2,4})+\b"
     "CI0-zero-okta (#72)|CI0"
     "TCU-CB-EMBDD (#72)|(TCU|CB) EMBDD"
     "VCSH (pending UAT) (#60)|VCSH"
+    "Directional-arc-3pt (#69)|[NSEW]{1,2}(-[NSEW]{1,2}){2,}"
+    "AND-chain-direction (#69)|[NSEW]{1,2} AND [NSEW]{1,2}"
 )
 
 for entry in "${PATTERNS[@]}"; do
