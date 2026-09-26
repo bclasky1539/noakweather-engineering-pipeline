@@ -412,11 +412,14 @@ public final class RegExprConst {
     );
 
     /**
-     * Last Observation
-     * Example: LAST STFD OBS
+     * Last Observation / Next Observation program status remark.
+     * Indicates whether the station is staffed (STFD present) and when
+     * the next observation will be issued.
+     * Examples: LAST STFD OBS/NEXT 261200Z, LAST OBS/NEXT 101300UTC,
+     *           LAST STFD OBS / NEXT 271200 UTC
      */
     public static final Pattern LAST_OBS_PATTERN = Pattern.compile(
-            "^(?<last>LAST)\\s+"
+            "^LAST\\s+(?<stfd>STFD\\s+)?OBS\\s*/\\s*NEXT\\s+(?<day>\\d{2})(?<hour>\\d{2})(?<minute>\\d{2})\\s?(?:Z|UTC)(?=\\s|$)"
     );
 
     /**

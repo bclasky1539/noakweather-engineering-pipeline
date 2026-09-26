@@ -7834,6 +7834,164 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().twentyFourHourMinTemperature().celsius()).isEqualTo(-0.6, within(0.01));
     }
 
+    // ========== OBSERVATION PROGRAM STATUS PARSING TESTS ==========
+
+    @Test
+    @DisplayName("Should parse staffed observation program status with fused Z suffix - CYZG real-world")
+    void testParseObservationProgramStatus_StaffedFusedZ_CYZG() {
+        String metar = "2026/09/25 21:00 CYZG 252100Z 17026KT 15SM -RA BKN024 BKN033TCU OVC095 06/05 A2975 " +
+                "RMK SC5TCU1ACC2 LAST STFD OBS/NEXT 261200Z PRESFR SLP093";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+        ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+        assertThat(status.staffed()).isTrue();
+        assertThat(status.day()).isEqualTo(26);
+        assertThat(status.hour()).isEqualTo(12);
+        assertThat(status.minute()).isZero();
+
+        // Confirms downstream tokens (PRESFR, SLP) still parse correctly
+        // alongside this new remark type
+        assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1009.3, within(0.1));
+        assertThat(data.getRemarks().cloudTypes()).hasSize(3);
+        assertThat(data.getRemarks().freeText())
+                .as("No unrecognized remnant should remain")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse staffed observation program status with spaced slash and space-separated UTC - CYKG real-world")
+    void testParseObservationProgramStatus_SpacedSlashAndUtc_CYKG() {
+        String metar = "METAR CYKG 261600Z 28020G26KT 15SM BKN024 BKN034 06/02 A2979 " +
+                "RMK SC5SC2 LAST STFD OBS / NEXT 271200 UTC SLP101";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+        ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+        assertThat(status.staffed()).isTrue();
+        assertThat(status.day()).isEqualTo(27);
+        assertThat(status.hour()).isEqualTo(12);
+        assertThat(status.minute()).isZero();
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1010.1, within(0.1));
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse staffed observation program status - CYXH MANOBS real-world")
+    void testParseObservationProgramStatus_Staffed_CYXH() {
+        String metar = "METAR CYXH 100300Z 28015G21KT 15SM FEW270 03/M02 A3001 " +
+                "RMK CI2 LAST STFD OBS/NEXT 101300Z SLP187";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+        ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+        assertThat(status.staffed()).isTrue();
+        assertThat(status.day()).isEqualTo(10);
+        assertThat(status.hour()).isEqualTo(13);
+        assertThat(status.minute()).isZero();
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse non-staffed observation program status - CYGK MANOBS real-world")
+    void testParseObservationProgramStatus_NotStaffed_CYGK() {
+        String metar = "METAR CYGK 100300Z 20005KT 15SM SCT090 BKN110 21/17 A2994 " +
+                "RMK AC3AC2 LAST OBS/NEXT 101300UTC SLP138";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+        ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+        assertThat(status.staffed()).isFalse();
+        assertThat(status.day()).isEqualTo(10);
+        assertThat(status.hour()).isEqualTo(13);
+        assertThat(status.minute()).isZero();
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().cloudTypes()).hasSize(2);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse observation program status in mixed remark order")
+    void testParseObservationProgramStatus_MixedOrder() {
+        String metar = "METAR CYZG 252100Z 17026KT 15SM BKN024 A2975 " +
+                "RMK AO2 SLP093 LAST STFD OBS/NEXT 261200Z";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should parse observation program status without other remarks")
+    void testParseObservationProgramStatus_Alone() {
+        String metar = "METAR CYZG 252100Z 17026KT 15SM BKN024 A2975 " +
+                "RMK LAST STFD OBS/NEXT 261200Z";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+
+        // Other remark fields should be null
+        assertThat(data.getRemarks().automatedStationType()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR CYZG 252100Z 17026KT 15SM BKN024 A2975 RMK AO2 SLP093', 'No observation program status'",
+            "'METAR CYZG 252100Z 17026KT 15SM BKN024 A2975 RMK', 'Empty remarks'",
+            "'METAR CYZG 252100Z 17026KT 15SM BKN024 A2975', 'No RMK section'"
+    })
+    @DisplayName("Should handle METAR with no observation program status")
+    void testParseMetar_NoObservationProgramStatus(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().observationProgramStatus())
+                    .as("Observation program status should be null: %s", scenario)
+                    .isNull();
+        }
+    }
+
     // ========== VARIABLE CEILING PARSING TESTS ==========
 
     @ParameterizedTest

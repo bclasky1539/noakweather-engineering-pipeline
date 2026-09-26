@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.13-SNAPSHOT - September 26, 2026
+
+#### Added
+- **#89: Canadian MANOBS observation program status remark** — `LAST STFD OBS/NEXT <time>` and
+  `LAST OBS/NEXT <time>` are now parsed, indicating whether the reporting station is staffed
+  (24-hour program) and when the next observation will be issued.
+  - New `ObservationProgramStatus` record (`weather.model.components.remark`): `staffed` flag plus
+    `day`/`hour`/`minute` for the next observation, sourced from `NoaaMetarRemarks.observationProgramStatus()`
+  - New `LAST_OBS_PATTERN` in `RegExprConst.java`, tolerating the format variance observed in the
+    wild and in Environment Canada's *Manual of Surface Weather Observation Standards* (MANOBS, 8th
+    Edition): fused (`Z`, `UTC`) and space-separated (` UTC`) time-zone suffixes, and both `OBS/NEXT`
+    and `OBS / NEXT` slash spacing
+  - Confirmed via real-world captures: CYZG (`LAST STFD OBS/NEXT 261200Z`, alongside PRESFR/SLP/cloud
+    types in the same remarks string) and CYKG (`LAST STFD OBS / NEXT 271200 UTC`, alongside SLP/cloud
+    types)
+
+#### Internal
+- `NoaaMetarParser.handleObservationProgramStatusSequential` added to `runRemarkHandlerPasses`
+- Test coverage: new `ObservationProgramStatusTest`, `RegExprConstTest` additions for `LAST_OBS_PATTERN`,
+  `NoaaMetarRemarksTest` builder/toString/equality coverage, `NoaaMetarParserTest` end-to-end parsing
+  tests against real CYZG/CYKG captures and the MANOBS documentation's own examples, and two new
+  `NoaaMetarParserRemarksRecoveryTest` cases (CYZG, CYKG) confirming the new remark type composes
+  cleanly with cloud types, PRESFR, and SLP in real captured remarks strings
+
 ### Version 1.19.12-SNAPSHOT - September 25, 2026
 
 #### Added
