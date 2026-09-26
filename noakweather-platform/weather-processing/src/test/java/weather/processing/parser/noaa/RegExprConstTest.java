@@ -853,6 +853,150 @@ class RegExprConstTest {
         assertThat(matcher.group("verb")).isNull();
     }
 
+    // ========== WIND AT LOCATION PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match wind at altitude")
+    void testWindAtLocationPattern_Altitude() {
+        String input = "WIND 1400FT 23010KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isEqualTo("1400");
+        assertThat(matcher.group("runway")).isNull();
+        assertThat(matcher.group("dir")).isEqualTo("230");
+        assertThat(matcher.group("speed")).isEqualTo("10");
+        assertThat(matcher.group("gust")).isNull();
+        assertThat(matcher.group("unit")).isEqualTo("KT");
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match wind at runway")
+    void testWindAtLocationPattern_Runway() {
+        String input = "WIND RWY 26 00000KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isNull();
+        assertThat(matcher.group("runway")).isEqualTo("26");
+        assertThat(matcher.group("dir")).isEqualTo("000");
+        assertThat(matcher.group("speed")).isEqualTo("00");
+        assertThat(matcher.group("unit")).isEqualTo("KT");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"32", "32L", "32R", "32C", "4", "4L"})
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match runway with and without L/R/C suffix, single or double digit")
+    void testWindAtLocationPattern_RunwayDesignators(String runway) {
+        String input = "WIND RWY " + runway + " 00000KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("runway")).isEqualTo(runway);
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match VRB direction at runway")
+    void testWindAtLocationPattern_VrbDirectionRunway() {
+        String input = "WIND RWY 32 VRB01KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("runway")).isEqualTo("32");
+        assertThat(matcher.group("dir")).isEqualTo("VRB");
+        assertThat(matcher.group("speed")).isEqualTo("01");
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match VRB direction at altitude")
+    void testWindAtLocationPattern_VrbDirectionAltitude() {
+        String input = "WIND 1119FT VRB03KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isEqualTo("1119");
+        assertThat(matcher.group("dir")).isEqualTo("VRB");
+        assertThat(matcher.group("speed")).isEqualTo("03");
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match with gust")
+    void testWindAtLocationPattern_WithGust() {
+        String input = "WIND 1400FT 23010G20KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("speed")).isEqualTo("10");
+        assertThat(matcher.group("gust")).isEqualTo("20");
+        assertThat(matcher.group("unit")).isEqualTo("KT");
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match without gust")
+    void testWindAtLocationPattern_WithoutGust() {
+        String input = "WIND 1400FT 23010KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("gust")).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "KT, 'Knots (single K T)'",
+            "KTS, 'Knots (plural)'",
+            "MPS, 'Meters per second'",
+            "KMH, 'Kilometers per hour'"
+    })
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match all valid unit formats")
+    void testWindAtLocationPattern_AllUnits(String unit, String scenario) {
+        String input = "WIND 1400FT 23010" + unit + " ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("unit"))
+                .as("Unit should match: %s", scenario)
+                .isEqualTo(unit);
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match three-digit speed and gust")
+    void testWindAtLocationPattern_ThreeDigitSpeedAndGust() {
+        String input = "WIND 1400FT 230105G120KT ";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("speed")).isEqualTo("105");
+        assertThat(matcher.group("gust")).isEqualTo("120");
+    }
+
+    @Test
+    @DisplayName("WIND_AT_LOCATION_PATTERN should match at end of string (no trailing space)")
+    void testWindAtLocationPattern_AtEndOfString() {
+        String input = "WIND 1400FT 23010KT";
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("unit")).isEqualTo("KT");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'1400FT 23010KT ', 'Missing WIND prefix'",
+            "'WIND RWY 320 00000KT ', 'Runway designator with three digits'",
+            "'WIND 1400FT 23010XYZ ', 'Invalid unit'"
+    })
+    @DisplayName("WIND_AT_LOCATION_PATTERN should not match invalid formats")
+    void testWindAtLocationPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.WIND_AT_LOCATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
     // ========== THUNDERSTORM CLOUD LOCATION PATTERN TESTS ==========
 
     @Test
@@ -958,6 +1102,758 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cloud")).isEqualTo("CB");
         assertThat(matcher.group("okta")).isEqualTo("4");
+    }
+
+    // ========== PRESSURE Q PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @ValueSource(strings = {"QFE", "QNH", "QNE"})
+    @DisplayName("PRESS_Q_PATTERN should match all valid pressure type codes alone")
+    void testPressQPattern_TypeAlone(String type) {
+        String input = type + " ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("pressq")).isEqualTo(type);
+        assertThat(matcher.group("pressmm")).isNull();
+        assertThat(matcher.group("pressmb")).isNull();
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should match QNH with four-digit value")
+    void testPressQPattern_QnhFourDigit() {
+        String input = "QNH1013 ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("pressq")).isEqualTo("QNH");
+        assertThat(matcher.group("pressmm")).isEqualTo("1013");
+        assertThat(matcher.group("pressmb")).isNull();
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should match QFE with three-digit value")
+    void testPressQPattern_QfeThreeDigit() {
+        String input = "QFE760 ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("pressq")).isEqualTo("QFE");
+        assertThat(matcher.group("pressmm")).isEqualTo("760");
+        assertThat(matcher.group("pressmb")).isNull();
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should match value with mb/hPa secondary value")
+    void testPressQPattern_WithSecondaryValue() {
+        String input = "QNH1013/760 ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("pressq")).isEqualTo("QNH");
+        assertThat(matcher.group("pressmm")).isEqualTo("1013");
+        assertThat(matcher.group("pressmb")).isEqualTo("760");
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should match three-digit primary with three-digit secondary")
+    void testPressQPattern_ThreeDigitBoth() {
+        String input = "QFE760/999 ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("pressmm")).isEqualTo("760");
+        assertThat(matcher.group("pressmb")).isEqualTo("999");
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should match QNE alone")
+    void testPressQPattern_Qne() {
+        String input = "QNE ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("pressq")).isEqualTo("QNE");
+        assertThat(matcher.group("pressmm")).isNull();
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should not match without trailing whitespace")
+    void testPressQPattern_DoesNotMatchWithoutTrailingSpace() {
+        String input = "QNH1013";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern requires trailing \\s+, unlike most other RegExprConst patterns which accept end-of-string too")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should not match invalid pressure type code")
+    void testPressQPattern_DoesNotMatchInvalidType() {
+        String input = "QXX1013 ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("PRESS_Q_PATTERN should not match when a secondary value appears without a primary value")
+    void testPressQPattern_DoesNotMatchSecondaryWithoutPrimary() {
+        // "/760" cannot satisfy the pattern: pressmb is nested inside pressmm's
+        // optional wrapper, so pressmm must match first. Here pressmm fails
+        // (next char is "/", not a digit), the optional group is skipped
+        // entirely, and the pattern then requires \s+ immediately after "QNH" -
+        // but the next character is "/", not whitespace, so the whole match
+        // fails outright (no partial "QNH"-only match occurs).
+        String input = "QNH/760 ";
+        Matcher matcher = RegExprConst.PRESS_Q_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    // ========== DENSITY ALTITUDE PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("DENSITY_ALTITUDE_PATTERN should match a typical density altitude - CYYZ real-world")
+    void testDensityAltitudePattern_Typical() {
+        String input = "DENSITY ALT 1500FT ";
+        Matcher matcher = RegExprConst.DENSITY_ALTITUDE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("DENSITY ALT");
+        assertThat(matcher.group("denalt")).isEqualTo("1500");
+        assertThat(matcher.group("units")).isEqualTo("FT");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'DENSITY ALT 0FT ', 0, 'Single digit / zero'",
+            "'DENSITY ALT 800FT ', 800, 'Three digits'",
+            "'DENSITY ALT 12000FT ', 12000, 'Five digits (upper bound)'"
+    })
+    @DisplayName("DENSITY_ALTITUDE_PATTERN should match value lengths from 1 to 5 digits")
+    void testDensityAltitudePattern_ValueLengths(String input, String expectedValue, String scenario) {
+        Matcher matcher = RegExprConst.DENSITY_ALTITUDE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("denalt"))
+                .as("Value should match: %s", scenario)
+                .isEqualTo(expectedValue);
+    }
+
+    @Test
+    @DisplayName("DENSITY_ALTITUDE_PATTERN should match at end of string (no trailing space)")
+    void testDensityAltitudePattern_AtEndOfString() {
+        String input = "DENSITY ALT 700FT";
+        Matcher matcher = RegExprConst.DENSITY_ALTITUDE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("denalt")).isEqualTo("700");
+    }
+
+    @Test
+    @DisplayName("DENSITY_ALTITUDE_PATTERN should not match six-digit value")
+    void testDensityAltitudePattern_DoesNotMatchSixDigits() {
+        // \d{1,5} should only consume the first 5 digits, then require FT
+        // immediately after; a 6th digit in that position breaks the match
+        String input = "DENSITY ALT 123456FT ";
+        Matcher matcher = RegExprConst.DENSITY_ALTITUDE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Six digits should not match as a whole - FT must immediately follow the captured 1-5 digits")
+                .isFalse();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'DENSITY ALT 1500 ', 'Missing FT unit'",
+            "'DENSITY ALT FT ', 'Missing value'",
+            "'DENSITY ALT 1500ft ', 'Lowercase unit'",
+            "'DENSITY ALT 123456FT ', 'Six-digit value (only 1-5 digits allowed before FT)'"
+    })
+    @DisplayName("DENSITY_ALTITUDE_PATTERN should not match invalid formats")
+    void testDensityAltitudePattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.DENSITY_ALTITUDE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+    // ========== VARIABLE CEILING PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("VARIABLE_CEILING_PATTERN should match a low ceiling range")
+    void testVariableCeilingPattern_LowRange() {
+        String input = "CIG 005V010 ";
+        Matcher matcher = RegExprConst.VARIABLE_CEILING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("min")).isEqualTo("005");
+        assertThat(matcher.group("max")).isEqualTo("010");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CIG 000V002 ', 000, 002, 'Ground level fog range'",
+            "'CIG 020V035 ', 020, 035, 'Normal ceiling range'",
+            "'CIG 050V100 ', 050, 100, 'High ceiling range'"
+    })
+    @DisplayName("VARIABLE_CEILING_PATTERN should match various min/max ceiling ranges")
+    void testVariableCeilingPattern_VariousRanges(String input, String expectedMin, String expectedMax, String scenario) {
+        Matcher matcher = RegExprConst.VARIABLE_CEILING_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("min"))
+                .as("Min should match: %s", scenario)
+                .isEqualTo(expectedMin);
+        assertThat(matcher.group("max"))
+                .as("Max should match: %s", scenario)
+                .isEqualTo(expectedMax);
+    }
+
+    @Test
+    @DisplayName("VARIABLE_CEILING_PATTERN should match with no trailing whitespace consumed (\\s* allows zero)")
+    void testVariableCeilingPattern_AtEndOfString() {
+        String input = "CIG 005V010";
+        Matcher matcher = RegExprConst.VARIABLE_CEILING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("max")).isEqualTo("010");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CIG 05V10 ', 'Only 2 digits per side'",
+            "'CIG 005-010 ', 'Hyphen instead of V separator'",
+            "'005V010 ', 'Missing CIG prefix'",
+            "'CIGV005V010 ', 'No space after CIG'"
+    })
+    @DisplayName("VARIABLE_CEILING_PATTERN should not match invalid formats")
+    void testVariableCeilingPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.VARIABLE_CEILING_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+// ========== CEILING SECOND SITE PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should match ceiling with RY-style runway location")
+    void testCeilingSecondSitePattern_RyLocation() {
+        String input = "CIG 002 RY11 ";
+        Matcher matcher = RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isEqualTo("002");
+        assertThat(matcher.group("loc")).isEqualTo("RY11");
+    }
+
+    @Test
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should match ceiling with RWY-style runway location")
+    void testCeilingSecondSitePattern_RwyLocation() {
+        String input = "CIG 005 RWY06 ";
+        Matcher matcher = RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isEqualTo("005");
+        assertThat(matcher.group("loc")).isEqualTo("RWY06");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CIG 002 RY11 ', RY11, 'RY with two-digit number'",
+            "'CIG 003 RY04L ', RY04L, 'RY with L suffix'",
+            "'CIG 003 RY22R ', RY22R, 'RY with R suffix'",
+            "'CIG 003 RY22C ', RY22C, 'RY with C suffix'",
+            "'CIG 005 RWY06 ', RWY06, 'RWY with two-digit number'",
+            "'CIG 005 RWY6 ', RWY6, 'RWY with one-digit number'",
+            "'CIG 020 TWR ', TWR, 'Tower location'",
+            "'CIG 003 APCH ', APCH, 'Approach location'"
+    })
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should match all recognized location formats")
+    void testCeilingSecondSitePattern_AllLocationFormats(String input, String expectedLoc, String scenario) {
+        Matcher matcher = RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("loc"))
+                .as("Location should match: %s", scenario)
+                .isEqualTo(expectedLoc);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CIG 010 ', 010, 'No location, trailing space'",
+            "'CIG 015', 015, 'No location, end of string'",
+            "'CIG 005V010 ', 005, 'Partial match against variable-ceiling input (ambiguity check) - V010 left unconsumed'"
+    })
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should match height alone when no location follows")
+    void testCeilingSecondSitePattern_HeightWithoutLocation(String input, String expectedHeight, String scenario) {
+        // The third case documents the overlap with VARIABLE_CEILING_PATTERN:
+        // since loc requires a leading \s+ and "V010" has no leading whitespace,
+        // the optional loc group is skipped, and \s* at the end matches zero
+        // characters - so this pattern matches "CIG 005" alone, leaving "V010 "
+        // unconsumed. Handler-level disambiguation (trying VARIABLE_CEILING_PATTERN
+        // first, or checking for "V" at the match boundary) is therefore
+        // load-bearing, not incidental.
+        Matcher matcher = RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("height"))
+                .as("Height should match: %s", scenario)
+                .isEqualTo(expectedHeight);
+        assertThat(matcher.group("loc"))
+                .as("Location should be null: %s", scenario)
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should match ground-level height (000)")
+    void testCeilingSecondSitePattern_GroundLevel() {
+        String input = "CIG 000 RY11 ";
+        Matcher matcher = RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isEqualTo("000");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'CIG 05 RY11 ', 'Only 2 digits'",
+            "'005 RY11 ', 'Missing CIG prefix'",
+            "'CIG ABC RY11 ', 'Non-numeric height'"
+    })
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should not match invalid formats")
+    void testCeilingSecondSitePattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+    // ========== OBSCURATION PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("OBSCURATION_PATTERN should match ground-level fog")
+    void testObscurationPattern_GroundLevelFog() {
+        String input = "FEW FG 000 ";
+        Matcher matcher = RegExprConst.OBSCURATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("coverage")).isEqualTo("FEW");
+        assertThat(matcher.group("phenomenon")).isEqualTo("FG");
+        assertThat(matcher.group("height")).isEqualTo("000");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"FEW", "SCT", "BKN", "OVC"})
+    @DisplayName("OBSCURATION_PATTERN should match all valid coverage codes")
+    void testObscurationPattern_AllCoverageCodes(String coverage) {
+        String input = coverage + " BR 005 ";
+        Matcher matcher = RegExprConst.OBSCURATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("coverage")).isEqualTo(coverage);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"FG", "BR", "FU", "HZ", "DU", "SA", "VA", "PY"})
+    @DisplayName("OBSCURATION_PATTERN should match all valid phenomenon codes")
+    void testObscurationPattern_AllPhenomenonCodes(String phenomenon) {
+        String input = "SCT " + phenomenon + " 010 ";
+        Matcher matcher = RegExprConst.OBSCURATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("phenomenon")).isEqualTo(phenomenon);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'FEW FG 000 ', 000, 'Ground level'",
+            "'SCT FU 010 ', 010, 'Low altitude'",
+            "'BKN HZ 025 ', 025, 'Higher altitude'"
+    })
+    @DisplayName("OBSCURATION_PATTERN should match various heights")
+    void testObscurationPattern_VariousHeights(String input, String expectedHeight, String scenario) {
+        Matcher matcher = RegExprConst.OBSCURATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("height"))
+                .as("Height should match: %s", scenario)
+                .isEqualTo(expectedHeight);
+    }
+
+    @Test
+    @DisplayName("OBSCURATION_PATTERN should match at end of string (no trailing space)")
+    void testObscurationPattern_AtEndOfString() {
+        String input = "FEW FG 000";
+        Matcher matcher = RegExprConst.OBSCURATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("height")).isEqualTo("000");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'XXX FG 000 ', 'Invalid coverage code'",
+            "'FEW XX 000 ', 'Invalid phenomenon code'",
+            "'FEW FG 00 ', 'Only two-digit height'",
+            "'FEW FG ', 'Missing height'",
+            "'FEWFG000 ', 'No spaces at all'",
+            "'FG 000 ', 'Missing coverage code'"
+    })
+    @DisplayName("OBSCURATION_PATTERN should not match invalid formats")
+    void testObscurationPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.OBSCURATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+    // ========== AUTOMATED MAINTENANCE PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RVRNO", "PWINO", "PNO", "FZRANO", "TSNO"})
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should match indicators without a location")
+    void testAutomatedMaintenancePattern_NoLocationIndicators(String indicator) {
+        String input = indicator + " ";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typeam")).isEqualTo(indicator);
+        assertThat(matcher.group("loc")).isNull();
+        assertThat(matcher.group("typemc")).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'VISNO RWY06 ', VISNO, RWY06, 'Visibility not available at runway'",
+            "'VISNO RY11 ', VISNO, RY11, 'Visibility not available, RY-style runway'",
+            "'CHINO N ', CHINO, N, 'Cloud height indicator not available, North'",
+            "'CHINO SE ', CHINO, SE, 'Cloud height indicator not available, Southeast'",
+            "'CHINO RWY22L ', CHINO, RWY22L, 'Cloud height indicator not available, runway with L suffix'"
+    })
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should match indicators with a location")
+    void testAutomatedMaintenancePattern_WithLocation(String input, String expectedType, String expectedLoc, String scenario) {
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("typeam"))
+                .as("Type should match: %s", scenario)
+                .isEqualTo(expectedType);
+        assertThat(matcher.group("loc"))
+                .as("Location should match: %s", scenario)
+                .isEqualTo(expectedLoc);
+    }
+
+    @Test
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should match the maintenance check indicator ($)")
+    void testAutomatedMaintenancePattern_MaintenanceCheck() {
+        String input = "$";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typemc")).isEqualTo("$");
+        assertThat(matcher.group("typeam")).isNull();
+    }
+
+    @Test
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should match $ with trailing space")
+    void testAutomatedMaintenancePattern_MaintenanceCheckWithTrailingSpace() {
+        String input = "$ ";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typemc")).isEqualTo("$");
+    }
+
+    @Test
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should match at end of string with no location")
+    void testAutomatedMaintenancePattern_AtEndOfString() {
+        String input = "TSNO";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typeam")).isEqualTo("TSNO");
+        assertThat(matcher.group("loc")).isNull();
+    }
+
+    @Test
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should match RY-style location without W or Y variant confusion")
+    void testAutomatedMaintenancePattern_RwVariant() {
+        // loc's prefix is R(W)?(Y)? - both W and Y independently optional, so
+        // "RW06" (W present, Y absent) is technically permitted by the pattern
+        // even though real-world remarks use RY or RWY, not RW
+        String input = "VISNO RW06 ";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("loc")).isEqualTo("RW06");
+    }
+
+    @Test
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should not match an invalid indicator")
+    void testAutomatedMaintenancePattern_DoesNotMatchInvalidIndicator() {
+        String input = "XXNO ";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("AUTOMATED_MAINTENANCE_PATTERN should not match a bare direction with no preceding indicator")
+    void testAutomatedMaintenancePattern_DoesNotMatchBareDirection() {
+        String input = "N ";
+        Matcher matcher = RegExprConst.AUTOMATED_MAINTENANCE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    // ========== PP GROUP PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("PP_GROUP_PATTERN should match a typical PP group - SPJC real-world")
+    void testPpGroupPattern_Typical() {
+        String input = "PP000 ";
+        Matcher matcher = RegExprConst.PP_GROUP_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("value")).isEqualTo("000");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"000", "015", "102", "999"})
+    @DisplayName("PP_GROUP_PATTERN should match various three-digit values")
+    void testPpGroupPattern_VariousValues(String value) {
+        String input = "PP" + value + " ";
+        Matcher matcher = RegExprConst.PP_GROUP_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("value")).isEqualTo(value);
+    }
+
+    @Test
+    @DisplayName("PP_GROUP_PATTERN should match at end of string (no trailing space)")
+    void testPpGroupPattern_AtEndOfString() {
+        String input = "PP000";
+        Matcher matcher = RegExprConst.PP_GROUP_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("value")).isEqualTo("000");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'PP00 ', 'Only two digits'",
+            "'PP0000 ', 'Four digits (breaks word boundary)'",
+            "'P000 ', 'Missing second P'",
+            "'PPABC ', 'Non-numeric value'"
+    })
+    @DisplayName("PP_GROUP_PATTERN should not match invalid formats")
+    void testPpGroupPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.PP_GROUP_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+    // ========== PRECIP 3HR/24HR PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'60025 ', 6, 0025, 'Six-hour precipitation'",
+            "'70125 ', 7, 0125, 'Twenty-four-hour precipitation'"
+    })
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should match both type codes with a numeric value")
+    void testPrecip3Hr24HrPattern_TypeCodes(String input, String expectedType, String expectedPrecip, String scenario) {
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("type"))
+                .as("Type should match: %s", scenario)
+                .isEqualTo(expectedType);
+        assertThat(matcher.group("precip"))
+                .as("Precip value should match: %s", scenario)
+                .isEqualTo(expectedPrecip);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'60 ', 0, 'One digit'",
+            "'600 ', 00, 'Two digits'",
+            "'6000 ', 000, 'Three digits'",
+            "'60009 ', 0009, 'Four digits'",
+            "'600091 ', 00091, 'Five digits'"
+    })
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should match precip values from 1 to 5 digits")
+    void testPrecip3Hr24HrPattern_DigitLengths(String input, String expectedPrecip, String scenario) {
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("precip"))
+                .as("Precip value should match: %s", scenario)
+                .isEqualTo(expectedPrecip);
+    }
+
+    @Test
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should match trace precipitation with four slashes")
+    void testPrecip3Hr24HrPattern_TraceFourSlashes() {
+        String input = "6//// ";
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("6");
+        assertThat(matcher.group("precip")).isEqualTo("////");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/", "//", "///", "////", "/////"})
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should match trace indicator from 1 to 5 slashes")
+    void testPrecip3Hr24HrPattern_TraceSlashLengths(String slashes) {
+        String input = "7" + slashes + " ";
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("precip")).isEqualTo(slashes);
+    }
+
+    @Test
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should match with no trailing whitespace consumed (\\s* allows zero)")
+    void testPrecip3Hr24HrPattern_AtEndOfString() {
+        String input = "60025";
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("precip")).isEqualTo("0025");
+    }
+
+    @Test
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should partially match mixed slashes and letters, consuming only the leading slash (ambiguity check)")
+    void testPrecip3Hr24HrPattern_PartiallyMatchesMixedSlashesAndLetters() {
+        // precip's alternation (\d{1,5}|/{1,5}) only requires ONE leading
+        // digit-or-slash character to succeed - it doesn't require the whole
+        // token to be homogeneous. For "6/A/B ", precip greedily matches just
+        // "/" (a single slash; the following "A" breaks the slash run), and
+        // \s* then matches zero-width immediately after - so the pattern DOES
+        // match, consuming only "6/" and leaving "A/B " unconsumed. This
+        // isn't a rejection case; it's a partial-match ambiguity worth knowing
+        // about at the handler level.
+        String input = "6/A/B ";
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("6");
+        assertThat(matcher.group("precip")).isEqualTo("/");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'80025 ', 'Invalid type code (8)'",
+            "'6ABCD ', 'Non-numeric, non-slash value'",
+            "'6 ', 'Missing value entirely'"
+    })
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match invalid formats")
+    void testPrecip3Hr24HrPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+    // ========== TEMP 24HR PATTERN TESTS ==========
+
+    @Test
+    @DisplayName("TEMP_24HR_PATTERN should match positive max, negative min")
+    void testTemp24HrPattern_PositiveMaxNegativeMin() {
+        String input = "400461006 ";
+        Matcher matcher = RegExprConst.TEMP_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("4");
+        assertThat(matcher.group("maxsign")).isEqualTo("0");
+        assertThat(matcher.group("maxtemp")).isEqualTo("046");
+        assertThat(matcher.group("minsign")).isEqualTo("1");
+        assertThat(matcher.group("mintemp")).isEqualTo("006");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'400120010 ', 0, 012, 0, 010, 'Both positive'",
+            "'411231089 ', 1, 123, 1, 089, 'Both negative'",
+            "'410050005 ', 1, 005, 0, 005, 'Negative max, positive min'",
+            "'400000000 ', 0, 000, 0, 000, 'Both zero, both positive sign'",
+            "'403501250 ', 0, 350, 1, 250, 'Large positive max, large negative min'"
+    })
+    @DisplayName("TEMP_24HR_PATTERN should match various sign/value combinations")
+    void testTemp24HrPattern_SignCombinations(String input, String expectedMaxSign, String expectedMaxTemp,
+                                              String expectedMinSign, String expectedMinTemp, String scenario) {
+        Matcher matcher = RegExprConst.TEMP_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("maxsign"))
+                .as("Max sign should match: %s", scenario)
+                .isEqualTo(expectedMaxSign);
+        assertThat(matcher.group("maxtemp"))
+                .as("Max temp should match: %s", scenario)
+                .isEqualTo(expectedMaxTemp);
+        assertThat(matcher.group("minsign"))
+                .as("Min sign should match: %s", scenario)
+                .isEqualTo(expectedMinSign);
+        assertThat(matcher.group("mintemp"))
+                .as("Min temp should match: %s", scenario)
+                .isEqualTo(expectedMinTemp);
+    }
+
+    @Test
+    @DisplayName("TEMP_24HR_PATTERN should match with no trailing whitespace consumed (\\s* allows zero)")
+    void testTemp24HrPattern_AtEndOfString() {
+        String input = "400461006";
+        Matcher matcher = RegExprConst.TEMP_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("mintemp")).isEqualTo("006");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'500461006 ', 'Invalid type code (5)'",
+            "'420461006 ', 'Invalid max sign (2)'",
+            "'400462006 ', 'Invalid min sign (2)'",
+            "'40046100 ', 'Incomplete - missing final digit'",
+            "'4ABCDEFGH ', 'Non-numeric characters throughout'"
+    })
+    @DisplayName("TEMP_24HR_PATTERN should not match invalid formats")
+    void testTemp24HrPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.TEMP_24HR_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
     }
 
     // ========== DIRECTIONAL ARC AND AND-CHAIN PATTERN TESTS ==========
