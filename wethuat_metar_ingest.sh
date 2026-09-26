@@ -92,6 +92,9 @@ TODAY=$(date -u +%Y-%m-%d)
 # - Automated vs staffed stations
 # ----------------------------------------------------------------------------
 STATIONS=(
+  # --- Others ---
+  NSTU PTYA KELP
+
   # --- North America (SM / inHg) ---
   KDLZ KATL KJFK KORD KDFW KDEN KSFO KSEA KMIA KBOS KLAX KPHX KMCO KIAH KAFW KFFO KCVS KBLF KALO KCKB
   CYYZ CYVR CYUL CYZG
