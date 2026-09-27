@@ -27,35 +27,35 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests for LightningMatcher wrapper class.
  * Enhanced to achieve 95%+ code coverage.
- * 
+ *
  * @author bclasky1539
  *
  */
 class LightningMatcherTest {
-    
+
     @Test
     void testSimpleLightning() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("loc")).isEqualTo("DSNT");
         assertThat(matcher.group("freq")).isNull();
         assertThat(matcher.hasAnyTypes()).isFalse();
     }
-    
+
     @Test
     void testLightningWithFrequency() {
         LightningMatcher matcher = new LightningMatcher("OCNL LTG VC ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("freq")).isEqualTo("OCNL");
         assertThat(matcher.group("loc")).isEqualTo("VC");
     }
-    
+
     @Test
     void testLightningWithSingleType() {
         LightningMatcher matcher = new LightningMatcher("LTGIC OHD ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("typeic")).isEqualTo("IC");
         assertThat(matcher.group("typecc")).isNull();
@@ -63,11 +63,11 @@ class LightningMatcherTest {
         assertThat(matcher.hasType("IC")).isTrue();
         assertThat(matcher.hasType("CC")).isFalse();
     }
-    
+
     @Test
     void testLightningWithMultipleTypes() {
         LightningMatcher matcher = new LightningMatcher("FRQ LTGICCCCG VC N-NE ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("freq")).isEqualTo("FRQ");
         assertThat(matcher.group("typeic")).isEqualTo("IC");
@@ -80,11 +80,11 @@ class LightningMatcherTest {
         assertThat(matcher.group("dir2")).isEqualTo("NE");
         assertThat(matcher.getTypesString()).isEqualTo("ICCCCG");
     }
-    
+
     @Test
     void testLightningWithAllTypes() {
         LightningMatcher matcher = new LightningMatcher("CONS LTGICCCCGCACW OHD ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.hasType("IC")).isTrue();
         assertThat(matcher.hasType("CC")).isTrue();
@@ -97,100 +97,100 @@ class LightningMatcherTest {
         assertThat(matcher.group("typeca")).isEqualTo("CA");
         assertThat(matcher.group("typecw")).isEqualTo("CW");
     }
-    
+
     @ParameterizedTest
     @CsvSource({
-        "OCNL, OCNL",
-        "FRQ, FRQ",
-        "CONS, CONS"
+            "OCNL, OCNL",
+            "FRQ, FRQ",
+            "CONS, CONS"
     })
     void testVariousFrequencies(String input, String expectedFreq) {
         LightningMatcher matcher = new LightningMatcher(input + " LTG DSNT ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("freq")).isEqualTo(expectedFreq);
     }
-    
+
     @ParameterizedTest
     @CsvSource({
-        "OHD, OHD",
-        "VC, VC",
-        "DSNT, DSNT"
+            "OHD, OHD",
+            "VC, VC",
+            "DSNT, DSNT"
     })
     void testVariousLocations(String input, String expectedLoc) {
         LightningMatcher matcher = new LightningMatcher("LTG " + input + " ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("loc")).isEqualTo(expectedLoc);
     }
-    
+
     @Test
     void testLightningWithDirectionOnly() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT NE ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("dir")).isEqualTo("NE");
         assertThat(matcher.group("dir2")).isNull();
     }
-    
+
     @Test
     void testLightningWithDirectionRange() {
         LightningMatcher matcher = new LightningMatcher("LTGCG VC SE-S ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("dir")).isEqualTo("SE");
         assertThat(matcher.group("dir2")).isEqualTo("S");
     }
-    
+
     @Test
     void testNoMatch() {
         LightningMatcher matcher = new LightningMatcher("NOTLIGHTNING ");
-        
+
         assertThat(matcher.find()).isFalse();
     }
-    
+
     @Test
     void testReplaceFirst() {
         LightningMatcher matcher = new LightningMatcher("OCNL LTG VC ");
-        
+
         assertThat(matcher.find()).isTrue();
         String replaced = matcher.replaceFirst("");
-        assertThat(replaced).isEmpty();
+        assertThat(replaced).isEqualTo(" ");
     }
-    
+
     // ========== NEW TESTS FOR IMPROVED COVERAGE ==========
-    
+
     @Test
     void testHasAnyTypes_WhenNoTypes() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.hasAnyTypes()).isFalse();
         assertThat(matcher.getTypesString()).isNull();
     }
-    
+
     @Test
     void testHasAnyTypes_WhenHasTypes() {
         LightningMatcher matcher = new LightningMatcher("LTGIC OHD ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.hasAnyTypes()).isTrue();
         assertThat(matcher.getTypesString()).isEqualTo("IC");
     }
-    
+
     @Test
     void testHasAnyTypes_BeforeFind() {
         LightningMatcher matcher = new LightningMatcher("LTGIC OHD ");
-        
+
         // Before calling find(), types should be null
         assertThat(matcher.hasAnyTypes()).isFalse();
     }
-    
+
     @Test
     @DisplayName("hasType should return false for all types when types is null")
     void testHasType_WithNullTypes() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
-        
+
         assertThat(matcher.find()).isTrue();
         // types is null, so hasType should return false
         assertThat(matcher.hasType("IC")).isFalse();
@@ -230,17 +230,17 @@ class LightningMatcherTest {
     @Test
     void testHasType_PartialMatch() {
         LightningMatcher matcher = new LightningMatcher("LTGCG OHD ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.hasType("CG")).isTrue();
         assertThat(matcher.hasType("IC")).isFalse();
         assertThat(matcher.hasType("CA")).isFalse();
     }
-    
+
     @Test
     void testGroup_NoArgument() {
         LightningMatcher matcher = new LightningMatcher("OCNL LTGIC VC ");
-        
+
         assertThat(matcher.find()).isTrue();
         // group() with no argument returns entire match
         String entireMatch = matcher.group();
@@ -250,11 +250,11 @@ class LightningMatcherTest {
                 .contains("LTG")
                 .contains("VC");
     }
-    
+
     @Test
     void testGroup_WithIndex() {
         LightningMatcher matcher = new LightningMatcher("OCNL LTGIC VC ");
-        
+
         assertThat(matcher.find()).isTrue();
         // group(0) returns entire match (same as group())
         String group0 = matcher.group(0);
@@ -262,67 +262,66 @@ class LightningMatcherTest {
                 .isNotNull()
                 .isEqualTo(matcher.group());
     }
-    
+
     @Test
     void testGetTypesString_WhenNull() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.getTypesString()).isNull();
     }
-    
+
     @Test
     void testGetTypesString_WhenPresent() {
         LightningMatcher matcher = new LightningMatcher("LTGICCCCGCA OHD ");
-        
+
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.getTypesString()).isEqualTo("ICCCCGCA");
     }
-    
+
     @Test
     void testMultipleFindCalls() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
-        
+
         // First find should succeed
         assertThat(matcher.find()).isTrue();
-        
+
         // Second find should fail (no more matches)
         assertThat(matcher.find()).isFalse();
     }
-    
+
     @Test
     void testUnknownGroupName() {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT ");
-        
+
         assertThat(matcher.find()).isTrue();
-        
+
         // Unknown group names throw IllegalArgumentException (Java Matcher behavior)
         assertThatThrownBy(() -> matcher.group("unknowngroup"))
-            .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
-    
+
     @Test
     void testReplaceFirst_WithReplacement() {
         LightningMatcher matcher = new LightningMatcher("OCNL LTG VC  rest of text");
-        
+
         assertThat(matcher.find()).isTrue();
-        // Add space in replacement since pattern consumes trailing space
-        String replaced = matcher.replaceFirst("REPLACED ");
-        assertThat(replaced).isEqualTo("REPLACED rest of text");
+        String replaced = matcher.replaceFirst("REPLACED");
+        assertThat(replaced).isEqualTo("REPLACED  rest of text");
     }
-    
+
     @Test
     void testEdgeCase_EmptyInput() {
         LightningMatcher matcher = new LightningMatcher("");
-        
+
         assertThat(matcher.find()).isFalse();
         assertThat(matcher.hasAnyTypes()).isFalse();
     }
-    
+
     @Test
     void testEdgeCase_JustWhitespace() {
         LightningMatcher matcher = new LightningMatcher("   ");
-        
+
         assertThat(matcher.find()).isFalse();
     }
 }

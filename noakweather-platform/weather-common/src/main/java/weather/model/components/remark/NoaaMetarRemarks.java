@@ -74,6 +74,7 @@ import java.util.stream.Collectors;
  * * @param automatedMaintenanceIndicators List of Automated Maintenance Indicators
  * * @param maintenanceRequired Boolean if maintenance is required
  * * @param observationProgramStatus Canadian MANOBS observation program status (LAST STFD OBS/NEXT)
+ * * @param lightningRemarks List of lightning remarks (LTG)
  * * @param freeText Unparsed remarks text
  *
  * @author bclasky1539
@@ -114,6 +115,7 @@ public record NoaaMetarRemarks(
         List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators,
         Boolean maintenanceRequired,
         ObservationProgramStatus observationProgramStatus,
+        List<LightningRemark> lightningRemarks,
         String freeText
 ) {
 
@@ -142,8 +144,9 @@ public record NoaaMetarRemarks(
                 null, null, List.of(), null, null, null, null,
                 List.of(), List.of(), null, null, null, null, null,
                 null, null, List.of(), List.of(), null, null,
-                null, null,null, null, null,
-                null, null, List.of(), null, null,null);
+                null, null, null, null, null,
+                null, null, List.of(), null, null,
+                List.of(), null);
     }
 
     /**
@@ -152,6 +155,14 @@ public record NoaaMetarRemarks(
      * @return true if all fields are null, false otherwise
      */
     public boolean isEmpty() {
+        return isCoreFieldsEmpty()
+                && isVisibilityAndCeilingFieldsEmpty()
+                && isPrecipitationAndWeatherFieldsEmpty()
+                && isPressureAndTemperatureFieldsEmpty()
+                && isMaintenanceAndStatusFieldsEmpty();
+    }
+
+    private boolean isCoreFieldsEmpty() {
         return automatedStationType == null
                 && seaLevelPressure == null
                 && preciseTemperature == null
@@ -159,30 +170,43 @@ public record NoaaMetarRemarks(
                 && peakWind == null
                 && windShift == null
                 && (windsAtLocation == null || windsAtLocation.isEmpty())
-                && (directionalWeather == null)
-                && variableVisibility == null
+                && directionalWeather == null;
+    }
+
+    private boolean isVisibilityAndCeilingFieldsEmpty() {
+        return variableVisibility == null
                 && variableCeiling == null
                 && ceilingSecondSite == null
                 && (obscurationLayers == null || obscurationLayers.isEmpty())
                 && (cloudTypes == null || cloudTypes.isEmpty())
                 && towerVisibility == null
-                && surfaceVisibility == null
-                && hourlyPrecipitation == null
+                && surfaceVisibility == null;
+    }
+
+    private boolean isPrecipitationAndWeatherFieldsEmpty() {
+        return hourlyPrecipitation == null
                 && ppGroupValue == null
                 && sixHourPrecipitation == null
                 && twentyFourHourPrecipitation == null
                 && hailSize == null
                 && (weatherEvents == null || weatherEvents.isEmpty())
                 && (thunderstormLocations == null || thunderstormLocations.isEmpty())
-                && pressureTendency == null
+                && (lightningRemarks == null || lightningRemarks.isEmpty());
+    }
+
+    private boolean isPressureAndTemperatureFieldsEmpty() {
+        return pressureTendency == null
                 && pressureRapidChange == null
                 && icing == null
                 && secondaryAltimeter == null
                 && sixHourMaxTemperature == null
                 && sixHourMinTemperature == null
                 && twentyFourHourMaxTemperature == null
-                && twentyFourHourMinTemperature == null
-                && densityAltitudeFeet == null
+                && twentyFourHourMinTemperature == null;
+    }
+
+    private boolean isMaintenanceAndStatusFieldsEmpty() {
+        return densityAltitudeFeet == null
                 && (automatedMaintenanceIndicators == null || automatedMaintenanceIndicators.isEmpty())
                 && maintenanceRequired == null
                 && observationProgramStatus == null
@@ -247,6 +271,7 @@ public record NoaaMetarRemarks(
         private List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators = new ArrayList<>();
         private Boolean maintenanceRequired;
         private ObservationProgramStatus observationProgramStatus;
+        private List<LightningRemark> lightningRemarks = new ArrayList<>();
         private String freeText;
 
         private Builder() {
@@ -628,6 +653,43 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Adds a single lightning remark.
+         *
+         * @param lightningRemark the lightning remark to add
+         * @return this builder
+         */
+        public Builder addLightningRemark(LightningRemark lightningRemark) {
+            if (lightningRemark != null) {
+                this.lightningRemarks.add(lightningRemark);
+            }
+            return this;
+        }
+
+        /**
+         * Sets the lightning remarks list.
+         *
+         * @param lightningRemarks the lightning remarks
+         * @return this builder
+         */
+        public Builder lightningRemarks(List<LightningRemark> lightningRemarks) {
+            this.lightningRemarks = lightningRemarks != null ? new ArrayList<>(lightningRemarks) : new ArrayList<>();
+            return this;
+        }
+
+        /**
+         * Adds multiple lightning remarks.
+         *
+         * @param remarks the lightning remarks to add
+         * @return this builder
+         */
+        public Builder addLightningRemarks(List<LightningRemark> remarks) {
+            if (remarks != null) {
+                this.lightningRemarks.addAll(remarks);
+            }
+            return this;
+        }
+
+        /**
          * Set 3-hour pressure tendency.
          *
          * @param pressureTendency the pressure tendency
@@ -816,6 +878,7 @@ public record NoaaMetarRemarks(
                     List.copyOf(automatedMaintenanceIndicators),
                     maintenanceRequired,
                     observationProgramStatus,
+                    List.copyOf(lightningRemarks),
                     freeText
             );
         }
@@ -893,6 +956,11 @@ public record NoaaMetarRemarks(
         }
         addIfPresent(parts, maintenanceRequired, "maintenanceRequired", Object::toString);
         addIfPresent(parts, observationProgramStatus, "observationProgramStatus", ObservationProgramStatus::getSummary);
+        if (!lightningRemarks.isEmpty()) {
+            parts.add("lightningRemarks=" + lightningRemarks.stream()
+                    .map(LightningRemark::getSummary)
+                    .collect(Collectors.joining("; ")));
+        }
         addFreeTextIfPresent(parts, freeText);
 
         return "NoaaMetarRemarks{" + String.join(", ", parts) + "}";

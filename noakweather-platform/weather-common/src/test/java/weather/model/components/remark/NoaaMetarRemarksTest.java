@@ -170,7 +170,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null, null, freeText
+                null, null, null, null, null, freeText
         );
 
         assertEquals(stationType, remarks.automatedStationType());
@@ -343,7 +343,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null, null
         );
 
         assertEquals(peakWind, remarks.peakWind());
@@ -361,7 +361,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null, null
         );
 
         assertNull(remarks.peakWind());
@@ -784,7 +784,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(varVis, remarks.variableVisibility());
@@ -990,7 +991,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(towerVis, remarks.towerVisibility());
@@ -1009,7 +1011,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertNull(remarks.towerVisibility());
@@ -1029,7 +1032,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(towerVis, remarks.towerVisibility());
@@ -1238,7 +1242,7 @@ class NoaaMetarRemarksTest {
                 hourly, null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(hourly, remarks.hourlyPrecipitation());
@@ -1258,7 +1262,7 @@ class NoaaMetarRemarksTest {
                 null, sixHour, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertNull(remarks.hourlyPrecipitation());
@@ -1278,7 +1282,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, twentyFourHour, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null, null
+                null, null, null, null, null
         );
 
         assertNull(remarks.hourlyPrecipitation());
@@ -1300,7 +1304,7 @@ class NoaaMetarRemarksTest {
                 hourly, null, sixHour, twentyFourHour, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(hourly, remarks.hourlyPrecipitation());
@@ -1548,7 +1552,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, hailSize, null,
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(hailSize, remarks.hailSize());
@@ -1564,7 +1569,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertNull(remarks.hailSize());
@@ -1767,7 +1773,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 List.of(location), null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(1, remarks.thunderstormLocations().size());
@@ -1787,7 +1794,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 List.of(location1, location2), null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(2, remarks.thunderstormLocations().size());
@@ -2170,7 +2178,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, List.of(event),
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(1, remarks.weatherEvents().size());
@@ -2190,7 +2199,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, List.of(event1, event2),
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(2, remarks.weatherEvents().size());
@@ -2574,7 +2584,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 null, tendency, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertEquals(tendency, remarks.pressureTendency());
@@ -2590,7 +2601,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null,
-                null, null, null, null, null
+                null, null, null, null, null,
+                null
         );
 
         assertNull(remarks.pressureTendency());
@@ -3227,6 +3239,260 @@ class NoaaMetarRemarksTest {
 
         NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
                 .observationProgramStatus(ObservationProgramStatus.of(false, 10, 13, 0))
+                .build();
+
+        assertNotEquals(remarks1, remarks2);
+    }
+
+    // ========== LIGHTNING REMARKS TESTS ==========
+
+    @Test
+    @DisplayName("Should not be empty when only lightningRemarks is present")
+    void testIsEmptyWithOnlyLightningRemarks() {
+        LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark)
+                .build();
+
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should handle empty lightningRemarks list")
+    void testIsEmptyWithEmptyLightningRemarksList() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .lightningRemarks(List.of())
+                .build();
+
+        assertThat(remarks.lightningRemarks()).isEmpty();
+        assertThat(remarks.lightningRemarks()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should handle null lightningRemarks in builder")
+    void testIsEmptyWithNullLightningRemarks() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .lightningRemarks(null)
+                .build();
+
+        assertThat(remarks.lightningRemarks()).isEmpty();
+        assertThat(remarks.lightningRemarks()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should create remarks with single lightningRemark via record constructor")
+    void testRecordConstructorWithSingleLightningRemark() {
+        LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+
+        NoaaMetarRemarks remarks = new NoaaMetarRemarks(
+                null, null, null, null, null,
+                null, null, null, null, null, null,
+                null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null,
+                null, null, null, null,
+                null, List.of(remark), null
+        );
+
+        assertEquals(1, remarks.lightningRemarks().size());
+        assertEquals(remark, remarks.lightningRemarks().get(0));
+    }
+
+    @Test
+    @DisplayName("Should build remarks with single lightningRemark via builder")
+    void testBuilderWithSingleLightningRemark() {
+        LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark)
+                .build();
+
+        assertEquals(1, remarks.lightningRemarks().size());
+        assertEquals(remark, remarks.lightningRemarks().get(0));
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should build remarks with multiple lightningRemarks via addLightningRemark")
+    void testBuilderWithMultipleLightningRemarksViaAdd() {
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.CONTINUOUS, List.of("CW", "CA"), null,
+                null, true);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark1)
+                .addLightningRemark(remark2)
+                .build();
+
+        assertEquals(2, remarks.lightningRemarks().size());
+        assertEquals(remark1, remarks.lightningRemarks().get(0));
+        assertEquals(remark2, remarks.lightningRemarks().get(1));
+    }
+
+    @Test
+    @DisplayName("Should build remarks with lightningRemarks list via builder")
+    void testBuilderWithLightningRemarksList() {
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
+                new DirectionSegment(List.of("W")), false);
+        List<LightningRemark> lightningList = List.of(remark1, remark2);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .lightningRemarks(lightningList)
+                .build();
+
+        assertEquals(2, remarks.lightningRemarks().size());
+        assertEquals(lightningList, remarks.lightningRemarks());
+    }
+
+    @Test
+    @DisplayName("Should add multiple lightningRemarks via addLightningRemarks bulk method")
+    void testBuilderWithAddLightningRemarksBulk() {
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
+                new DirectionSegment(List.of("W")), false);
+        List<LightningRemark> lightningList = List.of(remark1, remark2);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemarks(lightningList)
+                .build();
+
+        assertEquals(2, remarks.lightningRemarks().size());
+        assertTrue(remarks.lightningRemarks().containsAll(lightningList));
+    }
+
+    @Test
+    @DisplayName("Should handle null lightningRemark in addLightningRemark")
+    void testBuilderWithAddNullLightningRemark() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemark(null)
+                .build();
+
+        assertThat(remarks.lightningRemarks()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should handle null list in addLightningRemarks")
+    void testBuilderWithAddLightningRemarksNull() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemarks(null)
+                .build();
+
+        assertThat(remarks.lightningRemarks()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should make defensive copy of lightningRemarks list")
+    void testBuilderDefensiveCopyOfLightningRemarks() {
+        List<LightningRemark> originalList = new ArrayList<>();
+        originalList.add(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .lightningRemarks(originalList)
+                .build();
+
+        originalList.add(new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
+                new DirectionSegment(List.of("W")), false));
+
+        assertThat(remarks.lightningRemarks()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should include single lightningRemark in toString()")
+    void testToStringWithSingleLightningRemark() {
+        LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark)
+                .build();
+
+        String str = remarks.toString();
+        assertTrue(str.contains("lightningRemarks"));
+    }
+
+    @Test
+    @DisplayName("Should include multiple lightningRemarks with semicolon separator in toString()")
+    void testToStringWithMultipleLightningRemarks() {
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
+                new DirectionSegment(List.of("W")), false);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark1)
+                .addLightningRemark(remark2)
+                .build();
+
+        String str = remarks.toString();
+        assertThat(str)
+                .contains("lightningRemarks=")
+                .contains(";");
+    }
+
+    @Test
+    @DisplayName("Should be equal when lightningRemarks are the same")
+    void testEqualityWithLightningRemarks() {
+        LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .addLightningRemark(remark)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .addLightningRemark(remark)
+                .build();
+
+        assertEquals(remarks1, remarks2);
+        assertEquals(remarks1.hashCode(), remarks2.hashCode());
+    }
+
+    @Test
+    @DisplayName("Should not be equal when lightningRemarks differ")
+    void testInequalityWithDifferentLightningRemarks() {
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
+                new DirectionSegment(List.of("W")), false);
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark1)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark2)
+                .build();
+
+        assertNotEquals(remarks1, remarks2);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when lightningRemarks count differs")
+    void testInequalityWithDifferentLightningRemarksCounts() {
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                new DirectionSegment(List.of("N")), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
+                new DirectionSegment(List.of("W")), false);
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark1)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .addLightningRemark(remark1)
+                .addLightningRemark(remark2)
                 .build();
 
         assertNotEquals(remarks1, remarks2);
@@ -4669,6 +4935,8 @@ class NoaaMetarRemarksTest {
                 .addWeatherEvent(new WeatherEvent("RA", null, null, 5,
                         null, 30))
                 .addThunderstormLocation(ThunderstormLocation.of("TS", "SE"))
+                .addLightningRemark(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                        new DirectionSegment(List.of("N")), false))
                 .pressureTendency(PressureTendency.of(2, 3.2))
                 .pressureRapidChange(PressureRapidChange.of("R"))
                 .icing(Icing.of(true, false, "PAST HR"))
@@ -4738,6 +5006,8 @@ class NoaaMetarRemarksTest {
                 .addWeatherEvent(new WeatherEvent("RA", null, null, 5,
                         null, 30))
                 .addThunderstormLocation(ThunderstormLocation.of("TS", "SE"))
+                .addLightningRemark(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                        new DirectionSegment(List.of("N")), false))
                 .pressureTendency(PressureTendency.of(2, 3.2))
                 .pressureRapidChange(PressureRapidChange.of("R"))
                 .icing(Icing.of(true, false, "PAST HR"))
@@ -4754,11 +5024,12 @@ class NoaaMetarRemarksTest {
 
         String str = remarks.toString();
 
-        // Remaining 18 assertions
+        // Remaining 19 assertions
         assertAll("Weather and temperature fields should be present in toString",
                 () -> assertTrue(str.contains("hailSize")),
                 () -> assertTrue(str.contains("weatherEvents")),
                 () -> assertTrue(str.contains("thunderstormLocations")),
+                () -> assertTrue(str.contains("lightningRemarks")),
                 () -> assertTrue(str.contains("pressureTendency")),
                 () -> assertTrue(str.contains("pressureRapidChange")),
                 () -> assertTrue(str.contains("icing")),
@@ -4835,6 +5106,12 @@ class NoaaMetarRemarksTest {
         );
         Boolean maintenanceRequired = true;
         ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0);
+        List<LightningRemark> lightningRemarks = List.of(
+                new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                        new DirectionSegment(List.of("N")), false),
+                new LightningRemark(LightningFrequency.FREQUENT, List.of("CC", "CG"), "VC",
+                        new DirectionSegment(List.of("SE", "S")), false)
+        );
         String freeText = "Additional remarks";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
@@ -4842,7 +5119,7 @@ class NoaaMetarRemarksTest {
                 ceilingSecondSite, obscurationLayers, cloudTypes, towerVis, surfaceVis, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize,
                 weatherEvents, thunderstormLocations, tendency, pressureRapidChange, icing, secondaryAltimeter, sixHourMaxTemp, sixHourMinTemp,
                 twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet, automatedMaintenanceIndicators, maintenanceRequired,
-                observationProgramStatus, freeText
+                observationProgramStatus, lightningRemarks, freeText
         );
 
         // Verify first 18 fields
@@ -4926,6 +5203,12 @@ class NoaaMetarRemarksTest {
         );
         Boolean maintenanceRequired = true;
         ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0);
+        List<LightningRemark> lightningRemarks = List.of(
+                new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
+                        new DirectionSegment(List.of("N")), false),
+                new LightningRemark(LightningFrequency.FREQUENT, List.of("CC", "CG"), "VC",
+                        new DirectionSegment(List.of("SE", "S")), false)
+        );
         String freeText = "Additional remarks";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
@@ -4933,10 +5216,10 @@ class NoaaMetarRemarksTest {
                 ceilingSecondSite, obscurationLayers, cloudTypes, towerVis, surfaceVis, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize,
                 weatherEvents, thunderstormLocations, tendency, pressureRapidChange, icing, secondaryAltimeter, sixHourMaxTemp, sixHourMinTemp,
                 twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet, automatedMaintenanceIndicators, maintenanceRequired,
-                observationProgramStatus, freeText
+                observationProgramStatus, lightningRemarks, freeText
         );
 
-        // Verify remaining 17 fields
+        // Verify remaining 18 fields
         assertAll("Second half of fields should be correctly set",
                 () -> assertEquals(twentyFourHour, remarks.twentyFourHourPrecipitation()),
                 () -> assertEquals(hailSize, remarks.hailSize()),
@@ -4954,6 +5237,7 @@ class NoaaMetarRemarksTest {
                 () -> assertEquals(automatedMaintenanceIndicators, remarks.automatedMaintenanceIndicators()),
                 () -> assertEquals(maintenanceRequired, remarks.maintenanceRequired()),
                 () -> assertEquals(observationProgramStatus, remarks.observationProgramStatus()),
+                () -> assertEquals(lightningRemarks, remarks.lightningRemarks()),
                 () -> assertEquals(freeText, remarks.freeText())
         );
     }

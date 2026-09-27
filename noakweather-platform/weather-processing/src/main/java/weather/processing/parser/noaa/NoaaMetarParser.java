@@ -920,6 +920,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleVariableCeilingSequential(remaining, remarksBuilder);
             remaining = handleCeilingSecondSiteSequential(remaining, remarksBuilder);
             remaining = handleObscurationSequential(remaining, remarksBuilder);
+            remaining = handleLightningSequential(remaining, remarksBuilder);
             remaining = handleThunderstormLocationSequential(remaining, remarksBuilder);
             remaining = handleCloudTypeSequential(remaining, remarksBuilder);
             remaining = handleTowerSurfaceVisibilitySequential(remaining, remarksBuilder);
@@ -1531,7 +1532,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - STFD = optional staffed-program qualifier
      * - ddhhmm = day, hour, minute of the next observation (UTC)
      * - Z or UTC = time-zone suffix (fused or space-separated); not preserved,
-     *   since MANOBS times are always UTC
+     * since MANOBS times are always UTC
      * <p>
      * Examples:
      * - LAST STFD OBS/NEXT 261200Z → staffed, next observation day 26 at 12:00
@@ -2462,6 +2463,115 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                         Arrays.asList(RANGE_SEPARATOR_PATTERN.split(segment))
                 ))
                 .toList();
+    }
+
+    /**
+     * Handle lightning remarks (LTG) for sequential parsing.
+     * <p>
+     * Format: [freq] LTG[types] [loc] [dir[-dir2]]
+     * - freq: OCNL, FRQ, CONS, or CONTUS (optional)
+     * - types: one or more of IC, CC, CG, CA, CW concatenated with no separator (optional)
+     * - loc: OHD, VC, DSNT, or "AT AP" (optional)
+     * - dir: ALQDS (all quadrants) or a compass point, optionally as a range
+     * with dir2 (optional)
+     * <p>
+     * Multiple independent lightning remarks can appear in the same METAR,
+     * each describing lightning at a different time/location - this method
+     * loops to capture all of them.
+     * <p>
+     * Examples:
+     * - OCNL LTGIC DSNT N → occasional in-cloud lightning, distant, north
+     * - FRQ LTGCCCG VC W → frequent cloud-to-cloud and cloud-to-ground
+     * lightning, in vicinity, west
+     * - LTG DSNT ALQDS → lightning, distant, all quadrants
+     * - LTGIC SW → in-cloud lightning, southwest (no frequency, no location)
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after all lightning remarks are processed
+     */
+    private String handleLightningSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        LightningMatcher matcher = new LightningMatcher(remaining);
+
+        while (matcher.find()) {
+            int matchEnd = matcher.group(0).length();
+
+            try {
+                LightningRemark lightning = parseLightningFromMatcher(matcher);
+                remarks.addLightningRemark(lightning);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Lightning: {}", lightning.getSummary());
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid lightning remark: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
+            }
+
+            remaining = remaining.substring(matchEnd).trim();
+            matcher = new LightningMatcher(remaining);
+        }
+
+        return remaining;
+    }
+
+    /**
+     * Parse LightningRemark from a LightningMatcher.
+     *
+     * @param matcher the lightning matcher positioned at a match
+     * @return LightningRemark object with all extracted fields
+     */
+    private LightningRemark parseLightningFromMatcher(LightningMatcher matcher) {
+        String freqStr = matcher.group("freq");
+        LightningFrequency frequency = freqStr != null ? LightningFrequency.fromCode(freqStr) : null;
+
+        List<String> types = extractLightningTypes(matcher);
+
+        String location = matcher.group("loc");
+
+        String dir = matcher.group("dir");
+        boolean allQuadrants = "ALQDS".equals(dir);
+
+        DirectionSegment directionSegment = null;
+        if (dir != null && !allQuadrants) {
+            String dir2 = matcher.group("dir2");
+            List<String> points = dir2 != null ? List.of(dir, dir2) : List.of(dir);
+            directionSegment = new DirectionSegment(points);
+        }
+
+        return new LightningRemark(frequency, types, location, directionSegment, allQuadrants);
+    }
+
+    /**
+     * Extract the ordered list of lightning discharge types from a matcher,
+     * splitting LightningMatcher's raw types string (e.g. "CCCG") into its
+     * individual 2-letter codes in the order they were reported.
+     *
+     * @param matcher the lightning matcher positioned at a match
+     * @return list of type codes in source order, or empty list if none present
+     */
+    private List<String> extractLightningTypes(LightningMatcher matcher) {
+        String typesStr = matcher.getTypesString();
+
+        if (typesStr == null || typesStr.isEmpty()) {
+            return List.of();
+        }
+
+        if (typesStr.length() % 2 != 0) {
+            throw new IllegalArgumentException("Lightning types string has odd length, expected complete 2-letter codes: " + typesStr);
+        }
+
+        List<String> types = new ArrayList<>();
+        for (int i = 0; i < typesStr.length(); i += 2) {
+            types.add(typesStr.substring(i, i + 2));
+        }
+
+        return types;
     }
 
     /**

@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.19.14-SNAPSHOT - September 27, 2026
+
+#### Added
+- **#86: Lightning remarks (LTG)** — frequency, discharge type(s), location qualifier, and
+  direction are now parsed from lightning remarks, extending prior groundwork
+  (`LIGHTNING_PATTERN`, `LightningMatcher`) that existed but was never part of a domain
+  model or parser handler.
+  - New `LightningRemark` record (`weather.model.components.remark`): frequency, an ordered
+    list of discharge types, location qualifier, a direction segment (single point or range),
+    and an all-quadrants flag
+  - New `LightningFrequency` enum: `OCCASIONAL`/`FREQUENT`/`CONTINUOUS`, normalizing the two
+    documented "continuous" spellings (`CONS` US/FAA convention, `CONTUS` Canadian MANOBS
+    convention) to the same value
+  - `LIGHTNING_PATTERN` extended: added `CONTUS` frequency, `ALQDS` (all quadrants) and
+    `AT AP` (at airport) location/direction forms, made the location qualifier optional
+    (MANOBS's own bare `LTGIC SW` example has none), and fixed the trailing-whitespace
+    lookahead bug (`\s+` → `(?=\s|$)`) so a lightning remark at the very end of a remarks
+    string still matches
+  - `NoaaMetarParser.handleLightningSequential` added, using the existing `LightningMatcher`
+    wrapper and a new `getTypesString()`-based extraction that preserves discharge-type
+    order as reported (e.g. `LTGCCCG` → `[CC, CG]`), rather than a fixed order
+  - Handler order adjusted: lightning now runs before thunderstorm-location in
+    `runRemarkHandlerPasses`, so a thunderstorm-location clause exposed by lightning
+    consuming an adjacent lightning clause is claimed in the same pass rather than falling
+    through to the cloud-type handler
+  - Confirmed via real-world captures: KELP (chained `IC+CG` types with a direction range),
+    KMIA (bare `ALQDS` and frequency-qualified chained-type `OHD` remarks in one record, and
+    a separate bare `DSNT W` case), KCLT (bare range plus `OCNL` chained-type remarks), and
+    CYOW (`AT AP`-adjacent bare `CG` type with no location)
+
+#### Internal
+- Test coverage: new `LightningFrequencyTest`, `LightningRemarkTest`, `RegExprConstTest`
+  additions for the extended `LIGHTNING_PATTERN` (including a documented partial-match
+  ambiguity case for an unrecognized location token), `LightningMatcherTest` updates for the
+  trailing-lookahead fix, `NoaaMetarRemarksTest` builder/toString/equality coverage,
+  `NoaaMetarParserTest` end-to-end parsing tests, and four `NoaaMetarParserRemarksRecoveryTest`
+  cases updated (KMIA, KSAV, KCLT, CYOW) plus two new cases (KELP, KMIA multi-remark) now that
+  LTG remarks parse instead of surfacing in `freeText`
+
+#### Follow-up filed
+- Cloud-type handler discards rejected bare-type matches instead of leaving them
+  unparsed — latent bug uncovered while resolving the lightning/thunderstorm-location
+  handler-ordering interaction above, filed separately as it is independent of #86
+
 ### Version 1.19.13-SNAPSHOT - September 26, 2026
 
 #### Added

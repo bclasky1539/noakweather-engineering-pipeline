@@ -5832,8 +5832,184 @@ class NoaaMetarParserTest {
                 .contains("Moving");
     }
 
+    // ========== LIGHTNING REMARKS PARSING TESTS ==========
+
+    @Test
+    @DisplayName("Should parse chained-type lightning remark - KELP real-world (IC+CG)")
+    void testParseLightningRemark_ChainedTypes_KELP() {
+        String metar = "METAR KELP 260351Z 14010KT 10SM FEW050 SCT085 SCT250 26/18 A3010 " +
+                "RMK AO2 SLP128 FRQ LTGICCG DSNT SE-S CB DSNT SE-S MOV NE T02560178";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+        assertThat(lightning.frequency()).isEqualTo(LightningFrequency.FREQUENT);
+        assertThat(lightning.types()).containsExactly("IC", "CG");
+        assertThat(lightning.location()).isEqualTo("DSNT");
+        assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SE", "S")));
+        assertThat(lightning.allQuadrants()).isFalse();
+
+        // Confirms the CB DSNT SE-S MOV NE thunderstorm location (same direction
+        // range, different remark type) still parses correctly alongside this
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse bare lightning remark with no frequency or location - MANOBS example")
+    void testParseLightningRemark_BareMinimal() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK LTGIC SW";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+        assertThat(lightning.frequency()).isNull();
+        assertThat(lightning.types()).containsExactly("IC");
+        assertThat(lightning.location()).isNull();
+        assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SW")));
+        assertThat(lightning.allQuadrants()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should parse lightning remark with all quadrants direction")
+    void testParseLightningRemark_AllQuadrants() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK LTG DSNT ALQDS";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+        assertThat(lightning.frequency()).isNull();
+        assertThat(lightning.types()).isEmpty();
+        assertThat(lightning.location()).isEqualTo("DSNT");
+        assertThat(lightning.directionSegment()).isNull();
+        assertThat(lightning.allQuadrants()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should parse two independent lightning remarks in the same METAR")
+    void testParseLightningRemark_MultipleIndependentRemarks() {
+        // Modeled on the confirmed real-world shape: a bare ALQDS remark
+        // followed later by a frequency-qualified, chained-type, overhead remark
+        String metar = "METAR KJFK 091253Z 17006KT 2SM +TSRA BKN065CB OVC095 14/11 A2986 " +
+                "RMK AO2 LTG DSNT ALQDS RAB01 SLP110 OCNL LTGICCC OHD TS OHD MOV E P0010 T01390106";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks())
+                .as("Should have 2 independent lightning remarks")
+                .hasSize(2);
+
+        LightningRemark first = data.getRemarks().lightningRemarks().get(0);
+        assertThat(first.frequency()).isNull();
+        assertThat(first.location()).isEqualTo("DSNT");
+        assertThat(first.allQuadrants()).isTrue();
+
+        LightningRemark second = data.getRemarks().lightningRemarks().get(1);
+        assertThat(second.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
+        assertThat(second.types()).containsExactly("IC", "CC");
+        assertThat(second.location()).isEqualTo("OHD");
+        assertThat(second.allQuadrants()).isFalse();
+
+        // Confirms everything else in this dense remarks string still parses:
+        // weather event (RAB01), SLP, thunderstorm location (TS OHD MOV E),
+        // hourly precip, precise temperature
+        assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should parse lightning remark with AT AP location qualifier")
+    void testParseLightningRemark_AtApLocation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CONS LTGCG AT AP";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+        assertThat(lightning.frequency()).isEqualTo(LightningFrequency.CONTINUOUS);
+        assertThat(lightning.types()).containsExactly("CG");
+        assertThat(lightning.location()).isEqualTo("AT AP");
+    }
+
+    @Test
+    @DisplayName("Should parse lightning remark in mixed remark order")
+    void testParseLightningRemark_MixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 OCNL LTGIC DSNT N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should parse lightning remark without other remarks")
+    void testParseLightningRemark_Alone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK OCNL LTGIC DSNT N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+
+        // Other remark fields should be null
+        assertThat(data.getRemarks().automatedStationType()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210', 'No lightning remark'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK', 'Empty remarks'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015', 'No RMK section'"
+    })
+    @DisplayName("Should handle METAR with no lightning remarks")
+    void testParseMetar_NoLightningRemarks(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().lightningRemarks())
+                    .as("Lightning remarks should be empty: %s", scenario)
+                    .isEmpty();
+        }
+    }
+
     // ========== PRESSURE TENDENCY PARSING TESTS ==========
-// Add these tests to NoaaMetarParserTest.java after the Thunderstorm Location tests
 
     @ParameterizedTest
     @CsvSource({
