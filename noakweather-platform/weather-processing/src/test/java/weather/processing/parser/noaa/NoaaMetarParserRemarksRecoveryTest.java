@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.assertj.core.api.Assertions.within;
 
 
 /**
@@ -77,12 +78,18 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "29/24 A2998 RMK AO2 LTG DSNT W TSE09B13E46 SLP151 CB DSNT W-NW AND E MOV N T02940239 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .as("LTG (still unwired) is the only remaining unparsed token - " +
-                                            "the CB DSNT W-NW AND E MOV N chain now fully parses as one " +
-                                            "ThunderstormLocation with two direction segments and movement")
-                                    .isEqualTo("LTG DSNT W");
+                                    .as("LTG DSNT W now parses as a LightningRemark, and the CB DSNT W-NW " +
+                                            "AND E MOV N chain fully parses as one ThunderstormLocation with " +
+                                            "two direction segments and movement - nothing left unparsed")
+                                    .isNull();
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+                            LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+                            assertThat(lightning.frequency()).isNull();
+                            assertThat(lightning.types()).isEmpty();
+                            assertThat(lightning.location()).isEqualTo("DSNT");
+                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("W")));
                             assertThat(data.getSeaLevelPressure())
-                                    .as("SLP151 must parse despite the earlier unrecognized LTG clause")
+                                    .as("SLP151 must parse despite the earlier LTG clause")
                                     .isEqualTo(1015.1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(29.4);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(23.9);
@@ -105,7 +112,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().weatherEvents().get(1).beginMinute()).isEqualTo(13);
                             assertThat(data.getRemarks().weatherEvents().get(1).endMinute()).isEqualTo(46);
                             assertThat(data.getRemarks().maintenanceRequired())
-                                    .as("Trailing $ should parse despite everything ahead of it failing")
+                                    .as("Trailing $ should parse despite everything ahead of it")
                                     .isTrue();
                         }),
 
@@ -162,10 +169,21 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "RMK AO2 ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .as("Only the still-unwired LTG variants remain unparsed - " +
-                                            "TCU N-NE AND NW now fully parses as one ThunderstormLocation " +
-                                            "with two direction segments")
-                                    .isEqualTo("LTG DSNT NE-SE OCNL LTGICCC DSNT E");
+                                    .as("Both LTG DSNT NE-SE and OCNL LTGICCC DSNT E now parse as " +
+                                            "LightningRemarks, and TCU N-NE AND NW fully parses as one " +
+                                            "ThunderstormLocation with two direction segments - nothing left unparsed")
+                                    .isNull();
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(2);
+                            LightningRemark firstLtg = data.getRemarks().lightningRemarks().get(0);
+                            assertThat(firstLtg.frequency()).isNull();
+                            assertThat(firstLtg.types()).isEmpty();
+                            assertThat(firstLtg.location()).isEqualTo("DSNT");
+                            assertThat(firstLtg.directionSegment()).isEqualTo(new DirectionSegment(List.of("NE", "SE")));
+                            LightningRemark secondLtg = data.getRemarks().lightningRemarks().get(1);
+                            assertThat(secondLtg.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
+                            assertThat(secondLtg.types()).containsExactly("IC", "CC");
+                            assertThat(secondLtg.location()).isEqualTo("DSNT");
+                            assertThat(secondLtg.directionSegment()).isEqualTo(new DirectionSegment(List.of("E")));
                             assertThat(data.getRemarks().icing()).isEqualTo(Icing.of(false, false, "PAST HR"));
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.6);
@@ -185,8 +203,15 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "RMK SC5AC3 CB EMBDD LTGCG SE SLP044",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText())
-                                    .as("CB EMBDD now parses as a CloudType; only LTGCG SE (unwired LTG variant) remains unparsed")
-                                    .isEqualTo("LTGCG SE");
+                                    .as("CB EMBDD now parses as a CloudType, and LTGCG SE now parses as " +
+                                            "a LightningRemark - nothing left unparsed")
+                                    .isNull();
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+                            LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+                            assertThat(lightning.frequency()).isNull();
+                            assertThat(lightning.types()).containsExactly("CG");
+                            assertThat(lightning.location()).isNull();
+                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SE")));
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1004.4);
                             assertThat(data.getRemarks().cloudTypes())
                                     .as("SC5, AC3, and now CB EMBDD - three cloud types")
@@ -376,10 +401,94 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2019/07/08 00:14 KSAV 080014Z 17009KT 7SM -RA FEW070 SCT090 BKN110 24/23 A2993 " +
                                 "RMK AO2 LTG DSNT N TSE2356 CB DSNT N-SE P0005 T02390228",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().freeText()).isEqualTo("LTG DSNT N");
+                            assertThat(data.getRemarks().freeText())
+                                    .as("LTG DSNT N now parses as a LightningRemark")
+                                    .isNull();
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+                            LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+                            assertThat(lightning.location()).isEqualTo("DSNT");
+                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("N")));
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(23.9);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.8);
+                        }),
+
+                arguments("KELP-LightningAndThunderstormLocationComposeCorrectly",
+                        "2026/09/26 03:51 KELP 260351Z 14010KT 10SM FEW050 SCT085 SCT250 26/18 A3010 " +
+                                "RMK AO2 SLP128 FRQ LTGICCG DSNT SE-S CB DSNT SE-S MOV NE T02560178",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Both FRQ LTGICCG DSNT SE-S and the following CB DSNT SE-S MOV NE " +
+                                            "should fully parse - confirms the lightning/thunderstorm-location " +
+                                            "handler ordering fix resolves the same-pass exposure interaction")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+                            LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+                            assertThat(lightning.frequency()).isEqualTo(LightningFrequency.FREQUENT);
+                            assertThat(lightning.types()).containsExactly("IC", "CG");
+                            assertThat(lightning.location()).isEqualTo("DSNT");
+                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SE", "S")));
+
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(cb.cloudType()).isEqualTo("CB");
+                            assertThat(cb.locationQualifier()).isEqualTo("DSNT");
+                            assertThat(cb.directionSegments())
+                                    .containsExactly(new DirectionSegment(List.of("SE", "S")));
+                            assertThat(cb.movingDirection()).isEqualTo("NE");
+
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1012.8);
+                            assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(25.6, within(0.1));
+                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(17.8, within(0.1));
+                        }),
+
+                arguments("KMIA-MultipleLightningRemarksAndThunderstormLocationComposeCorrectly",
+                        "2011/01/30 12:53 KMIA 091253Z 17006KT 2SM +TSRA BKN065CB OVC095 14/11 A2986 " +
+                                "RMK AO2 LTG DSNT ALQDS RAB01 SLP110 OCNL LTGICCC OHD TS OHD MOV E P0010 T01390106",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Two independent lightning remarks (bare ALQDS, and frequency-qualified " +
+                                            "chained-type overhead) plus the weather event, SLP, thunderstorm " +
+                                            "location, precipitation, and precise temp should all parse cleanly")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().lightningRemarks())
+                                    .as("Should have 2 independent lightning remarks")
+                                    .hasSize(2);
+
+                            LightningRemark first = data.getRemarks().lightningRemarks().get(0);
+                            assertThat(first.frequency()).isNull();
+                            assertThat(first.types()).isEmpty();
+                            assertThat(first.location()).isEqualTo("DSNT");
+                            assertThat(first.allQuadrants()).isTrue();
+                            assertThat(first.directionSegment()).isNull();
+
+                            LightningRemark second = data.getRemarks().lightningRemarks().get(1);
+                            assertThat(second.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
+                            assertThat(second.types()).containsExactly("IC", "CC");
+                            assertThat(second.location()).isEqualTo("OHD");
+                            assertThat(second.allQuadrants()).isFalse();
+
+                            assertThat(data.getRemarks().weatherEvents())
+                                    .as("RAB01 - rain began :01")
+                                    .hasSize(1);
+                            assertThat(data.getRemarks().weatherEvents().get(0).weatherCode()).isEqualTo("RA");
+                            assertThat(data.getRemarks().weatherEvents().get(0).beginMinute()).isEqualTo(1);
+
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1011.0);
+
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            ThunderstormLocation ts = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(ts.cloudType()).isEqualTo("TS");
+                            assertThat(ts.locationQualifier()).isEqualTo("OHD");
+                            assertThat(ts.movingDirection()).isEqualTo("E");
+
+                            assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+                            assertThat(data.getRemarks().hourlyPrecipitation().inches()).isEqualTo(0.10, within(0.01));
+
+                            assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(13.9, within(0.1));
+                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(10.6, within(0.1));
                         }),
 
                 arguments("CXOL-AllTokensParse",
@@ -440,6 +549,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  weatherEvents: {}", data.getRemarks() != null ? data.getRemarks().weatherEvents() : "n/a");
             LOGGER.info("  maintenanceRequired: {}", data.getRemarks() != null ? data.getRemarks().maintenanceRequired() : "n/a");
             LOGGER.info("  observationProgramStatus: {}", data.getRemarks() != null ? data.getRemarks().observationProgramStatus() : "n/a");
+            LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
             LOGGER.info(" ");
         }
     }

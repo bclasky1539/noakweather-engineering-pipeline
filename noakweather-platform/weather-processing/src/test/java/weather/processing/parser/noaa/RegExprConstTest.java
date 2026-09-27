@@ -1104,6 +1104,204 @@ class RegExprConstTest {
         assertThat(matcher.group("okta")).isEqualTo("4");
     }
 
+    // ========== LIGHTNING PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OCNL", "FRQ", "CONS", "CONTUS"})
+    @DisplayName("LIGHTNING_PATTERN should match all valid frequency codes")
+    void testLightningPattern_AllFrequencies(String freq) {
+        String input = freq + " LTG DSNT N ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("freq")).isEqualTo(freq);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'LTG DSNT N ', freq",
+            "'LTG DSNT N ', types",
+            "'LTG DSNT ', dir"
+    })
+    @DisplayName("LIGHTNING_PATTERN should match with optional groups absent")
+    void testLightningPattern_OptionalGroupsAbsent(String input, String groupName) {
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group(groupName))
+                .as("Group '%s' should be null", groupName)
+                .isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"IC", "CC", "CG", "CA", "CW"})
+    @DisplayName("LIGHTNING_PATTERN should match all single discharge types")
+    void testLightningPattern_SingleTypes(String type) {
+        String input = "LTG" + type + " DSNT N ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("types")).isEqualTo(type);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'FRQ LTGCGICCC NW ', types, CGICCC, 'MANOBS chained types example'",
+            "'CONS LTGCG AT AP ', loc, 'AT AP', 'Two-word AT AP location qualifier'",
+            "'OCNL LTGIC DSNT N', dir, N, 'At end of string, no trailing space'"
+    })
+    @DisplayName("LIGHTNING_PATTERN should match various single-group scenarios")
+    void testLightningPattern_VariousGroupScenarios(String input, String groupName,
+                                                    String expectedValue, String scenario) {
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group(groupName))
+                .as("Group '%s' should match: %s", groupName, scenario)
+                .isEqualTo(expectedValue);
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match chained types - KELP real-world (IC+CG)")
+    void testLightningPattern_ChainedTypes_KELP() {
+        String input = "FRQ LTGICCG DSNT SE-S ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("types")).isEqualTo("ICCG");
+        assertThat(matcher.group("loc")).isEqualTo("DSNT");
+        assertThat(matcher.group("dir")).isEqualTo("SE");
+        assertThat(matcher.group("dir2")).isEqualTo("S");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"OHD", "VC", "DSNT"})
+    @DisplayName("LIGHTNING_PATTERN should match all single-word location qualifiers")
+    void testLightningPattern_SingleWordLocations(String loc) {
+        String input = "LTG " + loc + " N ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("loc")).isEqualTo(loc);
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match without a location qualifier - MANOBS bare example")
+    void testLightningPattern_NoLocation() {
+        String input = "LTGIC SW ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("loc")).isNull();
+        assertThat(matcher.group("dir")).isEqualTo("SW");
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match ALQDS as direction")
+    void testLightningPattern_Alqds() {
+        String input = "LTG DSNT ALQDS ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dir")).isEqualTo("ALQDS");
+        assertThat(matcher.group("dir2")).isNull();
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match ALQDS without a preceding location - UT example")
+    void testLightningPattern_AlqdsNoLocation() {
+        String input = "CONS LTGCWCA ALQDS ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("types")).isEqualTo("CWCA");
+        assertThat(matcher.group("loc")).isNull();
+        assertThat(matcher.group("dir")).isEqualTo("ALQDS");
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match a single compass point direction")
+    void testLightningPattern_SingleDirection() {
+        String input = "OCNL LTGIC DSNT N ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dir")).isEqualTo("N");
+        assertThat(matcher.group("dir2")).isNull();
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match a two-point direction range")
+    void testLightningPattern_DirectionRange() {
+        String input = "LTGCG VC SE-S ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dir")).isEqualTo("SE");
+        assertThat(matcher.group("dir2")).isEqualTo("S");
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match a minimal bare LTG with only direction - MANOBS example")
+    void testLightningPattern_MinimalBareLtg() {
+        String input = "LTGIC SW";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("freq")).isNull();
+        assertThat(matcher.group("types")).isEqualTo("IC");
+        assertThat(matcher.group("loc")).isNull();
+        assertThat(matcher.group("dir")).isEqualTo("SW");
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should match complete real-world example - all components present")
+    void testLightningPattern_CompleteExample() {
+        String input = "FRQ LTGCCCG VC W ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("freq")).isEqualTo("FRQ");
+        assertThat(matcher.group("types")).isEqualTo("CCCG");
+        assertThat(matcher.group("loc")).isEqualTo("VC");
+        assertThat(matcher.group("dir")).isEqualTo("W");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'LGT DSNT N ', 'Misspelled LTG prefix'",
+            "'LTGXX DSNT N ', 'Invalid type code'"
+    })
+    @DisplayName("LIGHTNING_PATTERN should not match invalid formats")
+    void testLightningPattern_DoesNotMatchInvalidFormats(String input, String scenario) {
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("LIGHTNING_PATTERN should partially match bare LTG when location is unrecognized, leaving the rest unconsumed (ambiguity check)")
+    void testLightningPattern_PartiallyMatchesBareLtgWithInvalidLocation() {
+        // types, loc, and dir are all optional, so an unrecognized location
+        // token like "XX" simply causes each optional group to be skipped in
+        // turn, and the pattern falls back to matching bare "LTG" alone.
+        // Satisfied by the trailing (?=\s|$) lookahead against the space that
+        // follows. "XX N " is left completely unconsumed - this is a partial
+        // match, not a rejection.
+        String input = "LTG XX N ";
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group(0).trim()).isEqualTo("LTG");
+        assertThat(matcher.group("types")).isNull();
+        assertThat(matcher.group("loc")).isNull();
+        assertThat(matcher.group("dir")).isNull();
+    }
+
     // ========== PRESSURE Q PATTERN TESTS ==========
 
     @ParameterizedTest

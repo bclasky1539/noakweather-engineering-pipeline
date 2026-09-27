@@ -289,7 +289,9 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for lightning format
     public static final Pattern LIGHTNING_PATTERN = Pattern.compile(
-            "^(?:(?<freq>OCNL|FRQ|CONS)\\s+)?LTG(?<types>(?:IC|CC|CG|CA|CW)+)?\\s+(?<loc>OHD|VC|DSNT)(?:\\s+(?<dir>[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?\\s+"
+            "^(?:(?<freq>OCNL|FRQ|CONS|CONTUS)\\s+)?LTG(?<types>(?:IC|CC|CG|CA|CW)+)?" +
+                    "(?:\\s+(?<loc>OHD|VC|DSNT|AT\\s+AP))?" +
+                    "(?:\\s+(?<dir>ALQDS|[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?=\\s|$)"
     );
 
     /**
@@ -416,7 +418,7 @@ public final class RegExprConst {
      * Indicates whether the station is staffed (STFD present) and when
      * the next observation will be issued.
      * Examples: LAST STFD OBS/NEXT 261200Z, LAST OBS/NEXT 101300UTC,
-     *           LAST STFD OBS / NEXT 271200 UTC
+     * LAST STFD OBS / NEXT 271200 UTC
      */
     public static final Pattern LAST_OBS_PATTERN = Pattern.compile(
             "^LAST\\s+(?<stfd>STFD\\s+)?OBS\\s*/\\s*NEXT\\s+(?<day>\\d{2})(?<hour>\\d{2})(?<minute>\\d{2})\\s?(?:Z|UTC)(?=\\s|$)"
