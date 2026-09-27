@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import weather.model.components.Visibility;
+import weather.model.components.remark.visibilityremarks.VariableVisibility;
 
 import static org.junit.jupiter.api.Assertions.*;
 

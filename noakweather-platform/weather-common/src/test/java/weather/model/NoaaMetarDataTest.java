@@ -23,9 +23,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import weather.model.components.*;
 import weather.model.components.remark.Icing;
-import weather.model.components.remark.PeakWind;
-import weather.model.components.remark.PressureRapidChange;
-import weather.model.components.remark.WindShift;
+import weather.model.components.remark.windremarks.PeakWind;
+import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.components.remark.windremarks.WindShift;
 import weather.model.enums.SkyCoverage;
 
 import java.time.Instant;

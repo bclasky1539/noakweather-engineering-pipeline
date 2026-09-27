@@ -19,6 +19,15 @@ package weather.model.components.remark;
 import weather.model.components.Pressure;
 import weather.model.components.Temperature;
 import weather.model.components.Visibility;
+import weather.model.components.remark.ceilingremarks.CeilingSecondSite;
+import weather.model.components.remark.ceilingremarks.VariableCeiling;
+import weather.model.components.remark.maintenanceremarks.AutomatedMaintenanceIndicator;
+import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.components.remark.pressureremarks.PressureTendency;
+import weather.model.components.remark.visibilityremarks.VariableVisibility;
+import weather.model.components.remark.windremarks.PeakWind;
+import weather.model.components.remark.windremarks.WindAtLocation;
+import weather.model.components.remark.windremarks.WindShift;
 import weather.model.enums.AutomatedStationType;
 
 import java.util.ArrayList;

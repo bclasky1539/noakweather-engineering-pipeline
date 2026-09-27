@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.*;
+import weather.model.components.remark.pressureremarks.PressureRapidChange;
 import weather.processing.parser.common.ParseResult;
 
 import java.util.List;

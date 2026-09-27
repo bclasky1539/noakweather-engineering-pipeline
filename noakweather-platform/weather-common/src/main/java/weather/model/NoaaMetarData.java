@@ -23,6 +23,9 @@ import weather.model.components.Temperature;
 import weather.model.components.Visibility;
 import weather.model.components.Wind;
 import weather.model.components.remark.*;
+import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.components.remark.windremarks.PeakWind;
+import weather.model.components.remark.windremarks.WindShift;
 
 import java.time.Instant;
 import java.util.Objects;
