@@ -63,6 +63,7 @@ public class NoaaConfiguration {
 
     /**
      * Creates configuration with custom properties (for testing)
+     *
      * @param properties custom properties
      */
     public NoaaConfiguration(Properties properties) {
@@ -90,6 +91,7 @@ public class NoaaConfiguration {
 
     /**
      * Gets the METAR base URL (station directory)
+     *
      * @return base URL for METAR station files
      */
     public String getMetarBaseUrl() {
@@ -98,6 +100,7 @@ public class NoaaConfiguration {
 
     /**
      * Gets the TAF base URL (station directory)
+     *
      * @return base URL for TAF station files
      */
     public String getTafBaseUrl() {
@@ -106,6 +109,7 @@ public class NoaaConfiguration {
 
     /**
      * Gets the request timeout in seconds
+     *
      * @return timeout in seconds
      */
     public int getTimeoutSeconds() {
@@ -121,6 +125,7 @@ public class NoaaConfiguration {
 
     /**
      * Gets the number of retry attempts for failed requests
+     *
      * @return number of retry attempts
      */
     public int getRetryAttempts() {
@@ -136,6 +141,7 @@ public class NoaaConfiguration {
 
     /**
      * Gets the delay between retry attempts in milliseconds
+     *
      * @return retry delay in milliseconds
      */
     public int getRetryDelayMs() {
@@ -156,7 +162,7 @@ public class NoaaConfiguration {
      * @return complete URL to fetch METAR data
      */
     public String buildMetarUrl(String stationId) {
-        return String.format("%s/%s.TXT", getMetarBaseUrl(), stationId.toUpperCase());
+        return getMetarBaseUrl() + "/" + stationId.toUpperCase() + ".TXT";
     }
 
     /**
@@ -166,7 +172,7 @@ public class NoaaConfiguration {
      * @return complete URL to fetch TAF data
      */
     public String buildTafUrl(String stationId) {
-        return String.format("%s/%s.TXT", getTafBaseUrl(), stationId.toUpperCase());
+        return getTafBaseUrl() + "/" + stationId.toUpperCase() + ".TXT";
     }
 
     /**
