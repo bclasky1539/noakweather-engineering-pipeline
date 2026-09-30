@@ -145,9 +145,7 @@ public record VariableVisibility(
      * @return formatted range (e.g., "1/2 to 2 SM")
      */
     public String getRange() {
-        return String.format("%s to %s",
-                formatVisibility(minimumVisibility),
-                formatVisibility(maximumVisibility));
+        return formatVisibility(minimumVisibility) + " to " + formatVisibility(maximumVisibility);
     }
 
     /**
