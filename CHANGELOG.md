@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.0-SNAPSHOT - September 29, 2026
+
+#### Changed
+- **#94: Resolved `NoaaMetarRemarks` Monster Class (SonarCloud java:S6539)** — grouped 12
+  related fields into 5 new sub-records, reducing `NoaaMetarRemarks.Builder`'s dependency
+  count from 21 to under 20. Minor version bump reflects the scope of this internal
+  restructuring, even though the public API is unchanged for all read access.
+  - **New subpackages** under `weather.model.components.remark`, each holding its grouped
+    classes plus a new sub-record type:
+    - `windremarks`: `PeakWind`, `WindShift`, `WindAtLocation`, new `WindRemarks`
+    - `visibilityremarks`: `VariableVisibility`, new `VisibilityRemarks`
+    - `ceilingremarks`: `VariableCeiling`, `CeilingSecondSite`, new `CeilingRemarks`
+    - `pressureremarks`: `PressureTendency`, `PressureRapidChange`, new `PressureRemarks`
+    - `maintenanceremarks`: `AutomatedMaintenanceIndicator`, new `MaintenanceRemarks`
+  - `NoaaMetarRemarks`'s record component list now holds the 5 sub-records instead of
+    their 12 original flat fields; delegating accessors preserve every original field
+    name and read-path behavior (e.g. `remarks.peakWind()` still works unchanged)
+  - `NoaaMetarRemarks.Builder` no longer references the 12 grouped types directly — it
+    holds the 5 sub-records and exposes both whole-value setters (e.g.
+    `wind(WindRemarks)`) and update-style setters (e.g.
+    `updateWind(UnaryOperator<WindRemarks>)`) for setting one field at a time, which
+    resolved the S6539 finding
+  - Each new sub-record has `with...`/`add...` copy-and-modify methods
+    (`WindRemarks.withPeakWind(...)`, `MaintenanceRemarks.addAutomatedMaintenanceIndicator(...)`,
+    etc.) backing the builder's update-style setters
+  - `MaintenanceRemarks` preserves the original null-vs-explicit-false distinction for
+    `maintenanceRequired` via a new `hasMaintenanceRequired()` method, since its own
+    `maintenanceRequired()` accessor null-coalesces
+  - `NoaaMetarParser`'s remark handlers migrated to the new builder API; no change to
+    parsing behavior or output
+  - `docs/CODE_STANDARDS.md`'s package hierarchy diagram updated to reflect the new
+    subpackages, plus additional corrections (glue-jobs directory, sql directory, missing
+    resource files, missing class comments) found while reviewing it for this change
+
+#### Internal
+- Test coverage: new `WindRemarksTest`, `VisibilityRemarksTest`, `CeilingRemarksTest`,
+  `PressureRemarksTest`, `MaintenanceRemarksTest` (including their `with...`/`add...`
+  methods); `NoaaMetarRemarksTest` raw-constructor tests updated for the new 29-argument
+  signature (down from 35) and builder calls migrated to the new update-style API
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) under both Java 17 and
+  Java 25 with zero behavior change to METAR remarks parsing — all `weather-common` and
+  `weather-processing` tests pass unchanged
+
 ### Version 1.19.14-SNAPSHOT - September 27, 2026
 
 #### Added

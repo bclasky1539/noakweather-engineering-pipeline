@@ -11,11 +11,22 @@ The NoakWeather Engineering Pipeline follows a multi-module Lambda Architecture.
 ```
 noakweather-engineering-pipeline/
 ├── docs/                                        # Project-wide documentation
+│   ├── ATHENA_SETUP.md                          # AWS Athena Data Lakehouse Setup - Medallion Architecture Guide
+│   ├── AWS_IAM_DYNAMODB_SETUP.md                # AWS IAM setup Guide
 │   ├── CODE_STANDARDS.md                        # Development guidelines (this file)
-│   ├── WEATHER_FORMAT_REFERENCES.md             # METAR/TAF specifications
-│   ├── AWS_IAM_DYNAMODB_SETUP.md                # AWS IAM setup guide
+│   ├── GLUE-DEPLOYMENT-GUIDE.md                 # AWS Glue Deployment Guide
 │   ├── LOGGING_SETUP.md                         # Centralized logging configuration
-│   └── PHASE_4_GSI_DEPLOYMENT_GUIDE.md          # DynamoDB GSI deployment
+│   ├── PHASE_4_GSI_DEPLOYMENT_GUIDE.md          # DynamoDB GSI deployment
+│   ├── S3_BUCKET_SETUP.md                       # S3 Bucket Setup
+│   ├── SINGLE_STATION_TEST_GUIDE.md             # Single Station Integration Test Guikd
+│   └── WEATHER_FORMAT_REFERENCES.md             # METAR/TAF specifications
+├── glue-jobs/                                   # AWS Glue jobs
+│   ├── tools/                                   # AWS Glue tools
+│   │   └── analyze_bronze_station.py            # UAT validation tool for single station's Bronze-layer output
+│   ├── bronze_to_silver_metar.py                # Transform raw NOAA METAR data into standardized, validated format
+│   ├── README.md                                # AWS Glue ETL Jobs README
+│   ├── requirements.txt                         # AWS Glue ETL Job Dependencies
+│   └── test_bronze_to_silver_local.py           # Local test version - NO AWS Glue dependencies
 ├── noakweather-legacy/                          # Legacy single-module implementation
 │   └── [legacy codebase]                        # Original noakweather-java code
 └── noakweather-platform/                        # Multi-module Lambda Architecture
@@ -28,6 +39,11 @@ noakweather-engineering-pipeline/
     │   ├── dynamodb.log                         # DynamoDB operations
     │   └── archive/                             # Rolled/compressed logs
     │
+    ├── weather-analytics/                       # Analytics and reporting services
+    │   └── src/main/java/com/weather/analytics/
+    │       └── service/                         # Analytics services
+    │           └── [analytics implementations]
+    │
     ├── weather-common/                          # Shared models, interfaces, utilities
     │   └── src/main/java/weather/
     │       ├── exception/                       # Common exception hierarchy
@@ -36,21 +52,53 @@ noakweather-engineering-pipeline/
     │       │   └── WeatherServiceException.java # Service layer errors
     │       ├── model/                           # Domain model - shared data structures
     │       │   ├── components/                  # Weather data components
-    │       │   │   │   ├── ForecastPeriod.java
-    │       │   │   │   ├── PresentWeather.java
-    │       │   │   │   ├── Pressure.java
-    │       │   │   │   ├── RunwayVisualRange.java
-    │       │   │   │   ├── SkyCondition.java
-    │       │   │   │   ├── Temperature.java
-    │       │   │   │   ├── ValidityPeriod.java
-    │       │   │   │   ├── Visibility.java
-    │       │   │   │   └── Wind.java
+    │       │   │   │   ├── ForecastPeriod.java      # Single forecast period
+    │       │   │   │   ├── PresentWeather.java      # Present weather phenomena
+    │       │   │   │   ├── Pressure.java            # Atmospheric pressure
+    │       │   │   │   ├── RunwayVisualRange.java   # Runway visual range (RVR) conditions
+    │       │   │   │   ├── SkyCondition.java        # Sky condition (cloud layer)
+    │       │   │   │   ├── Temperature.java         # Temperature information
+    │       │   │   │   ├── ValidityPeriod.java      # TAF validity period
+    │       │   │   │   ├── Visibility.java          # Visibility conditions
+    │       │   │   │   └── Wind.java                # Wind conditions
     │       │   │   └── remark/                  # Remark-specific components
+    │       │   │   │   │   ├── CloudType.java                  # Cloud type observation
+    │       │   │   │   │   ├── DirectionalWeather.java         # Direction of present-weather phenomenon
+    │       │   │   │   │   ├── DirectionSegment.java           # Directional segment within TS/cloud location
+    │       │   │   │   │   ├── HailSize.java                   # Representing hail size
+    │       │   │   │   │   ├── Icing.java                      # Icing observed in clouds
+    │       │   │   │   │   ├── LightningFrequency.java         # Lightning frequency
+    │       │   │   │   │   ├── LightningRemark.java            # Lightning remark
+    │       │   │   │   │   ├── NoaaMetarRemarks.java           # Remarks from a METAR or SPECI report
+    │       │   │   │   │   ├── ObscurationLayer.java           # Obscuration layer in the atmosphere
+    │       │   │   │   │   ├── ObservationProgramStatus.java   # Observation-program status remark
+    │       │   │   │   │   ├── PrecipitationAmount.java        # Precipitation amount from METAR remarks
+    │       │   │   │   │   ├── ThunderstormLocation.java       # Thunderstorms and significant cloud types
+    │       │   │   │   │   └── WeatherEvent.java               # Weather phenomenon's begin/end time
+    │       │   │   │   └── ceilingremarks/           # Ceiling Remark-specific components
+    │       │   │   │   │   ├── CeilingRemarks.java                   # Groups ceiling-related remarks
+    │       │   │   │   │   ├── CeilingSecondSite.java                # Ceiling height at a second observation site
+    │       │   │   │   │   └── VariableCeiling.java                  # Variable ceiling height observation
+    │       │   │   │   └── maintenanceremarks/       # Maintenance Remark-specific components
+    │       │   │   │   │   ├── AutomatedMaintenanceIndicator.java    # Automated maintenance indicator
+    │       │   │   │   │   └── MaintenanceRemarks.java               # Groups automated-station maintenance remarks
+    │       │   │   │   └── pressureremarks/          # Pressure Remark-specific components
+    │       │   │   │   │   ├── PressureRapidChange.java              # Type of pressure rising or falling rapidly
+    │       │   │   │   │   ├── PressureRemarks.java                  # Groups pressure-anomaly remarks  
+    │       │   │   │   │   └── PressureTendency.java                 # 3-hour pressure tendency 
+    │       │   │   │   └── visibilityremarks/        # Visibility Remark-specific components
+    │       │   │   │   │   ├── VariableVisibility.java               # Variable visibility 
+    │       │   │   │   │   └── VisibilityRemarks.java                # Groups visibility-related remarks
+    │       │   │   │   └── windremarks/              # Wind Remark-specific components
+    │       │   │   │   │   ├── PeakWind.java                         # Peak wind
+    │       │   │   │   │   ├── WindAtLocation.java                   # Wind conditions reported 
+    │       │   │   │   │   ├── WindRemarks.java                      # Groups wind-related remarks 
+    │       │   │   │   │   └── WindShift.java                        # Wind shift
     │       │   ├── enums/                         # Enumerations
-    │       │   │   ├── AutomatedStationType.java  # Type of automated weather station
-    │       │   │   ├── ChangeIndicator.java       # Types of forecast change indicators
-    │       │   │   ├── PressureUnit.java          # Enumeration of atmospheric pressure units
-    │       │   │   └── SkyCoverage.java           # Sky coverage enumeration
+    │       │   │   ├── AutomatedStationType.java    # Type of automated weather station
+    │       │   │   ├── ChangeIndicator.java         # Types of forecast change indicators
+    │       │   │   ├── PressureUnit.java            # Enumeration of atmospheric pressure units
+    │       │   │   └── SkyCoverage.java             # Sky coverage enumeration
     │       │   ├── GeoLocation.java             # Geographic locations
     │       │   ├── ProcessingLayer.java         # Lambda layer types
     │       │   ├── WeatherDataSource.java       # Data source identifiers
@@ -71,45 +119,51 @@ noakweather-engineering-pipeline/
     │           ├── IndexedLinkedHashMap.java    # Custom collection
     │           └── ValidationPatterns.java      # Validation regex patterns
     │
+    ├── weather-infrastructure/                  # Infrastructure as Code (AWS CDK)
+    │   └── src/main/java/com/weather/infra/
+    │       └── [CDK stack definitions]
+    │
     ├── weather-ingestion/                       # Speed Layer - Real-time data collection
     │   └── src/main/java/weather/ingestion/
-    │       ├── config/                          # Ingestion configuration
-    │       │   └── NoaaConfiguration.java       # NOAA API configuration
-    │       └── service/                         # Ingestion services
-    │           └── source/                      # Source-specific implementations
-    │               └── noaa/                    # NOAA data source
-    │                   ├── AbstractNoaaIngestionApp.java
-    │                   ├── AbstractNoaaIngestionOrchestrator.java
-    │                   ├── MetarIngestionApp.java
-    │                   ├── MetarIngestionOrchestrator.java
-    │                   ├── NoaaAviationWeatherClient.java
-    │                   ├── TafIngestionApp.java
-    │                   ├── TafIngestionOrchestrator.java
-    │                   ├── openweathermap/      # OpenWeatherMap integration
-    │                   ├── weathergov/          # Weather.gov integration
-    │                   ├── S3UploadService.java
-    │                   └── SpeedLayerProcessor.java
+    │   │   ├── config/                          # Ingestion configuration
+    │   │   │   └── NoaaConfiguration.java       # NOAA API configuration
+    │   │   └── service/                         # Ingestion services
+    │   │       └── source/                      # Source-specific implementations
+    │   │           └── noaa/                    # NOAA data source
+    │   │           │   ├── AbstractNoaaIngestionApp.java            # Abstract base class for NOAA weather data ingestion
+    │   │           │   ├── AbstractNoaaIngestionOrchestrator.java   # Abstract base class for NOAA weather data ingestion orchestrators
+    │   │           │   ├── MetarIngestionApp.java                   # Command-line application for METAR data ingestion from NOAA
+    │   │           │   ├── MetarIngestionOrchestrator.java          # Orchestrates METAR data ingestion from NOAA to S3 storage
+    │   │           │   ├── NoaaAviationWeatherClient.java           # Client for NOAA Aviation Weather TG FTP service
+    │   │           │   ├── TafIngestionApp.java                     # Command-line application for TAF data ingestion from NOAA
+    │   │           │   ├── TafIngestionOrchestrator.java            # Orchestrates TAF data ingestion from NOAA to S3 storage
+    │   │           │   ├── openweathermap/      # OpenWeatherMap integration
+    │   │           │   └── weathergov/          # Weather.gov integration
+    │   │           ├── S3UploadService.java       # Service for uploading weather data to Amazon S3
+    │   │           └── SpeedLayerProcessor.java   # Speed Layer Processor for Lambda Architecture
+    │   └── src/main/resources/
+    │       └── noaa.properties          # NOAA text data service endpoints
     │
     ├── weather-processing/                      # Batch Layer - Data parsing/transformation
     │   └── src/main/java/weather/processing/
-    │       ├── config/                          # Parser configuration
-    │       │   └── ParserConfiguration.java     # Parser settings
-    │       ├── parser/                          # Parser implementations
-    │       │   ├── common/                      # Common parser interfaces
-    │       │   │   ├── ParseResult.java         # Parser result wrapper
-    │       │   │   ├── ParserException.java     # Parser exceptions
-    │       │   │   └── WeatherParser.java       # Base parser interface
-    │       │   └── noaa/                        # NOAA-specific parsers
-    │       │       ├── LightningMatcher.java    # Lightning data parsing
-    │       │       ├── NoaaAviationWeatherParser.java      # Base NOAA parser
-    │       │       ├── NoaaAviationWeatherPatternLibrary.java  # Regex patterns
-    │       │       ├── NoaaMetarParser.java     # METAR parser
-    │       │       ├── NoaaTafParser.java       # TAF parser
-    │       │       └── RegExprConst.java        # Regular expression constants
-    │       ├── service/                         # Processing services
-    │       │   └── UniversalWeatherParserService.java  # Universal parser service
-    │       └── resources/
-    │           └── parser.properties            # Parser configuration
+    │   │   ├── config/                          # Parser configuration
+    │   │   │   └── ParserConfiguration.java     # Parser settings
+    │   │   ├── parser/                          # Parser implementations
+    │   │   │   ├── common/                      # Common parser interfaces
+    │   │   │   │   ├── ParseResult.java         # Parser result wrapper
+    │   │   │   │   ├── ParserException.java     # Parser exceptions
+    │   │   │   │   └── WeatherParser.java       # Base parser interface
+    │   │   │   └── noaa/                        # NOAA-specific parsers
+    │   │   │       ├── LightningMatcher.java                    # Lightning data parsing
+    │   │   │       ├── NoaaAviationWeatherParser.java           # Base NOAA parser
+    │   │   │       ├── NoaaAviationWeatherPatternRegistry.java  # Registry of regex patterns and their handlers
+    │   │   │       ├── NoaaMetarParser.java                     # METAR parser
+    │   │   │       ├── NoaaTafParser.java                       # TAF parser
+    │   │   │       └── RegExprConst.java                        # Regular expression constants
+    │   │   ├── service/                         # Processing services
+    │   │   │   └── UniversalWeatherParserService.java  # Universal parser service
+    │   └── src/main/resources/
+    │       └── parser.properties            # Parser configuration
     │
     ├── weather-storage/                         # Serving Layer - Multi-backend storage
     │   └── src/main/java/weather/storage/
@@ -136,17 +190,16 @@ noakweather-engineering-pipeline/
     │       │   ├── BatchProcessingResult.java
     │       │   └── BatchProcessingStats.java
     │       └── tools/                           # Operational tools (excluded from coverage)
-    │           ├── AddGSIsToAwsTable.java       # Production GSI deployment tool
-    │           └── TestLogRollover.java         # Log rollover testing
-    │
-    ├── weather-analytics/                       # Analytics and reporting services
-    │   └── src/main/java/com/weather/analytics/
-    │       └── service/                         # Analytics services
-    │           └── [analytics implementations]
-    │
-    └── weather-infrastructure/                  # Infrastructure as Code (AWS CDK)
-        └── src/main/java/com/weather/infra/
-            └── [CDK stack definitions]
+    │       │   ├── AddGSIsToAwsTable.java       # Production GSI deployment tool
+    │       │   └── TestLogRollover.java         # Log rollover testing
+    │       └── src/main/resources/
+    │           └── athena.ddl/
+    └── sql/                         # SQL Code for the Medallion Architecture
+    │   ├── bronze/                          # Bronze Layer
+    │   │   └── create_bronze_metar_noaa.sql      # DDL to create bronze layer
+    │   ├── gold/                            # Gold Layer
+    │   └── silver/                          # Silver Layer
+    └──     └── create_silver_observations.sql    # DDL to create silver layer
 ```
 
 ### Module Responsibilities

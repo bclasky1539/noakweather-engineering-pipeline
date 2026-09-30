@@ -27,4 +27,24 @@ public record CeilingRemarks(
     public boolean isEmpty() {
         return variableCeiling == null && ceilingSecondSite == null;
     }
+
+    /**
+     * Returns a copy of this record with the variable ceiling replaced.
+     *
+     * @param c the new variable ceiling, or null to clear it
+     * @return a new CeilingRemarks with the given variable ceiling and other fields unchanged
+     */
+    public CeilingRemarks withVariableCeiling(VariableCeiling c) {
+        return new CeilingRemarks(c, ceilingSecondSite);
+    }
+
+    /**
+     * Returns a copy of this record with the second-site ceiling replaced.
+     *
+     * @param c the new second-site ceiling, or null to clear it
+     * @return a new CeilingRemarks with the given second-site ceiling and other fields unchanged
+     */
+    public CeilingRemarks withCeilingSecondSite(CeilingSecondSite c) {
+        return new CeilingRemarks(variableCeiling, c);
+    }
 }

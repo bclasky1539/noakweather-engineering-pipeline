@@ -25,4 +25,30 @@ class PressureRemarksTest {
         assertThat(remarks.isEmpty()).isFalse();
         assertThat(remarks.pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
     }
+
+    @Test
+    @DisplayName("withPressureTendency should replace tendency and preserve rapid change")
+    void testWithPressureTendency() {
+        PressureTendency tendency = PressureTendency.of(2, 3.2);
+        PressureRemarks original = new PressureRemarks(null, PressureRapidChange.FALLING);
+
+        PressureRemarks updated = original.withPressureTendency(tendency);
+
+        assertThat(updated.pressureTendency()).isEqualTo(tendency);
+        assertThat(updated.pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
+        assertThat(original.pressureTendency()).isNull();
+    }
+
+    @Test
+    @DisplayName("withPressureRapidChange should replace rapid change and preserve tendency")
+    void testWithPressureRapidChange() {
+        PressureTendency tendency = PressureTendency.of(2, 3.2);
+        PressureRemarks original = new PressureRemarks(tendency, null);
+
+        PressureRemarks updated = original.withPressureRapidChange(PressureRapidChange.RISING);
+
+        assertThat(updated.pressureRapidChange()).isEqualTo(PressureRapidChange.RISING);
+        assertThat(updated.pressureTendency()).isEqualTo(tendency);
+        assertThat(original.pressureRapidChange()).isNull();
+    }
 }

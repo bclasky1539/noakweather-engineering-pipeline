@@ -44,4 +44,63 @@ class MaintenanceRemarksTest {
 
         assertThat(remarks.automatedMaintenanceIndicators()).hasSize(1);
     }
+
+    @Test
+    @DisplayName("withAutomatedMaintenanceIndicators should replace the list; null becomes empty")
+    void testWithAutomatedMaintenanceIndicators() {
+        AutomatedMaintenanceIndicator tsno = AutomatedMaintenanceIndicator.of("TSNO");
+        AutomatedMaintenanceIndicator pwino = AutomatedMaintenanceIndicator.of("PWINO");
+        MaintenanceRemarks original = new MaintenanceRemarks(java.util.List.of(tsno), true);
+
+        MaintenanceRemarks updated = original.withAutomatedMaintenanceIndicators(java.util.List.of(pwino));
+
+        assertThat(updated.automatedMaintenanceIndicators()).containsExactly(pwino);
+        assertThat(updated.maintenanceRequired()).isTrue();
+        assertThat(original.withAutomatedMaintenanceIndicators(null).automatedMaintenanceIndicators())
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("addAutomatedMaintenanceIndicator should append without mutating the original")
+    void testAddAutomatedMaintenanceIndicator() {
+        AutomatedMaintenanceIndicator tsno = AutomatedMaintenanceIndicator.of("TSNO");
+        AutomatedMaintenanceIndicator pwino = AutomatedMaintenanceIndicator.of("PWINO");
+        MaintenanceRemarks original = new MaintenanceRemarks(java.util.List.of(tsno), null);
+
+        MaintenanceRemarks updated = original.addAutomatedMaintenanceIndicator(pwino);
+
+        assertThat(updated.automatedMaintenanceIndicators()).containsExactly(tsno, pwino);
+        assertThat(original.automatedMaintenanceIndicators()).containsExactly(tsno);
+    }
+
+    @Test
+    @DisplayName("addAutomatedMaintenanceIndicator(null) should return the same instance")
+    void testAddAutomatedMaintenanceIndicator_Null() {
+        MaintenanceRemarks original = new MaintenanceRemarks(null, null);
+
+        assertThat(original.addAutomatedMaintenanceIndicator(null)).isSameAs(original);
+    }
+
+    @Test
+    @DisplayName("withMaintenanceRequired should replace the flag and preserve indicators")
+    void testWithMaintenanceRequired() {
+        AutomatedMaintenanceIndicator tsno = AutomatedMaintenanceIndicator.of("TSNO");
+        MaintenanceRemarks original = new MaintenanceRemarks(java.util.List.of(tsno), null);
+
+        MaintenanceRemarks updated = original.withMaintenanceRequired(true);
+
+        assertThat(updated.maintenanceRequired()).isTrue();
+        assertThat(updated.hasMaintenanceRequired()).isTrue();
+        assertThat(updated.automatedMaintenanceIndicators()).containsExactly(tsno);
+        assertThat(original.hasMaintenanceRequired()).isFalse();
+        assertThat(updated.withMaintenanceRequired(null).hasMaintenanceRequired()).isFalse();
+    }
+
+    @Test
+    @DisplayName("hasMaintenanceRequired() should distinguish unset from explicitly false")
+    void testHasMaintenanceRequired() {
+        assertThat(new MaintenanceRemarks(null, null).hasMaintenanceRequired()).isFalse();
+        assertThat(new MaintenanceRemarks(null, false).hasMaintenanceRequired()).isTrue();
+        assertThat(new MaintenanceRemarks(null, true).hasMaintenanceRequired()).isTrue();
+    }
 }

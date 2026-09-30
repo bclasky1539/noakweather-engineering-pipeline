@@ -31,4 +31,34 @@ public record VisibilityRemarks(
     public boolean isEmpty() {
         return towerVisibility == null && surfaceVisibility == null && variableVisibility == null;
     }
+
+    /**
+     * Returns a copy of this record with the tower visibility replaced.
+     *
+     * @param v the new tower visibility, or null to clear it
+     * @return a new VisibilityRemarks with the given tower visibility and other fields unchanged
+     */
+    public VisibilityRemarks withTowerVisibility(Visibility v) {
+        return new VisibilityRemarks(v, surfaceVisibility, variableVisibility);
+    }
+
+    /**
+     * Returns a copy of this record with the surface visibility replaced.
+     *
+     * @param v the new surface visibility, or null to clear it
+     * @return a new VisibilityRemarks with the given surface visibility and other fields unchanged
+     */
+    public VisibilityRemarks withSurfaceVisibility(Visibility v) {
+        return new VisibilityRemarks(towerVisibility, v, variableVisibility);
+    }
+
+    /**
+     * Returns a copy of this record with the variable visibility replaced.
+     *
+     * @param v the new variable visibility, or null to clear it
+     * @return a new VisibilityRemarks with the given variable visibility and other fields unchanged
+     */
+    public VisibilityRemarks withVariableVisibility(VariableVisibility v) {
+        return new VisibilityRemarks(towerVisibility, surfaceVisibility, v);
+    }
 }

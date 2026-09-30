@@ -28,4 +28,46 @@ class VisibilityRemarksTest {
         assertThat(remarks.isEmpty()).isFalse();
         assertThat(remarks.towerVisibility()).isEqualTo(towerVis);
     }
+
+    @Test
+    @DisplayName("withTowerVisibility should replace tower visibility and preserve others")
+    void testWithTowerVisibility() {
+        Visibility surface = Visibility.statuteMiles(0.5);
+        Visibility tower = Visibility.statuteMiles(1.5);
+        VisibilityRemarks original = new VisibilityRemarks(null, surface, null);
+
+        VisibilityRemarks updated = original.withTowerVisibility(tower);
+
+        assertThat(updated.towerVisibility()).isEqualTo(tower);
+        assertThat(updated.surfaceVisibility()).isEqualTo(surface);
+        assertThat(original.towerVisibility()).isNull();
+    }
+
+    @Test
+    @DisplayName("withSurfaceVisibility should replace surface visibility and preserve others")
+    void testWithSurfaceVisibility() {
+        Visibility tower = Visibility.statuteMiles(1.5);
+        Visibility surface = Visibility.statuteMiles(0.5);
+        VisibilityRemarks original = new VisibilityRemarks(tower, null, null);
+
+        VisibilityRemarks updated = original.withSurfaceVisibility(surface);
+
+        assertThat(updated.surfaceVisibility()).isEqualTo(surface);
+        assertThat(updated.towerVisibility()).isEqualTo(tower);
+    }
+
+    @Test
+    @DisplayName("withVariableVisibility should replace variable visibility and preserve others")
+    void testWithVariableVisibility() {
+        Visibility tower = Visibility.statuteMiles(1.5);
+        VariableVisibility variable = VariableVisibility.of(
+                Visibility.statuteMiles(0.5), Visibility.statuteMiles(2.0));
+        VisibilityRemarks original = new VisibilityRemarks(tower, null, null);
+
+        VisibilityRemarks updated = original.withVariableVisibility(variable);
+
+        assertThat(updated.variableVisibility()).isEqualTo(variable);
+        assertThat(updated.towerVisibility()).isEqualTo(tower);
+        assertThat(original.variableVisibility()).isNull();
+    }
 }
