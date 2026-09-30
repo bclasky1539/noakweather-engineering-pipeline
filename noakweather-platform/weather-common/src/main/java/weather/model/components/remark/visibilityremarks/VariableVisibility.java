@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package weather.model.components.remark;
+package weather.model.components.remark.visibilityremarks;
 
 import weather.model.components.Visibility;
 
@@ -145,9 +145,7 @@ public record VariableVisibility(
      * @return formatted range (e.g., "1/2 to 2 SM")
      */
     public String getRange() {
-        return String.format("%s to %s",
-                formatVisibility(minimumVisibility),
-                formatVisibility(maximumVisibility));
+        return formatVisibility(minimumVisibility) + " to " + formatVisibility(maximumVisibility);
     }
 
     /**

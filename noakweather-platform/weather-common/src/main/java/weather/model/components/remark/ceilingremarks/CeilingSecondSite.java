@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package weather.model.components.remark;
+package weather.model.components.remark.ceilingremarks;
 
 /**
  * Represents ceiling height at a second observation site.

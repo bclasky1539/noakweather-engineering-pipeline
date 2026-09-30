@@ -20,6 +20,15 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.*;
 import weather.model.components.remark.*;
+import weather.model.components.remark.ceilingremarks.CeilingSecondSite;
+import weather.model.components.remark.ceilingremarks.VariableCeiling;
+import weather.model.components.remark.maintenanceremarks.AutomatedMaintenanceIndicator;
+import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.components.remark.pressureremarks.PressureTendency;
+import weather.model.components.remark.visibilityremarks.VariableVisibility;
+import weather.model.components.remark.windremarks.PeakWind;
+import weather.model.components.remark.windremarks.WindAtLocation;
+import weather.model.components.remark.windremarks.WindShift;
 import weather.model.enums.AutomatedStationType;
 import weather.processing.parser.common.ParseResult;
 import weather.utils.IndexedLinkedHashMap;
@@ -1276,7 +1285,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             // Create PeakWind object
             PeakWind peakWind = new PeakWind(direction, speed, hour, minute);
-            remarks.peakWind(peakWind);
+            remarks.updateWind(w -> w.withPeakWind(peakWind));
 
             LOGGER.debug("Peak wind: dir={}°, speed={}kt, time={}:{}",
                     direction, speed,
@@ -1342,7 +1351,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             // Create WindShift object
             WindShift windShift = new WindShift(hour, minute, frontalPassage);
-            remarks.windShift(windShift);
+            remarks.updateWind(w -> w.withWindShift(windShift));
 
             LOGGER.debug("Wind shift: time={}:{}, frontal passage={}",
                     hour != null ? String.format("%02d", hour) : "XX",
@@ -1402,7 +1411,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                                               NoaaMetarRemarks.Builder remarks) {
         try {
             WindAtLocation windAtLocation = buildWindAtLocation(matcher);
-            remarks.addWindAtLocation(windAtLocation);
+            remarks.updateWind(w -> w.addWindAtLocation(windAtLocation));
 
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Wind at location: {}", windAtLocation.getSummary());
@@ -1653,7 +1662,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     location
             );
 
-            remarks.variableVisibility(variableVisibility);
+            remarks.updateVisibility(v -> v.withVariableVisibility(variableVisibility));
 
             LOGGER.debug("Variable visibility: {} varying to {}{}",
                     dist1Str,
@@ -1808,10 +1817,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private void setVisibilityByType(String type, Visibility visibility, String distStr,
                                      NoaaMetarRemarks.Builder remarks) {
         if ("TWR VIS".equals(type)) {
-            remarks.towerVisibility(visibility);
+            remarks.updateVisibility(v -> v.withTowerVisibility(visibility));
             LOGGER.debug("Tower visibility: {}", distStr);
         } else if ("SFC VIS".equals(type)) {
-            remarks.surfaceVisibility(visibility);
+            remarks.updateVisibility(v -> v.withSurfaceVisibility(visibility));
             LOGGER.debug("Surface visibility: {}", distStr);
         }
     }
@@ -2614,7 +2623,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 PressureTendency tendency = parsePressureTendencyFromMatcher(matcher);
 
                 // Add to builder
-                remarks.pressureTendency(tendency);
+                remarks.updatePressure(p -> p.withPressureTendency(tendency));
 
                 // Log success
                 if (LOGGER.isDebugEnabled()) {
@@ -2680,7 +2689,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             try {
                 String code = matcher.group("presrisfal");
                 PressureRapidChange change = PressureRapidChange.fromCode(code);
-                remarks.pressureRapidChange(change);
+                remarks.updatePressure(p -> p.withPressureRapidChange(change));
 
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Pressure rapid change: {}", change);
@@ -3022,7 +3031,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int maxHundreds = Integer.parseInt(maxStr);
 
                 VariableCeiling variableCeiling = VariableCeiling.fromHundreds(minHundreds, maxHundreds);
-                remarks.variableCeiling(variableCeiling);
+                remarks.updateCeiling(c -> c.withVariableCeiling(variableCeiling));
 
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Variable ceiling: {}", variableCeiling.getSummary());
@@ -3074,7 +3083,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int hundreds = Integer.parseInt(heightStr);
 
                 CeilingSecondSite ceilingSecondSite = CeilingSecondSite.fromHundreds(hundreds, location);
-                remarks.ceilingSecondSite(ceilingSecondSite);
+                remarks.updateCeiling(c -> c.withCeilingSecondSite(ceilingSecondSite));
 
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Ceiling second site: {}", ceilingSecondSite.getSummary());
@@ -3344,8 +3353,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             if (typeMC != null) {
                 // Maintenance check indicator ($)
-                remarks.maintenanceRequired(true);
-                remarks.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.maintenanceCheck());
+                remarks.updateMaintenance(m -> m.withMaintenanceRequired(true));
+                remarks.updateMaintenance(m -> m.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.maintenanceCheck()));
                 LOGGER.debug("Maintenance check indicator ($) found");
             } else if (typeAM != null) {
                 // Automated maintenance type (RVRNO, PWINO, etc.)
@@ -3354,7 +3363,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                                 ? AutomatedMaintenanceIndicator.of(typeAM, location)
                                 : AutomatedMaintenanceIndicator.of(typeAM);
 
-                remarks.addAutomatedMaintenanceIndicator(indicator);
+                remarks.updateMaintenance(m -> m.addAutomatedMaintenanceIndicator(indicator));
                 LOGGER.debug("Automated maintenance indicator: {} {}",
                         typeAM,
                         location != null ? location : "(no location)");

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,27 @@ package weather.model.components.remark;
 
 import weather.model.components.Pressure;
 import weather.model.components.Temperature;
+import weather.model.components.remark.ceilingremarks.CeilingRemarks;
+import weather.model.components.remark.ceilingremarks.CeilingSecondSite;
+import weather.model.components.remark.ceilingremarks.VariableCeiling;
+import weather.model.components.remark.maintenanceremarks.AutomatedMaintenanceIndicator;
+import weather.model.components.remark.maintenanceremarks.MaintenanceRemarks;
+import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.components.remark.pressureremarks.PressureRemarks;
+import weather.model.components.remark.pressureremarks.PressureTendency;
+import weather.model.components.remark.visibilityremarks.VariableVisibility;
+import weather.model.components.remark.visibilityremarks.VisibilityRemarks;
+import weather.model.components.remark.windremarks.PeakWind;
+import weather.model.components.remark.windremarks.WindAtLocation;
+import weather.model.components.remark.windremarks.WindRemarks;
+import weather.model.components.remark.windremarks.WindShift;
 import weather.model.components.Visibility;
 import weather.model.enums.AutomatedStationType;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -36,34 +51,33 @@ import java.util.stream.Collectors;
  * This is an immutable record that uses the Builder pattern for construction
  * since all fields are optional.
  * <p>
- * Fields are nullable as not all remarks are present in every METAR.
+ * Several related fields are grouped into sub-records (WindRemarks,
+ * VisibilityRemarks, CeilingRemarks, PressureRemarks, MaintenanceRemarks)
+ * to keep this class's distinct class-dependency count within
+ * SonarCloud's Monster Class (java:S6539) threshold. The public API is
+ * unchanged: every originally flat field is still accessible via the
+ * same-named accessor and builder setter, which delegate to the
+ * appropriate sub-record internally.
  * <p>
  * * @param automatedStationType AO1 or AO2 indicator
  * * @param seaLevelPressure Sea level pressure in hPa (SLP)
  * * @param hourlyTemperature Hourly temperature and dewpoint (T-group)
- * * @param peakWind Peak wind information
- * * @param windShift Wind shift information
- * * @param windsAtLocation Winds at a location
- * * @param DirectionalWeather Directional Weather
- * * @param variableVisibility Variable visibility data
- * * @param CeilingSecondSite Ceiling height at second observation site
+ * * @param wind Wind-related remarks (peak wind, wind shift, winds at location)
+ * * @param directionalWeather Directional Weather
+ * * @param visibility Visibility-related remarks (tower, surface, variable)
+ * * @param ceiling Ceiling-related remarks (variable ceiling, second site)
  * * @param obscurationLayers Obscuration Layer information
  * * @param cloudTypes Cloud Type information
- * * @param towerVisibility Tower visibility (if different from surface)
- * * @param surfaceVisibility Surface visibility (if different from prevailing)
  * * @param hourlyPrecipitation Hourly precipitation amount (P)
  * * @param ppGroupValue Raw value from "PP" precipitation-amount group; unit/scale
  * *                      and time period unconfirmed, captured as-is pending
  * *                      further research
- * * @param precipitation3Hour 3-hour precipitation amount
  * * @param precipitation6Hour 6-hour precipitation amount
  * * @param precipitation24Hour 24-hour precipitation amount
- * * @param snowDepth Snow depth on ground
  * * @param hailSize Hail size in inches
  * * @param weatherEvents List of weather events (beginning/ending times)
  * * @param thunderstormLocations List of thunderstorm/cloud locations
- * * @param pressureTendency 3-hour pressure tendency
- * * @param pressureRapidChange Pressure Rapid Change falling or rising
+ * * @param pressure Pressure-anomaly remarks (3-hour tendency, rapid change)
  * * @param icing Icing information
  * * @param secondaryAltimeter Secondary altimeter reading
  * * @param sixHourMaxTemperature 6-hour maximum temperature
@@ -71,8 +85,7 @@ import java.util.stream.Collectors;
  * * @param twentyFourHourMaxTemperature 24-hour maximum temperature
  * * @param twentyFourHourMinTemperature 24-hour minimum temperature
  * * @param densityAltitudeFeet Density Altitude
- * * @param automatedMaintenanceIndicators List of Automated Maintenance Indicators
- * * @param maintenanceRequired Boolean if maintenance is required
+ * * @param maintenance Automated-station maintenance remarks
  * * @param observationProgramStatus Canadian MANOBS observation program status (LAST STFD OBS/NEXT)
  * * @param lightningRemarks List of lightning remarks (LTG)
  * * @param freeText Unparsed remarks text
@@ -85,17 +98,12 @@ public record NoaaMetarRemarks(
         Pressure seaLevelPressure,
         Temperature preciseTemperature,
         Temperature preciseDewpoint,
-        PeakWind peakWind,
-        WindShift windShift,
-        List<WindAtLocation> windsAtLocation,
+        WindRemarks wind,
         DirectionalWeather directionalWeather,
-        VariableVisibility variableVisibility,
-        VariableCeiling variableCeiling,
-        CeilingSecondSite ceilingSecondSite,
+        VisibilityRemarks visibility,
+        CeilingRemarks ceiling,
         List<ObscurationLayer> obscurationLayers,
         List<CloudType> cloudTypes,
-        Visibility towerVisibility,
-        Visibility surfaceVisibility,
         PrecipitationAmount hourlyPrecipitation,
         Integer ppGroupValue,
         PrecipitationAmount sixHourPrecipitation,
@@ -103,8 +111,7 @@ public record NoaaMetarRemarks(
         HailSize hailSize,
         List<WeatherEvent> weatherEvents,
         List<ThunderstormLocation> thunderstormLocations,
-        PressureTendency pressureTendency,
-        PressureRapidChange pressureRapidChange,
+        PressureRemarks pressure,
         Icing icing,
         Pressure secondaryAltimeter,
         Temperature sixHourMaxTemperature,
@@ -112,8 +119,7 @@ public record NoaaMetarRemarks(
         Temperature twentyFourHourMaxTemperature,
         Temperature twentyFourHourMinTemperature,
         Integer densityAltitudeFeet,
-        List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators,
-        Boolean maintenanceRequired,
+        MaintenanceRemarks maintenance,
         ObservationProgramStatus observationProgramStatus,
         List<LightningRemark> lightningRemarks,
         String freeText
@@ -125,6 +131,19 @@ public record NoaaMetarRemarks(
      */
     private static final String TEMPERATURE_FORMAT = "%.1f°C";
 
+    public NoaaMetarRemarks {
+        wind = wind == null ? WindRemarks.empty() : wind;
+        visibility = visibility == null ? VisibilityRemarks.empty() : visibility;
+        ceiling = ceiling == null ? CeilingRemarks.empty() : ceiling;
+        pressure = pressure == null ? PressureRemarks.empty() : pressure;
+        maintenance = maintenance == null ? MaintenanceRemarks.empty() : maintenance;
+        obscurationLayers = obscurationLayers == null ? List.of() : List.copyOf(obscurationLayers);
+        cloudTypes = cloudTypes == null ? List.of() : List.copyOf(cloudTypes);
+        weatherEvents = weatherEvents == null ? List.of() : List.copyOf(weatherEvents);
+        thunderstormLocations = thunderstormLocations == null ? List.of() : List.copyOf(thunderstormLocations);
+        lightningRemarks = lightningRemarks == null ? List.of() : List.copyOf(lightningRemarks);
+    }
+
     /**
      * Creates a builder for constructing NoaaMetarRemarks instances.
      *
@@ -135,24 +154,116 @@ public record NoaaMetarRemarks(
     }
 
     /**
-     * Creates an empty NoaaMetarRemarks instance with all fields null.
+     * Creates an empty NoaaMetarRemarks instance with all fields null/empty.
      *
      * @return an empty remarks instance
      */
     public static NoaaMetarRemarks empty() {
         return new NoaaMetarRemarks(null, null, null, null,
-                null, null, List.of(), null, null, null, null,
+                WindRemarks.empty(), null, VisibilityRemarks.empty(), CeilingRemarks.empty(),
                 List.of(), List.of(), null, null, null, null, null,
-                null, null, List.of(), List.of(), null, null,
+                List.of(), List.of(), PressureRemarks.empty(), null, null,
                 null, null, null, null, null,
-                null, null, List.of(), null, null,
-                List.of(), null);
+                MaintenanceRemarks.empty(), null, List.of(), null);
     }
+
+    // ==================== Delegating accessors for grouped fields ====================
+    // These preserve the original flat public API; the actual storage now
+    // lives in the sub-records above.
+
+    /**
+     * @return peak wind data from the PK WND group, or null if not reported
+     */
+    public PeakWind peakWind() {
+        return wind.peakWind();
+    }
+
+    /**
+     * @return wind shift data from the WSHFT group, or null if not reported
+     */
+    public WindShift windShift() {
+        return wind.windShift();
+    }
+
+    /**
+     * @return winds reported at a specific altitude/runway location; empty if none
+     */
+    public List<WindAtLocation> windsAtLocation() {
+        return wind.windsAtLocation();
+    }
+
+    /**
+     * @return tower visibility from the TWR VIS group, or null if not reported
+     */
+    public Visibility towerVisibility() {
+        return visibility.towerVisibility();
+    }
+
+    /**
+     * @return surface visibility from the SFC VIS group, or null if not reported
+     */
+    public Visibility surfaceVisibility() {
+        return visibility.surfaceVisibility();
+    }
+
+    /**
+     * @return variable visibility from the VIS group, or null if not reported
+     */
+    public VariableVisibility variableVisibility() {
+        return visibility.variableVisibility();
+    }
+
+    /**
+     * @return variable ceiling observation, or null if not reported
+     */
+    public VariableCeiling variableCeiling() {
+        return ceiling.variableCeiling();
+    }
+
+    /**
+     * @return ceiling height at a second observation site, or null if not reported
+     */
+    public CeilingSecondSite ceilingSecondSite() {
+        return ceiling.ceilingSecondSite();
+    }
+
+    /**
+     * @return 3-hour pressure tendency, or null if not reported
+     */
+    public PressureTendency pressureTendency() {
+        return pressure.pressureTendency();
+    }
+
+    /**
+     * @return rapid pressure change indicator, or null if not reported
+     */
+    public PressureRapidChange pressureRapidChange() {
+        return pressure.pressureRapidChange();
+    }
+
+    /**
+     * @return list of automated maintenance indicators; empty if none
+     */
+    public List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators() {
+        return maintenance.automatedMaintenanceIndicators();
+    }
+
+    /**
+     * Returns whether maintenance is required for the automated weather station.
+     * Returns false if not explicitly set to true.
+     *
+     * @return true if maintenance is required, false otherwise
+     */
+    public Boolean maintenanceRequired() {
+        return maintenance.maintenanceRequired();
+    }
+
+    // ==================== isEmpty() ====================
 
     /**
      * Checks if this remarks object has any content.
      *
-     * @return true if all fields are null, false otherwise
+     * @return true if all fields are null/empty, false otherwise
      */
     public boolean isEmpty() {
         return isCoreFieldsEmpty()
@@ -167,20 +278,15 @@ public record NoaaMetarRemarks(
                 && seaLevelPressure == null
                 && preciseTemperature == null
                 && preciseDewpoint == null
-                && peakWind == null
-                && windShift == null
-                && (windsAtLocation == null || windsAtLocation.isEmpty())
+                && wind.isEmpty()
                 && directionalWeather == null;
     }
 
     private boolean isVisibilityAndCeilingFieldsEmpty() {
-        return variableVisibility == null
-                && variableCeiling == null
-                && ceilingSecondSite == null
-                && (obscurationLayers == null || obscurationLayers.isEmpty())
-                && (cloudTypes == null || cloudTypes.isEmpty())
-                && towerVisibility == null
-                && surfaceVisibility == null;
+        return visibility.isEmpty()
+                && ceiling.isEmpty()
+                && obscurationLayers.isEmpty()
+                && cloudTypes.isEmpty();
     }
 
     private boolean isPrecipitationAndWeatherFieldsEmpty() {
@@ -189,14 +295,13 @@ public record NoaaMetarRemarks(
                 && sixHourPrecipitation == null
                 && twentyFourHourPrecipitation == null
                 && hailSize == null
-                && (weatherEvents == null || weatherEvents.isEmpty())
-                && (thunderstormLocations == null || thunderstormLocations.isEmpty())
-                && (lightningRemarks == null || lightningRemarks.isEmpty());
+                && weatherEvents.isEmpty()
+                && thunderstormLocations.isEmpty()
+                && lightningRemarks.isEmpty();
     }
 
     private boolean isPressureAndTemperatureFieldsEmpty() {
-        return pressureTendency == null
-                && pressureRapidChange == null
+        return pressure.isEmpty()
                 && icing == null
                 && secondaryAltimeter == null
                 && sixHourMaxTemperature == null
@@ -207,8 +312,7 @@ public record NoaaMetarRemarks(
 
     private boolean isMaintenanceAndStatusFieldsEmpty() {
         return densityAltitudeFeet == null
-                && (automatedMaintenanceIndicators == null || automatedMaintenanceIndicators.isEmpty())
-                && maintenanceRequired == null
+                && maintenance.isEmpty()
                 && observationProgramStatus == null
                 && (freeText == null || freeText.isBlank());
     }
@@ -229,29 +333,25 @@ public record NoaaMetarRemarks(
      * @return true if wind shift indicates frontal passage, false otherwise
      */
     public boolean hasFrontalPassage() {
+        WindShift windShift = wind.windShift();
         return windShift != null && windShift.frontalPassage();
     }
 
     /**
      * Builder for creating NoaaMetarRemarks instances.
-     * All fields are optional and default to null.
+     * All fields are optional and default to null. Setters for fields that
+     * now live in sub-records (wind, visibility, ceiling, pressure,
+     * maintenance) are unchanged from before this class's internal
+     * reorganization; the sub-records are assembled internally at build().
      */
     public static class Builder {
         private AutomatedStationType automatedStationType;
         private Pressure seaLevelPressure;
         private Temperature preciseTemperature;
         private Temperature preciseDewpoint;
-        private PeakWind peakWind;
-        private WindShift windShift;
-        private List<WindAtLocation> windsAtLocation = new ArrayList<>();
         private DirectionalWeather directionalWeather;
-        private VariableVisibility variableVisibility;
-        private VariableCeiling variableCeiling;
-        private CeilingSecondSite ceilingSecondSite;
         private List<ObscurationLayer> obscurationLayers = new ArrayList<>();
         private List<CloudType> cloudTypes = new ArrayList<>();
-        private Visibility towerVisibility;
-        private Visibility surfaceVisibility;
         private PrecipitationAmount hourlyPrecipitation;
         private Integer ppGroupValue;
         private PrecipitationAmount sixHourPrecipitation;
@@ -259,8 +359,6 @@ public record NoaaMetarRemarks(
         private HailSize hailSize;
         private List<WeatherEvent> weatherEvents = new ArrayList<>();
         private List<ThunderstormLocation> thunderstormLocations = new ArrayList<>();
-        private PressureTendency pressureTendency;
-        private PressureRapidChange pressureRapidChange;
         private Icing icing;
         private Pressure secondaryAltimeter;
         private Temperature sixHourMaxTemperature;
@@ -268,10 +366,13 @@ public record NoaaMetarRemarks(
         private Temperature twentyFourHourMaxTemperature;
         private Temperature twentyFourHourMinTemperature;
         private Integer densityAltitudeFeet;
-        private List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators = new ArrayList<>();
-        private Boolean maintenanceRequired;
         private ObservationProgramStatus observationProgramStatus;
         private List<LightningRemark> lightningRemarks = new ArrayList<>();
+        private WindRemarks wind = WindRemarks.empty();
+        private VisibilityRemarks visibility = VisibilityRemarks.empty();
+        private CeilingRemarks ceiling = CeilingRemarks.empty();
+        private PressureRemarks pressure = PressureRemarks.empty();
+        private MaintenanceRemarks maintenance = MaintenanceRemarks.empty();
         private String freeText;
 
         private Builder() {
@@ -323,65 +424,6 @@ public record NoaaMetarRemarks(
         }
 
         /**
-         * Sets the peak wind data.
-         *
-         * @param peakWind the peak wind data from PK WND group
-         * @return this builder
-         */
-        public Builder peakWind(PeakWind peakWind) {
-            this.peakWind = peakWind;
-            return this;
-        }
-
-        /**
-         * Sets the wind shift data.
-         *
-         * @param windShift the wind shift data from WSHFT group
-         * @return this builder
-         */
-        public Builder windShift(WindShift windShift) {
-            this.windShift = windShift;
-            return this;
-        }
-
-        /**
-         * Adds a single winds at a location.
-         *
-         * @param windsAtLocation the cloud type to add
-         * @return this builder
-         */
-        public Builder addWindAtLocation(WindAtLocation windsAtLocation) {
-            if (windsAtLocation != null) {
-                this.windsAtLocation.add(windsAtLocation);
-            }
-            return this;
-        }
-
-        /**
-         * Sets the winds at location list.
-         *
-         * @param windsAtLocation the winds at location
-         * @return this builder
-         */
-        public Builder windsAtLocation(List<WindAtLocation> windsAtLocation) {
-            this.windsAtLocation = windsAtLocation != null ? new ArrayList<>(windsAtLocation) : new ArrayList<>();
-            return this;
-        }
-
-        /**
-         * Adds multiple winds at location.
-         *
-         * @param windsAtLocation the winds at location to add
-         * @return this builder
-         */
-        public Builder addWindsAtLocation(List<WindAtLocation> windsAtLocation) {
-            if (windsAtLocation != null) {
-                this.windsAtLocation.addAll(windsAtLocation);
-            }
-            return this;
-        }
-
-        /**
          * Sets the present-weather phenomenon reported in remarks with optional
          * compass direction(s), typically restating a vicinity or nearby-occurring
          * phenomenon (e.g. VCSH E SE).
@@ -391,39 +433,6 @@ public record NoaaMetarRemarks(
          */
         public Builder directionalWeather(DirectionalWeather directionalWeather) {
             this.directionalWeather = directionalWeather;
-            return this;
-        }
-
-        /**
-         * Sets the variable visibility data.
-         *
-         * @param variableVisibility the variable visibility data from VIS group
-         * @return this builder
-         */
-        public Builder variableVisibility(VariableVisibility variableVisibility) {
-            this.variableVisibility = variableVisibility;
-            return this;
-        }
-
-        /**
-         * Set variable ceiling.
-         *
-         * @param variableCeiling variable ceiling observation
-         * @return this builder
-         */
-        public Builder variableCeiling(VariableCeiling variableCeiling) {
-            this.variableCeiling = variableCeiling;
-            return this;
-        }
-
-        /**
-         * Set ceiling at second observation site.
-         *
-         * @param ceilingSecondSite ceiling at second site
-         * @return this builder
-         */
-        public Builder ceilingSecondSite(CeilingSecondSite ceilingSecondSite) {
-            this.ceilingSecondSite = ceilingSecondSite;
             return this;
         }
 
@@ -498,28 +507,6 @@ public record NoaaMetarRemarks(
             if (types != null) {
                 this.cloudTypes.addAll(types);
             }
-            return this;
-        }
-
-        /**
-         * Sets the tower visibility data.
-         *
-         * @param towerVisibility the tower visibility from TWR VIS group
-         * @return this builder
-         */
-        public Builder towerVisibility(Visibility towerVisibility) {
-            this.towerVisibility = towerVisibility;
-            return this;
-        }
-
-        /**
-         * Sets the surface visibility data.
-         *
-         * @param surfaceVisibility the surface visibility from SFC VIS group
-         * @return this builder
-         */
-        public Builder surfaceVisibility(Visibility surfaceVisibility) {
-            this.surfaceVisibility = surfaceVisibility;
             return this;
         }
 
@@ -690,28 +677,6 @@ public record NoaaMetarRemarks(
         }
 
         /**
-         * Set 3-hour pressure tendency.
-         *
-         * @param pressureTendency the pressure tendency
-         * @return this builder
-         */
-        public Builder pressureTendency(PressureTendency pressureTendency) {
-            this.pressureTendency = pressureTendency;
-            return this;
-        }
-
-        /**
-         * Set pressure rising or falling rapidly (PRESRR/PRESFR).
-         *
-         * @param pressureRapidChange the pressure rapid-change indicator
-         * @return this builder
-         */
-        public Builder pressureRapidChange(PressureRapidChange pressureRapidChange) {
-            this.pressureRapidChange = pressureRapidChange;
-            return this;
-        }
-
-        /**
          * Set icing (ICG) remark.
          *
          * @param icing the icing remark
@@ -791,38 +756,132 @@ public record NoaaMetarRemarks(
         }
 
         /**
-         * Sets the automated maintenance indicators list.
+         * Sets the wind-related remarks (peak wind, wind shift, winds at location)
+         * as a single unit, replacing anything set previously.
          *
-         * @param automatedMaintenanceIndicators the automated maintenance indicators
+         * @param wind the wind remarks; null resets to an empty WindRemarks
          * @return this builder
          */
-        public Builder automatedMaintenanceIndicators(List<AutomatedMaintenanceIndicator> automatedMaintenanceIndicators) {
-            this.automatedMaintenanceIndicators = automatedMaintenanceIndicators != null ?
-                    new ArrayList<>(automatedMaintenanceIndicators) : new ArrayList<>();
+        public Builder wind(WindRemarks wind) {
+            this.wind = wind == null ? WindRemarks.empty() : wind;
             return this;
         }
 
         /**
-         * Adds a single automated maintenance indicator.
+         * Updates the wind-related remarks in place by applying a function to the
+         * current value. Intended for setting one field at a time, e.g.
+         * {@code builder.updateWind(w -> w.withPeakWind(peakWind))}.
          *
-         * @param indicator the maintenance indicator to add
+         * @param updater function that receives the current WindRemarks and returns the replacement;
+         *                must not return null
          * @return this builder
          */
-        public Builder addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator indicator) {
-            if (indicator != null) {
-                this.automatedMaintenanceIndicators.add(indicator);
-            }
+        public Builder updateWind(UnaryOperator<WindRemarks> updater) {
+            this.wind = updater.apply(this.wind);
             return this;
         }
 
         /**
-         * Sets the maintenance required flag ($ indicator).
+         * Sets the visibility-related remarks (tower, surface, variable visibility)
+         * as a single unit, replacing anything set previously.
          *
-         * @param maintenanceRequired true if maintenance is required
+         * @param visibility the visibility remarks; null resets to an empty VisibilityRemarks
          * @return this builder
          */
-        public Builder maintenanceRequired(Boolean maintenanceRequired) {
-            this.maintenanceRequired = maintenanceRequired;
+        public Builder visibility(VisibilityRemarks visibility) {
+            this.visibility = visibility == null ? VisibilityRemarks.empty() : visibility;
+            return this;
+        }
+
+        /**
+         * Updates the visibility-related remarks in place by applying a function to
+         * the current value, e.g.
+         * {@code builder.updateVisibility(v -> v.withTowerVisibility(towerVis))}.
+         *
+         * @param updater function that receives the current VisibilityRemarks and returns the
+         *                replacement; must not return null
+         * @return this builder
+         */
+        public Builder updateVisibility(UnaryOperator<VisibilityRemarks> updater) {
+            this.visibility = updater.apply(this.visibility);
+            return this;
+        }
+
+        /**
+         * Sets the ceiling-related remarks (variable ceiling, second-site ceiling)
+         * as a single unit, replacing anything set previously.
+         *
+         * @param ceiling the ceiling remarks; null resets to an empty CeilingRemarks
+         * @return this builder
+         */
+        public Builder ceiling(CeilingRemarks ceiling) {
+            this.ceiling = ceiling == null ? CeilingRemarks.empty() : ceiling;
+            return this;
+        }
+
+        /**
+         * Updates the ceiling-related remarks in place by applying a function to the
+         * current value, e.g.
+         * {@code builder.updateCeiling(c -> c.withVariableCeiling(variableCeiling))}.
+         *
+         * @param updater function that receives the current CeilingRemarks and returns the
+         *                replacement; must not return null
+         * @return this builder
+         */
+        public Builder updateCeiling(UnaryOperator<CeilingRemarks> updater) {
+            this.ceiling = updater.apply(this.ceiling);
+            return this;
+        }
+
+        /**
+         * Sets the pressure-anomaly remarks (3-hour tendency, rapid change) as a
+         * single unit, replacing anything set previously.
+         *
+         * @param pressure the pressure remarks; null resets to an empty PressureRemarks
+         * @return this builder
+         */
+        public Builder pressure(PressureRemarks pressure) {
+            this.pressure = pressure == null ? PressureRemarks.empty() : pressure;
+            return this;
+        }
+
+        /**
+         * Updates the pressure-anomaly remarks in place by applying a function to the
+         * current value, e.g.
+         * {@code builder.updatePressure(p -> p.withPressureTendency(tendency))}.
+         *
+         * @param updater function that receives the current PressureRemarks and returns the
+         *                replacement; must not return null
+         * @return this builder
+         */
+        public Builder updatePressure(UnaryOperator<PressureRemarks> updater) {
+            this.pressure = updater.apply(this.pressure);
+            return this;
+        }
+
+        /**
+         * Sets the automated-station maintenance remarks (indicators and the
+         * maintenance-required flag) as a single unit, replacing anything set previously.
+         *
+         * @param maintenance the maintenance remarks; null resets to an empty MaintenanceRemarks
+         * @return this builder
+         */
+        public Builder maintenance(MaintenanceRemarks maintenance) {
+            this.maintenance = maintenance == null ? MaintenanceRemarks.empty() : maintenance;
+            return this;
+        }
+
+        /**
+         * Updates the maintenance remarks in place by applying a function to the
+         * current value, e.g.
+         * {@code builder.updateMaintenance(m -> m.withMaintenanceRequired(true))}.
+         *
+         * @param updater function that receives the current MaintenanceRemarks and returns the
+         *                replacement; must not return null
+         * @return this builder
+         */
+        public Builder updateMaintenance(UnaryOperator<MaintenanceRemarks> updater) {
+            this.maintenance = updater.apply(this.maintenance);
             return this;
         }
 
@@ -838,49 +897,24 @@ public record NoaaMetarRemarks(
         }
 
         /**
-         * Builds the NoaaMetarRemarks instance.
+         * Builds the NoaaMetarRemarks instance, assembling the five
+         * sub-records (wind, visibility, ceiling, pressure, maintenance)
+         * from the flat fields set on this builder.
          *
          * @return a new NoaaMetarRemarks instance
          */
         public NoaaMetarRemarks build() {
             return new NoaaMetarRemarks(
-                    automatedStationType,
-                    seaLevelPressure,
-                    preciseTemperature,
-                    preciseDewpoint,
-                    peakWind,
-                    windShift,
-                    List.copyOf(windsAtLocation),
-                    directionalWeather,
-                    variableVisibility,
-                    variableCeiling,
-                    ceilingSecondSite,
-                    List.copyOf(obscurationLayers),
-                    List.copyOf(cloudTypes),
-                    towerVisibility,
-                    surfaceVisibility,
-                    hourlyPrecipitation,
-                    ppGroupValue,
-                    sixHourPrecipitation,
-                    twentyFourHourPrecipitation,
-                    hailSize,
-                    List.copyOf(weatherEvents),
-                    List.copyOf(thunderstormLocations),
-                    pressureTendency,
-                    pressureRapidChange,
-                    icing,
-                    secondaryAltimeter,
-                    sixHourMaxTemperature,
-                    sixHourMinTemperature,
-                    twentyFourHourMaxTemperature,
-                    twentyFourHourMinTemperature,
-                    densityAltitudeFeet,
-                    List.copyOf(automatedMaintenanceIndicators),
-                    maintenanceRequired,
-                    observationProgramStatus,
-                    List.copyOf(lightningRemarks),
-                    freeText
-            );
+                    automatedStationType, seaLevelPressure, preciseTemperature, preciseDewpoint,
+                    wind, directionalWeather, visibility, ceiling,
+                    List.copyOf(obscurationLayers), List.copyOf(cloudTypes),
+                    hourlyPrecipitation, ppGroupValue, sixHourPrecipitation, twentyFourHourPrecipitation,
+                    hailSize, List.copyOf(weatherEvents), List.copyOf(thunderstormLocations),
+                    pressure, icing, secondaryAltimeter,
+                    sixHourMaxTemperature, sixHourMinTemperature,
+                    twentyFourHourMaxTemperature, twentyFourHourMinTemperature,
+                    densityAltitudeFeet, maintenance, observationProgramStatus,
+                    List.copyOf(lightningRemarks), freeText);
         }
     }
 
@@ -898,29 +932,29 @@ public record NoaaMetarRemarks(
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, preciseDewpoint, "preciseDewpoint",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
-        addIfPresent(parts, peakWind, "peakWind", Object::toString);
-        addIfPresent(parts, windShift, "windShift", Object::toString);
-        if (windsAtLocation != null && !windsAtLocation.isEmpty()) {
-            parts.add("windsAtLocation=" + windsAtLocation.stream()
+        addIfPresent(parts, wind.peakWind(), "peakWind", Object::toString);
+        addIfPresent(parts, wind.windShift(), "windShift", Object::toString);
+        if (!wind.windsAtLocation().isEmpty()) {
+            parts.add("windsAtLocation=" + wind.windsAtLocation().stream()
                     .map(WindAtLocation::getSummary)
                     .collect(Collectors.joining("; ")));
         }
         addIfPresent(parts, directionalWeather, "directionalWeather", DirectionalWeather::getSummary);
-        addIfPresent(parts, variableVisibility, "variableVisibility", Object::toString);
-        addIfPresent(parts, variableCeiling, "variableCeiling", VariableCeiling::getSummary);
-        addIfPresent(parts, ceilingSecondSite, "ceilingSecondSite", CeilingSecondSite::getSummary);
-        if (obscurationLayers != null && !obscurationLayers.isEmpty()) {
+        addIfPresent(parts, visibility.variableVisibility(), "variableVisibility", Object::toString);
+        addIfPresent(parts, ceiling.variableCeiling(), "variableCeiling", VariableCeiling::getSummary);
+        addIfPresent(parts, ceiling.ceilingSecondSite(), "ceilingSecondSite", CeilingSecondSite::getSummary);
+        if (!obscurationLayers.isEmpty()) {
             parts.add("obscurationLayers=" + obscurationLayers.stream()
                     .map(ObscurationLayer::getSummary)
                     .collect(Collectors.joining("; ")));
         }
-        if (cloudTypes != null && !cloudTypes.isEmpty()) {
+        if (!cloudTypes.isEmpty()) {
             parts.add("cloudTypes=" + cloudTypes.stream()
                     .map(CloudType::getSummary)
                     .collect(Collectors.joining("; ")));
         }
-        addIfPresent(parts, towerVisibility, "towerVisibility", Visibility::getSummary);
-        addIfPresent(parts, surfaceVisibility, "surfaceVisibility", Visibility::getSummary);
+        addIfPresent(parts, visibility.towerVisibility(), "towerVisibility", Visibility::getSummary);
+        addIfPresent(parts, visibility.surfaceVisibility(), "surfaceVisibility", Visibility::getSummary);
         addIfPresent(parts, hourlyPrecipitation, "hourlyPrecip", PrecipitationAmount::getDescription);
         addIfPresent(parts, ppGroupValue, "ppGroupValue", Object::toString);
         addIfPresent(parts, sixHourPrecipitation, "sixHourPrecip", PrecipitationAmount::getDescription);
@@ -936,8 +970,8 @@ public record NoaaMetarRemarks(
                     .map(ThunderstormLocation::getSummary)
                     .collect(Collectors.joining("; ")));
         }
-        addIfPresent(parts, pressureTendency, "pressureTendency", PressureTendency::getSummary);
-        addIfPresent(parts, pressureRapidChange, "pressureRapidChange", PressureRapidChange::getSummary);
+        addIfPresent(parts, pressure.pressureTendency(), "pressureTendency", PressureTendency::getSummary);
+        addIfPresent(parts, pressure.pressureRapidChange(), "pressureRapidChange", PressureRapidChange::getSummary);
         addIfPresent(parts, icing, "icing", Icing::getSummary);
         addIfPresent(parts, secondaryAltimeter, "secondaryAltimeter", Pressure::getFormattedValue);
         addIfPresent(parts, sixHourMaxTemperature, "sixHourMaxTemp",
@@ -949,12 +983,12 @@ public record NoaaMetarRemarks(
         addIfPresent(parts, twentyFourHourMinTemperature, "twentyFourHourMinTemp",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, densityAltitudeFeet, "densityAltitudeFeet", Object::toString);
-        if (automatedMaintenanceIndicators != null && !automatedMaintenanceIndicators.isEmpty()) {
-            parts.add("automatedMaintenance=" + automatedMaintenanceIndicators.stream()
+        if (!maintenance.automatedMaintenanceIndicators().isEmpty()) {
+            parts.add("automatedMaintenance=" + maintenance.automatedMaintenanceIndicators().stream()
                     .map(AutomatedMaintenanceIndicator::toString)
                     .collect(Collectors.joining("; ")));
         }
-        addIfPresent(parts, maintenanceRequired, "maintenanceRequired", Object::toString);
+        addMaintenanceRequiredIfSet(parts);
         addIfPresent(parts, observationProgramStatus, "observationProgramStatus", ObservationProgramStatus::getSummary);
         if (!lightningRemarks.isEmpty()) {
             parts.add("lightningRemarks=" + lightningRemarks.stream()
@@ -976,21 +1010,22 @@ public record NoaaMetarRemarks(
     }
 
     /**
+     * Helper method to add the maintenanceRequired flag to the toString parts
+     * only if it was explicitly set, preserving the original behavior from
+     * before the field moved into MaintenanceRemarks.
+     */
+    private void addMaintenanceRequiredIfSet(List<String> parts) {
+        if (maintenance.hasMaintenanceRequired()) {
+            parts.add("maintenanceRequired=" + maintenance.maintenanceRequired());
+        }
+    }
+
+    /**
      * Helper method to add free text field if present and non-blank.
      */
     private void addFreeTextIfPresent(List<String> parts, String text) {
         if (text != null && !text.isBlank()) {
             parts.add("freeText='" + text + "'");
         }
-    }
-
-    /**
-     * Returns whether maintenance is required for the automated weather station.
-     * Returns false if not explicitly set to true.
-     *
-     * @return true if maintenance is required, false otherwise
-     */
-    public Boolean maintenanceRequired() {
-        return maintenanceRequired != null && maintenanceRequired;
     }
 }

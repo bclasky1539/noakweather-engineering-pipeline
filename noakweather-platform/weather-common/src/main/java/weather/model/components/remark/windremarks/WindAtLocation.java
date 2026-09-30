@@ -1,4 +1,4 @@
-package weather.model.components.remark;
+package weather.model.components.remark.windremarks;
 
 import weather.model.components.Wind;
 

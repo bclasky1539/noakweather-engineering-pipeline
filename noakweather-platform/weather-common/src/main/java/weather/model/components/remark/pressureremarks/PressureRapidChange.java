@@ -1,4 +1,4 @@
-package weather.model.components.remark;
+package weather.model.components.remark.pressureremarks;
 
 /**
  * Pressure rising or falling rapidly (PRESRR or PRESFR remark).

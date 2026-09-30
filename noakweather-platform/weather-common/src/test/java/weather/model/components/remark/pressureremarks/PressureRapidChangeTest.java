@@ -1,4 +1,4 @@
-package weather.model.components.remark;
+package weather.model.components.remark.pressureremarks;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
