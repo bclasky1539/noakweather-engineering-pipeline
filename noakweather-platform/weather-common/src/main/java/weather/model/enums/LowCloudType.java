@@ -1,3 +1,19 @@
+/*
+ * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
+ * Copyright (C) 2025-2026 bclasky1539
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package weather.model.enums;
 
 /**
@@ -8,62 +24,47 @@ package weather.model.enums;
  * order documented by WMO; that priority does not correspond to numeric
  * order. This enum only decodes the transmitted digit back to a label — the
  * original observational judgment is not reconstructed.
+ * <p>
+ * Declaration order matches the WMO digit order (NONE=0 through
+ * CUMULONIMBUS_CAPILLATUS=9); {@link #fromCode(String)} relies on this via
+ * ordinal lookup, so constants must not be reordered.
  *
  * @author bclasky1539
  */
 public enum LowCloudType {
-    NONE,
-    CUMULUS_HUMILIS_OR_FRACTUS_FAIR_WEATHER,
-    CUMULUS_MEDIOCRIS_OR_CONGESTUS,
-    CUMULONIMBUS_CALVUS,
-    STRATOCUMULUS_CUMULOGENITUS,
-    STRATOCUMULUS_NON_CUMULOGENITUS,
-    STRATUS_NEBULOSUS_OR_FRACTUS_FAIR_WEATHER,
-    STRATUS_FRACTUS_OR_CUMULUS_FRACTUS_BAD_WEATHER,
-    CUMULUS_AND_STRATOCUMULUS_DIFFERENT_LEVELS,
-    CUMULONIMBUS_CAPILLATUS,
-    OBSCURED;
+    NONE("No low cloud"),
+    CUMULUS_HUMILIS_OR_FRACTUS_FAIR_WEATHER("Cumulus humilis or fractus (fair weather)"),
+    CUMULUS_MEDIOCRIS_OR_CONGESTUS("Cumulus mediocris or congestus"),
+    CUMULONIMBUS_CALVUS("Cumulonimbus, not yet fibrous or striated"),
+    STRATOCUMULUS_CUMULOGENITUS("Stratocumulus formed by spreading of Cumulus"),
+    STRATOCUMULUS_NON_CUMULOGENITUS("Stratocumulus, not from spreading Cumulus"),
+    STRATUS_NEBULOSUS_OR_FRACTUS_FAIR_WEATHER("Stratus nebulosus or fractus (fair weather)"),
+    STRATUS_FRACTUS_OR_CUMULUS_FRACTUS_BAD_WEATHER("Stratus or Cumulus fractus (bad weather)"),
+    CUMULUS_AND_STRATOCUMULUS_DIFFERENT_LEVELS("Cumulus and Stratocumulus at different levels"),
+    CUMULONIMBUS_CAPILLATUS("Cumulonimbus capillatus"),
+    OBSCURED("Obscured by overcast layer below");
+
+    private final String summary;
+
+    LowCloudType(String summary) {
+        this.summary = summary;
+    }
 
     /**
      * Parses the transmitted digit (or "/" for obscured) into a LowCloudType.
-     * <p>
-     * Relies on enum declaration order matching the WMO digit order
-     * (NONE=0 through CUMULONIMBUS_CAPILLATUS=9); OBSCURED is handled
-     * separately since "/" has no corresponding digit.
      *
      * @param code a single digit "0"-"9", or "/" for obscured-above-overcast
      * @return the corresponding LowCloudType
      * @throws IllegalArgumentException if code is not a recognized value
      */
     public static LowCloudType fromCode(String code) {
-        if (code == null) {
-            throw new IllegalArgumentException("Low cloud type code cannot be null");
-        }
-        if ("/".equals(code)) {
-            return OBSCURED;
-        }
-        if (code.length() == 1 && Character.isDigit(code.charAt(0))) {
-            return values()[code.charAt(0) - '0'];
-        }
-        throw new IllegalArgumentException("Invalid low cloud type code: " + code);
+        return CloudTypeCodeParser.fromCode(code, LowCloudType.class, OBSCURED, "low cloud type");
     }
 
     /**
      * @return a human-readable description of this cloud type
      */
     public String getSummary() {
-        return switch (this) {
-            case NONE -> "No low cloud";
-            case CUMULUS_HUMILIS_OR_FRACTUS_FAIR_WEATHER -> "Cumulus humilis or fractus (fair weather)";
-            case CUMULUS_MEDIOCRIS_OR_CONGESTUS -> "Cumulus mediocris or congestus";
-            case CUMULONIMBUS_CALVUS -> "Cumulonimbus, not yet fibrous or striated";
-            case STRATOCUMULUS_CUMULOGENITUS -> "Stratocumulus formed by spreading of Cumulus";
-            case STRATOCUMULUS_NON_CUMULOGENITUS -> "Stratocumulus, not from spreading Cumulus";
-            case STRATUS_NEBULOSUS_OR_FRACTUS_FAIR_WEATHER -> "Stratus nebulosus or fractus (fair weather)";
-            case STRATUS_FRACTUS_OR_CUMULUS_FRACTUS_BAD_WEATHER -> "Stratus or Cumulus fractus (bad weather)";
-            case CUMULUS_AND_STRATOCUMULUS_DIFFERENT_LEVELS -> "Cumulus and Stratocumulus at different levels";
-            case CUMULONIMBUS_CAPILLATUS -> "Cumulonimbus capitulates";
-            case OBSCURED -> "Obscured by overcast layer below";
-        };
+        return summary;
     }
 }
