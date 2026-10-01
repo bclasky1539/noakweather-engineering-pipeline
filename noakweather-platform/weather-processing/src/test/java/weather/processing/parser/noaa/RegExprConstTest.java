@@ -1873,6 +1873,88 @@ class RegExprConstTest {
                 .isFalse();
     }
 
+    // ========== PREDOMINANT CLOUD TYPE PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "8/378, 3, 7, 8",
+            "8/87/, 8, 7, /",
+            "8/6//, 6, /, /",
+            "8/903, 9, 0, 3",
+            "8/000, 0, 0, 0",
+            "8////, /, /, /"
+    })
+    @DisplayName("Should match valid 8/LMH groups and capture low/middle/high")
+    void shouldMatchValidPredominantCloudTypeGroups(String input, String expectedLow,
+                                                    String expectedMiddle, String expectedHigh) {
+        Matcher matcher = RegExprConst.PREDOMINANT_CLOUD_TYPE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.start()).isZero();
+        assertThat(matcher.group("low")).isEqualTo(expectedLow);
+        assertThat(matcher.group("middle")).isEqualTo(expectedMiddle);
+        assertThat(matcher.group("high")).isEqualTo(expectedHigh);
+    }
+
+    @Test
+    @DisplayName("Should match at start of string followed by trailing text")
+    void shouldMatchPredominantCloudTypeWithTrailingText() {
+        Matcher matcher = RegExprConst.PREDOMINANT_CLOUD_TYPE_PATTERN.matcher("8/378 SLP120");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.start()).isZero();
+        assertThat(matcher.group()).isEqualTo("8/378");
+        assertThat(matcher.group("low")).isEqualTo("3");
+        assertThat(matcher.group("middle")).isEqualTo("7");
+        assertThat(matcher.group("high")).isEqualTo("8");
+    }
+
+    @Test
+    @DisplayName("Should match at end of string with no trailing text")
+    void shouldMatchPredominantCloudTypeAtEndOfString() {
+        Matcher matcher = RegExprConst.PREDOMINANT_CLOUD_TYPE_PATTERN.matcher("8/87/");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group()).isEqualTo("8/87/");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "8/37",
+            "8//378",
+            "8/3 78",
+            "9/378",
+            "8 378",
+            "8/37X"
+    })
+    @DisplayName("Should not fully match malformed or unrelated 8/LMH groups")
+    void shouldNotMatchMalformedPredominantCloudTypeGroups(String input) {
+        Matcher matcher = RegExprConst.PREDOMINANT_CLOUD_TYPE_PATTERN.matcher(input);
+
+        boolean matchedFullTokenAtStart = matcher.find()
+                && matcher.start() == 0
+                && matcher.group().equals(input);
+
+        assertThat(matchedFullTokenAtStart).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should not match when 8/ is not at the start of the string")
+    void shouldNotMatchPredominantCloudTypeWhenNotAtStart() {
+        Matcher matcher = RegExprConst.PREDOMINANT_CLOUD_TYPE_PATTERN.matcher("SLP120 8/378");
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should not match a 4th digit immediately following the 3-digit group")
+    void shouldRespectLookaheadBoundaryOnFourDigitGroup() {
+        Matcher matcher = RegExprConst.PREDOMINANT_CLOUD_TYPE_PATTERN.matcher("8/3789");
+
+        boolean matchedAtStart = matcher.find() && matcher.start() == 0;
+        assertThat(matchedAtStart).isFalse();
+    }
+
     // ========== PRECIP 3HR/24HR PATTERN TESTS ==========
 
     @ParameterizedTest

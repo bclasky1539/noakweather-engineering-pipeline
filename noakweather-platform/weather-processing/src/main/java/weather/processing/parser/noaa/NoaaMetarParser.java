@@ -30,6 +30,9 @@ import weather.model.components.remark.windremarks.PeakWind;
 import weather.model.components.remark.windremarks.WindAtLocation;
 import weather.model.components.remark.windremarks.WindShift;
 import weather.model.enums.AutomatedStationType;
+import weather.model.enums.HighCloudType;
+import weather.model.enums.LowCloudType;
+import weather.model.enums.MiddleCloudType;
 import weather.processing.parser.common.ParseResult;
 import weather.utils.IndexedLinkedHashMap;
 
@@ -935,6 +938,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleTowerSurfaceVisibilitySequential(remaining, remarksBuilder);
             remaining = handleHourlyPrecipitationSequential(remaining, remarksBuilder);
             remaining = handlePpGroupSequential(remaining, remarksBuilder);
+            remaining = handlePredominantCloudTypeSequential(remaining, remarksBuilder);
             remaining = handleMultiHourPrecipitationSequential(remaining, remarksBuilder);
             remaining = handleHailSizeSequential(remaining, remarksBuilder);
             remaining = handleWeatherEventsSequential(remaining, remarksBuilder);
@@ -1872,6 +1876,44 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     remarksText.substring(0, Math.min(20, remarksText.length())), e);
             return remarksText.substring(matcher.end()).trim();
         }
+    }
+
+    /**
+     * Handles the predominant cloud type remark (8/C_L C_M C_H), reporting the
+     * predominant low, middle, and high cloud type per WMO Cloud Atlas coding
+     * instructions.
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after this token is consumed
+     */
+    private String handlePredominantCloudTypeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = PREDOMINANT_CLOUD_TYPE_PATTERN.matcher(remaining);
+
+        if (matcher.find() && matcher.start() == 0) {
+            try {
+                LowCloudType low = LowCloudType.fromCode(matcher.group("low"));
+                MiddleCloudType middle = MiddleCloudType.fromCode(matcher.group("middle"));
+                HighCloudType high = HighCloudType.fromCode(matcher.group("high"));
+
+                remarks.predominantCloudTypes(new PredominantCloudTypes(low, middle, high));
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Predominant cloud types: low={}, middle={}, high={}", low, middle, high);
+                }
+            } catch (IllegalArgumentException e) {
+                LOGGER.warn("Invalid predominant cloud type group in remarks: {}", matcher.group(0), e);
+            }
+
+            remaining = remaining.substring(matcher.end()).trim();
+        }
+
+        return remaining;
     }
 
     /**

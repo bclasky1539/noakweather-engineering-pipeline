@@ -9,6 +9,9 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.*;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.enums.HighCloudType;
+import weather.model.enums.LowCloudType;
+import weather.model.enums.MiddleCloudType;
 import weather.processing.parser.common.ParseResult;
 
 import java.util.List;
@@ -510,6 +513,74 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
 
+                arguments("PTYA-PredominantCloudTypeDoesNotBlockNeighboringRemarks",
+                        "2026/09/26 02:55 PTYA 260255Z 26008KT 12SM SCT016CB BKN130 OVC300 27/26 A2989 " +
+                                "RMK SHRAB09E30 CB S-W-N-NE MOV E SLP122 60016 8/378 T02720260 58015",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("8/378 now parses via the new predominant-cloud-type handler, " +
+                                            "sandwiched between the 6-hour precip group (60016) ahead of it " +
+                                            "and the T-group/pressure-tendency group (T02720260 58015) after it")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().predominantCloudTypes()).isNotNull();
+                            assertThat(data.getRemarks().predominantCloudTypes().lowCloud())
+                                    .isEqualTo(LowCloudType.CUMULONIMBUS_CALVUS);
+                            assertThat(data.getRemarks().predominantCloudTypes().middleCloud())
+                                    .isEqualTo(MiddleCloudType.ALTOCUMULUS_MULTI_LEVEL_OR_WITH_ALTOSTRATUS_OR_OPACUS);
+                            assertThat(data.getRemarks().predominantCloudTypes().highCloud())
+                                    .isEqualTo(HighCloudType.CIRROSTRATUS_NOT_INVADING_NOT_COVERING);
+
+                            assertThat(data.getSeaLevelPressure())
+                                    .as("SLP122 must survive, ahead of the new 8/378 handler")
+                                    .isEqualTo(1012.2);
+                            assertThat(data.getRemarks().sixHourPrecipitation())
+                                    .as("60016 must survive, immediately ahead of 8/378")
+                                    .isEqualTo(new PrecipitationAmount(0.16, 6, false));
+                            assertThat(data.getRemarks().preciseTemperature().celsius())
+                                    .as("T02720260 must survive, immediately after 8/378")
+                                    .isEqualTo(27.2);
+                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(26.0);
+
+                            assertThat(data.getRemarks().weatherEvents())
+                                    .as("SHRAB09E30 - shower rain began :09 ended :30")
+                                    .hasSize(1);
+                            assertThat(data.getRemarks().thunderstormLocations())
+                                    .as("CB S-W-N-NE MOV E should also parse independently of the 8/378 group")
+                                    .hasSize(1);
+                        }),
+
+                arguments("NSTU-PredominantCloudTypeObscuredHighLayerDoesNotBlockNeighbors",
+                        "2026/09/26 02:50 NSTU 260250Z 13011KT 12SM BKN015TCU BKN040 OVC100 28/24 A2992 " +
+                                "RMK TCU NW-NE-SE SLP132 8/87/ T02800240 56012",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("8/87/ (obscured high layer) now parses via the new handler, " +
+                                            "sandwiched between SLP132 ahead of it and the T-group/pressure-tendency " +
+                                            "group (T02800240 56012) after it")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().predominantCloudTypes()).isNotNull();
+                            assertThat(data.getRemarks().predominantCloudTypes().lowCloud())
+                                    .isEqualTo(LowCloudType.CUMULUS_AND_STRATOCUMULUS_DIFFERENT_LEVELS);
+                            assertThat(data.getRemarks().predominantCloudTypes().middleCloud())
+                                    .isEqualTo(MiddleCloudType.ALTOCUMULUS_MULTI_LEVEL_OR_WITH_ALTOSTRATUS_OR_OPACUS);
+                            assertThat(data.getRemarks().predominantCloudTypes().highCloud())
+                                    .isEqualTo(HighCloudType.OBSCURED);
+
+                            assertThat(data.getSeaLevelPressure())
+                                    .as("SLP132 must survive, immediately ahead of 8/87/")
+                                    .isEqualTo(1013.2);
+                            assertThat(data.getRemarks().preciseTemperature().celsius())
+                                    .as("T02800240 must survive, immediately after 8/87/")
+                                    .isEqualTo(28.0);
+                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(24.0);
+
+                            assertThat(data.getRemarks().thunderstormLocations())
+                                    .as("TCU NW-NE-SE should also parse independently of the 8/87/ group")
+                                    .hasSize(1);
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -545,12 +616,14 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
             LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
+            LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");
             LOGGER.info("  cloudTypes: {}", data.getRemarks() != null ? data.getRemarks().cloudTypes() : "n/a");
             LOGGER.info("  weatherEvents: {}", data.getRemarks() != null ? data.getRemarks().weatherEvents() : "n/a");
             LOGGER.info("  maintenanceRequired: {}", data.getRemarks() != null ? data.getRemarks().maintenanceRequired() : "n/a");
             LOGGER.info("  observationProgramStatus: {}", data.getRemarks() != null ? data.getRemarks().observationProgramStatus() : "n/a");
             LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
+            LOGGER.info("  predominantCloudTypes: {}", data.getRemarks() != null ? data.getRemarks().predominantCloudTypes() : "n/a");
             LOGGER.info(" ");
         }
     }

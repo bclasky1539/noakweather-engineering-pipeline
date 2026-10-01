@@ -33,9 +33,7 @@ import weather.model.components.remark.visibilityremarks.VariableVisibility;
 import weather.model.components.remark.windremarks.PeakWind;
 import weather.model.components.remark.windremarks.WindAtLocation;
 import weather.model.components.remark.windremarks.WindShift;
-import weather.model.enums.AutomatedStationType;
-import weather.model.enums.PressureUnit;
-import weather.model.enums.SkyCoverage;
+import weather.model.enums.*;
 import weather.processing.parser.common.ParseResult;
 import org.junit.jupiter.params.ParameterizedTest;
 
@@ -4292,6 +4290,50 @@ class NoaaMetarParserTest {
         assertTrue(precip.isTrace(), "Should be trace precipitation");
         assertEquals(1, precip.periodHours());
         assertNull(precip.inches(), "Trace should have null inches");
+    }
+
+    // ========== PREDOMINANT CLOUD TYPE TESTS ==========
+
+    @Test
+    @DisplayName("Should parse predominant cloud types - PTYA real-world (8/378)")
+    void testParsePredominantCloudTypes_PTYA() {
+        String metar = "METAR PTYA 260255Z 26008KT 12SM SCT016CB BKN130 OVC300 27/26 A2989 " +
+                "RMK SHRAB09E30 CB S-W-N-NE MOV E SLP122 60016 8/378 T02720260 58015";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().predominantCloudTypes()).isNotNull();
+        assertThat(data.getRemarks().predominantCloudTypes().lowCloud())
+                .isEqualTo(LowCloudType.CUMULONIMBUS_CALVUS);
+        assertThat(data.getRemarks().predominantCloudTypes().middleCloud())
+                .isEqualTo(MiddleCloudType.ALTOCUMULUS_MULTI_LEVEL_OR_WITH_ALTOSTRATUS_OR_OPACUS);
+        assertThat(data.getRemarks().predominantCloudTypes().highCloud())
+                .isEqualTo(HighCloudType.CIRROSTRATUS_NOT_INVADING_NOT_COVERING);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse predominant cloud types - NSTU real-world (8/87/, obscured high layer)")
+    void testParsePredominantCloudTypes_NSTU() {
+        String metar = "METAR NSTU 260250Z 13011KT 12SM BKN015TCU BKN040 OVC100 28/24 A2992 " +
+                "RMK TCU NW-NE-SE SLP132 8/87/ T02800240 56012";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().predominantCloudTypes()).isNotNull();
+        assertThat(data.getRemarks().predominantCloudTypes().lowCloud())
+                .isEqualTo(LowCloudType.CUMULUS_AND_STRATOCUMULUS_DIFFERENT_LEVELS);
+        assertThat(data.getRemarks().predominantCloudTypes().middleCloud())
+                .isEqualTo(MiddleCloudType.ALTOCUMULUS_MULTI_LEVEL_OR_WITH_ALTOSTRATUS_OR_OPACUS);
+        assertThat(data.getRemarks().predominantCloudTypes().highCloud())
+                .isEqualTo(HighCloudType.OBSCURED);
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     // ========== PP GROUP VALUE TESTS ==========
