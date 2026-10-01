@@ -73,6 +73,7 @@ noakweather-engineering-pipeline/
     │       │   │   │   │   ├── ObscurationLayer.java           # Obscuration layer in the atmosphere
     │       │   │   │   │   ├── ObservationProgramStatus.java   # Observation-program status remark
     │       │   │   │   │   ├── PrecipitationAmount.java        # Precipitation amount from METAR remarks
+    │       │   │   │   │   ├── PredominantCloudTypes.java      # Predominant cloud type remarks
     │       │   │   │   │   ├── ThunderstormLocation.java       # Thunderstorms and significant cloud types
     │       │   │   │   │   └── WeatherEvent.java               # Weather phenomenon's begin/end time
     │       │   │   │   └── ceilingremarks/           # Ceiling Remark-specific components
@@ -97,6 +98,9 @@ noakweather-engineering-pipeline/
     │       │   ├── enums/                         # Enumerations
     │       │   │   ├── AutomatedStationType.java    # Type of automated weather station
     │       │   │   ├── ChangeIndicator.java         # Types of forecast change indicators
+    │       │   │   ├── HighCloudType.java           # Predominant high cloud type
+    │       │   │   ├── LowCloudType.java            # Predominant low cloud type
+    │       │   │   ├── MiddleCloudType.java         # Predominant middle cloud type
     │       │   │   ├── PressureUnit.java            # Enumeration of atmospheric pressure units
     │       │   │   └── SkyCoverage.java             # Sky coverage enumeration
     │       │   ├── GeoLocation.java             # Geographic locations

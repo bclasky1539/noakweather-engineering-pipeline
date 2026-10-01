@@ -355,6 +355,17 @@ public final class RegExprConst {
     );
 
     /**
+     * Predominant Cloud Type (8/C_L C_M C_H). Reports the predominant low,
+     * middle, and high cloud type per WMO Cloud Atlas coding instructions
+     * (sections 2.8.3.1-2.8.3.3). Each position is a single digit 0-9, or
+     * "/" if that layer cannot be observed due to an overcast layer below.
+     * Example: "8/903", "8/87/", "8/6//"
+     */
+    public static final Pattern PREDOMINANT_CLOUD_TYPE_PATTERN = Pattern.compile(
+            "^8/(?<low>[0-9/])(?<middle>[0-9/])(?<high>[0-9/])(?=\\s|$)"
+    );
+
+    /**
      * 3-hour pressure tendency
      * Example: "52032"
      */

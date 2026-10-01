@@ -88,6 +88,7 @@ import java.util.stream.Collectors;
  * * @param maintenance Automated-station maintenance remarks
  * * @param observationProgramStatus Canadian MANOBS observation program status (LAST STFD OBS/NEXT)
  * * @param lightningRemarks List of lightning remarks (LTG)
+ * * @param predominantCloudTypes Predominant low/middle/high cloud type (8/C_L C_M C_H group)
  * * @param freeText Unparsed remarks text
  *
  * @author bclasky1539
@@ -122,6 +123,7 @@ public record NoaaMetarRemarks(
         MaintenanceRemarks maintenance,
         ObservationProgramStatus observationProgramStatus,
         List<LightningRemark> lightningRemarks,
+        PredominantCloudTypes predominantCloudTypes,
         String freeText
 ) {
 
@@ -164,7 +166,7 @@ public record NoaaMetarRemarks(
                 List.of(), List.of(), null, null, null, null, null,
                 List.of(), List.of(), PressureRemarks.empty(), null, null,
                 null, null, null, null, null,
-                MaintenanceRemarks.empty(), null, List.of(), null);
+                MaintenanceRemarks.empty(), null, List.of(), null, null);
     }
 
     // ==================== Delegating accessors for grouped fields ====================
@@ -314,6 +316,7 @@ public record NoaaMetarRemarks(
         return densityAltitudeFeet == null
                 && maintenance.isEmpty()
                 && observationProgramStatus == null
+                && predominantCloudTypes == null
                 && (freeText == null || freeText.isBlank());
     }
 
@@ -373,6 +376,7 @@ public record NoaaMetarRemarks(
         private CeilingRemarks ceiling = CeilingRemarks.empty();
         private PressureRemarks pressure = PressureRemarks.empty();
         private MaintenanceRemarks maintenance = MaintenanceRemarks.empty();
+        private PredominantCloudTypes predominantCloudTypes;
         private String freeText;
 
         private Builder() {
@@ -699,6 +703,18 @@ public record NoaaMetarRemarks(
         }
 
         /**
+         * Sets the predominant low/middle/high cloud type from the "8/C_L C_M C_H"
+         * remark group, per WMO Cloud Atlas coding instructions.
+         *
+         * @param predominantCloudTypes the predominant cloud types
+         * @return this builder
+         */
+        public Builder predominantCloudTypes(PredominantCloudTypes predominantCloudTypes) {
+            this.predominantCloudTypes = predominantCloudTypes;
+            return this;
+        }
+
+        /**
          * Sets the secondary altimeter setting repeated inside the remarks section.
          * Common in the Philippines/Taiwan-region METARs as a redundant confirmation
          * of the main body's altimeter reading, in US-style inches of mercury.
@@ -914,7 +930,7 @@ public record NoaaMetarRemarks(
                     sixHourMaxTemperature, sixHourMinTemperature,
                     twentyFourHourMaxTemperature, twentyFourHourMinTemperature,
                     densityAltitudeFeet, maintenance, observationProgramStatus,
-                    List.copyOf(lightningRemarks), freeText);
+                    List.copyOf(lightningRemarks), predominantCloudTypes, freeText);
         }
     }
 
@@ -995,6 +1011,7 @@ public record NoaaMetarRemarks(
                     .map(LightningRemark::getSummary)
                     .collect(Collectors.joining("; ")));
         }
+        addIfPresent(parts, predominantCloudTypes, "predominantCloudTypes", PredominantCloudTypes::getSummary);
         addFreeTextIfPresent(parts, freeText);
 
         return "NoaaMetarRemarks{" + String.join(", ", parts) + "}";

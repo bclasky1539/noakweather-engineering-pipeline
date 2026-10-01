@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.1-SNAPSHOT - September 30, 2026
+
+#### Added
+- **#87: Predominant cloud type remark (`8/C_L C_M C_H`)** — resolved an
+  unrecognized numeric remark group found at multiple stations
+  (NSTU, PTYA) during UAT. Per WMO Cloud Atlas coding instructions
+  (sections 2.8.3.1-2.8.3.3), this reports the predominant low, middle,
+  and high cloud type as a single digit per position (0-9), or `/` if
+  that layer cannot be observed due to an overcast layer below.
+  - New `LowCloudType`, `MiddleCloudType`, `HighCloudType` enums in
+    `weather.model.enums`, each with a full WMO digit-to-constant
+    mapping via `fromCode(String)` and a `getSummary()` description
+  - New `PredominantCloudTypes` record in
+    `weather.model.components.remark`, wrapping the three enums with a
+    combined `getSummary()`
+  - `NoaaMetarRemarks` gained a `predominantCloudTypes` field (builder
+    setter, `isEmpty()`, `toString()` support)
+  - New `PREDOMINANT_CLOUD_TYPE_PATTERN` in `RegExprConst.java` and a
+    new `handlePredominantCloudTypeSequential` handler in
+    `NoaaMetarParser`, registered in the standard remark-handler
+    sequence
+  - `docs/CODE_STANDARDS.md`'s package hierarchy diagram updated for
+    the three new enum files and the new `PredominantCloudTypes` class
+
+#### Internal
+- Test coverage: `LowCloudTypeTest`, `MiddleCloudTypeTest`,
+  `HighCloudTypeTest`, `PredominantCloudTypesTest` (including live-data
+  cross-checks against NSTU's `8/87/` and PTYA's `8/378` captures);
+  `NoaaMetarRemarksTest` additions for the new field;
+  `RegExprConstTest` additions for the new pattern, including boundary
+  and malformed-input cases; `NoaaMetarParserTest` end-to-end tests for
+  both live captures; `NoaaMetarParserRemarksRecoveryTest` additions
+  confirming the new remark coexists correctly with neighboring
+  remarks in both captures without corruption
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with
+  zero behavior change elsewhere — all `weather-common` (3,134 tests)
+  and `weather-processing` (1,484 tests) tests pass unchanged
+
 ### Version 1.20.0-SNAPSHOT - September 29, 2026
 
 #### Changed
