@@ -90,6 +90,15 @@ class NoaaAviationWeatherClientTest {
         assertTrue(client.isValidStationCode("LFP")); // 3 letters
         assertTrue(client.isValidStationCode("kjfk")); // lowercase
         assertTrue(client.isValidStationCode("  KJFK  ")); // with whitespace
+        // FAA Location Identifiers containing digits (issue #100)
+        assertTrue(client.isValidStationCode("K3K3"));
+        assertTrue(client.isValidStationCode("K2R9"));
+        assertTrue(client.isValidStationCode("K36K"));
+        assertTrue(client.isValidStationCode("KT35"));
+        assertTrue(client.isValidStationCode("KF46"));
+        assertTrue(client.isValidStationCode("KF00"));
+        assertTrue(client.isValidStationCode("K1KM"));
+        assertTrue(client.isValidStationCode("K1FK")); // digit in 2nd position, 4 chars total
     }
 
     @Test
@@ -97,11 +106,11 @@ class NoaaAviationWeatherClientTest {
         assertFalse(client.isValidStationCode(null));
         assertFalse(client.isValidStationCode(""));
         assertFalse(client.isValidStationCode("  "));
-        assertFalse(client.isValidStationCode("K1FK")); // contains number
         assertFalse(client.isValidStationCode("KJ")); // too short
         assertFalse(client.isValidStationCode("KJFK1")); // too long (5 chars)
         assertFalse(client.isValidStationCode("KJ-FK")); // special character
-        assertFalse(client.isValidStationCode("12345")); // all numbers
+        assertFalse(client.isValidStationCode("12345")); // all numbers, leading digit
+        assertFalse(client.isValidStationCode("1JFK")); // leading digit, 4 chars
     }
 
     @Test

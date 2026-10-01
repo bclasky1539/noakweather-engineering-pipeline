@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.3-SNAPSHOT - October 1, 2026
+
+#### Fixed
+- **#100: Station code validation rejects legitimate FAA Location Identifiers
+  containing digits** — `isValidStationCode()` and `canParse()`'s bare
+  station-first branch both required all-alphabetic station codes
+  (`[A-Z]{3,4}`), incorrectly rejecting FAA Location Identifiers that mix
+  letters and digits in positions 2-4 (a common and valid format for many
+  smaller US airports). Found during UAT for #86 when ingesting K3K3 failed
+  outright.
+  - `NoaaAviationWeatherClient.isValidStationCode()`: `[A-Z]{3,4}` →
+    `[A-Z][A-Z0-9]{2,3}` (first character alphabetic, remaining 2-3
+    alphanumeric)
+  - `NoaaMetarParser.canParse()`'s third branch (bare `STATION ddddddZ`
+    format, no date header, no `METAR`/`SPECI` prefix) given the identical
+    fix, closing the same gap for that code path
+  - Confirmed against real, currently-reporting FAA stations surfaced during
+    this UAT round: `K3K3`, `K2R9`, `K36K`, `KT35`, `KF46`, `KF00`, `K1KM`
+  - `noakweather-legacy`'s identical all-alphabetic validation left
+    untouched — separate, soon-to-be-retired module, out of scope
+
+#### Internal
+- Test coverage: `NoaaAviationWeatherClientTest` additions (all seven FAA
+  LIDs as valid, a new `1JFK` leading-digit rejection case, `K1FK` moved from
+  invalid to valid); `NoaaMetarParserTest` additions (`K3K3` added to the
+  existing valid-formats parameterized test, plus a dedicated test for the
+  bare alphanumeric station-first path)
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
+  behavior change elsewhere
+
 ### Version 1.20.2-SNAPSHOT - October 1, 2026
 
 #### Added

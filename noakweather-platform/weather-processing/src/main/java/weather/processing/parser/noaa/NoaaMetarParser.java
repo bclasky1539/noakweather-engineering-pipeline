@@ -255,7 +255,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         // Check if starts with ICAO station code + observation time (KCLT 062252Z format)
         // Fixed: Use \\S.* instead of .* to prevent ReDoS
-        return trimmed.matches("(?s)^[A-Z]{4}\\s+\\d{6}Z\\s+\\S.*");
+        return trimmed.matches("(?s)^[A-Z][A-Z0-9]{2,3}\\s+\\d{6}Z\\s+\\S.*");
     }
 
     @Override

@@ -142,7 +142,7 @@ public class NoaaAviationWeatherClient {
         }
 
         String trimmed = stationCode.trim().toUpperCase();
-        boolean isValid = trimmed.matches("[A-Z]{3,4}");
+        boolean isValid = trimmed.matches("[A-Z][A-Z0-9]{2,3}");
 
         logger.debug("Station code validation for '{}': {}", stationCode, isValid);
         return isValid;
