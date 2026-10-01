@@ -5772,7 +5772,8 @@ class NoaaMetarParserTest {
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU DSNT N', DSNT, 'Distant'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ACC DSIPTD E', DSIPTD, 'Dissipated'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TS TOP S', TOP, 'At or above level'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB TR', TR, 'At all quadrants'"
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB TR', TR, 'At all quadrants'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU ALQDS', ALQDS, 'All quadrants'"
     })
     @DisplayName("Should parse thunderstorm locations with location qualifiers")
     void testParseThunderstormLocation_WithQualifiers(String metar, String expectedQualifier,

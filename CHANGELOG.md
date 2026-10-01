@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.4-SNAPSHOT - October 1, 2026
+
+#### Fixed
+- **#99: `TS_CLD_LOC_PATTERN` does not recognize `ALQDS` as a location
+  qualifier** — Bare thunderstorm/cloud-location remarks (`TCU ALQDS`, `CB
+  ALQDS`) did not recognize `ALQDS` (all quadrants) as a location qualifier,
+  even though `ALQDS` was already correctly handled for the separate `LTG`
+  remark type (#86). Found during UAT for #86 via NSTU live data.
+  - `RegExprConst.TS_CLD_LOC_PATTERN`: added `ALQDS` to the `loc` group's
+    qualifier alternation (`OHD|VC|DSNT|DSIPTD|TOP|TR` → `...|ALQDS`)
+  - No changes needed to `ThunderstormLocation` or
+    `parseThunderstormLocationFromMatcher()` — `ALQDS` flows through
+    `locationQualifier()` identically to every other qualifier value, by
+    design decision (no dedicated `allQuadrants` flag added, unlike
+    `LightningRemark`, since `ALQDS` here is just one more value in the
+    same slot rather than a structurally separate grammar path)
+  - Confirmed against the real NSTU capture that originally surfaced the
+    gap: `TCU ALQDS SLP152 T02530204` — `freeText` now `null` (previously
+    held the orphaned `"ALQDS"` token)
+
+#### Internal
+- Test coverage added at all three levels: `RegExprConstTest` (pattern
+  match for `TCU ALQDS` / `CB ALQDS`), `NoaaMetarParserTest` (end-to-end
+  parameterized case extended), `NoaaMetarParserRemarksRecoveryTest`
+  (NSTU real-world case, diagnostically verified via
+  `printRemarksParsingDiagnostics` against actual parsed output before
+  locking in assertions)
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
+  behavior change elsewhere
+
 ### Version 1.20.3-SNAPSHOT - October 1, 2026
 
 #### Fixed

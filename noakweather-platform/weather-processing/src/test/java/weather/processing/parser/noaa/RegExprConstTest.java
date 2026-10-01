@@ -1039,6 +1039,24 @@ class RegExprConstTest {
         assertThat(matcher.group("dirchain")).isEqualTo("S");
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "'TCU ALQDS ', TCU, ALQDS, 'All quadrants - NSTU real-world'",
+            "'CB ALQDS ', CB, ALQDS, 'All quadrants with CB'"
+    })
+    @DisplayName("TS_CLD_LOC_PATTERN should match ALQDS as a location qualifier")
+    void testThunderstormCloudLocationPattern_Alqds(String input, String expectedType,
+                                                    String expectedLoc, String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("type")).isEqualTo(expectedType);
+        assertThat(matcher.group("loc")).isEqualTo(expectedLoc);
+        assertThat(matcher.group("dirchain")).isNull();
+    }
+
     // ========== CB / TCU PATTERN AMBIGUITY REGRESSION TESTS ==========
 
     @ParameterizedTest
