@@ -182,11 +182,13 @@ public final class RegExprConst {
     );
 
     /**
-     * Type of Automated Station (AO1 or AO2). AO1 or AO2 shall be coded in all
-     * METAR/SPECI from automated stations.
+     * Type of Automated Station (AO1, AO2, AO1A, or AO2A). AO1 or AO2 shall be
+     * coded in all METAR/SPECI from automated stations; a trailing "A" suffix
+     * (AO1A, AO2A) indicates the observation was manually augmented by a
+     * human observer.
      */
     public static final Pattern AUTO_PATTERN = Pattern.compile(
-            "^A[O0](?<type>\\d)\\s+"
+            "^A[O0](?<type>\\d)(?<augmented>A)?(?=\\s|$)"
     );
 
     /**

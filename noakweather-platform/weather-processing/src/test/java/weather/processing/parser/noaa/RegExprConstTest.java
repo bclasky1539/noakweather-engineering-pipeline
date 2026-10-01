@@ -275,6 +275,7 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("type")).isEqualTo("2");
+        assertThat(matcher.group("augmented")).isNull();
     }
 
     @Test
@@ -1721,6 +1722,81 @@ class RegExprConstTest {
         assertThat(matcher.find())
                 .as("Should not match: %s", scenario)
                 .isFalse();
+    }
+
+    // ========== AUTOMATED PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'AO1 ', 1",
+            "'AO2 ', 2"
+    })
+    @DisplayName("AUTO_PATTERN should match unaugmented types with augmented group null")
+    void testAutoPattern_Unaugmented(String input, String expectedType) {
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo(expectedType);
+        assertThat(matcher.group("augmented")).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'AO1A ', 1",
+            "'AO2A ', 2"
+    })
+    @DisplayName("AUTO_PATTERN should match augmented types - KBLV real-world (AO2A)")
+    void testAutoPattern_Augmented(String input, String expectedType) {
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo(expectedType);
+        assertThat(matcher.group("augmented")).isEqualTo("A");
+    }
+
+    @Test
+    @DisplayName("AUTO_PATTERN should match A0 OCR variant")
+    void testAutoPattern_OcrVariant() {
+        String input = "A02A ";
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("2");
+        assertThat(matcher.group("augmented")).isEqualTo("A");
+    }
+
+    @Test
+    @DisplayName("AUTO_PATTERN should match augmented type at end of string (no trailing space) - regression check for \\s+ to lookahead change")
+    void testAutoPattern_AugmentedAtEndOfString() {
+        String input = "AO2A";
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("2");
+        assertThat(matcher.group("augmented")).isEqualTo("A");
+    }
+
+    @Test
+    @DisplayName("AUTO_PATTERN should match unaugmented type at end of string (no trailing space)")
+    void testAutoPattern_UnaugmentedAtEndOfString() {
+        String input = "AO2";
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("2");
+        assertThat(matcher.group("augmented")).isNull();
+    }
+
+    @Test
+    @DisplayName("AUTO_PATTERN should match AO2A followed by SLP - KBLV real-world")
+    void testAutoPattern_Kblv() {
+        String input = "AO2A SLP034";
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("type")).isEqualTo("2");
+        assertThat(matcher.group("augmented")).isEqualTo("A");
+        assertThat(matcher.group()).isEqualTo("AO2A");
     }
 
     // ========== AUTOMATED MAINTENANCE PATTERN TESTS ==========

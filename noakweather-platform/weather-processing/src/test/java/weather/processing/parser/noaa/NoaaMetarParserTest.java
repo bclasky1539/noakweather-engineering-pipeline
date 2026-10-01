@@ -2091,6 +2091,81 @@ class NoaaMetarParserTest {
     }
 
     @Test
+    @DisplayName("Should parse METAR with AO1A remark")
+    void testParseMetarWithAO1ARemark() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK AO1A SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        assertEquals(AutomatedStationType.AO1A, data.getRemarks().automatedStationType());
+        assertFalse(data.getRemarks().hasPrecipitationDiscriminator());
+        assertTrue(data.getRemarks().automatedStationType().hasManualAugmentation());
+    }
+
+    @Test
+    @DisplayName("Should parse METAR with AO2A remark")
+    void testParseMetarWithAO2ARemark() {
+        String metar = "METAR KORD 121856Z 09014G20KT 10SM FEW055 SCT250 23/14 A2990 RMK AO2A SLP121";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        assertEquals(AutomatedStationType.AO2A, data.getRemarks().automatedStationType());
+        assertTrue(data.getRemarks().hasPrecipitationDiscriminator());
+        assertTrue(data.getRemarks().automatedStationType().hasManualAugmentation());
+    }
+
+    @Test
+    @DisplayName("Should parse manually augmented station type - KBLV real-world (AO2A)")
+    void testParseAutomatedStationType_Augmented_KBLV() {
+        String metar = "METAR KBLV 011657Z AUTO 25015G30KT 210V290 3/8SM " +
+                "R32L/1000FT FG BKN005 01/M01 A2984 RMK A02A SLP034";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Remarks should not be null");
+        assertEquals(AutomatedStationType.AO2A, data.getRemarks().automatedStationType());
+        assertTrue(data.getRemarks().hasPrecipitationDiscriminator());
+        assertTrue(data.getRemarks().automatedStationType().hasManualAugmentation(),
+                "A02A should indicate manual augmentation");
+
+        assertNotNull(data.getRemarks().seaLevelPressure());
+        assertEquals(1003.4, data.getRemarks().seaLevelPressure().toHectopascals(), 0.1,
+                "SLP034 should decode to 1003.4 hPa");
+
+        assertNull(data.getRemarks().freeText());
+    }
+
+    @Test
+    @DisplayName("Should parse augmented station type at end of remarks (no trailing space) - regression check")
+    void testParseMetarWithAO2AAtEndOfRemarks() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM FEW250 22/12 A3015 RMK AO2A";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks());
+        assertEquals(AutomatedStationType.AO2A, data.getRemarks().automatedStationType());
+
+        if (data.getRemarks().freeText() != null) {
+            assertTrue(data.getRemarks().freeText().isBlank(),
+                    "Free text should be blank when only AO2A present");
+        }
+    }
+
+    @Test
     @DisplayName("Should parse METAR with AO2 and SLP, storing unparsed T-group as free text")
     void testParseMetarWithAO2AndFreeText() {
         String metar = "METAR KORD 121856Z 09014G20KT 10SM FEW055 SCT250 23/14 A2990 RMK AO2 SLP121 T02330139";
@@ -2249,6 +2324,32 @@ class NoaaMetarParserTest {
         assertEquals(expectedHasDiscriminator, data.getRemarks().hasPrecipitationDiscriminator(), scenario);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO1A', AO1, false, 'AO1A - no precip discriminator, augmented'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2A', AO2, true, 'AO2A - with precip discriminator, augmented'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK A01A', AO1, false, 'A01A OCR error corrected to AO1A'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK A02A', AO2, true, 'A02A OCR error corrected to AO2A'"
+    })
+    @DisplayName("Should parse augmented automated station types correctly")
+    void testParseAugmentedAutomatedStationTypes(String metar, AutomatedStationType expectedBaseType,
+                                                 boolean expectedHasDiscriminator, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully: " + scenario);
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), scenario);
+        assertTrue(data.getRemarks().automatedStationType().hasManualAugmentation(),
+                "Should be augmented: " + scenario);
+        assertEquals(expectedHasDiscriminator, data.getRemarks().hasPrecipitationDiscriminator(), scenario);
+
+        // Confirm it resolved to the matching augmented constant, not just any augmented type
+        AutomatedStationType expectedAugmented = expectedBaseType == AutomatedStationType.AO1
+                ? AutomatedStationType.AO1A : AutomatedStationType.AO2A;
+        assertEquals(expectedAugmented, data.getRemarks().automatedStationType(), scenario);
+    }
+
     @Test
     @DisplayName("Should parse real-world METAR with complete remarks")
     void testParseRealWorldMetarWithRemarks() {
@@ -2333,6 +2434,24 @@ class NoaaMetarParserTest {
             // Depending on implementation, might contain "SLP210" or full text
             assertFalse(data.getRemarks().freeText().isBlank());
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "METAR KJFK 121853Z 28016KT 10SM RMK AO9A",     // Invalid digit 9, with augmentation suffix
+            "METAR KJFK 121853Z 28016KT 10SM RMK A03A",     // Invalid digit 3, OCR variant, with augmentation suffix
+            "METAR KJFK 121853Z 28016KT 10SM RMK AO0A"      // Invalid digit 0, with augmentation suffix
+    })
+    @DisplayName("Should reject invalid AO digit even when followed by augmentation suffix")
+    void testParseMetarWithInvalidAutoDigitAndAugmentation(String metar) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess(), "Should parse successfully even with invalid augmented AO digit");
+        NoaaMetarData data = extractMetarData(result);
+
+        assertNotNull(data.getRemarks(), "Should have remarks object");
+        assertNull(data.getRemarks().automatedStationType(),
+                "Invalid AO digit should result in null automated station type, even with augmentation suffix present");
     }
 
     @Test
