@@ -480,11 +480,19 @@ class NoaaMetarParserTest {
             "SPECI KJFK 251651Z 19005KT",                       // SPECI report
             "2025/11/14 22:52 METAR KJFK 142252Z 19005KT",     // Date/time prefix
             "  METAR KJFK 251651Z 19005KT  ",                  // Leading/trailing spaces
-            "METAR  KJFK  251651Z  28016KT"                    // Extra internal spaces
+            "METAR  KJFK  251651Z  28016KT",                   // Extra internal spaces
+            "K3K3 011455Z AUTO 25015G30KT 210V290 3/8SM"       // Bare alphanumeric FAA LID, no date header, no METAR/SPECI prefix
     })
     @DisplayName("Should recognize valid METAR/SPECI formats")
     void testCanParseValidFormats(String metar) {
         assertTrue(parser.canParse(metar));
+    }
+
+    @Test
+    @DisplayName("Should recognize bare station-first format with alphanumeric FAA LID (no date header, no METAR/SPECI prefix)")
+    void testCanParseValidFormats_AlphanumericStationFirst() {
+        assertTrue(parser.canParse("K3K3 011455Z AUTO 25015G30KT 210V290 3/8SM"));
+        assertTrue(parser.canParse("K2R9 011515Z AUTO 16009G17KT 10SM"));
     }
 
     @ParameterizedTest
