@@ -582,6 +582,32 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .hasSize(1);
                         }),
 
+                arguments("NSTU-AlqdsThunderstormLocationNowParsesCorrectly",
+                        "2026/10/01 13:50 NSTU 011350Z 13019G24KT 8SM -SHRA BKN018TCU BKN040 OVC100 25/20 A2998 " +
+                                "RMK TCU ALQDS SLP152 T02530204",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("TCU ALQDS now parses via the widened TS_CLD_LOC_PATTERN location-qualifier " +
+                                            "alternation - ALQDS no longer falls through to freeText")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+                            ThunderstormLocation tcu = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(tcu.cloudType()).isEqualTo("TCU");
+                            assertThat(tcu.locationQualifier())
+                                    .as("ALQDS now flows through as the location qualifier, same as any other")
+                                    .isEqualTo("ALQDS");
+                            assertThat(tcu.directionSegments()).isEmpty();
+
+                            assertThat(data.getSeaLevelPressure())
+                                    .as("SLP152 must survive, immediately after TCU ALQDS")
+                                    .isEqualTo(1015.2);
+                            assertThat(data.getRemarks().preciseTemperature().celsius())
+                                    .as("T02530204 must survive, after SLP152")
+                                    .isEqualTo(25.3);
+                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.4);
+                        }),
+
                 arguments("KBLV-AugmentedAutomatedStationTypeDoesNotBlockSLP",
                         "2016/01/01 16:57 KBLV 011657Z AUTO 25015G30KT 210V290 3/8SM " +
                                 "R32L/1000FT FG BKN005 01/M01 A2984 RMK A02A SLP034",
