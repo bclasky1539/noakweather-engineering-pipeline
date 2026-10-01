@@ -93,11 +93,11 @@ TODAY=$(date -u +%Y-%m-%d)
 # ----------------------------------------------------------------------------
 STATIONS=(
   # --- Others ---
-  NSTU PTYA KELP
+  NSTU PTYA KELP MMAA MMCM EGUL ETAD KGUS K3K3 KAQO KJHN
 
   # --- North America (SM / inHg) ---
   KDLZ KATL KJFK KORD KDFW KDEN KSFO KSEA KMIA KBOS KLAX KPHX KMCO KIAH KAFW KFFO KCVS KBLF KALO KCKB
-  CYYZ CYVR CYUL CYZG
+  CYYZ CYVR CYUL CYZG CYKG CYOW
   MMMX
 
   # --- Caribbean / Central America ---

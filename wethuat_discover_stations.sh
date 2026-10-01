@@ -43,6 +43,12 @@ declare -a PATTERNS=(
     "VCSH (pending UAT) (#60)|VCSH"
     "Directional-arc-3pt (#69)|[NSEW]{1,2}(-[NSEW]{1,2}){2,}"
     "AND-chain-direction (#69)|[NSEW]{1,2} AND [NSEW]{1,2}"
+    "Lightning-remark (#86)|LTG"
+    "Lightning-ALQDS (#86)|LTG.*ALQDS"
+    "Lightning-AT-AP (#86)|LTG.*AT AP"
+    "Predominant-cloud-type (#87)|8/[0-9/]{3}"
+    "Augmented-station-type (#88)|A[O0][12]A"
+    "Observation-program-status (#89)|LAST (STFD )?OBS"
 )
 
 for entry in "${PATTERNS[@]}"; do
