@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.2-SNAPSHOT - October 1, 2026
+
+#### Added
+- **#88: `AO1A`/`AO2A` manually-augmented automated station type codes** — resolved
+  an undocumented suffix found on KFFO's `AO2A` remark during research, indicating
+  an automated observation was manually augmented by a human observer, orthogonal
+  to the existing AO1/AO2 precipitation-discriminator distinction.
+  - `AutomatedStationType` enum expanded from 2 to 4 constants (`AO1`, `AO2`,
+    `AO1A`, `AO2A`)
+  - New `hasManualAugmentation()` query method
+  - New `fromDigitAndAugmentation(int, boolean)` factory method, combining the
+    existing digit-only `fromDigit(...)` with an augmentation flag; `fromCode(String)`
+    extended to accept all four codes plus their `A0#`/`A0#A` OCR-fallback variants
+  - `AUTO_PATTERN` in `RegExprConst.java` extended with an optional trailing
+    `(?<augmented>A)?` group
+  - `NoaaMetarParser.handleAutomatedStationType` now calls `RegExprConst.AUTO_PATTERN`
+    directly instead of a duplicate, independently-maintained local pattern
+
+#### Fixed
+- `AUTO_PATTERN`'s trailing `\s+` could never match when the automated station
+  type was the last token in a remarks string (same latent-gap class as #74,
+  #75, #86, #89). Replaced with a `(?=\s|$)` lookahead, confirmed via the real
+  KBLV `A02A` capture used throughout this issue's development
+
+#### Internal
+- Test coverage: `AutomatedStationTypeTest` additions (new constants,
+  `hasManualAugmentation()`, `fromDigitAndAugmentation()`, expanded `fromCode()`
+  matrix including OCR-variant cross-checks); `RegExprConstTest` additions for
+  `AUTO_PATTERN`'s augmented group, including end-of-string regression cases
+  and the real KBLV capture; `NoaaMetarParserTest` additions (parameterized
+  augmented-type cases, dedicated AO1A/AO2A tests, the KBLV real-world case,
+  an end-of-remarks regression test, and an invalid-digit-with-augmentation
+  edge case); `NoaaMetarParserRemarksRecoveryTest` addition confirming KBLV's
+  `A02A` no longer blocks `SLP034` from parsing
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
+  behavior change elsewhere
+
 ### Version 1.20.1-SNAPSHOT - September 30, 2026
 
 #### Added

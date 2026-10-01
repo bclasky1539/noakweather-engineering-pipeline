@@ -9,6 +9,7 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.*;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
+import weather.model.enums.AutomatedStationType;
 import weather.model.enums.HighCloudType;
 import weather.model.enums.LowCloudType;
 import weather.model.enums.MiddleCloudType;
@@ -581,6 +582,27 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .hasSize(1);
                         }),
 
+                arguments("KBLV-AugmentedAutomatedStationTypeDoesNotBlockSLP",
+                        "2016/01/01 16:57 KBLV 011657Z AUTO 25015G30KT 210V290 3/8SM " +
+                                "R32L/1000FT FG BKN005 01/M01 A2984 RMK A02A SLP034",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("A02A now parses via the widened AUTO_PATTERN (digit + optional " +
+                                            "augmentation suffix), resolving to AO2A - nothing left unparsed")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().automatedStationType())
+                                    .isEqualTo(AutomatedStationType.AO2A);
+                            assertThat(data.getRemarks().hasPrecipitationDiscriminator()).isTrue();
+                            assertThat(data.getRemarks().automatedStationType().hasManualAugmentation())
+                                    .as("A02A indicates manual augmentation by a human observer")
+                                    .isTrue();
+
+                            assertThat(data.getSeaLevelPressure())
+                                    .as("SLP034 must survive, immediately after the augmented station type")
+                                    .isEqualTo(1003.4);
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -614,6 +636,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
             LOGGER.info("  pressureRapidChange: {}", data.getPressureRapidChange());
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
+            LOGGER.info("  automatedStationType: {}", data.getRemarks() != null ? data.getRemarks().automatedStationType() : "n/a");
             LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");

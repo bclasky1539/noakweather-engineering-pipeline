@@ -1039,19 +1039,18 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Handle automated station type remark for sequential parsing.
      * <p>
-     * Format: AO1 or AO2
+     * Format: AO1, AO2, AO1A, or AO2A
      * - AO1 = Automated station WITHOUT precipitation discriminator
      * - AO2 = Automated station WITH precipitation discriminator
      * - A01/A02 = OCR error variants (O misread as 0)
+     * - Trailing "A" (AO1A, AO2A) = manually augmented by a human observer
      *
      * @param remarksText the remaining remarks text to process
      * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark is processed
      */
     private String handleAutomatedStationType(String remarksText, NoaaMetarRemarks.Builder remarks) {
-        // Use the AUTO_PATTERN from the registry
-        Pattern autoPattern = Pattern.compile("^A[O0](?<type>\\d)\\s*");
-        Matcher matcher = autoPattern.matcher(remarksText);
+        Matcher matcher = RegExprConst.AUTO_PATTERN.matcher(remarksText);
 
         if (!matcher.find()) {
             return remarksText;
@@ -1059,7 +1058,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         try {
             String typeDigit = matcher.group("type");
-            AutomatedStationType stationType = AutomatedStationType.fromDigit(typeDigit);
+            boolean augmented = matcher.group("augmented") != null;
+            AutomatedStationType stationType =
+                    AutomatedStationType.fromDigitAndAugmentation(Integer.parseInt(typeDigit), augmented);
 
             remarks.automatedStationType(stationType);
 
