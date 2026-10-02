@@ -35,11 +35,20 @@ echo ""
 
 # "PRESFR-PRESRR (#74)|PRESFR|PRESRR"
 # "Chained-begin-end-weather (#73)|\b(TS|RA|SN|DZ|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|FZ|MI|PR|BC|DR|BL|SH)[A-Z]{0,2}[BE][0-9]{2,4}([BE][0-9]{2,4})+\b"
+# "ALQDS-thunderstorm-location (#99)|(?:TS|CB|TCU|ACC|CBMAM|VIRGA)\s+ALQDS"
+# "ICG-with-qualifier (#75)|ICG [A-Z]{4} [A-Z]{2}"
+# "ICG-without-qualifier (#75)|ICG"
+# "CI0-zero-okta (#72)|CI0"
+# "TCU-CB-EMBDD (#72)|(TCU|CB) EMBDD"
 declare -a PATTERNS=(
-    "ICG-with-qualifier (#75)|ICG [A-Z]{4} [A-Z]{2}"
-    "ICG-without-qualifier (#75)|ICG"
-    "CI0-zero-okta (#72)|CI0"
-    "TCU-CB-EMBDD (#72)|(TCU|CB) EMBDD"
+    # #75 — bare ICG search, not anchored to a specific qualifier shape.
+    # Review hits for the qualifier format that follows (PAST HR confirmed; others may surface new formats).
+    "ICG-bare (#75 broadened)|\\bICG\\b"
+    # #72a — CI0 standalone, not anchored to chained-cloud context.
+    "CI0-standalone (#72 broadened)|\\bCI0\\b"
+    # #72b — EMBDD alone, not anchored to a preceding TCU/CB token.
+    # Review what precedes each hit — may surface cloud types beyond TCU/CB worth adding to the pattern.
+    "EMBDD-standalone (#72 broadened)|EMBDD"
     "VCSH (pending UAT) (#60)|VCSH"
     "Directional-arc-3pt (#69)|[NSEW]{1,2}(-[NSEW]{1,2}){2,}"
     "AND-chain-direction (#69)|[NSEW]{1,2} AND [NSEW]{1,2}"
@@ -49,6 +58,11 @@ declare -a PATTERNS=(
     "Predominant-cloud-type (#87)|8/[0-9/]{3}"
     "Augmented-station-type (#88)|A[O0][12]A"
     "Observation-program-status (#89)|LAST (STFD )?OBS"
+    "Alphanumeric-station-code (#100)|<pattern for digit-containing station IDs — likely not a remarks-text pattern at all, since this is a station-ID issue, not a remarks pattern>"
+     # #99 — broadened to catch ALQDS anywhere, not just zero-distance after a cloud type.
+     # Will also catch lightning-remark ALQDS (already confirmed via #86) — filter those out manually,
+     # keep anything where ALQDS follows a bare cloud-type token (TS/CB/TCU/ACC/CBMAM/VIRGA) rather than LTG.
+     "ALQDS-anywhere (#99 broadened)|ALQDS"
 )
 
 for entry in "${PATTERNS[@]}"; do
