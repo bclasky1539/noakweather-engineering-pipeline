@@ -93,7 +93,8 @@ TODAY=$(date -u +%Y-%m-%d)
 # ----------------------------------------------------------------------------
 STATIONS=(
   # --- Others ---
-  NSTU PTYA KELP MMAA MMCM EGUL ETAD KGUS K3K3 KAQO KJHN
+  KTRK PTRO NSTU PTYA KELP MMAA MMCM EGUL ETAD KGUS K3K3 KAQO KJHN K2R9 K36K KT35 KF46 KF00 K1KM
+  KBFM TTPP
 
   # --- North America (SM / inHg) ---
   KDLZ KATL KJFK KORD KDFW KDEN KSFO KSEA KMIA KBOS KLAX KPHX KMCO KIAH KAFW KFFO KCVS KBLF KALO KCKB
