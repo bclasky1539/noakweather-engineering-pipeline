@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.5-SNAPSHOT - October 2, 2026
+
+#### Added
+- **#89 (scope addition): `LAST STFD OBS/NEXT` trailing `VIA <station-id>` routing
+  suffix** — a Canadian MANOBS observation-program-status remark can optionally
+  end with `VIA <station-id>`, indicating the next observation will be relayed
+  via the named station rather than issued by the reporting station itself.
+  Found during the original #89 UAT round via CYZG, filed as a comment, and
+  moved back to Ready for work.
+  - `RegExprConst.LAST_OBS_PATTERN`: added an optional
+    `(?:\s+VIA\s+(?<via>[A-Z][A-Z0-9]{2,3}))?` group after the existing
+    time-zone-suffix portion, using the alphanumeric station-ID shape from
+    #100 rather than a strict 4-letter-only pattern
+  - `ObservationProgramStatus`: added a nullable `viaStation` field, plus
+    `hasViaStation()` and an updated `getSummary()` that appends
+    `" via <station>"` when present
+  - `NoaaMetarParser.handleObservationProgramStatusSequential()`: extracts
+    the new `via` group and passes it through to
+    `ObservationProgramStatus.of(...)`
+  - Confirmed against the real CYZG capture that surfaced the gap:
+    `LAST STFD OBS/NEXT 021200 UTC VIA CYQB SLP755 DENSITY ALT 1700FT` —
+    `freeText` now `null` (previously held the orphaned `"VIA CYQB"` token),
+    `viaStation` now `"CYQB"`; verified via `printRemarksParsingDiagnostics`
+    against actual parsed output, both standalone and inserted into the
+    existing dense KCLT recovery capture, before locking in assertions
+
+#### Internal
+- Test coverage added at all four levels: `RegExprConstTest` (pattern match
+  for the `VIA` suffix, with and without it present),
+  `ObservationProgramStatusTest` (new field, `hasViaStation()`, `getSummary()`
+  with/without a via station, equality), `NoaaMetarParserTest` (end-to-end
+  CYZG real-world case), `NoaaMetarParserRemarksRecoveryTest` (real-world
+  CYZG recovery case)
+- All 12 existing `ObservationProgramStatus.of(...)` call sites in
+  `NoaaMetarRemarksTest.java` updated for the new 5-argument signature
+  (trailing `null` where no via station applies)
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
+  behavior change elsewhere
+
 ### Version 1.20.4-SNAPSHOT - October 1, 2026
 
 #### Fixed

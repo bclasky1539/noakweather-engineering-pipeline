@@ -3127,7 +3127,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be empty when only observationProgramStatus is present")
     void testIsEmptyWithOnlyObservationProgramStatus() {
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0, null))
                 .build();
 
         assertFalse(remarks.isEmpty());
@@ -3136,7 +3136,7 @@ class NoaaMetarRemarksTest {
     @Test
     @DisplayName("Should build remarks with observationProgramStatus via builder")
     void testBuilder_ObservationProgramStatus() {
-        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0);
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0, null);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .observationProgramStatus(status)
@@ -3161,7 +3161,7 @@ class NoaaMetarRemarksTest {
     void testBuilder_MultipleFieldsIncludingObservationProgramStatus() {
         AutomatedStationType stationType = AutomatedStationType.AO2;
         Pressure slp = Pressure.hectopascals(1013.2);
-        ObservationProgramStatus status = ObservationProgramStatus.of(false, 10, 13, 0);
+        ObservationProgramStatus status = ObservationProgramStatus.of(false, 10, 13, 0, null);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .automatedStationType(stationType)
@@ -3179,7 +3179,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should include observationProgramStatus in toString()")
     void testToString_ObservationProgramStatus() {
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0, null))
                 .build();
 
         String str = remarks.toString();
@@ -3190,7 +3190,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should show observation program status summary in toString()")
     void testToString_ObservationProgramStatusSummary() {
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0, null))
                 .build();
 
         String str = remarks.toString();
@@ -3200,7 +3200,7 @@ class NoaaMetarRemarksTest {
     @Test
     @DisplayName("Should be equal when observationProgramStatus is the same")
     void testEqualityWithObservationProgramStatus() {
-        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0);
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0, null);
 
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
                 .automatedStationType(AutomatedStationType.AO2)
@@ -3220,11 +3220,11 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be equal when observationProgramStatus differs")
     void testInequalityWithDifferentObservationProgramStatus() {
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
-                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0, null))
                 .build();
 
         NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
-                .observationProgramStatus(ObservationProgramStatus.of(false, 10, 13, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(false, 10, 13, 0, null))
                 .build();
 
         assertNotEquals(remarks1, remarks2);
@@ -4979,7 +4979,7 @@ class NoaaMetarRemarksTest {
                 .updateMaintenance(m -> m.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.of("TSNO")))
                 .updateMaintenance(m -> m.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.of("VISNO", "RWY06")))
                 .updateMaintenance(m -> m.withMaintenanceRequired(true))
-                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0, null))
                 .predominantCloudTypes(new PredominantCloudTypes(
                         LowCloudType.CUMULONIMBUS_CALVUS,
                         MiddleCloudType.ALTOCUMULUS_MULTI_LEVEL_OR_WITH_ALTOSTRATUS_OR_OPACUS,
@@ -5056,7 +5056,7 @@ class NoaaMetarRemarksTest {
                 .updateMaintenance(m -> m.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.of("TSNO")))
                 .updateMaintenance(m -> m.addAutomatedMaintenanceIndicator(AutomatedMaintenanceIndicator.of("VISNO", "RWY06")))
                 .updateMaintenance(m -> m.withMaintenanceRequired(true))
-                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0))
+                .observationProgramStatus(ObservationProgramStatus.of(true, 26, 12, 0, null))
                 .predominantCloudTypes(new PredominantCloudTypes(
                         LowCloudType.CUMULONIMBUS_CALVUS,
                         MiddleCloudType.ALTOCUMULUS_MULTI_LEVEL_OR_WITH_ALTOSTRATUS_OR_OPACUS,
@@ -5149,7 +5149,7 @@ class NoaaMetarRemarksTest {
                 AutomatedMaintenanceIndicator.of("VISNO", "RWY06")
         );
         Boolean maintenanceRequired = true;
-        ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0);
+        ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0, null);
         List<LightningRemark> lightningRemarks = List.of(
                 new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
                         new DirectionSegment(List.of("N")), false),
@@ -5253,7 +5253,7 @@ class NoaaMetarRemarksTest {
                 AutomatedMaintenanceIndicator.of("VISNO", "RWY06")
         );
         Boolean maintenanceRequired = true;
-        ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0);
+        ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0, null);
         List<LightningRemark> lightningRemarks = List.of(
                 new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
                         new DirectionSegment(List.of("N")), false),

@@ -433,8 +433,9 @@ public final class RegExprConst {
      * Examples: LAST STFD OBS/NEXT 261200Z, LAST OBS/NEXT 101300UTC,
      * LAST STFD OBS / NEXT 271200 UTC
      */
+    @SuppressWarnings("java:S5843") // Complex regex required for okta cloud format
     public static final Pattern LAST_OBS_PATTERN = Pattern.compile(
-            "^LAST\\s+(?<stfd>STFD\\s+)?OBS\\s*/\\s*NEXT\\s+(?<day>\\d{2})(?<hour>\\d{2})(?<minute>\\d{2})\\s?(?:Z|UTC)(?=\\s|$)"
+            "^LAST\\s+(?<stfd>STFD\\s+)?OBS\\s*/\\s*NEXT\\s+(?<day>\\d{2})(?<hour>\\d{2})(?<minute>\\d{2})\\s?(?:Z|UTC)(?:\\s+VIA\\s+(?<via>[A-Z][A-Z0-9]{2,3}))?(?=\\s|$)"
     );
 
     /**
