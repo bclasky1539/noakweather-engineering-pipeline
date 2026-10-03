@@ -8347,6 +8347,41 @@ class NoaaMetarParserTest {
         }
     }
 
+    @Test
+    @DisplayName("Should parse observation program status with trailing VIA station suffix - CYZG real-world")
+    void testParseObservationProgramStatus_ViaStation_CYZG() {
+        String metar = "2026/10/01 14:00 CYZG 011400Z 19007KT 15SM FEW011 BKN030 BKN065 10/10 A2877 " +
+                "RMK ST2SC3SC2 LAST STFD OBS/NEXT 021200 UTC VIA CYQB SLP755 DENSITY ALT 1700FT";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+        ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+        assertThat(status.staffed()).isTrue();
+        assertThat(status.day()).isEqualTo(2);
+        assertThat(status.hour()).isEqualTo(12);
+        assertThat(status.minute()).isZero();
+        assertThat(status.viaStation())
+                .as("VIA CYQB should now parse as the relay station, not fall through to freeText")
+                .isEqualTo("CYQB");
+        assertThat(status.hasViaStation()).isTrue();
+
+        // Confirms SLP755 and DENSITY ALT 1700FT still parse correctly, immediately
+        // after the VIA suffix
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(975.5, within(0.1));
+        assertThat(data.getRemarks().densityAltitudeFeet()).isEqualTo(1700);
+
+        assertThat(data.getRemarks().cloudTypes()).hasSize(3);
+
+        assertThat(data.getRemarks().freeText())
+                .as("No unparsed remnant should remain")
+                .isNull();
+    }
+
     // ========== VARIABLE CEILING PARSING TESTS ==========
 
     @ParameterizedTest

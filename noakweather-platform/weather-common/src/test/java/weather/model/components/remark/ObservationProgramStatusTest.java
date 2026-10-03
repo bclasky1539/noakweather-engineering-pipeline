@@ -36,23 +36,37 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should construct a staffed status")
     void testConstructor_Staffed() {
-        ObservationProgramStatus status = new ObservationProgramStatus(true, 26, 12, 0);
+        ObservationProgramStatus status = new ObservationProgramStatus(true, 26, 12, 0, null);
 
         assertThat(status.staffed()).isTrue();
         assertThat(status.day()).isEqualTo(26);
         assertThat(status.hour()).isEqualTo(12);
         assertThat(status.minute()).isZero();
+        assertThat(status.viaStation()).isNull();
     }
 
     @Test
     @DisplayName("Should construct a non-staffed status")
     void testConstructor_NotStaffed() {
-        ObservationProgramStatus status = new ObservationProgramStatus(false, 10, 13, 0);
+        ObservationProgramStatus status = new ObservationProgramStatus(false, 10, 13, 0, null);
 
         assertThat(status.staffed()).isFalse();
         assertThat(status.day()).isEqualTo(10);
         assertThat(status.hour()).isEqualTo(13);
         assertThat(status.minute()).isZero();
+        assertThat(status.viaStation()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should construct a status with a via station")
+    void testConstructor_WithViaStation() {
+        ObservationProgramStatus status = new ObservationProgramStatus(true, 2, 12, 0, "CYQB");
+
+        assertThat(status.staffed()).isTrue();
+        assertThat(status.day()).isEqualTo(2);
+        assertThat(status.hour()).isEqualTo(12);
+        assertThat(status.minute()).isZero();
+        assertThat(status.viaStation()).isEqualTo("CYQB");
     }
 
     // ==================== Factory Method Tests ====================
@@ -60,12 +74,43 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should create via of() factory method")
     void testOf() {
-        ObservationProgramStatus status = ObservationProgramStatus.of(true, 27, 12, 0);
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 27, 12, 0, null);
 
         assertThat(status.staffed()).isTrue();
         assertThat(status.day()).isEqualTo(27);
         assertThat(status.hour()).isEqualTo(12);
         assertThat(status.minute()).isZero();
+        assertThat(status.viaStation()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should create via of() factory method with a via station - CYZG real-world")
+    void testOf_WithViaStation() {
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 2, 12, 0, "CYQB");
+
+        assertThat(status.staffed()).isTrue();
+        assertThat(status.day()).isEqualTo(2);
+        assertThat(status.hour()).isEqualTo(12);
+        assertThat(status.minute()).isZero();
+        assertThat(status.viaStation()).isEqualTo("CYQB");
+    }
+
+    // ==================== hasViaStation() Tests ====================
+
+    @Test
+    @DisplayName("Should report hasViaStation false when absent")
+    void testHasViaStation_Absent() {
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0, null);
+
+        assertThat(status.hasViaStation()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should report hasViaStation true when present")
+    void testHasViaStation_Present() {
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 2, 12, 0, "CYQB");
+
+        assertThat(status.hasViaStation()).isTrue();
     }
 
     // ==================== getSummary() Tests ====================
@@ -73,7 +118,7 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should summarize a staffed status")
     void testGetSummary_Staffed() {
-        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0);
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 26, 12, 0, null);
 
         assertThat(status.getSummary()).isEqualTo("Staffed, next observation day 26 at 12:00 UTC");
     }
@@ -81,9 +126,17 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should summarize a non-staffed status")
     void testGetSummary_NotStaffed() {
-        ObservationProgramStatus status = ObservationProgramStatus.of(false, 10, 13, 0);
+        ObservationProgramStatus status = ObservationProgramStatus.of(false, 10, 13, 0, null);
 
         assertThat(status.getSummary()).isEqualTo("Not staffed, next observation day 10 at 13:00 UTC");
+    }
+
+    @Test
+    @DisplayName("Should summarize a status with a via station - CYZG real-world")
+    void testGetSummary_WithViaStation() {
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, 2, 12, 0, "CYQB");
+
+        assertThat(status.getSummary()).isEqualTo("Staffed, next observation day 02 at 12:00 UTC via CYQB");
     }
 
     @ParameterizedTest
@@ -94,7 +147,7 @@ class ObservationProgramStatusTest {
     @DisplayName("Should zero-pad day/hour/minute in summary")
     void testGetSummary_ZeroPadding(int day, int hour, int minute,
                                     String expectedDay, String expectedHour, String expectedMinute) {
-        ObservationProgramStatus status = ObservationProgramStatus.of(true, day, hour, minute);
+        ObservationProgramStatus status = ObservationProgramStatus.of(true, day, hour, minute, null);
 
         assertThat(status.getSummary())
                 .contains("day " + expectedDay)
@@ -106,8 +159,8 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should be equal when all fields match")
     void testEquality_SameFields() {
-        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 26, 12, 0);
-        ObservationProgramStatus status2 = ObservationProgramStatus.of(true, 26, 12, 0);
+        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 26, 12, 0, null);
+        ObservationProgramStatus status2 = ObservationProgramStatus.of(true, 26, 12, 0, null);
 
         assertThat(status1).isEqualTo(status2).hasSameHashCodeAs(status2);
     }
@@ -115,8 +168,8 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should not be equal when staffed flag differs")
     void testInequality_DifferentStaffed() {
-        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 26, 12, 0);
-        ObservationProgramStatus status2 = ObservationProgramStatus.of(false, 26, 12, 0);
+        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 26, 12, 0, null);
+        ObservationProgramStatus status2 = ObservationProgramStatus.of(false, 26, 12, 0, null);
 
         assertThat(status1).isNotEqualTo(status2);
     }
@@ -124,8 +177,17 @@ class ObservationProgramStatusTest {
     @Test
     @DisplayName("Should not be equal when time differs")
     void testInequality_DifferentTime() {
-        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 26, 12, 0);
-        ObservationProgramStatus status2 = ObservationProgramStatus.of(true, 27, 12, 0);
+        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 26, 12, 0, null);
+        ObservationProgramStatus status2 = ObservationProgramStatus.of(true, 27, 12, 0, null);
+
+        assertThat(status1).isNotEqualTo(status2);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when via station differs")
+    void testInequality_DifferentViaStation() {
+        ObservationProgramStatus status1 = ObservationProgramStatus.of(true, 2, 12, 0, "CYQB");
+        ObservationProgramStatus status2 = ObservationProgramStatus.of(true, 2, 12, 0, "CYYZ");
 
         assertThat(status1).isNotEqualTo(status2);
     }

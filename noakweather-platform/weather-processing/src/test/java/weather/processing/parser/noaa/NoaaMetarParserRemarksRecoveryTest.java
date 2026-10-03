@@ -348,6 +348,33 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().cloudTypes()).hasSize(2);
                         }),
 
+                arguments("CYZG-ObservationProgramStatusViaStationNowParsesCorrectly",
+                        "2026/10/01 14:00 CYZG 011400Z 19007KT 15SM FEW011 BKN030 BKN065 10/10 A2877 " +
+                                "RMK ST2SC3SC2 LAST STFD OBS/NEXT 021200 UTC VIA CYQB SLP755 DENSITY ALT 1700FT",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("VIA CYQB now parses as the relay-station suffix on " +
+                                            "ObservationProgramStatus - no unparsed remnant")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().observationProgramStatus()).isNotNull();
+                            ObservationProgramStatus status = data.getRemarks().observationProgramStatus();
+                            assertThat(status.staffed()).isTrue();
+                            assertThat(status.day()).isEqualTo(2);
+                            assertThat(status.hour()).isEqualTo(12);
+                            assertThat(status.minute()).isZero();
+                            assertThat(status.viaStation()).isEqualTo("CYQB");
+
+                            assertThat(data.getSeaLevelPressure())
+                                    .as("SLP755 must survive, immediately after VIA CYQB")
+                                    .isEqualTo(975.5);
+                            assertThat(data.getRemarks().densityAltitudeFeet())
+                                    .as("DENSITY ALT 1700FT must survive, after SLP755")
+                                    .isEqualTo(1700);
+
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(3);
+                        }),
+
                 arguments("CYQX-F8DoesNotBlockSLP146",
                         "2017/04/10 00:00 CYQX 151100Z 30007KT 1/8SM FZFG VV001 M02/M03 A2998 RMK F8 SLP146",
                         (Consumer<NoaaMetarData>) data -> {
@@ -652,7 +679,8 @@ class NoaaMetarParserRemarksRecoveryTest {
         // then check noakweather-platform/logs/noakweather.log for output.
         String[] raws = {
                 "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD " +
-                        "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW T02780206 $",
+                        "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW " +
+                        "LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
         };
 
         for (String raw : raws) {
@@ -673,6 +701,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  observationProgramStatus: {}", data.getRemarks() != null ? data.getRemarks().observationProgramStatus() : "n/a");
             LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
             LOGGER.info("  predominantCloudTypes: {}", data.getRemarks() != null ? data.getRemarks().predominantCloudTypes() : "n/a");
+            LOGGER.info("  densityAltitudeFeet: {}", data.getRemarks() != null ? data.getRemarks().densityAltitudeFeet() : "n/a");
             LOGGER.info(" ");
         }
     }

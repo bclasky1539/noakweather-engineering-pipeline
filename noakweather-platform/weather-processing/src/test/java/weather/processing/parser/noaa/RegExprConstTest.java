@@ -2366,6 +2366,44 @@ class RegExprConstTest {
                 .isFalse();
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "'LAST STFD OBS/NEXT 021200 UTC VIA CYQB ', CYQB, 'CYZG real-world, spaced UTC'",
+            "'LAST STFD OBS/NEXT 261200Z VIA CYYZ ', CYYZ, 'Fused Z suffix'",
+            "'LAST OBS/NEXT 101300UTC VIA CYUL ', CYUL, 'Not staffed, fused UTC suffix'"
+    })
+    @DisplayName("LAST_OBS_PATTERN should match the optional trailing VIA station suffix")
+    void testLastObsPattern_ViaStation(String input, String expectedVia, String scenario) {
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("via"))
+                .as("Via station should match: %s", scenario)
+                .isEqualTo(expectedVia);
+    }
+
+    @Test
+    @DisplayName("LAST_OBS_PATTERN should match without a VIA suffix (regression check)")
+    void testLastObsPattern_NoViaStation() {
+        String input = "LAST STFD OBS/NEXT 261200Z ";
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("via")).isNull();
+    }
+
+    @Test
+    @DisplayName("LAST_OBS_PATTERN should match VIA station at end of string (no trailing space)")
+    void testLastObsPattern_ViaStationAtEndOfString() {
+        String input = "LAST STFD OBS/NEXT 021200 UTC VIA CYQB";
+        Matcher matcher = RegExprConst.LAST_OBS_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("via")).isEqualTo("CYQB");
+    }
+
     // ========== NO SIGNIFICANT CHANGE TEST ==========
 
     @Test

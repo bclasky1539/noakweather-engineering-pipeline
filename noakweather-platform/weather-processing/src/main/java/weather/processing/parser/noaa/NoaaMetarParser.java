@@ -1542,16 +1542,21 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Handle Canadian MANOBS observation program status remark (LAST STFD
      * OBS/NEXT or LAST OBS/NEXT).
      * <p>
-     * Format: LAST [STFD] OBS/NEXT ddhhmm(Z|UTC)
+     * Format: LAST [STFD] OBS/NEXT ddhhmm(Z|UTC) [VIA <station-id>]
      * - STFD = optional staffed-program qualifier
      * - ddhhmm = day, hour, minute of the next observation (UTC)
      * - Z or UTC = time-zone suffix (fused or space-separated); not preserved,
      * since MANOBS times are always UTC
+     * - VIA <station-id> = optional relay-station qualifier, indicating the
+     * next observation will be relayed via the named station rather than
+     * issued by the reporting station itself
      * <p>
      * Examples:
      * - LAST STFD OBS/NEXT 261200Z → staffed, next observation day 26 at 12:00
      * - LAST OBS/NEXT 101300UTC → not staffed, next observation day 10 at 13:00
      * - LAST STFD OBS / NEXT 271200 UTC → staffed, next observation day 27 at 12:00
+     * - LAST STFD OBS/NEXT 021200 UTC VIA CYQB → staffed, next observation day 02
+     * at 12:00, relayed via CYQB
      *
      * @param remarksText remaining remarks text to process
      * @param remarks     the remarks builder to populate
@@ -1571,8 +1576,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int day = Integer.parseInt(matcher.group("day"));
                 int hour = Integer.parseInt(matcher.group("hour"));
                 int minute = Integer.parseInt(matcher.group("minute"));
+                String viaStation = matcher.group("via");
 
-                ObservationProgramStatus status = ObservationProgramStatus.of(staffed, day, hour, minute);
+                ObservationProgramStatus status = ObservationProgramStatus.of(staffed, day, hour, minute, viaStation);
                 remarks.observationProgramStatus(status);
 
                 if (LOGGER.isDebugEnabled()) {
