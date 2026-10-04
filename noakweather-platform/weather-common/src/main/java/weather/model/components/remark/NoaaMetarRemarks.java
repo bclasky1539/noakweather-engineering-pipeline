@@ -77,6 +77,7 @@ import java.util.stream.Collectors;
  * * @param hailSize Hail size in inches
  * * @param weatherEvents List of weather events (beginning/ending times)
  * * @param thunderstormLocations List of thunderstorm/cloud locations
+ * * @param exceptDirections List of "except [direction]" remarks (XCPT/XCP/EXCP/EXC)
  * * @param pressure Pressure-anomaly remarks (3-hour tendency, rapid change)
  * * @param icing Icing information
  * * @param secondaryAltimeter Secondary altimeter reading
@@ -112,6 +113,7 @@ public record NoaaMetarRemarks(
         HailSize hailSize,
         List<WeatherEvent> weatherEvents,
         List<ThunderstormLocation> thunderstormLocations,
+        List<ExceptDirection> exceptDirections,
         PressureRemarks pressure,
         Icing icing,
         Pressure secondaryAltimeter,
@@ -143,6 +145,7 @@ public record NoaaMetarRemarks(
         cloudTypes = cloudTypes == null ? List.of() : List.copyOf(cloudTypes);
         weatherEvents = weatherEvents == null ? List.of() : List.copyOf(weatherEvents);
         thunderstormLocations = thunderstormLocations == null ? List.of() : List.copyOf(thunderstormLocations);
+        exceptDirections = exceptDirections == null ? List.of() : List.copyOf(exceptDirections);
         lightningRemarks = lightningRemarks == null ? List.of() : List.copyOf(lightningRemarks);
     }
 
@@ -164,8 +167,8 @@ public record NoaaMetarRemarks(
         return new NoaaMetarRemarks(null, null, null, null,
                 WindRemarks.empty(), null, VisibilityRemarks.empty(), CeilingRemarks.empty(),
                 List.of(), List.of(), null, null, null, null, null,
-                List.of(), List.of(), PressureRemarks.empty(), null, null,
-                null, null, null, null, null,
+                List.of(), List.of(), List.of(), PressureRemarks.empty(), null, null, null,
+                null, null, null, null,
                 MaintenanceRemarks.empty(), null, List.of(), null, null);
     }
 
@@ -299,6 +302,7 @@ public record NoaaMetarRemarks(
                 && hailSize == null
                 && weatherEvents.isEmpty()
                 && thunderstormLocations.isEmpty()
+                && exceptDirections.isEmpty()
                 && lightningRemarks.isEmpty();
     }
 
@@ -362,6 +366,7 @@ public record NoaaMetarRemarks(
         private HailSize hailSize;
         private List<WeatherEvent> weatherEvents = new ArrayList<>();
         private List<ThunderstormLocation> thunderstormLocations = new ArrayList<>();
+        private List<ExceptDirection> exceptDirections = new ArrayList<>();
         private Icing icing;
         private Pressure secondaryAltimeter;
         private Temperature sixHourMaxTemperature;
@@ -640,6 +645,30 @@ public record NoaaMetarRemarks(
          */
         public Builder thunderstormLocations(List<ThunderstormLocation> locations) {
             this.thunderstormLocations = locations != null ? new ArrayList<>(locations) : new ArrayList<>();
+            return this;
+        }
+
+        /**
+         * Adds a single "except [direction]" remark.
+         *
+         * @param exceptDirection the except-direction remark to add
+         * @return this builder
+         */
+        public Builder addExceptDirection(ExceptDirection exceptDirection) {
+            if (exceptDirection != null) {
+                this.exceptDirections.add(exceptDirection);
+            }
+            return this;
+        }
+
+        /**
+         * Sets the except-directions list.
+         *
+         * @param exceptDirections the except-direction remarks
+         * @return this builder
+         */
+        public Builder exceptDirections(List<ExceptDirection> exceptDirections) {
+            this.exceptDirections = exceptDirections != null ? new ArrayList<>(exceptDirections) : new ArrayList<>();
             return this;
         }
 
@@ -926,7 +955,7 @@ public record NoaaMetarRemarks(
                     List.copyOf(obscurationLayers), List.copyOf(cloudTypes),
                     hourlyPrecipitation, ppGroupValue, sixHourPrecipitation, twentyFourHourPrecipitation,
                     hailSize, List.copyOf(weatherEvents), List.copyOf(thunderstormLocations),
-                    pressure, icing, secondaryAltimeter,
+                    List.copyOf(exceptDirections), pressure, icing, secondaryAltimeter,
                     sixHourMaxTemperature, sixHourMinTemperature,
                     twentyFourHourMaxTemperature, twentyFourHourMinTemperature,
                     densityAltitudeFeet, maintenance, observationProgramStatus,
@@ -984,6 +1013,11 @@ public record NoaaMetarRemarks(
         if (!thunderstormLocations.isEmpty()) {
             parts.add("thunderstormLocations=" + thunderstormLocations.stream()
                     .map(ThunderstormLocation::getSummary)
+                    .collect(Collectors.joining("; ")));
+        }
+        if (!exceptDirections.isEmpty()) {
+            parts.add("exceptDirections=" + exceptDirections.stream()
+                    .map(ExceptDirection::getSummary)
                     .collect(Collectors.joining("; ")));
         }
         addIfPresent(parts, pressure.pressureTendency(), "pressureTendency", PressureTendency::getSummary);

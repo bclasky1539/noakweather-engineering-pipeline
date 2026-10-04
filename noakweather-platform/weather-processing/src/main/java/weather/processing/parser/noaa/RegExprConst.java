@@ -310,6 +310,25 @@ public final class RegExprConst {
     );
 
     /**
+     * Pattern for "except [direction]" remarks (XCPT, XCP, EXCP, EXC — all
+     * meaning "except"), indicating a reported condition does not apply in
+     * the given direction(s). Not to be confused with EXPCD/EXPCTD/EXPTD/EXP
+     * ("expected"), which has a different meaning and is out of scope here.
+     * <p>
+     * Same direction-chain grammar as TS_CLD_LOC_PATTERN: supports a single
+     * compass point, a hyphenated range/arc, or multiple AND-joined segments.
+     * <p>
+     * Examples:
+     * - XCPT N → except to the north
+     * - XCP N-NE → except north to northeast
+     * - EXCP N AND SW → except to the north and to the southwest
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
+    public static final Pattern EXCEPT_DIRECTION_PATTERN = Pattern.compile(
+            "^(?:XCPT|XCP|EXCP|EXC)\\s+(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+)*+)(?=\\s|$)"
+    );
+
+    /**
      * Pressure Rising or Falling Rapidly (PRESRR or PRESFR)
      */
     public static final Pattern PRES_RF_RAPDLY_PATTERN = Pattern.compile(

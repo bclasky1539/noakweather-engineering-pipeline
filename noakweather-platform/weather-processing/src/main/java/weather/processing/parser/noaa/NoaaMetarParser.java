@@ -952,6 +952,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             remaining = handleSecondaryAltimeterSequential(remaining, remarksBuilder);
             remaining = handleDirectionalWeatherSequential(remaining, remarksBuilder);
             remaining = handleObservationProgramStatusSequential(remaining, remarksBuilder);
+            remaining = handleExceptDirectionSequential(remaining, remarksBuilder);
 
             // Continue while we are making progress
         } while (!Objects.equals(remaining, previous));
@@ -2521,6 +2522,65 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                         Arrays.asList(RANGE_SEPARATOR_PATTERN.split(segment))
                 ))
                 .toList();
+    }
+
+    /**
+     * Handle "except [direction]" remarks for sequential parsing.
+     * <p>
+     * Uses EXCEPT_DIRECTION_PATTERN, which captures:
+     * - dirchain: the direction chain (single point, range, or AND-chain of
+     * either), using the same grammar as TS_CLD_LOC_PATTERN
+     * <p>
+     * XCPT, XCP, EXCP, and EXC are all accepted as equivalent forms of
+     * "except"; which form appeared in the raw text is not preserved.
+     * EXPCD/EXPCTD/EXPTD/EXP ("expected") have a different meaning and are
+     * not recognized by this pattern.
+     * <p>
+     * Example:
+     * - CB ALQDS XCPT N → Cumulonimbus in all quadrants, except to the north
+     * <p>
+     * Multiple occurrences can be present in one remarks string.
+     *
+     * @param remarksText the remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after all except-direction remarks are processed
+     */
+    private String handleExceptDirectionSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText;
+        }
+
+        String remaining = remarksText;
+        Matcher matcher = EXCEPT_DIRECTION_PATTERN.matcher(remaining);
+
+        while (matcher.find() && matcher.start() == 0) {
+            int matchEnd = matcher.end();
+
+            try {
+                String dirchain = matcher.group("dirchain");
+                List<DirectionSegment> directionSegments = parseDirectionChain(dirchain);
+                ExceptDirection exceptDirection = ExceptDirection.of(directionSegments);
+                remarks.addExceptDirection(exceptDirection);
+
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Except direction: {}", exceptDirection.getSummary());
+                }
+
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = EXCEPT_DIRECTION_PATTERN.matcher(remaining);
+
+            } catch (RuntimeException e) {
+                String matchedText = remaining.substring(0, Math.min(matchEnd, remaining.length()));
+                LOGGER.error("Unexpected error parsing except-direction from '{}'. " +
+                                "This may indicate a bug in the regex or parser logic.",
+                        matchedText, e);
+
+                remaining = remaining.substring(matchEnd).trim();
+                matcher = EXCEPT_DIRECTION_PATTERN.matcher(remaining);
+            }
+        }
+
+        return remaining;
     }
 
     /**
