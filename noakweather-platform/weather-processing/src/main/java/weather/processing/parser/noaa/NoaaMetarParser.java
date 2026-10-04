@@ -80,7 +80,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final String GROUP_TENDENCY_CODE = "tend";
     private static final String GROUP_HEIGHT_CODE = "height";
 
-    private static final Pattern AND_SEPARATOR_PATTERN = Pattern.compile("\\sAND\\s");
+    private static final String DIRECTION_CHAIN_CODE = "dirchain";
+
+    // Splits a direction chain into segments: segments are separated by
+    // whitespace, optionally with the word AND (e.g. "N AND SW" or "N NE S SW")
+    private static final Pattern SEGMENT_SEPARATOR_PATTERN = Pattern.compile("\\s+(?:AND\\s+)?");
     private static final Pattern RANGE_SEPARATOR_PATTERN = Pattern.compile("-");
 
     /**
@@ -2436,38 +2440,59 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         String remaining = remarksText;
-        Matcher matcher = TS_CLD_LOC_PATTERN.matcher(remaining);
+        String lastCloudType = null;
+        Matcher matcher = nextThunderstormMatcher(remaining, lastCloudType);
 
-        // Process all cloud locations
-        while (matcher.find() && matcher.start() == 0) {
+        while (matcher != null) {
             int matchEnd = matcher.end();
+            boolean continuation = matcher.pattern() == TS_CLD_LOC_CONTINUATION_PATTERN;
 
             try {
-                ThunderstormLocation location = parseThunderstormLocationFromMatcher(matcher);
+                ThunderstormLocation location = continuation
+                        ? parseThunderstormContinuationFromMatcher(matcher, lastCloudType)
+                        : parseThunderstormLocationFromMatcher(matcher);
                 remarks.addThunderstormLocation(location);
+                lastCloudType = location.cloudType();
 
                 if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Thunderstorm/Cloud location: {}", location.getSummary());
+                    LOGGER.debug("Thunderstorm/Cloud location{}: {}",
+                            continuation ? " (continuation)" : "", location.getSummary());
                 }
-
-                // SUCCESS: advance
-                remaining = remaining.substring(matchEnd).trim();
-                matcher = TS_CLD_LOC_PATTERN.matcher(remaining);
-
             } catch (RuntimeException e) {
-                // Handle unexpected errors (indicates parser or regex bug)
                 String matchedText = remaining.substring(0, Math.min(matchEnd, remaining.length()));
                 LOGGER.error("Unexpected error parsing thunderstorm location from '{}'. " +
                                 "This may indicate a bug in the regex or parser logic.",
                         matchedText, e);
-
-                // FAILURE: Skip this match and continue processing
-                remaining = remaining.substring(matchEnd).trim();
-                matcher = TS_CLD_LOC_PATTERN.matcher(remaining);
             }
+
+            remaining = remaining.substring(matchEnd).trim();
+            matcher = nextThunderstormMatcher(remaining, lastCloudType);
         }
 
         return remaining;
+    }
+
+    /** Main pattern first; continuation only if a prior clause supplied a type to carry forward. */
+    private Matcher nextThunderstormMatcher(String text, String lastCloudType) {
+        Matcher matcher = matchAtStart(TS_CLD_LOC_PATTERN, text);
+        if (matcher == null && lastCloudType != null) {
+            matcher = matchAtStart(TS_CLD_LOC_CONTINUATION_PATTERN, text);
+        }
+        return matcher;
+    }
+
+    private static Matcher matchAtStart(Pattern pattern, String text) {
+        Matcher matcher = pattern.matcher(text);
+        return matcher.find() && matcher.start() == 0 ? matcher : null;
+    }
+
+    private ThunderstormLocation parseThunderstormContinuationFromMatcher(Matcher matcher, String carriedCloudType) {
+        return new ThunderstormLocation(
+                carriedCloudType,
+                matcher.group("loc"),
+                parseDirectionChain(matcher.group(DIRECTION_CHAIN_CODE)),
+                matcher.group("dirm")
+        );
     }
 
     /**
@@ -2482,7 +2507,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private ThunderstormLocation parseThunderstormLocationFromMatcher(Matcher matcher) {
         String cloudType = matcher.group("type");
         String locationQualifier = matcher.group("loc");
-        String dirchain = matcher.group("dirchain");
+        String dirchain = matcher.group(DIRECTION_CHAIN_CODE);
         String movingDirection = matcher.group("dirm");
 
         List<DirectionSegment> directionSegments = parseDirectionChain(dirchain);
@@ -2498,16 +2523,16 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse a raw direction chain into a list of DirectionSegments.
      * <p>
-     * A chain may contain one or more segments joined by "AND" (each
-     * segment describing a separate reported location for the same
-     * cloud type). Also, each segment may itself be a single compass
-     * point or a multipoint arc/range joined by hyphens.
+     * A chain may contain one or more segments, separated by whitespace
+     * or by "AND" (each segment describing a separate reported location
+     * for the same cloud type). Each segment may itself be a single
+     * compass point or a multipoint arc/range joined by hyphens.
      * <p>
      * Examples:
      * - "E-S-SW" → one segment, a 3-point arc: [E, S, SW]
      * - "N AND SW" → two segments, each a single point: [N], [SW]
-     * - "N-E AND SE-S" → two segments, each a 2-point range:
-     * [N, E], [SE, S]
+     * - "N-E AND SE-S" → two segments, each a 2-point range: [N, E], [SE, S]
+     * - "N NE S SW" → four segments, each a single point: [N], [NE], [S], [SW]
      *
      * @param dirchain the raw direction chain text (it may be null or blank)
      * @return list of DirectionSegments, empty if dirchain has no content
@@ -2517,7 +2542,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return List.of();
         }
 
-        return AND_SEPARATOR_PATTERN.splitAsStream(dirchain.trim())
+        return SEGMENT_SEPARATOR_PATTERN.splitAsStream(dirchain.trim())
                 .map(segment -> new DirectionSegment(
                         Arrays.asList(RANGE_SEPARATOR_PATTERN.split(segment))
                 ))
@@ -2557,7 +2582,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             int matchEnd = matcher.end();
 
             try {
-                String dirchain = matcher.group("dirchain");
+                String dirchain = matcher.group(DIRECTION_CHAIN_CODE);
                 List<DirectionSegment> directionSegments = parseDirectionChain(dirchain);
                 ExceptDirection exceptDirection = ExceptDirection.of(directionSegments);
                 remarks.addExceptDirection(exceptDirection);

@@ -328,6 +328,26 @@ public final class RegExprConst {
             "^(?:XCPT|XCP|EXCP|EXC)\\s+(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+)*+)(?=\\s|$)"
     );
 
+    /** One of the 8 compass points that DirectionSegment accepts, standing alone as a token. */
+    private static final String COMPASS_POINT = "(?:NE|NW|SE|SW|N|E|S|W)(?![A-Z0-9])";
+    private static final String COMPASS_SEGMENT = COMPASS_POINT + "(?:-" + COMPASS_POINT + ")*+";
+
+    /**
+     * Continuation form of a thunderstorm/cloud-location remark: the cloud type
+     * is omitted because it is implied by the immediately preceding clause
+     * (e.g. "TCU NW DSNT N NE S SW" - the DSNT clause continues the TCU).
+     * <p>
+     * Requires a location qualifier. Segments (a point or a hyphenated range)
+     * are separated by whitespace or AND. Only attempted by the parser right
+     * after a successful TS_CLD_LOC_PATTERN match in the same call.
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for continuation direction-chain format
+    public static final Pattern TS_CLD_LOC_CONTINUATION_PATTERN = Pattern.compile(
+            "^(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)\\s+" +
+                    "(?<dirchain>" + COMPASS_SEGMENT + "(?:(?:\\s+AND)?\\s+" + COMPASS_SEGMENT + ")*+)" +
+                    "(?:\\s+MOV\\s+(?<dirm>" + COMPASS_POINT + "))?(?=\\s|$)"
+    );
+
     /**
      * Pressure Rising or Falling Rapidly (PRESRR or PRESFR)
      */

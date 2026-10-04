@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.7-SNAPSHOT - October 4, 2026
+
+#### Added
+- **#106: Space-separated multi-direction thunderstorm-location continuation** —
+  a location clause that omits the cloud type because it is implied by the
+  preceding clause (e.g. `TCU NW DSNT N NE S SW`: the `DSNT` clause continues
+  the `TCU`). Previously the second clause was left orphaned in `freeText`.
+  Found via a live KATL capture during the #99 UAT round.
+  - `RegExprConst.TS_CLD_LOC_CONTINUATION_PATTERN`: a required location
+    qualifier (`OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS`) followed by one or more
+    direction segments (single point or hyphenated range), separated by
+    whitespace or `AND`, with optional `MOV <dir>`. Each point carries its own
+    boundary check against the eight valid compass points, so a following
+    token such as `SLP210` or `SHRAB…` is never partly consumed. Possessive
+    quantifiers keep the repetition iterative (clears Sonar S5998).
+  - `NoaaMetarParser.handleThunderstormLocationSequential`: tracks the last
+    cloud type within one call and, only after a successful main-pattern match,
+    tries the continuation pattern. The type is carried forward into a new
+    `ThunderstormLocation`. With no preceding match nothing is invented and the
+    text stays visible in `freeText`.
+  - `AND_SEPARATOR_PATTERN` replaced by `SEGMENT_SEPARATOR_PATTERN`
+    (`\s+(?:AND\s+)?`) so `parseDirectionChain` splits `N NE S SW` into
+    separate segments. Output is unchanged for all existing `AND`-chains.
+  - No `weather-common` changes: continuations reuse `ThunderstormLocation`
+    and the existing `thunderstormLocations` list.
+  - Known limits: a continuation must directly follow its parent clause (an
+    intervening remark breaks the link), and a restated type with
+    space-separated points (`TCU DSNT N NE S SW`) is still unsupported. No
+    live evidence exists for either.
+
+#### Internal
+- Tests: `RegExprConstTest` (valid forms, false-positive guards, MOV,
+  rejections), `NoaaMetarParserTest` (KATL, ranges/AND, movement, multiple
+  continuations, boundary, no-parent, broken-link cases), and a KATL recovery
+  case in `NoaaMetarParserRemarksRecoveryTest`, diagnostically verified.
+- `weths_discover-historical-metars.sh`: added continuation search patterns.
+  The literal-space variant has no trailing boundary and produced 15 false
+  positives on the K sweep (`LTG DSNT S SLPNO` matched via the `S` of `SLPNO`).
+  Replaced with `(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2}){2,}( |$)`.
+  The sweep found no genuine multi-point continuation beyond KATL.
+
 ### Version 1.20.6-SNAPSHOT - October 3, 2026
 
 #### Added

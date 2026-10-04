@@ -683,6 +683,31 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .isEqualTo(1003.4);
                         }),
 
+                arguments("KATL-SpaceSeparatedThunderstormContinuationNowParsesCorrectly",
+                        "2026/10/02 18:52 KATL 021852Z 00000KT 10SM SCT028TCU SCT100 BKN180 BKN250 27/21 A3009 " +
+                                "RMK AO2 SLP180 TCU NW DSNT N NE S SW MDT CU ALQDS T02720206",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("DSNT N NE S SW now parses as a continuation - no unparsed remnant")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+                            ThunderstormLocation continuation = data.getRemarks().thunderstormLocations().get(1);
+                            assertThat(continuation.cloudType()).isEqualTo("TCU");
+                            assertThat(continuation.locationQualifier()).isEqualTo("DSNT");
+                            assertThat(continuation.directionSegments()).containsExactly(
+                                    new DirectionSegment(List.of("N")),
+                                    new DirectionSegment(List.of("NE")),
+                                    new DirectionSegment(List.of("S")),
+                                    new DirectionSegment(List.of("SW"))
+                            );
+
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1018.0);
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+                            assertThat(data.getRemarks().cloudTypes().get(0).location()).isEqualTo("ALQDS");
+                            assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -708,6 +733,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD " +
                         "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW " +
                         "TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
+                "2026/10/02 18:52 KATL 021852Z 00000KT 10SM SCT028TCU SCT100 BKN180 BKN250 27/21 A3009 " +
+                        "RMK AO2 SLP180 TCU NW DSNT N NE S SW MDT CU ALQDS T02720206",
         };
 
         for (String raw : raws) {

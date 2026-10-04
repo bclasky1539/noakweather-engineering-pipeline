@@ -6258,6 +6258,184 @@ class NoaaMetarParserTest {
         }
     }
 
+    // ========== THUNDERSTORM LOCATION CONTINUATION TESTS ==========
+
+    @Test
+    @DisplayName("Should parse space-separated continuation clause carrying forward the cloud type - KATL real-world")
+    void testParseThunderstormLocation_Continuation_KATL() {
+        String metar = "2026/10/02 18:52 KATL 021852Z 00000KT 10SM SCT028TCU SCT100 BKN180 BKN250 27/21 A3009 " +
+                "RMK AO2 SLP180 TCU NW DSNT N NE S SW MDT CU ALQDS T02720206";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations())
+                .as("TCU NW plus the DSNT continuation, two entries")
+                .hasSize(2);
+
+        ThunderstormLocation first = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(first.cloudType()).isEqualTo("TCU");
+        assertThat(first.locationQualifier()).isNull();
+        assertThat(first.directionSegments()).containsExactly(new DirectionSegment(List.of("NW")));
+
+        ThunderstormLocation continuation = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(continuation.cloudType())
+                .as("Cloud type carried forward from the preceding clause")
+                .isEqualTo("TCU");
+        assertThat(continuation.locationQualifier()).isEqualTo("DSNT");
+        assertThat(continuation.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N")),
+                new DirectionSegment(List.of("NE")),
+                new DirectionSegment(List.of("S")),
+                new DirectionSegment(List.of("SW"))
+        );
+        assertThat(continuation.movingDirection()).isNull();
+
+        // Everything around the continuation still parses
+        assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+        CloudType cu = data.getRemarks().cloudTypes().get(0);
+        assertThat(cu.cloudType()).isEqualTo("CU");
+        assertThat(cu.intensity()).isEqualTo("MDT");
+        assertThat(cu.location()).isEqualTo("ALQDS");
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1018.0, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.2, within(0.1));
+
+        assertThat(data.getRemarks().freeText())
+                .as("DSNT N NE S SW no longer left orphaned in freeText")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse continuation with a single direction")
+    void testParseThunderstormLocation_Continuation_SinglePoint() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TS SE VC N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+        ThunderstormLocation continuation = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(continuation.cloudType()).isEqualTo("TS");
+        assertThat(continuation.locationQualifier()).isEqualTo("VC");
+        assertThat(continuation.directionSegments()).containsExactly(new DirectionSegment(List.of("N")));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse continuation with ranges and AND-chains")
+    void testParseThunderstormLocation_Continuation_RangesAndAndChain() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB W DSNT N-NE AND S-SW";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+        ThunderstormLocation continuation = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(continuation.cloudType()).isEqualTo("CB");
+        assertThat(continuation.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N", "NE")),
+                new DirectionSegment(List.of("S", "SW"))
+        );
+    }
+
+    @Test
+    @DisplayName("Should parse continuation with movement")
+    void testParseThunderstormLocation_Continuation_WithMovement() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB W DSNT N NE MOV E";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+        ThunderstormLocation continuation = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(continuation.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N")),
+                new DirectionSegment(List.of("NE"))
+        );
+        assertThat(continuation.movingDirection()).isEqualTo("E");
+        assertThat(continuation.isMoving()).isTrue();
+    }
+
+    @Test
+    @DisplayName("Should carry the cloud type across multiple consecutive continuations")
+    void testParseThunderstormLocation_Continuation_Multiple() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU NW DSNT N NE OHD S";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(3);
+        assertThat(data.getRemarks().thunderstormLocations())
+                .allSatisfy(location -> assertThat(location.cloudType()).isEqualTo("TCU"));
+        assertThat(data.getRemarks().thunderstormLocations().get(1).locationQualifier()).isEqualTo("DSNT");
+        assertThat(data.getRemarks().thunderstormLocations().get(2).locationQualifier()).isEqualTo("OHD");
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should not let a continuation absorb the first letter of the following token")
+    void testParseThunderstormLocation_Continuation_DoesNotAbsorbNextToken() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU NW DSNT S SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations().get(1).directionSegments())
+                .containsExactly(new DirectionSegment(List.of("S")));
+        assertThat(data.getRemarks().seaLevelPressure())
+                .as("SLP210 must survive; its S is not a direction")
+                .isNotNull();
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0, within(0.1));
+    }
+
+    @Test
+    @DisplayName("Should not treat a qualifier-led clause as a continuation when no thunderstorm location precedes it")
+    void testParseThunderstormLocation_Continuation_RequiresPrecedingLocation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK DSNT N NE";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations())
+                .as("No cloud type to carry forward, so nothing is invented")
+                .isEmpty();
+        assertThat(data.getRemarks().freeText())
+                .as("The unrecognized text stays visible for review")
+                .contains("DSNT N NE");
+    }
+
+    @Test
+    @DisplayName("Should not carry a cloud type across an intervening remark")
+    void testParseThunderstormLocation_Continuation_NotCarriedAcrossOtherRemarks() {
+        // Documents the conservative scope: the carried-forward type lives only
+        // within one handler call, so a different remark between the two clauses
+        // breaks the link and the DSNT clause stays visible in freeText.
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU NW SLP210 DSNT N NE";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().freeText()).contains("DSNT N NE");
+    }
+
     // ========== LIGHTNING REMARKS PARSING TESTS ==========
 
     @Test
@@ -7663,7 +7841,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().cloudTypes()).isEmpty();
     }
 
-    // ========== DIRECTIONAL ARC AND AND-CHAIN THUNDERSTORM LOCATION TESTS (Issue #69) ==========
+    // ========== DIRECTIONAL ARC AND AND-CHAIN THUNDERSTORM LOCATION TESTS ==========
 
     @Test
     @DisplayName("Should parse three-point directional arc - KDFW real-world")
