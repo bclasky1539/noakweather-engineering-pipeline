@@ -80,15 +80,20 @@ PATTERN_LABELS=(
     "ICG-bare"
     "CI0-standalone"
     "EMBDD-standalone"
+    "TS-CLD-LOC-Continuation-SpaceSeparated"
+    "TS-CLD-LOC-Continuation-LiteralSpace"
 )
 # '\bSLP[0-9]{3}\b'
 # '\bQ[0-9]{4}\b'
+# '(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS) [NSEW]{1,2}( [NSEW]{1,2}){1,}'
 PATTERN_REGEXES=(
     '\bX(C)?PT?\b'
     '\b(EXCP|EXC|EXPCD|EXPCTD|EXPTD|EXP)\b'
     '\bICG\b'
     '\bCI0\b'
     'EMBDD'
+    '\b(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)\s+[NSEW]{1,2}(\s+[NSEW]{1,2}){1,}\b'
+    '(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2}){2,}( |$)'
 )
 
 COUNT=0

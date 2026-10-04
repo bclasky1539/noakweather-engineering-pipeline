@@ -2342,6 +2342,101 @@ class RegExprConstTest {
         assertThat(matcher.group("dirchain")).isEqualTo("N");
     }
 
+    // ========== THUNDERSTORM LOCATION CONTINUATION PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'DSNT N NE S SW MDT CU ALQDS', DSNT, 'N NE S SW', 'KATL real-world, four space-separated points'",
+            "'DSNT N', DSNT, 'N', 'Single point (no minimum)'",
+            "'OHD N S', OHD, 'N S', 'Two points, OHD qualifier'",
+            "'ALQDS N NE', ALQDS, 'N NE', 'Two points, ALQDS qualifier'",
+            "'DSNT N-NE', DSNT, 'N-NE', 'Single range'",
+            "'DSNT E-S-SW', DSNT, 'E-S-SW', 'Three-point arc'",
+            "'DSNT N AND SW', DSNT, 'N AND SW', 'AND-chain of single points'",
+            "'DSNT N-E AND SE-S', DSNT, 'N-E AND SE-S', 'AND-chain of ranges'",
+            "'DSNT N-NE S-SW', DSNT, 'N-NE S-SW', 'Space-separated ranges'"
+    })
+    @DisplayName("TS_CLD_LOC_CONTINUATION_PATTERN should match qualifier + direction chain forms")
+    void testTsCldLocContinuationPattern_ValidForms(String input, String expectedLoc,
+                                                    String expectedDirchain, String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_CONTINUATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.start()).isZero();
+        assertThat(matcher.group("loc"))
+                .as("Qualifier: %s", scenario)
+                .isEqualTo(expectedLoc);
+        assertThat(matcher.group("dirchain"))
+                .as("Dirchain: %s", scenario)
+                .isEqualTo(expectedDirchain);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'DSNT S SLPNO', S, 'Stops before SLPNO (K1HM false positive)'",
+            "'DSNT SE SHRAB0738E0951', SE, 'Stops before SHRAB (KQZ7 false positive)'",
+            "'DSNT NE SLP055', NE, 'Stops before SLP055 (KQS9 false positive)'",
+            "'DSNT N NE SLP180', 'N NE', 'Keeps real points, stops before SLP180'"
+    })
+    @DisplayName("TS_CLD_LOC_CONTINUATION_PATTERN should not consume the first letter of the following token")
+    void testTsCldLocContinuationPattern_StopsAtNonDirectionToken(String input,
+                                                                  String expectedDirchain,
+                                                                  String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_CONTINUATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("dirchain"))
+                .as("Dirchain must not absorb the next token: %s", scenario)
+                .isEqualTo(expectedDirchain);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'DSNT N NE MOV E', 'N NE', E, 'Movement after space-separated points'",
+            "'DSNT N MOV SE', N, SE, 'Two-letter movement direction'",
+            "'OHD N-NE MOV SW', 'N-NE', SW, 'Movement after a range'"
+    })
+    @DisplayName("TS_CLD_LOC_CONTINUATION_PATTERN should capture optional MOV direction")
+    void testTsCldLocContinuationPattern_WithMovement(String input, String expectedDirchain,
+                                                      String expectedMovement, String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_CONTINUATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.group("dirchain")).isEqualTo(expectedDirchain);
+        assertThat(matcher.group("dirm")).isEqualTo(expectedMovement);
+    }
+
+    @Test
+    @DisplayName("TS_CLD_LOC_CONTINUATION_PATTERN should leave dirm null when MOV is absent")
+    void testTsCldLocContinuationPattern_NoMovement() {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_CONTINUATION_PATTERN.matcher("DSNT N NE");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dirm")).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "DSNT",                // Qualifier with nothing after it
+            "DSNT SLPNO",          // No compass point at all
+            "DSNT NS",             // NS (nimbostratus) is not a compass point
+            "DSNT MOV E",          // MOV is not a direction
+            "N NE S SW",           // No qualifier (qualifier is required)
+            "TCU DSNT N",          // Starts with a cloud type: the main pattern's job
+            "XCPT N",              // Except-direction remark, not a continuation
+            "DSNT AND N"           // AND with nothing before it
+    })
+    @DisplayName("TS_CLD_LOC_CONTINUATION_PATTERN should not match non-continuation text")
+    void testTsCldLocContinuationPattern_DoesNotMatchInvalidForms(String input) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_CONTINUATION_PATTERN.matcher(input);
+
+        assertThat(matcher.find() && matcher.start() == 0).isFalse();
+    }
+
     // ========== LAST OBSERVATION / NEXT OBSERVATION PATTERN TESTS ==========
 
     @ParameterizedTest
