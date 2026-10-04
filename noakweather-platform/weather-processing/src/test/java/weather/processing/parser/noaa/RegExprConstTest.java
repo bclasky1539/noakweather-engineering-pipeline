@@ -2287,6 +2287,61 @@ class RegExprConstTest {
         assertThat(matcher.group("dirm")).isEqualTo("E");
     }
 
+    // ========== EXCEPT DIRECTION PATTERN TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'XCPT N ', N, 'TTPP real-world, single point'",
+            "'XCP N ', N, 'XCP abbreviation, single point'",
+            "'EXCP N ', N, 'EXCP abbreviation, single point'",
+            "'EXC N ', N, 'EXC abbreviation, single point'",
+            "'XCPT S ', S, 'South'",
+            "'XCPT E ', E, 'East'",
+            "'XCPT W ', W, 'West'",
+            "'XCPT NE ', NE, 'Northeast (two-letter point)'",
+            "'XCPT SW ', SW, 'Southwest (two-letter point)'",
+            "'XCPT N-NE ', 'N-NE', 'Range'",
+            "'XCPT N AND SW ', 'N AND SW', 'AND-chain of single points'",
+            "'XCPT N-E AND SE-S ', 'N-E AND SE-S', 'AND-chain of ranges'"
+    })
+    @DisplayName("EXCEPT_DIRECTION_PATTERN should match single-point, range, and AND-chain except-direction forms")
+    void testExceptDirectionPattern_ValidForms(String input, String expectedDirchain, String scenario) {
+        Matcher matcher = RegExprConst.EXCEPT_DIRECTION_PATTERN.matcher(input);
+
+        assertThat(matcher.find())
+                .as("Pattern should match: %s", scenario)
+                .isTrue();
+        assertThat(matcher.group("dirchain"))
+                .as("Dirchain should match: %s", scenario)
+                .isEqualTo(expectedDirchain);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "XCPT",          // Missing direction entirely
+            "XCPT ",         // Missing direction, trailing space only
+            "EXPCD N",       // "expected" family — different meaning, out of scope
+            "EXPCTD N",      // "expected" family — out of scope
+            "EXPTD N",       // "expected" family — out of scope
+            "EXP N",         // "expected" family — out of scope
+            "XCPT NESW"      // Invalid compass point (not a real point or valid chain shape)
+    })
+    @DisplayName("EXCEPT_DIRECTION_PATTERN should not match invalid or out-of-scope forms")
+    void testExceptDirectionPattern_DoesNotMatchInvalidFormats(String input) {
+        Matcher matcher = RegExprConst.EXCEPT_DIRECTION_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("EXCEPT_DIRECTION_PATTERN should match at end of string (no trailing space)")
+    void testExceptDirectionPattern_AtEndOfString() {
+        Matcher matcher = RegExprConst.EXCEPT_DIRECTION_PATTERN.matcher("XCPT N");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("dirchain")).isEqualTo("N");
+    }
+
     // ========== LAST OBSERVATION / NEXT OBSERVATION PATTERN TESTS ==========
 
     @ParameterizedTest

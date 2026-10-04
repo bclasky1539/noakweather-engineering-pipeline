@@ -6011,6 +6011,253 @@ class NoaaMetarParserTest {
                 .contains("Moving");
     }
 
+    // ========== EXCEPT DIRECTION PARSING TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR TTPP 021900Z 14006KT 9000 BKN010CB 28/26 Q1012 RMK CB ALQDS XCPT N', N, 'TTPP real-world, single point'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCP N', N, 'XCP abbreviation'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK EXCP N', N, 'EXCP abbreviation'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK EXC N', N, 'EXC abbreviation'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT S', S, 'South'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT NE', NE, 'Northeast (two-letter point)'"
+    })
+    @DisplayName("Should parse single-point except-direction forms")
+    void testParseExceptDirection_SinglePoint(String metar, String expectedPoint, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections())
+                .as("Should have except-direction remarks: %s", scenario)
+                .hasSize(1);
+
+        ExceptDirection exceptDirection = data.getRemarks().exceptDirections().get(0);
+        assertThat(exceptDirection.directionSegments())
+                .as("Direction mismatch: %s", scenario)
+                .containsExactly(new DirectionSegment(List.of(expectedPoint)));
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction with a two-point range")
+    void testParseExceptDirection_Range() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT N-NE";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+        ExceptDirection exceptDirection = data.getRemarks().exceptDirections().get(0);
+        assertThat(exceptDirection.directionSegments())
+                .containsExactly(new DirectionSegment(List.of("N", "NE")));
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction with an AND-chain of single points")
+    void testParseExceptDirection_AndChain() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT N AND SW";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+        ExceptDirection exceptDirection = data.getRemarks().exceptDirections().get(0);
+        assertThat(exceptDirection.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N")),
+                new DirectionSegment(List.of("SW"))
+        );
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction with an AND-chain of ranges")
+    void testParseExceptDirection_AndChainOfRanges() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT N-E AND SE-S";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+        ExceptDirection exceptDirection = data.getRemarks().exceptDirections().get(0);
+        assertThat(exceptDirection.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N", "E")),
+                new DirectionSegment(List.of("SE", "S"))
+        );
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction alongside thunderstorm location - TTPP real-world (CB ALQDS XCPT N)")
+    void testParseExceptDirection_WithThunderstormLocation_TTPP() {
+        String metar = "METAR TTPP 021900Z 14006KT 090V180 9000 4000SE TSRA BKN010CB SCT018 " +
+                "28/26 Q1012 TEMPO 5000 TSRA RMK CB ALQDS XCPT N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // CB ALQDS parses correctly (confirmed via #99)
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("CB");
+        assertThat(location.locationQualifier()).isEqualTo("ALQDS");
+
+        // XCPT N now parses as an except-direction remark instead of falling
+        // through to freeText
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+        ExceptDirection exceptDirection = data.getRemarks().exceptDirections().get(0);
+        assertThat(exceptDirection.directionSegments())
+                .containsExactly(new DirectionSegment(List.of("N")));
+
+        // TEMPO 5000 TSRA in the main body is a separate, unrelated finding
+        // (tracked under the TAF-work issue), confirmed still present and not
+        // affected by this fix
+        assertThat(data.getUnparsedMainBody()).contains("TEMPO 5000 TSRA");
+
+        assertThat(data.getRemarks().freeText())
+                .as("No unparsed except-direction remnant should remain")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse multiple independent except-direction remarks")
+    void testParseExceptDirection_Multiple() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT N TCU DSNT S XCP SW";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections())
+                .as("Should have 2 independent except-direction remarks")
+                .hasSize(2);
+
+        assertThat(data.getRemarks().exceptDirections().get(0).directionSegments())
+                .containsExactly(new DirectionSegment(List.of("N")));
+        assertThat(data.getRemarks().exceptDirections().get(1).directionSegments())
+                .containsExactly(new DirectionSegment(List.of("SW")));
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction with other remarks")
+    void testParseExceptDirection_WithOtherRemarks() {
+        String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
+                "RMK AO2 SLP201 T02330139 XCPT N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction in mixed remark order")
+    void testParseExceptDirection_MixedOrder() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT N AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction at end of remarks (no trailing space)")
+    void testParseExceptDirection_AtEnd() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210 XCPT N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+        assertThat(data.getRemarks().exceptDirections().get(0).directionSegments())
+                .containsExactly(new DirectionSegment(List.of("N")));
+    }
+
+    @Test
+    @DisplayName("Should parse except-direction without other remarks")
+    void testParseExceptDirection_Alone() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK XCPT N";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks()).isNotNull();
+        assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+
+        assertThat(data.getRemarks().automatedStationType()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 SLP210', 'No except-direction remark'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK', 'Empty remarks'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015', 'No RMK section'"
+    })
+    @DisplayName("Should handle METAR with no except-direction remarks")
+    void testParseMetar_NoExceptDirection(String metar, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess())
+                .as("Should parse successfully: %s", scenario)
+                .isTrue();
+
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().exceptDirections())
+                    .as("Except-direction remarks should be empty: %s", scenario)
+                    .isEmpty();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "METAR KJFK 121853Z 28016KT 10SM A3015 RMK EXPCD N",   // "expected" family — out of scope
+            "METAR KJFK 121853Z 28016KT 10SM A3015 RMK EXPCTD N",  // out of scope
+            "METAR KJFK 121853Z 28016KT 10SM A3015 RMK EXPTD N",   // out of scope
+            "METAR KJFK 121853Z 28016KT 10SM A3015 RMK EXP N"      // out of scope
+    })
+    @DisplayName("Should not parse 'expected' family forms as except-direction")
+    void testParseExceptDirection_ExpectedFamilyNotParsed(String metar) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        if (data.getRemarks() != null) {
+            assertThat(data.getRemarks().exceptDirections()).isEmpty();
+        }
+    }
+
     // ========== LIGHTNING REMARKS PARSING TESTS ==========
 
     @Test

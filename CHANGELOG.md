@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.6-SNAPSHOT - October 3, 2026
+
+#### Added
+- **#105: `XCPT`/`XCP`/`EXCP`/`EXC` (except) direction-exception remark** — a
+  remark indicating a previously reported condition does not apply in a given
+  direction (e.g. `CB ALQDS XCPT N` which is "CB in all quadrants, except to
+  the north"). Found during the #99 UAT round via a live TTPP capture, filed
+  as its own issue, and scoped to the "except" family only.
+  - `RegExprConst.EXCEPT_DIRECTION_PATTERN`: new pattern recognizing
+    `XCPT`/`XCP`/`EXCP`/`EXC` followed by a direction chain using the same
+    grammar as `TS_CLD_LOC_PATTERN` (single point, hyphenated range, or
+    AND-chain of either) and not assumed to be single-point-only
+  - `ExceptDirection`: new record holding `List<DirectionSegment>`; which of
+    the four "except" abbreviations appeared in the raw text is not
+    preserved, since all four are equivalent in meaning
+  - `NoaaMetarRemarks`: added `exceptDirections` (`List<ExceptDirection>`),
+    wired through the record, compact constructor, `isEmpty()`, builder
+    (`addExceptDirection`/`exceptDirections`), `build()`, and `toString()`
+  - `NoaaMetarParser`: new `handleExceptDirectionSequential` handler,
+    reusing the existing `parseDirectionChain(...)` helper (shared with
+    `handleThunderstormLocationSequential`) rather than duplicating
+    range/AND-chain splitting logic. Positioned at the **end** of
+    `runRemarkHandlerPasses`'s handler list and not alongside
+    `handleThunderstormLocationSequential`
+  - Confirmed against the real TTPP capture that originally surfaced this
+    issue: `CB ALQDS XCPT N` and `freeText` now `null` (previously held the
+    orphaned `"XCPT N"` token), `exceptDirections` now populated correctly.
+    Also manually verified the range form (`XCPT N-NE`) via
+    `printRemarksParsingDiagnostics`, both standalone and inserted into the
+    existing dense KCLT recovery capture, before locking in assertions
+
+#### Internal
+- Test coverage added at all four levels: `RegExprConstTest` (pattern match
+  for single-point, range, and AND-chain forms; `EXPCD`-family rejection),
+  `ExceptDirectionTest` (record-level: construction, `hasDirections()`,
+  `getSummary()`, equality), `NoaaMetarParserTest` (end-to-end, including a
+  regression test for the handler-ordering fix with multiple independent
+  except-direction remarks in one string), `NoaaMetarParserRemarksRecoveryTest`
+  (real-world TTPP recovery case)
+- New exploratory tooling: `weths_discover-historical-metars.sh` — a
+  standalone script (not part of the `wethuat_*` UAT toolchain) that
+  searches NOAA's `tgftp.nws.noaa.gov` per-station METAR archive (every
+  station's most recently received report, which may be years old) by
+  country-code prefix, used to exhaustively rule out live examples of
+  `EXPCD`/`EXPCTD`/`EXPTD`/`EXP` and other rare tokens across every letter
+  A-Z, including the full US (K) roster, with zero matches found
+- `.gitignore` updated for the new script's output directory
+  (`historical-discovery/`)
+- Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
+  behavior change elsewhere
+
 ### Version 1.20.5-SNAPSHOT - October 2, 2026
 
 #### Added

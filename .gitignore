@@ -79,6 +79,7 @@ src/main/java/.DS_Store
 documentation/
 references/
 uat-discovery/
+historical-discovery/
 
 # JaCoCo
 jacoco.exec

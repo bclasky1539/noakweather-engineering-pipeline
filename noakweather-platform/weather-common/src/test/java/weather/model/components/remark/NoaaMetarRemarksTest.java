@@ -186,8 +186,8 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
-                null, freeText
+                null, null, null, null,
+                null, null, null, freeText
         );
 
         assertEquals(stationType, remarks.automatedStationType());
@@ -358,7 +358,7 @@ class NoaaMetarRemarksTest {
                 new WindRemarks(peakWind, null, null), null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null, null,
                 null, null
         );
@@ -375,7 +375,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 new WindRemarks(null, windShift, null), null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null,
                 null, null
@@ -788,10 +788,10 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, new VisibilityRemarks(null, null, varVis),
                 null, null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
-                null, null, null, null,
-                null, null, null
+                null, null, null, null
         );
 
         assertEquals(varVis, remarks.variableVisibility());
@@ -995,7 +995,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(towerVis, null, null), null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
                 null, null, null
         );
@@ -1014,7 +1014,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(null, surfaceVis, null),
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null, null,
                 null, null
         );
@@ -1034,7 +1034,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(towerVis, surfaceVis, null), null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
                 null, null, null
         );
@@ -1242,7 +1242,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, hourly, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1261,7 +1261,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, sixHour, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1280,7 +1280,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, twentyFourHour, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1301,7 +1301,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, hourly, null,
                 sixHour, twentyFourHour, null, null, null, null, null,
-                null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
                 null, null, null
         );
@@ -1548,7 +1548,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, hailSize, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1563,7 +1563,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null, null
         );
@@ -1765,7 +1765,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, List.of(location),
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1784,7 +1784,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                List.of(location1, location2), null, null, null, null,
+                List.of(location1, location2), null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null
@@ -2167,7 +2167,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, List.of(event), null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -2186,7 +2186,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, List.of(event1, event2),
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null
@@ -2570,7 +2570,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                new PressureRemarks(tendency, null), null, null, null,
+                null, new PressureRemarks(tendency, null), null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null
@@ -2586,7 +2586,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null, null
         );
@@ -2912,6 +2912,272 @@ class NoaaMetarRemarksTest {
                 .build();
 
         assertNotEquals(remarks1, remarks2);
+    }
+
+    // ========== EXCEPT DIRECTION TESTS ==========
+
+    @Test
+    @DisplayName("Should not be empty when only exceptDirections is present")
+    void testIsEmptyWithOnlyExceptDirections() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should handle empty exceptDirections list")
+    void testIsEmptyWithEmptyExceptDirectionsList() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .exceptDirections(List.of())
+                .build();
+
+        assertThat(remarks.exceptDirections()).isEmpty();
+        assertThat(remarks.exceptDirections()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should handle null exceptDirections in builder")
+    void testIsEmptyWithNullExceptDirections() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .exceptDirections(null)
+                .build();
+
+        assertThat(remarks.exceptDirections()).isEmpty();
+        assertThat(remarks.exceptDirections()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should build remarks with single exceptDirection via builder - TTPP real-world (XCPT N)")
+    void testBuilderWithSingleExceptDirection() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        assertEquals(1, remarks.exceptDirections().size());
+        assertEquals(exceptDirection, remarks.exceptDirections().get(0));
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should build remarks with multiple exceptDirections via addExceptDirection")
+    void testBuilderWithMultipleExceptDirectionsViaAdd() {
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(new DirectionSegment(List.of("SW"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection1)
+                .addExceptDirection(exceptDirection2)
+                .build();
+
+        assertEquals(2, remarks.exceptDirections().size());
+        assertEquals(exceptDirection1, remarks.exceptDirections().get(0));
+        assertEquals(exceptDirection2, remarks.exceptDirections().get(1));
+    }
+
+    @Test
+    @DisplayName("Should build remarks with exceptDirections list via bulk setter")
+    void testBuilderWithExceptDirectionsList() {
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(new DirectionSegment(List.of("SW"))));
+        List<ExceptDirection> exceptDirections = List.of(exceptDirection1, exceptDirection2);
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .exceptDirections(exceptDirections)
+                .build();
+
+        assertEquals(2, remarks.exceptDirections().size());
+        assertEquals(exceptDirection1, remarks.exceptDirections().get(0));
+        assertEquals(exceptDirection2, remarks.exceptDirections().get(1));
+    }
+
+    @Test
+    @DisplayName("Should build remarks with multiple fields including exceptDirections")
+    void testBuilderWithMultipleFieldsIncludingExceptDirections() {
+        AutomatedStationType stationType = AutomatedStationType.AO2;
+        Pressure slp = Pressure.hectopascals(1013.2);
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .automatedStationType(stationType)
+                .seaLevelPressure(slp)
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        assertEquals(stationType, remarks.automatedStationType());
+        assertEquals(slp, remarks.seaLevelPressure());
+        assertEquals(1, remarks.exceptDirections().size());
+        assertEquals(exceptDirection, remarks.exceptDirections().get(0));
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should include single exceptDirection in toString()")
+    void testToStringWithSingleExceptDirection() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        String str = remarks.toString();
+        assertTrue(str.contains("exceptDirections"));
+        assertTrue(str.contains("Except N"));
+    }
+
+    @Test
+    @DisplayName("Should include multiple exceptDirections with semicolon separator in toString()")
+    void testToStringWithMultipleExceptDirections() {
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(new DirectionSegment(List.of("SW"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection1)
+                .addExceptDirection(exceptDirection2)
+                .build();
+
+        String str = remarks.toString();
+        assertThat(str)
+                .contains("exceptDirections=")
+                .contains(";")
+                .contains("Except N")
+                .contains("Except SW");
+    }
+
+    @Test
+    @DisplayName("Should be equal when exceptDirections are the same")
+    void testEqualityWithExceptDirections() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .automatedStationType(AutomatedStationType.AO2)
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        assertEquals(remarks1, remarks2);
+        assertEquals(remarks1.hashCode(), remarks2.hashCode());
+    }
+
+    @Test
+    @DisplayName("Should not be equal when exceptDirections differ")
+    void testInequalityWithDifferentExceptDirections() {
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(new DirectionSegment(List.of("SW"))));
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection1)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection2)
+                .build();
+
+        assertNotEquals(remarks1, remarks2);
+    }
+
+    @Test
+    @DisplayName("Should not be equal when exceptDirections count differs")
+    void testInequalityWithDifferentExceptDirectionCounts() {
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(new DirectionSegment(List.of("SW"))));
+
+        NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection1)
+                .build();
+
+        NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection1)
+                .addExceptDirection(exceptDirection2)
+                .build();
+
+        assertNotEquals(remarks1, remarks2);
+    }
+
+    @Test
+    @DisplayName("Should handle exceptDirection with a two-point range")
+    void testExceptDirectionWithRange() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N", "NE"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        assertEquals(1, remarks.exceptDirections().size());
+        ExceptDirection stored = remarks.exceptDirections().get(0);
+        assertThat(stored.directionSegments()).containsExactly(new DirectionSegment(List.of("N", "NE")));
+        assertTrue(stored.hasDirections());
+    }
+
+    @Test
+    @DisplayName("Should handle exceptDirection with an AND-chain of ranges")
+    void testExceptDirectionWithAndChainOfRanges() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(
+                new DirectionSegment(List.of("N", "E")),
+                new DirectionSegment(List.of("SE", "S"))
+        ));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        ExceptDirection stored = remarks.exceptDirections().get(0);
+        assertThat(stored.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N", "E")),
+                new DirectionSegment(List.of("SE", "S"))
+        );
+    }
+
+    @Test
+    @DisplayName("Should handle null exceptDirection in addExceptDirection")
+    void testBuilderWithAddNullExceptDirection() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(null)
+                .build();
+
+        assertThat(remarks.exceptDirections()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should handle exceptDirections alongside thunderstormLocations - TTPP real-world shape (CB ALQDS XCPT N)")
+    void testExceptDirectionsWithThunderstormLocations() {
+        ThunderstormLocation location = new ThunderstormLocation("CB", "ALQDS", null, null);
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addThunderstormLocation(location)
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        assertEquals(1, remarks.thunderstormLocations().size());
+        assertEquals(1, remarks.exceptDirections().size());
+        assertFalse(remarks.isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should create immutable exceptDirections list")
+    void testImmutableExceptDirectionsList() {
+        ExceptDirection exceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .addExceptDirection(exceptDirection)
+                .build();
+
+        List<ExceptDirection> exceptDirections = remarks.exceptDirections();
+        ExceptDirection newExceptDirection = ExceptDirection.of(List.of(new DirectionSegment(List.of("SW"))));
+
+        assertThrows(UnsupportedOperationException.class, () ->
+                exceptDirections.add(newExceptDirection)
+        );
     }
 
     // ========== ICING TESTS ==========
@@ -3277,7 +3543,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null,
                 null, null, null, List.of(remark), null
                 , null
@@ -4967,6 +5233,7 @@ class NoaaMetarRemarksTest {
                 .addWeatherEvent(new WeatherEvent("RA", null, null, 5,
                         null, 30))
                 .addThunderstormLocation(ThunderstormLocation.of("TS", "SE"))
+                .addExceptDirection(ExceptDirection.of(List.of(new DirectionSegment(List.of("N")))))
                 .addLightningRemark(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
                         new DirectionSegment(List.of("N")), false))
                 .updatePressure(p -> p.withPressureTendency(PressureTendency.of(2, 3.2)))
@@ -5044,6 +5311,7 @@ class NoaaMetarRemarksTest {
                 .addWeatherEvent(new WeatherEvent("RA", null, null, 5,
                         null, 30))
                 .addThunderstormLocation(ThunderstormLocation.of("TS", "SE"))
+                .addExceptDirection(ExceptDirection.of(List.of(new DirectionSegment(List.of("N")))))
                 .addLightningRemark(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
                         new DirectionSegment(List.of("N")), false))
                 .updatePressure(p -> p.withPressureTendency(PressureTendency.of(2, 3.2)))
@@ -5067,10 +5335,12 @@ class NoaaMetarRemarksTest {
 
         String str = remarks.toString();
 
-        // Remaining 20 assertions
+        // Remaining 22 assertions
         assertAll("Weather and temperature fields should be present in toString",
                 () -> assertTrue(str.contains("weatherEvents")),
                 () -> assertTrue(str.contains("thunderstormLocations")),
+                () -> assertTrue(str.contains("exceptDirections")),
+                () -> assertTrue(str.contains("Except N")),
                 () -> assertTrue(str.contains("lightningRemarks")),
                 () -> assertTrue(str.contains("pressureTendency")),
                 () -> assertTrue(str.contains("pressureRapidChange")),
@@ -5135,6 +5405,12 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation location1 = ThunderstormLocation.of("TS", "SE");
         ThunderstormLocation location2 = ThunderstormLocation.withMovement("CB", "W", "E");
         List<ThunderstormLocation> thunderstormLocations = List.of(location1, location2);
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(
+                new DirectionSegment(List.of("N", "E")),
+                new DirectionSegment(List.of("SE", "S"))
+        ));
+        List<ExceptDirection> exceptDirections = List.of(exceptDirection1, exceptDirection2);
         PressureTendency tendency = PressureTendency.of(2, 3.2);
         PressureRapidChange pressureRapidChange = PressureRapidChange.of("R");
         Icing icing = Icing.of(true, false, "PAST HR");
@@ -5167,13 +5443,13 @@ class NoaaMetarRemarksTest {
                 stationType, slp, temp, dewpoint, new WindRemarks(peakWind, windShift, windsAtLocation), directionalWeather,
                 new VisibilityRemarks(towerVis, surfaceVis, varVis), new CeilingRemarks(variableCeiling, ceilingSecondSite),
                 obscurationLayers, cloudTypes, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize, weatherEvents,
-                thunderstormLocations, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
+                thunderstormLocations, exceptDirections, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
                 sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet,
                 new MaintenanceRemarks(automatedMaintenanceIndicators, maintenanceRequired), observationProgramStatus,
                 lightningRemarks, predominantCloudTypes, freeText
         );
 
-        // Verify first 18 fields
+        // Verify first 19 fields
         assertAll("First half of fields should be correctly set",
                 () -> assertEquals(stationType, remarks.automatedStationType()),
                 () -> assertEquals(slp, remarks.seaLevelPressure()),
@@ -5192,7 +5468,8 @@ class NoaaMetarRemarksTest {
                 () -> assertEquals(surfaceVis, remarks.surfaceVisibility()),
                 () -> assertEquals(hourly, remarks.hourlyPrecipitation()),
                 () -> assertEquals(ppGroupValue, remarks.ppGroupValue()),
-                () -> assertEquals(sixHour, remarks.sixHourPrecipitation())
+                () -> assertEquals(sixHour, remarks.sixHourPrecipitation()),
+                () -> assertEquals(twentyFourHour, remarks.twentyFourHourPrecipitation())
         );
     }
 
@@ -5239,6 +5516,12 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation location1 = ThunderstormLocation.of("TS", "SE");
         ThunderstormLocation location2 = ThunderstormLocation.withMovement("CB", "W", "E");
         List<ThunderstormLocation> thunderstormLocations = List.of(location1, location2);
+        ExceptDirection exceptDirection1 = ExceptDirection.of(List.of(new DirectionSegment(List.of("N"))));
+        ExceptDirection exceptDirection2 = ExceptDirection.of(List.of(
+                new DirectionSegment(List.of("N", "E")),
+                new DirectionSegment(List.of("SE", "S"))
+        ));
+        List<ExceptDirection> exceptDirections = List.of(exceptDirection1, exceptDirection2);
         PressureTendency tendency = PressureTendency.of(2, 3.2);
         PressureRapidChange pressureRapidChange = PressureRapidChange.of("R");
         Icing icing = Icing.of(true, false, "PAST HR");
@@ -5271,7 +5554,7 @@ class NoaaMetarRemarksTest {
                 stationType, slp, temp, dewpoint, new WindRemarks(peakWind, windShift, windsAtLocation), directionalWeather,
                 new VisibilityRemarks(towerVis, surfaceVis, varVis), new CeilingRemarks(variableCeiling, ceilingSecondSite),
                 obscurationLayers, cloudTypes, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize, weatherEvents,
-                thunderstormLocations, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
+                thunderstormLocations, exceptDirections, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
                 sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet,
                 new MaintenanceRemarks(automatedMaintenanceIndicators, maintenanceRequired), observationProgramStatus,
                 lightningRemarks, predominantCloudTypes, freeText
@@ -5279,10 +5562,10 @@ class NoaaMetarRemarksTest {
 
         // Verify remaining 19 fields
         assertAll("Second half of fields should be correctly set",
-                () -> assertEquals(twentyFourHour, remarks.twentyFourHourPrecipitation()),
                 () -> assertEquals(hailSize, remarks.hailSize()),
                 () -> assertEquals(weatherEvents, remarks.weatherEvents()),
                 () -> assertEquals(thunderstormLocations, remarks.thunderstormLocations()),
+                () -> assertEquals(exceptDirections, remarks.exceptDirections()),
                 () -> assertEquals(tendency, remarks.pressureTendency()),
                 () -> assertEquals(pressureRapidChange, remarks.pressureRapidChange()),
                 () -> assertEquals(icing, remarks.icing()),

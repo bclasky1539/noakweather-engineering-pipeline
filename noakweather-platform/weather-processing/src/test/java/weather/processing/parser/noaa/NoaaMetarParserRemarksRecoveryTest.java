@@ -375,6 +375,33 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().cloudTypes()).hasSize(3);
                         }),
 
+                arguments("TTPP-ExceptDirectionNowParsesCorrectly",
+                        "2026/10/02 19:00 TTPP 021900Z 14006KT 090V180 9000 4000SE TSRA BKN010CB SCT018 28/26 Q1012 " +
+                                "TEMPO 5000 TSRA RMK CB ALQDS XCPT N",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("XCPT N now parses as an except-direction remark - no unparsed remnant")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().thunderstormLocations())
+                                    .as("CB ALQDS should still parse correctly (confirmed via #99)")
+                                    .hasSize(1);
+                            ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(location.cloudType()).isEqualTo("CB");
+                            assertThat(location.locationQualifier()).isEqualTo("ALQDS");
+
+                            assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+                            ExceptDirection exceptDirection = data.getRemarks().exceptDirections().get(0);
+                            assertThat(exceptDirection.directionSegments())
+                                    .containsExactly(new DirectionSegment(List.of("N")));
+
+                            // TEMPO 5000 TSRA is a separate, unrelated finding (tracked under
+                            // the TAF-work issue) - confirmed still present and unaffected
+                            assertThat(data.getUnparsedMainBody())
+                                    .as("Unrelated TEMPO finding should be unaffected by this fix")
+                                    .contains("TEMPO 5000 TSRA");
+                        }),
+
                 arguments("CYQX-F8DoesNotBlockSLP146",
                         "2017/04/10 00:00 CYQX 151100Z 30007KT 1/8SM FZFG VV001 M02/M03 A2998 RMK F8 SLP146",
                         (Consumer<NoaaMetarData>) data -> {
@@ -680,7 +707,7 @@ class NoaaMetarParserRemarksRecoveryTest {
         String[] raws = {
                 "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD " +
                         "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW " +
-                        "LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
+                        "TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
         };
 
         for (String raw : raws) {
@@ -695,6 +722,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");
+            LOGGER.info("  exceptDirections: {}", data.getRemarks() != null ? data.getRemarks().exceptDirections() : "n/a");
             LOGGER.info("  cloudTypes: {}", data.getRemarks() != null ? data.getRemarks().cloudTypes() : "n/a");
             LOGGER.info("  weatherEvents: {}", data.getRemarks() != null ? data.getRemarks().weatherEvents() : "n/a");
             LOGGER.info("  maintenanceRequired: {}", data.getRemarks() != null ? data.getRemarks().maintenanceRequired() : "n/a");
@@ -702,7 +730,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
             LOGGER.info("  predominantCloudTypes: {}", data.getRemarks() != null ? data.getRemarks().predominantCloudTypes() : "n/a");
             LOGGER.info("  densityAltitudeFeet: {}", data.getRemarks() != null ? data.getRemarks().densityAltitudeFeet() : "n/a");
-            LOGGER.info(" ");
+            LOGGER.info("\n");
         }
     }
 
