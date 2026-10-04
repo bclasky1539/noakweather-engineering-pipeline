@@ -323,6 +323,7 @@ public final class RegExprConst {
      * - XCP N-NE → except north to northeast
      * - EXCP N AND SW → except to the north and to the southwest
      */
+    @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern EXCEPT_DIRECTION_PATTERN = Pattern.compile(
             "^(?:XCPT|XCP|EXCP|EXC)\\s+(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+)*+)(?=\\s|$)"
     );
