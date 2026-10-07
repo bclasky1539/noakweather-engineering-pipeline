@@ -1519,17 +1519,22 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String afterWeather = remaining.substring(matchEnd).trim();
 
         List<String> directions = null;
+        boolean allQuadrants = false;
         String finalRemaining = afterWeather;
 
         Matcher directionMatcher = DIRECTION_LIST_PATTERN.matcher(afterWeather);
+        Matcher allQuadrantsMatcher = ALL_QUADRANTS_PATTERN.matcher(afterWeather);
         if (directionMatcher.find() && directionMatcher.start() == 0) {
             directions = Arrays.asList(directionMatcher.group(1).split("\\s+"));
             finalRemaining = afterWeather.substring(directionMatcher.end()).trim();
+        } else if (allQuadrantsMatcher.find() && allQuadrantsMatcher.start() == 0) {
+            allQuadrants = true;
+            finalRemaining = afterWeather.substring(allQuadrantsMatcher.end()).trim();
         }
 
         try {
             PresentWeather presentWeather = PresentWeather.parse(weatherCode);
-            DirectionalWeather directionalWeather = new DirectionalWeather(presentWeather, directions);
+            DirectionalWeather directionalWeather = new DirectionalWeather(presentWeather, directions, allQuadrants);
             remarks.directionalWeather(directionalWeather);
 
             if (LOGGER.isDebugEnabled()) {
@@ -2445,7 +2450,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         while (matcher != null) {
             int matchEnd = matcher.end();
-            boolean continuation = matcher.pattern() == TS_CLD_LOC_CONTINUATION_PATTERN;
+            boolean continuation = matcher.pattern() == TS_CLD_LOC_CONTINUATION_PATTERN
+                    || matcher.pattern() == TS_CLD_LOC_AND_QUALIFIER_PATTERN;
 
             try {
                 ThunderstormLocation location = continuation
@@ -2472,11 +2478,16 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         return remaining;
     }
 
-    /** Main pattern first; continuation only if a prior clause supplied a type to carry forward. */
+    /**
+     * Main pattern first; continuation only if a prior clause supplied a type to carry forward.
+     */
     private Matcher nextThunderstormMatcher(String text, String lastCloudType) {
         Matcher matcher = matchAtStart(TS_CLD_LOC_PATTERN, text);
         if (matcher == null && lastCloudType != null) {
             matcher = matchAtStart(TS_CLD_LOC_CONTINUATION_PATTERN, text);
+            if (matcher == null) {
+                matcher = matchAtStart(TS_CLD_LOC_AND_QUALIFIER_PATTERN, text);
+            }
         }
         return matcher;
     }
@@ -2487,11 +2498,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     private ThunderstormLocation parseThunderstormContinuationFromMatcher(Matcher matcher, String carriedCloudType) {
+        boolean qualifierOnly = matcher.pattern() == TS_CLD_LOC_AND_QUALIFIER_PATTERN;
         return new ThunderstormLocation(
                 carriedCloudType,
                 matcher.group("loc"),
-                parseDirectionChain(matcher.group(DIRECTION_CHAIN_CODE)),
-                matcher.group("dirm")
+                qualifierOnly ? List.of() : parseDirectionChain(matcher.group(DIRECTION_CHAIN_CODE)),
+                qualifierOnly ? null : matcher.group("dirm")
         );
     }
 

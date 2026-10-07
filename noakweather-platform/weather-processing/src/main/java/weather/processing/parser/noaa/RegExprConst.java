@@ -35,6 +35,10 @@ public final class RegExprConst {
     // Weather string value for Remarks ('RMK')
     public static final String EXTENDED_REMARKS = "RMK";
 
+    // One of the 8 compass points that DirectionSegment accepts, standing alone as a token
+    private static final String COMPASS_POINT = "(?:NE|NW|SE|SW|N|E|S|W)(?![A-Z0-9])";
+    private static final String COMPASS_SEGMENT = COMPASS_POINT + "(?:-" + COMPASS_POINT + ")*+";
+
     /**
      * TAF string pattern
      */
@@ -328,10 +332,6 @@ public final class RegExprConst {
             "^(?:XCPT|XCP|EXCP|EXC)\\s+(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+)*+)(?=\\s|$)"
     );
 
-    /** One of the 8 compass points that DirectionSegment accepts, standing alone as a token. */
-    private static final String COMPASS_POINT = "(?:NE|NW|SE|SW|N|E|S|W)(?![A-Z0-9])";
-    private static final String COMPASS_SEGMENT = COMPASS_POINT + "(?:-" + COMPASS_POINT + ")*+";
-
     /**
      * Continuation form of a thunderstorm/cloud-location remark: the cloud type
      * is omitted because it is implied by the immediately preceding clause
@@ -346,6 +346,20 @@ public final class RegExprConst {
             "^(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)\\s+" +
                     "(?<dirchain>" + COMPASS_SEGMENT + "(?:(?:\\s+AND)?\\s+" + COMPASS_SEGMENT + ")*+)" +
                     "(?:\\s+MOV\\s+(?<dirm>" + COMPASS_POINT + "))?(?=\\s|$)"
+    );
+
+    /**
+     * "ALQDS" (all quadrants) standing alone as a token, following a present-weather remark.
+     */
+    public static final Pattern ALL_QUADRANTS_PATTERN = Pattern.compile("^ALQDS(?=\\s|$)");
+
+    /**
+     * "AND <qualifier>" continuation: the same cloud type reported at an additional
+     * location qualifier, with no direction (e.g. "CB OHD AND ALQDS"). Only attempted
+     * after a successful TS_CLD_LOC_PATTERN match in the same handler call.
+     */
+    public static final Pattern TS_CLD_LOC_AND_QUALIFIER_PATTERN = Pattern.compile(
+            "^AND\\s+(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)(?=\\s|$)"
     );
 
     /**
