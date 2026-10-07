@@ -7818,7 +7818,42 @@ class NoaaMetarParserTest {
         NoaaMetarData data = extractMetarData(result);
 
         assertThat(data.getRemarks().cloudTypes()).isEmpty();
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
         assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should leave a rejected bare cloud type in freeText and still parse what follows (#92)")
+    void testParseCloudType_RejectedBareCode_PreservedInFreeText() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SC AC2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().freeText()).isEqualTo("SC");
+        assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+        assertThat(data.getRemarks().cloudTypes().get(0).cloudType()).isEqualTo("AC");
+        assertThat(data.getRemarks().cloudTypes().get(0).oktas()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("Should keep a bare CB for the thunderstorm-location handler instead of discarding it (#92)")
+    void testParseCloudType_BareCbExposedMidPass_NotDiscarded() {
+        // XCPT N sits between CB and its location; once XCPT N is stripped, a bare
+        // CB would previously be eaten by the cloud-type handler. A CB followed
+        // by a qualifier must still reach ThunderstormLocation.
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB DSNT S";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     // ========== TCU/CB EMBDD vs THUNDERSTORM LOCATION AMBIGUITY TESTS ==========
@@ -9765,6 +9800,10 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks()).isNotNull();
         // Invalid formats should be skipped
         assertThat(data.getRemarks().cloudTypes()).isEmpty();
+
+        assertThat(data.getRemarks().freeText())
+                .as("Rejected cloud-type text must surface in freeText, not vanish")
+                .contains(invalidRemark);
     }
 
     @Test
