@@ -174,4 +174,65 @@ class DirectionalWeatherTest {
 
         assertThat(directionalWeather1).isNotEqualTo(directionalWeather2);
     }
+
+    @Test
+    @DisplayName("Should create directional weather with allQuadrants via canonical constructor")
+    void testConstructor_AllQuadrants() {
+        PresentWeather weather = PresentWeather.parse("VCSH");
+
+        DirectionalWeather directionalWeather = new DirectionalWeather(weather, null, true);
+
+        assertThat(directionalWeather.allQuadrants()).isTrue();
+        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.hasDirections()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Two-argument constructor should default allQuadrants to false")
+    void testConstructor_TwoArgDefaultsAllQuadrantsFalse() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(
+                PresentWeather.parse("VCSH"), List.of("E"));
+
+        assertThat(directionalWeather.allQuadrants()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should reject allQuadrants combined with directions")
+    void testConstructor_AllQuadrantsWithDirections_Throws() {
+        PresentWeather weather = PresentWeather.parse("VCSH");
+        List<String> directions = List.of("E");
+
+        assertThatThrownBy(() -> new DirectionalWeather(weather, directions, true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("mutually exclusive");
+    }
+
+    @Test
+    @DisplayName("allQuadrants with an empty directions list is allowed (normalized to null)")
+    void testConstructor_AllQuadrantsWithEmptyDirections() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(
+                PresentWeather.parse("VCSH"), List.of(), true);
+
+        assertThat(directionalWeather.allQuadrants()).isTrue();
+        assertThat(directionalWeather.directions()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should generate correct summary for all quadrants")
+    void testGetSummary_AllQuadrants() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(
+                PresentWeather.parse("VCSH"), null, true);
+
+        assertThat(directionalWeather.getSummary())
+                .isEqualTo(PresentWeather.parse("VCSH").getDescription() + ": all quadrants");
+    }
+
+    @Test
+    @DisplayName("Should not be equal when allQuadrants differs")
+    void testInequality_AllQuadrants() {
+        DirectionalWeather withFlag = new DirectionalWeather(PresentWeather.parse("VCSH"), null, true);
+        DirectionalWeather withoutFlag = new DirectionalWeather(PresentWeather.parse("VCSH"), null);
+
+        assertThat(withFlag).isNotEqualTo(withoutFlag);
+    }
 }

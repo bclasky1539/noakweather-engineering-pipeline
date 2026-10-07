@@ -14,14 +14,14 @@ import java.util.List;
  * - "VCSH" → DirectionalWeather(PresentWeather("VCSH"), null)
  *
  * @param presentWeather The present-weather phenomenon (reuses existing PresentWeather parsing)
- * @param directions One or more compass directions associated with the phenomenon, or null if none given
- *
+ * @param directions     One or more compass directions associated with the phenomenon, or null if none given
  * @author bclasky1539
  *
  */
 public record DirectionalWeather(
         PresentWeather presentWeather,
-        List<String> directions
+        List<String> directions,
+        boolean allQuadrants
 ) {
 
     /**
@@ -32,6 +32,16 @@ public record DirectionalWeather(
             throw new IllegalArgumentException("Present weather cannot be null");
         }
         directions = directions != null && !directions.isEmpty() ? List.copyOf(directions) : null;
+        if (allQuadrants && directions != null) {
+            throw new IllegalArgumentException("Directions and all-quadrants are mutually exclusive");
+        }
+    }
+
+    /**
+     * Convenience constructor for the common case: directions only (or none).
+     */
+    public DirectionalWeather(PresentWeather presentWeather, List<String> directions) {
+        this(presentWeather, directions, false);
     }
 
     /**
@@ -51,6 +61,9 @@ public record DirectionalWeather(
      */
     public String getSummary() {
         String base = presentWeather.getDescription();
+        if (allQuadrants) {
+            return base + ": all quadrants";
+        }
         return hasDirections() ? base + ": " + String.join(", ", directions) : base;
     }
 }

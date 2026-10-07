@@ -708,6 +708,31 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().preciseTemperature()).isNotNull();
                         }),
 
+                arguments("KTRK-HazeAllQuadrantsNowParsesCorrectly",
+                        "2026/10/02 00:47 KTRK 020047Z 29008KT 10SM CLR 26/M01 A3015 RMK HZ ALQDS",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText()).isNull();
+                            assertThat(data.getRemarks().directionalWeather().allQuadrants()).isTrue();
+                        }),
+                arguments("KBFM-VicinityShowersAllQuadrantsNowParsesCorrectly",
+                        "2026/10/02 18:53 KBFM 021853Z 08004KT 10SM FEW015 BKN031 BKN070 28/25 A2999 " +
+                                "RMK AO2 RAE35 TSE13 SLP155 VCSH ALQDS P0016 T02780250",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText()).isNull();
+                            assertThat(data.getRemarks().directionalWeather().allQuadrants()).isTrue();
+                            assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+                        }),
+                arguments("PTRO-CbOverheadAndAllQuadrantsNowParsesCorrectly",
+                        "2026/10/02 00:50 PTRO 020050Z 21010G20KT 4SM RA BKN014CB OVC100 26/24 A2991 " +
+                                "RMK CB OHD AND ALQDS",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText()).isNull();
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+                            assertThat(data.getRemarks().thunderstormLocations().get(1).cloudType()).isEqualTo("CB");
+                            assertThat(data.getRemarks().thunderstormLocations().get(1).locationQualifier())
+                                    .isEqualTo("ALQDS");
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -733,8 +758,6 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD " +
                         "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW " +
                         "TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
-                "2026/10/02 18:52 KATL 021852Z 00000KT 10SM SCT028TCU SCT100 BKN180 BKN250 27/21 A3009 " +
-                        "RMK AO2 SLP180 TCU NW DSNT N NE S SW MDT CU ALQDS T02720206",
         };
 
         for (String raw : raws) {
@@ -750,6 +773,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");
             LOGGER.info("  exceptDirections: {}", data.getRemarks() != null ? data.getRemarks().exceptDirections() : "n/a");
+            LOGGER.info("  directionalWeather: {}", data.getRemarks() != null ? data.getRemarks().directionalWeather() : "n/a");
             LOGGER.info("  cloudTypes: {}", data.getRemarks() != null ? data.getRemarks().cloudTypes() : "n/a");
             LOGGER.info("  weatherEvents: {}", data.getRemarks() != null ? data.getRemarks().weatherEvents() : "n/a");
             LOGGER.info("  maintenanceRequired: {}", data.getRemarks() != null ? data.getRemarks().maintenanceRequired() : "n/a");

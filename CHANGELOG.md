@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.8-SNAPSHOT - October 7, 2026
+
+#### Added
+- **#104: ALQDS in additional remarks grammar positions** — three live UAT
+  captures left `ALQDS` orphaned in `freeText`.
+  - `DirectionalWeather` now carries an `allQuadrants` flag (KTRK `HZ ALQDS`,
+    KBFM `VCSH ALQDS`), mirroring `LightningRemark` from #86. `directions` and
+    `allQuadrants` are mutually exclusive, enforced in the compact constructor,
+    and `getSummary()` returns "<description>: all quadrants". The two-argument
+    constructor is kept and defaults the flag to `false`, so existing callers
+    are unchanged.
+  - `RegExprConst.ALL_QUADRANTS_PATTERN`: standalone `ALQDS` token with a
+    trailing boundary. `processDirectionalWeatherMatch` tries the compass-list
+    pattern first, then this one.
+  - `RegExprConst.TS_CLD_LOC_AND_QUALIFIER_PATTERN`: `AND <qualifier>`
+    (`OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS`) with no directions (PTRO
+    `CB OHD AND ALQDS`). It is tried only after a successful thunderstorm
+    location match in the same handler call, and the cloud type is carried
+    forward into a second `ThunderstormLocation` (`CB`/`OHD`, `CB`/`ALQDS`).
+    With no preceding location, `AND ALQDS` stays visible in `freeText`.
+  - `handleThunderstormLocationSequential` routes continuation matches with an
+    explicit check on the two continuation patterns, so a newly added pattern
+    falls through to the main parser and fails loudly instead of being
+    silently misparsed as a continuation.
+  - No `ThunderstormLocation` model change.
+  - Known limit: `AND <qualifier>` followed by directions (`AND DSNT N`) is
+    not supported; no live evidence exists for it.
+
+#### Internal
+- Tests: `DirectionalWeatherTest` (flag, mutual exclusion, summary, equality,
+  default), `RegExprConstTest` (both patterns, boundary and rejection cases),
+  `NoaaMetarParserTest` (KTRK, KBFM, PTRO, compass-direction regression, bare
+  `HZ`, `AND ALQDS` with no parent), and three recovery cases verified through
+  `printRemarksParsingDiagnostics`, which now also logs `directionalWeather`.
+
 ### Version 1.20.7-SNAPSHOT - October 4, 2026
 
 #### Added

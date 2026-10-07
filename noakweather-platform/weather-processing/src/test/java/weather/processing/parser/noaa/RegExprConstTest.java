@@ -2437,6 +2437,58 @@ class RegExprConstTest {
         assertThat(matcher.find() && matcher.start() == 0).isFalse();
     }
 
+    // ========== ALL QUADRANTS / AND-QUALIFIER PATTERN TESTS (Issue #104) ==========
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ALQDS", "ALQDS P0016 T02780250", "ALQDS "})
+    @DisplayName("ALL_QUADRANTS_PATTERN should match a standalone ALQDS token")
+    void testAllQuadrantsPattern_Matches(String input) {
+        Matcher matcher = RegExprConst.ALL_QUADRANTS_PATTERN.matcher(input);
+
+        assertThat(matcher.find() && matcher.start() == 0).isTrue();
+        assertThat(matcher.group()).isEqualTo("ALQDS");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ALQDSX", "ALQD", "XALQDS", "E ALQDS", "alqds", ""})
+    @DisplayName("ALL_QUADRANTS_PATTERN should not match non-standalone forms")
+    void testAllQuadrantsPattern_DoesNotMatch(String input) {
+        Matcher matcher = RegExprConst.ALL_QUADRANTS_PATTERN.matcher(input);
+
+        assertThat(matcher.find() && matcher.start() == 0).isFalse();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'AND ALQDS', ALQDS",
+            "'AND OHD', OHD",
+            "'AND DSNT', DSNT",
+            "'AND ALQDS SLP210', ALQDS"
+    })
+    @DisplayName("TS_CLD_LOC_AND_QUALIFIER_PATTERN should match AND plus a location qualifier")
+    void testTsCldLocAndQualifierPattern_Matches(String input, String expectedLoc) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_AND_QUALIFIER_PATTERN.matcher(input);
+
+        assertThat(matcher.find() && matcher.start() == 0).isTrue();
+        assertThat(matcher.group("loc")).isEqualTo(expectedLoc);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "AND",              // no qualifier
+            "AND N",            // direction, not a qualifier
+            "ALQDS",            // qualifier without AND
+            "AND ALQDSX",       // qualifier not a whole token
+            "ANDALQDS",         // no separating whitespace
+            "OHD AND ALQDS"     // AND must be at the start; the main pattern consumes OHD first
+    })
+    @DisplayName("TS_CLD_LOC_AND_QUALIFIER_PATTERN should not match other forms")
+    void testTsCldLocAndQualifierPattern_DoesNotMatch(String input) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_AND_QUALIFIER_PATTERN.matcher(input);
+
+        assertThat(matcher.find() && matcher.start() == 0).isFalse();
+    }
+
     // ========== LAST OBSERVATION / NEXT OBSERVATION PATTERN TESTS ==========
 
     @ParameterizedTest

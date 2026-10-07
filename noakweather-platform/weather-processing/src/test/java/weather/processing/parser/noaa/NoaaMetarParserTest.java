@@ -6613,6 +6613,119 @@ class NoaaMetarParserTest {
         }
     }
 
+    // ========== ALQDS ADDITIONAL GRAMMAR POSITIONS (Issue #104) ==========
+
+    @Test
+    @DisplayName("Should parse HZ ALQDS as directional weather with allQuadrants - KTRK real-world")
+    void testParseDirectionalWeather_AllQuadrants_KTRK() {
+        String metar = "2026/10/02 00:47 KTRK 020047Z 29008KT 10SM CLR 26/M01 A3015 RMK HZ ALQDS";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        DirectionalWeather dw = data.getRemarks().directionalWeather();
+        assertThat(dw).isNotNull();
+        assertThat(dw.allQuadrants()).isTrue();
+        assertThat(dw.directions()).isNull();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse VCSH ALQDS and leave following remarks intact - KBFM real-world")
+    void testParseDirectionalWeather_AllQuadrants_KBFM() {
+        String metar = "2026/10/02 18:53 KBFM 021853Z 08004KT 10SM FEW015 BKN031 BKN070 28/25 A2999 " +
+                "RMK AO2 RAE35 TSE13 SLP155 VCSH ALQDS P0016 T02780250";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        DirectionalWeather dw = data.getRemarks().directionalWeather();
+        assertThat(dw).isNotNull();
+        assertThat(dw.allQuadrants()).isTrue();
+        assertThat(dw.presentWeather().getDescription())
+                .isEqualTo(PresentWeather.parse("VCSH").getDescription());
+
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().freeText())
+                .as("ALQDS consumed; P0016 and T02780250 parsed by their own handlers")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should still parse directional weather with compass directions (no allQuadrants)")
+    void testParseDirectionalWeather_CompassDirectionsUnaffected() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK VCSH E SE";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        DirectionalWeather dw = extractMetarData(result).getRemarks().directionalWeather();
+
+        assertThat(dw.allQuadrants()).isFalse();
+        assertThat(dw.directions()).containsExactly("E", "SE");
+    }
+
+    @Test
+    @DisplayName("Should parse bare HZ without allQuadrants")
+    void testParseDirectionalWeather_BareHaze_NoAllQuadrants() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK HZ";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        DirectionalWeather dw = extractMetarData(result).getRemarks().directionalWeather();
+
+        assertThat(dw).isNotNull();
+        assertThat(dw.allQuadrants()).isFalse();
+        assertThat(dw.directions()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse CB OHD AND ALQDS as two locations sharing the cloud type - PTRO real-world")
+    void testParseThunderstormLocation_AndQualifier_PTRO() {
+        String metar = "2026/10/02 00:50 PTRO 020050Z 21010G20KT 4SM RA BKN014CB OVC100 26/24 A2991 " +
+                "RMK CB OHD AND ALQDS";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+
+        ThunderstormLocation first = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(first.cloudType()).isEqualTo("CB");
+        assertThat(first.locationQualifier()).isEqualTo("OHD");
+        assertThat(first.directionSegments()).isEmpty();
+
+        ThunderstormLocation second = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(second.cloudType()).as("Carried forward from the preceding clause").isEqualTo("CB");
+        assertThat(second.locationQualifier()).isEqualTo("ALQDS");
+        assertThat(second.directionSegments()).isEmpty();
+        assertThat(second.movingDirection()).isNull();
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should not invent a location for AND ALQDS when no thunderstorm location precedes it")
+    void testParseThunderstormLocation_AndQualifier_RequiresPrecedingLocation() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AND ALQDS";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).isEmpty();
+        assertThat(data.getRemarks().freeText()).contains("AND ALQDS");
+    }
+
     // ========== PRESSURE TENDENCY PARSING TESTS ==========
 
     @ParameterizedTest

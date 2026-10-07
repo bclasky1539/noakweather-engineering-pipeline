@@ -7,7 +7,7 @@
 
     <groupId>weather</groupId>
     <artifactId>noakweather-platform</artifactId>
-    <version>1.20.7-SNAPSHOT</version>
+    <version>1.20.8-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>NoakWeather Engineering Pipeline</name>
