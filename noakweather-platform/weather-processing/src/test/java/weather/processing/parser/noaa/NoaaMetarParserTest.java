@@ -62,6 +62,10 @@ class NoaaMetarParserTest {
 
     private NoaaMetarParser parser;
 
+    private static final String KDPG_BODY = "METAR KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 ";
+    private static final String LEGE_BODY = "METAR LEGE 081730Z VRB02KT 9999 4000SW -RA VCSH FEW003 FEW030TCU BKN040 BKN080 12/11 Q1019 ";
+    private static final String MMCB_BODY = "METAR MMCB 081444Z 00000KT 3SM BR FEW005 OVC090 20/20 A3009 ";
+
     @BeforeEach
     void setUp() {
         parser = new NoaaMetarParser();
@@ -78,6 +82,12 @@ class NoaaMetarParserTest {
     private NoaaWeatherData extractData(ParseResult<NoaaWeatherData> result) {
         return result.getData()
                 .orElseThrow(() -> new AssertionError("NoaaWeatherData: Expected successful parse to contain data"));
+    }
+
+    private NoaaMetarData parseData(String metar) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        return extractMetarData(result);
     }
 
     /**
@@ -10501,5 +10511,68 @@ class NoaaMetarParserTest {
                 failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
         assertThat(result.isSuccess()).isTrue();
+    }
+
+    // --- Correct behavior (regression) ---
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RMK VCSH S", "RMK VCSH S T01720026", "RMK VCSH S P0001", "RMK VCSH S AO2"})
+    @DisplayName("Directional weather keeps its direction when not followed by a compass-letter token")
+    void testDirectionalWeather_DirectionStored_WhenFollowerIsNotCompassLetter(String remark) {
+        NoaaMetarData data = parseData(KDPG_BODY + remark);
+
+        DirectionalWeather weather = data.getRemarks().directionalWeather();
+        assertThat(weather).isNotNull();
+        assertThat(weather.directions()).containsExactly("S");
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Combined VCBCFG keeps its vicinity and patches prefix in directional weather")
+    void testDirectionalWeather_CombinedVicinityPatchesFog_KeepsPrefix() {
+        NoaaMetarData data = parseData(MMCB_BODY + "RMK VCBCFG ALQDS");
+
+        DirectionalWeather weather = data.getRemarks().directionalWeather();
+        assertThat(weather).isNotNull();
+        assertThat(weather.allQuadrants()).isTrue();
+        assertThat(weather.presentWeather().rawCode()).isEqualTo("VCBCFG");
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("NOSIG is recognised when no recent-weather group precedes it")
+    void testNoSigChange_Recognised_WithoutRecentWeather() {
+        NoaaMetarData data = parseData(LEGE_BODY + "NOSIG");
+
+        assertThat(data.getUnparsedMainBody()).isNull();
+        assertThat(data.isNoSignificantChange()).isTrue();
+    }
+
+    // --- Known gaps: these assert TODAY's behavior. Flip them when the linked issue is fixed. ---
+
+    @ParameterizedTest
+    @CsvSource({
+            "RMK VCSH S SLP186,      S",
+            "RMK VCSH S STNRY,       'S STNRY'",
+            "RMK VCSH S WSHFT 1726,  S",
+            "RMK VCSH NE SLP186,     NE"
+    })
+    @DisplayName("Known gap (#118): direction is lost before a compass-letter token")
+    void knownGap_DirectionLost_BeforeCompassLetterToken(String remark, String expectedFreeText) {
+        NoaaMetarData data = parseData(KDPG_BODY + remark);
+
+        DirectionalWeather weather = data.getRemarks().directionalWeather();
+        assertThat(weather).isNotNull();
+        assertThat(weather.directions()).isNull();            // fixed behavior: contains the direction
+        assertThat(data.getRemarks().freeText()).isEqualTo(expectedFreeText);   // fixed behavior: null or only STNRY
+    }
+
+    @Test
+    @DisplayName("Known gap (#116): an RE group stops main-body parsing before NOSIG")
+    void knownGap_RecentWeatherGroup_BlocksNoSig() {
+        NoaaMetarData data = parseData(LEGE_BODY + "RERA NOSIG");
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("RERA NOSIG");
+        assertThat(data.isNoSignificantChange()).isFalse();    // fixed behavior: true, with unparsedMainBody null
     }
 }

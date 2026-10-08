@@ -92,6 +92,10 @@ TODAY=$(date -u +%Y-%m-%d)
 # - Automated vs staffed stations
 # ----------------------------------------------------------------------------
 STATIONS=(
+  # --- Others 2 ---
+  KCRP KSPG KNQI MMCB ETOU K24A K1DN K0J4 K04V KFSI KDJT K46D KFMY KLKR KTPA KNGP KSLC KDPG
+  MBSC LEGE ETHS CYLK CYCG
+
   # --- Others ---
   KTRK PTRO NSTU PTYA KELP MMAA MMCM EGUL ETAD KGUS K3K3 KAQO KJHN K2R9 K36K KT35 KF46 KF00 K1KM
   KBFM TTPP
