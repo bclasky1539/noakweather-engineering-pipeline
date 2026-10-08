@@ -425,11 +425,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 // Remarks handlers
                 case "autoType" -> handleAutoType(matcher);
                 case "seaLevelPressure" -> handleRemarkRegistry(matcher, "Sea level pressure");
-                case "hourlyTemperature" -> handleRemarkRegistry(matcher, "Hourly temperature");
                 case "peakWind" -> handleRemarkRegistry(matcher, "Peak wind");
                 case "windShift" -> handleRemarkRegistry(matcher, "Wind shift");
                 case "variableVis" -> handleRemarkRegistry(matcher, "Variable visibility");
-                case "towerSurfaceVis" -> handleRemarkRegistry(matcher, "Tower/Surface visibility");
                 case "precip1Hour" -> handleRemarkRegistry(matcher, "Hourly precipitation");
                 case "precip3Hr24Hr" -> handleRemarkRegistry(matcher, "Multi-hour precipitation");
                 case "hailSize" -> handleRemarkRegistry(matcher, "Hail size");
@@ -3327,11 +3325,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         // Process all cloud type observations (repeating pattern)
         while (matcher.find() && matcher.start() == 0) {
-            int matchEnd = matcher.end();
-            remaining = processCloudTypeMatch(matcher, matchEnd, remaining, remarks);
-
-            // IMPORTANT: Trim again before next iteration!
-            remaining = remaining.trim();
+            String next = processCloudTypeMatch(matcher, matcher.end(), remaining, remarks).trim();
+            if (next.equals(remaining)) {
+                break; // rejected: leave the text for another handler or the freeText peeler
+            }
+            remaining = next;
             matcher = CLOUD_OKTA_PATTERN.matcher(remaining);
         }
 
@@ -3349,6 +3347,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      */
     private String processCloudTypeMatch(Matcher matcher, int matchEnd, String remaining,
                                          NoaaMetarRemarks.Builder remarks) {
+        String result = remaining;   // default: rejected, leave text in place
         try {
             CloudType cloudType = extractCloudTypeFromMatcher(matcher);
             remarks.addCloudType(cloudType);
@@ -3356,15 +3355,17 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Cloud type: {}", cloudType.getSummary());
             }
+            result = remaining.substring(matchEnd).trim();   // accepted: advance
 
         } catch (IllegalArgumentException e) {
-            int endIndex = Math.min(matchEnd, remaining.length());
-            LOGGER.warn("Invalid cloud type in remarks: {}",
-                    remaining.substring(0, endIndex), e);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Cloud type match rejected, leaving in place: {}",
+                        remaining.substring(0, Math.min(matchEnd, remaining.length())));
+            }
         }
 
         // Always return remaining text (never null)
-        return remaining.substring(matchEnd).trim();
+        return result;
     }
 
     /**

@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Version 1.20.9-SNAPSHOT - October 7, 2026
+
+#### Fixed
+- **#92: `handleCloudTypeSequential` silently consumed rejected matches**
+  (data loss on bare cloud-type codes). `CLOUD_OKTA_PATTERN` can match a bare
+  code (`SC`, `CI`) with no oktas, intensity, location or movement.
+  `extractCloudTypeFromMatcher` correctly rejected it, but
+  `processCloudTypeMatch` still advanced past the matched text, so the token
+  vanished from the parse output instead of reaching `freeText`.
+  - `processCloudTypeMatch` now returns the text unchanged on rejection, so the
+    token stays available to later handlers and passes, or to the `freeText`
+    peeler in `handleRemarks`.
+  - `handleCloudTypeSequential` breaks out of its inner loop when a match is
+    rejected, which prevents an infinite re-match of the same token.
+  - The rejection log moved from WARN with a stack trace to DEBUG. The token
+    now surfaces in `freeText`, so the warning was redundant and would
+    otherwise repeat on every handler pass.
+  - This removes the underlying fragility behind the #105 handler-ordering bug,
+    where a bare cloud-type token exposed mid-pass was eaten by the cloud-type
+    handler.
+  - Known behavior, unchanged and out of scope: a bare `TCU` or `CB` is claimed
+    earlier by the thunderstorm-location handler as a `ThunderstormLocation`
+    with no qualifier or directions, so it never reaches the cloud-type
+    rejection path.
+  - Latent, not filed: `CLOUD_OKTA_PATTERN` has no trailing boundary on the
+    cloud code (`CIG` matches as `CI`). It is harmless now because the rejected
+    token is preserved and peeled whole.
+
+#### Internal
+- Tests: `testParseCloudType_InvalidFormats` now asserts the rejected text
+  survives in `freeText`; new `testParseCloudType_RejectedBareCode_PreservedInFreeText`
+  (`SC AC2`) and a mid-pass CB guard test;
+  `testParseCloudType_BareCloudTypeStillRejected` corrected to assert that the
+  thunderstorm-location handler claims the bare `TCU`. Full reactor green.
+
 ### Version 1.20.8-SNAPSHOT - October 7, 2026
 
 #### Added
@@ -81,7 +116,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The literal-space variant has no trailing boundary and produced 15 false
   positives on the K sweep (`LTG DSNT S SLPNO` matched via the `S` of `SLPNO`).
   Replaced with `(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2}){2,}( |$)`.
-  The sweep found no genuine multi-point continuation beyond KATL.
+  The sweep found no genuine multipoint continuation beyond KATL.
 
 ### Version 1.20.6-SNAPSHOT - October 3, 2026
 
@@ -110,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Confirmed against the real TTPP capture that originally surfaced this
     issue: `CB ALQDS XCPT N` and `freeText` now `null` (previously held the
     orphaned `"XCPT N"` token), `exceptDirections` now populated correctly.
-    Also manually verified the range form (`XCPT N-NE`) via
+    Also, manually verified the range form (`XCPT N-NE`) via
     `printRemarksParsingDiagnostics`, both standalone and inserted into the
     existing dense KCLT recovery capture, before locking in assertions
 
@@ -339,7 +374,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `NoaaMetarParser`'s remark handlers migrated to the new builder API; no change to
     parsing behavior or output
   - `docs/CODE_STANDARDS.md`'s package hierarchy diagram updated to reflect the new
-    subpackages, plus additional corrections (glue-jobs directory, sql directory, missing
+    subpackages, plus additional corrections (glue-jobs directory, SQL directory, missing
     resource files, missing class comments) found while reviewing it for this change
 
 #### Internal
@@ -1558,7 +1593,7 @@ not to a versioned Maven artifact. Current artifact version remains
 **Build & Quality:**
 - All 198 tests passing (0 failures, 0 errors, 0 skipped)
 - Build time: ~3.5 seconds for weather-ingestion
-- Maven build: clean install successful
+- Maven build: clean 'install' successful
 - Production-ready with comprehensive test coverage
 
 **Notes:**
@@ -1761,8 +1796,8 @@ not to a versioned Maven artifact. Current artifact version remains
 
 - **Test Infrastructure Improvements** (weather-storage)
     - `DynamoDbTestHelper.java` - Production-quality test utilities
-        - Removed all Thread.sleep calls (replaced with SDK waiters)
-        - Uses LockSupport.parkNanos for waits (better than Thread.sleep)
+        - Removed all 'Thread.sleep' calls (replaced with SDK waiters)
+        - Uses LockSupport.parkNanos for waits (better than 'Thread.sleep')
         - Proper table/GSI status checking with waiters
         - Clean exception handling and logging
         - Private constructor added
@@ -1831,7 +1866,7 @@ not to a versioned Maven artifact. Current artifact version remains
 **Build & Quality:**
 - All 221 tests passing (0 failures, 0 errors, 0 skipped)
 - Build time: ~21 seconds for weather-storage module
-- Maven build: clean install successful
+- Maven build: clean 'install' successful
 - Zero SonarQube warnings in updated code
 - JaCoCo coverage reports generated
 
@@ -2029,7 +2064,7 @@ not to a versioned Maven artifact. Current artifact version remains
     - **IndexedLinkedHashMap.java**:
         - Added `@Serial` annotations to serialization-related members
         - Replaced iteration loop with `addAll()` in `readObject()` method (more efficient)
-        - Enhanced JavaDoc with comprehensive `@param` descriptions for class and methods
+        - Enhanced Javadoc with comprehensive `@param` descriptions for class and methods
     - **Exception Handling**:
         - Updated imports across affected classes after package reorganization
 
@@ -2048,7 +2083,7 @@ not to a versioned Maven artifact. Current artifact version remains
     - Bulk collection operations over iteration loops
     - Eliminated redundant object creation
 - **Documentation**:
-    - Comprehensive JavaDoc additions for `IndexedLinkedHashMap`
+    - Comprehensive Javadoc additions for `IndexedLinkedHashMap`
     - Better exception documentation with `@throws` tags
 
 **Fixed:**
@@ -2717,7 +2752,7 @@ not to a versioned Maven artifact. Current artifact version remains
 **Build & Quality:**
 - All 95+ tests passing (0 failures, 0 errors, 0 skipped)
 - Build time: ~8 seconds for weather-common module
-- Maven build: clean install successful
+- Maven build: clean 'install' successful
 - Ready for Day 7: Enhanced METAR Parser Implementation
 
 ### Version 1.4.0-SNAPSHOT Additional - November 8, 2025
@@ -2942,7 +2977,7 @@ not to a versioned Maven artifact. Current artifact version remains
 - Upgraded from Java 11 to Java 17
 
 **Added:**
-- **noakweather-platform** parent module with 6 sub-modules:
+- **noakweather-platform** parent module with 6 submodules:
   - `weather-common`: Source-agnostic shared models and interfaces
   - `weather-ingestion`: Universal data collection (Speed Layer)
   - `weather-processing`: Stream and batch processing (Batch Layer)
