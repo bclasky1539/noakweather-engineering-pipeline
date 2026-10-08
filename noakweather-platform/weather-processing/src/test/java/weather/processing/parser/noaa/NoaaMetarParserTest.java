@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.*;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
+import weather.model.WeatherConditions;
 import weather.model.components.*;
 import weather.model.components.remark.*;
 import weather.model.components.remark.ceilingremarks.CeilingSecondSite;
@@ -41,10 +42,14 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.regex.Matcher;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 
 /**
  * Comprehensive tests for NoaaMetarParser.
@@ -10431,5 +10436,70 @@ class NoaaMetarParserTest {
 
         assertThat(indicators.get(4).type()).isEqualTo("CHINO");
         assertThat(indicators.get(4).location()).isEqualTo("RWY22L");
+    }
+
+    // ========== MISC TESTS ==========
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
+            "2026/10/02 18:53 KBFM 021853Z 08004KT 10SM FEW015 BKN031 BKN070 28/25 A2999 RMK AO2 RAE35 TSE13 SLP155 VCSH ALQDS P0016 T02780250",
+            "2026/10/02 00:50 PTRO 020050Z 21010G20KT 4SM RA BKN014CB OVC100 26/24 A2991 RMK CB OHD AND ALQDS",
+            "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SC AC2"   // exercises the #92 rejection log
+    })
+    @DisplayName("Should parse with DEBUG logging enabled (exercises debug-guarded branches)")
+    void testParse_WithDebugLoggingEnabled(String metar) {
+        String loggerName = NoaaMetarParser.class.getName();
+        Level original = org.apache.logging.log4j.LogManager.getLogger(loggerName).getLevel();
+        Configurator.setLevel(loggerName, Level.DEBUG);
+        try {
+            assertThat(parser.parse(metar).isSuccess()).isTrue();
+        } finally {
+            Configurator.setLevel(loggerName, original);
+        }
+    }
+
+    @Test
+    @DisplayName("Should return failure when an unexpected RuntimeException occurs")
+    void testParse_UnexpectedRuntimeException() {
+        NoaaMetarParser failing = new NoaaMetarParser() {
+            @Override
+            protected WeatherConditions buildConditions() {
+                throw new UnsupportedOperationException("boom");
+            }
+        };
+
+        ParseResult<NoaaWeatherData> result =
+                failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
+
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrorMessage()).isEqualTo("Unexpected parsing error: boom");
+    }
+
+    @Test
+    @DisplayName("Should fail when station ID is missing even though remarks are present")
+    void testParse_NoStation_WithFullBody() {
+        String metar = "METAR 251651Z AUTO 19005KT 10SM -RA FEW015 22/12 A3015 NOSIG RMK AO2 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrorMessage()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("Should keep parsing when a pattern handler throws")
+    void testParse_HandlerThrows_IsCaughtAndParsingContinues() {
+        NoaaMetarParser failing = new NoaaMetarParser() {
+            @Override
+            protected void handleWind(Matcher matcher) {
+                throw new IllegalStateException("boom");
+            }
+        };
+
+        ParseResult<NoaaWeatherData> result =
+                failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
+
+        assertThat(result.isSuccess()).isTrue();
     }
 }
