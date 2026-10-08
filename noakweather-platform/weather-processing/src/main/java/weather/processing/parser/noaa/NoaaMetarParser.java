@@ -425,11 +425,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 // Remarks handlers
                 case "autoType" -> handleAutoType(matcher);
                 case "seaLevelPressure" -> handleRemarkRegistry(matcher, "Sea level pressure");
-                case "hourlyTemperature" -> handleRemarkRegistry(matcher, "Hourly temperature");
                 case "peakWind" -> handleRemarkRegistry(matcher, "Peak wind");
                 case "windShift" -> handleRemarkRegistry(matcher, "Wind shift");
                 case "variableVis" -> handleRemarkRegistry(matcher, "Variable visibility");
-                case "towerSurfaceVis" -> handleRemarkRegistry(matcher, "Tower/Surface visibility");
                 case "precip1Hour" -> handleRemarkRegistry(matcher, "Hourly precipitation");
                 case "precip3Hr24Hr" -> handleRemarkRegistry(matcher, "Multi-hour precipitation");
                 case "hailSize" -> handleRemarkRegistry(matcher, "Hail size");
