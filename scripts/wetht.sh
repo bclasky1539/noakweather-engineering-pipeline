@@ -3,27 +3,14 @@ REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 cd "$REPO_ROOT" || exit 1
 
 clear
-echo off
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "Testing Project"
+echo "Testing Project (clean test + coverage report)"
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
-clear
-# Run the tests
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "Run clean test"
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-mvn clean test
-# Check coverage
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "Run coverage"
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-echo "+++++++++++++++++++++++++++++++++++++++++++++"
-mvn test jacoco:report
-echo $?
+mvn clean test jacoco:report
+STATUS=$?
+echo "Exit status: $STATUS"
+exit $STATUS

@@ -10,8 +10,9 @@
 #          Gold layer development.
 #
 # Can be run from any directory; the script changes to the repository root
-# itself. Run on main (no application code changes are made here - this only
-# ingests and validates live data). Requires a packaged weather-ingestion jar;
+# itself. Run on the UAT branch (test/uat-worldwide-metar-ingestion, with main
+# merged in); no application code changes are made here - this only ingests
+# and validates live data. Requires a packaged weather-ingestion jar;
 # run ./scripts/wethp.sh first if target/*.jar does not exist. Requires python3
 # with the dependencies in glue-jobs/requirements.txt installed (boto3), and AWS
 # credentials already configured (same chain used by the AWS CLI). The existing
@@ -86,7 +87,7 @@ LOG_FILE="${LOG_DIR}/uat_ingest_${TIMESTAMP}.log"
 TODAY=$(date -u +%Y-%m-%d)
 
 # ----------------------------------------------------------------------------
-# Station list: ~90 stations chosen for diversity across:
+# Station list: chosen for diversity across:
 # - Units (statute miles/inHg vs meters/hPa)
 # - Hemisphere and climate (tropical, polar, desert, monsoon)
 # - Reporting conventions (CAVOK-heavy vs rarely used, RVR-heavy airports)
@@ -101,6 +102,9 @@ STATIONS=(
   # --- Others ---
   KTRK PTRO NSTU PTYA KELP MMAA MMCM EGUL ETAD KGUS K3K3 KAQO KJHN K2R9 K36K KT35 KF46 KF00 K1KM
   KBFM TTPP
+
+  # --- Original live-capture stations for Pending UAT shapes ---
+  KCLT CYHZ CYXH CYGK
 
   # --- North America (SM / inHg) ---
   KDLZ KATL KJFK KORD KDFW KDEN KSFO KSEA KMIA KBOS KLAX KPHX KMCO KIAH KAFW KFFO KCVS KBLF KALO KCKB
