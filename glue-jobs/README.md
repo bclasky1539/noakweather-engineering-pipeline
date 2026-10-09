@@ -46,7 +46,7 @@ remarks content), `1` = FAIL (structural problem)
 Run inside the `glue_env` conda environment, or any environment with `boto3`
 installed.
 
-**Typically invoked via** `./wethuat_metar_ingest.sh` at the repository root,
+**Typically invoked via** `./scripts/uat/wethuat_metar_ingest.sh`,
 which runs it automatically after each station's ingestion during a UAT sweep.
 
 ## Deployment

@@ -2,7 +2,7 @@
 # ============================================================================
 # UAT discovery tool for checking of tokens existing in data
 #
-# uat_discover_stations.sh
+# wethuat_discover_stations.sh
 #
 # One-off discovery tool (NOT part of the pipeline or the UAT sweep itself).
 # Downloads the current worldwide METAR bulk snapshot from aviationweather.gov
@@ -14,8 +14,11 @@
 # Update the PATTERNS array below each UAT round to match whatever issues
 # are currently open and need fresh live confirmation.
 #
-# Usage: ./wethuat_discover_stations.sh
+# Usage: ./scripts/uat/wethuat_discover_stations.sh
 # ============================================================================
+
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
+cd "$REPO_ROOT" || exit 1
 
 BULK_URL="https://aviationweather.gov/data/cache/metars.cache.csv.gz"
 WORKDIR="./uat-discovery/METAR/"
@@ -46,7 +49,7 @@ declare -a PATTERNS=(
     # Review hits for the qualifier format that follows (PAST HR confirmed; others may surface new formats).
     "ICG-bare (#75 broadened)|\\bICG\\b"
     # #72a — CI0 standalone, not anchored to chained-cloud context.
-    "CI0 (#72 broadened)|CI0( |\$)"
+    "CI0 (#72 broadened)|CI0( |\"|\$)"
     # #72b — EMBDD alone, not anchored to a preceding TCU/CB token.
     # Review what precedes each hit — may surface cloud types beyond TCU/CB worth adding to the pattern.
     "EMBDD-standalone (#72 broadened)|EMBDD"
@@ -65,21 +68,21 @@ declare -a PATTERNS=(
      # keep anything where ALQDS follows a bare cloud-type token (TS/CB/TCU/ACC/CBMAM/VIRGA) rather than LTG.
      "ALQDS-anywhere (#99 broadened)|ALQDS"
      # #105 — except-direction. Expect XCPT/XCP/EXCP/EXC followed by a compass point.
-     "Except-direction (#105)| (XCPT|XCP|EXCP|EXC) (N|NE|E|SE|S|SW|W|NW)( |-|\$)"
+     "Except-direction (#105)| (XCPT|XCP|EXCP|EXC) (N|NE|E|SE|S|SW|W|NW)( |-|\"|\$)"
      # Out of scope but worth seeing if the 'expected' family shows up live.
-     "Expected-family (not parsed, #105 scope note)| (EXPCD|EXPCTD|EXPTD|EXP) [NSEW]{1,2}( |\$)"
+     "Expected-family (not parsed, #105 scope note)| (EXPCD|EXPCTD|EXPTD|EXP) [NSEW]{1,2}( |\"|\$)"
      # #106 — space-separated continuation, 2+ points, bounded (the unbounded form gave false positives).
-     "TS-continuation-space-separated (#106)|(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2}){2,}( |\$)"
+     "TS-continuation-space-separated (#106)|(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2}){2,}( |\"|\$)"
      # #104 — ALQDS after a present-weather code.
-     "ALQDS-after-weather (#104)| (HZ|BR|FG|FU|DU|VCSH|VCTS|VCFG|VCRA|SH|TS)[A-Z]* ALQDS( |\$)"
+     "ALQDS-after-weather (#104)| (HZ|BR|FG|FU|DU|VCSH|VCTS|VCFG|VCRA|SH|TS)[A-Z]* ALQDS( |\"|\$)"
      # #104 — AND <qualifier> after a thunderstorm location.
-     "TS-AND-qualifier (#104)| (CB|TCU|TS|ACC|CBMAM|VIRGA) (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2})* AND (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( |\$)"
+     "TS-AND-qualifier (#104)| (CB|TCU|TS|ACC|CBMAM|VIRGA) (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2})* AND (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( |\"|\$)"
      # #89 — VIA relay station on the observation-program remark.
      "Obs-program-VIA (#89)|OBS/NEXT [0-9]{6}( ?Z| UTC|UTC)? VIA [A-Z]{4}"
      # Two directional-weather remarks in one report. Watch for a second one overwriting the first
      # (directionalWeather is single-valued). Not tied to an issue yet.
      "Two-directional-weather (single-valued field)|RMK.*(VCSH|VCTS|VCFG|VCRA|HZ|FG|BR) [NSEW]{1,2}.*(VCSH|VCTS|VCFG|VCRA|HZ|FG|BR) [NSEW]{1,2}"
-     "Recent-weather-main-body (RE groups)| (A|Q)[0-9]{4} RE[A-Z+-]+( |\$)"
+     "Recent-weather-main-body (RE groups)| (A|Q)[0-9]{4} RE[A-Z+-]+( |\"|\$)"
 )
 
 for entry in "${PATTERNS[@]}"; do
