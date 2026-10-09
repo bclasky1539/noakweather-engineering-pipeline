@@ -9,12 +9,12 @@
 #          Bronze-layer parsing or ingestion issues before proceeding to
 #          Gold layer development.
 #
-# Run from the repository root, on main (no application code changes are
-# made here - this only ingests and validates live data). Requires a
-# packaged weather-ingestion jar; run ./wethp.sh first if target/*.jar
-# does not exist. Requires python3 with the dependencies in
-# glue-jobs/requirements.txt installed (boto3), and AWS credentials
-# already configured (same chain used by the AWS CLI). The existing
+# Can be run from any directory; the script changes to the repository root
+# itself. Run on main (no application code changes are made here - this only
+# ingests and validates live data). Requires a packaged weather-ingestion jar;
+# run ./scripts/wethp.sh first if target/*.jar does not exist. Requires python3
+# with the dependencies in glue-jobs/requirements.txt installed (boto3), and AWS
+# credentials already configured (same chain used by the AWS CLI). The existing
 # glue_env conda environment already satisfies this.
 #
 # Result semantics per station:
@@ -27,24 +27,26 @@
 # A validation failure for one station does not stop the sweep; every
 # station is attempted and every result is recorded in the summary.
 #
-# Usage: ./wethuat_metar_ingest.sh
+# Usage: ./scripts/uat/wethuat_metar_ingest.sh
 # ============================================================================
 
 set -uo pipefail
+
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
+cd "$REPO_ROOT" || exit 1
 
 INGESTION_DIR="noakweather-platform/weather-ingestion"
 JAR_PATH=$(ls "${INGESTION_DIR}"/target/weather-ingestion-*-SNAPSHOT.jar 2>/dev/null | grep -v "/original-" | head -n 1)
 
 if [ -z "$JAR_PATH" ]; then
   echo "ERROR: No weather-ingestion jar found in ${INGESTION_DIR}/target/"
-  echo "Run ./wethp.sh first to build it."
+  echo "Run ./scripts/wethp.sh first to build it."
   exit 1
 fi
 
 VALIDATOR_SCRIPT="glue-jobs/tools/analyze_bronze_station.py"
 if [ ! -f "$VALIDATOR_SCRIPT" ]; then
-  echo "ERROR: $VALIDATOR_SCRIPT not found."
-  echo "Run this script from the repository root."
+  echo "ERROR: $VALIDATOR_SCRIPT not found under $REPO_ROOT."
   exit 1
 fi
 
@@ -64,7 +66,7 @@ if ! python3 -c "import boto3" 2>/dev/null; then
   echo "make sure it is active in THIS shell session before running this script:"
   echo "  conda activate glue_env"
   echo "  which python3   # confirm it points into the glue_env path"
-  echo "  ./wethuat_metar_ingest.sh"
+  echo "  ./scripts/uat/wethuat_metar_ingest.sh"
   exit 1
 fi
 echo "  boto3: OK"

@@ -91,21 +91,21 @@ TAF (Terminal Aerodrome Forecast) is a weather forecast report format used in av
 
 - Java 17 or higher
 - Maven 3.8+
-- Docker (required for `wetht.sh` - weather-storage's DynamoDB integration tests use Testcontainers)
+- Docker (required for `scripts/wetht.sh` - weather-storage's DynamoDB integration tests use Testcontainers)
 - AWS CLI configured (for deployment and Glue/Athena work)
 - Snowflake account (for data warehouse features)
 - Python 3.10 with PySpark (only if developing/testing Glue ETL scripts locally; AWS Glue itself handles this at runtime)
 
 ### Development Scripts
 
-All scripts are run from the repository root:
+Scripts live in `scripts/` and can be run from any directory. The paths below are relative to the repository root:
 
-| Script                     | Purpose                                                                                                                                                              |
-|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `./wethb.sh`               | Compile-only build check across the full reactor (fast sanity check)                                                                                                 |
-| `./wetht.sh`               | Full test suite with JaCoCo coverage (requires Docker running)                                                                                                       |
-| `./wethp.sh`               | Package into jars (`mvn clean package -DskipTests`) - only needed when jars are actually required, e.g. running an app locally                                       |
-| `./wethv.sh <new-version>` | Bump the project version across `noakweather-platform` and its submodules. `noakweather-legacy` has its own independent version and is never touched by this script. |
+| Script                             | Purpose                                                                                                                                                              |
+|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `./scripts/wethb.sh`               | Compile-only build check across the full reactor (fast sanity check)                                                                                                 |
+| `./scripts/wetht.sh`               | Full test suite with JaCoCo coverage (requires Docker running)                                                                                                       |
+| `./scripts/wethp.sh`               | Package into jars (`mvn clean package -DskipTests`) - only needed when jars are actually required, e.g. running an app locally                                       |
+| `./scripts/wethv.sh <new-version>` | Bump the project version across `noakweather-platform` and its submodules. `noakweather-legacy` has its own independent version and is never touched by this script. |
 
 ### Building the Project
 
@@ -115,20 +115,20 @@ git clone https://github.com/bclasky1539/noakweather-engineering-pipeline.git
 cd noakweather-engineering-pipeline
 
 # Quick compile check
-./wethb.sh
+./scripts/wethb.sh
 
 # Run the full test suite
-./wetht.sh
+./scripts/wetht.sh
 
 # Only when you need jars (e.g. to run an app locally)
-./wethp.sh
+./scripts/wethp.sh
 ```
 
 ### Running Tests
 
 ```bash
 # Run tests with coverage
-./wetht.sh
+./scripts/wetht.sh
 
 # View coverage report for a specific module, e.g. weather-common
 open noakweather-platform/weather-common/target/site/jacoco/index.html

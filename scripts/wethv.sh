@@ -1,3 +1,7 @@
+#!/bin/bash
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
+cd "$REPO_ROOT" || exit 1
+
 clear
 echo off
 echo "+++++++++++++++++++++++++++++++++++++++++++++"
@@ -10,8 +14,8 @@ echo "+++++++++++++++++++++++++++++++++++++++++++++"
 
 if [ -z "$1" ]; then
   echo "ERROR: New version required."
-  echo "Usage: ./wethv.sh <new-version>"
-  echo "Example: ./wethv.sh 1.17.3-SNAPSHOT"
+  echo "Usage: ./scripts/wethv.sh <new-version>"
+  echo "Example: ./scripts/wethv.sh 1.17.3-SNAPSHOT"
   exit 1
 fi
 

@@ -2,7 +2,7 @@
 # ============================================================================
 # UAT discovery tool for checking of tokens existing in data
 #
-# uat_discover_stations.sh
+# wethuat_discover_stations.sh
 #
 # One-off discovery tool (NOT part of the pipeline or the UAT sweep itself).
 # Downloads the current worldwide METAR bulk snapshot from aviationweather.gov
@@ -14,8 +14,11 @@
 # Update the PATTERNS array below each UAT round to match whatever issues
 # are currently open and need fresh live confirmation.
 #
-# Usage: ./wethuat_discover_stations.sh
+# Usage: ./scripts/uat/wethuat_discover_stations.sh
 # ============================================================================
+
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
+cd "$REPO_ROOT" || exit 1
 
 BULK_URL="https://aviationweather.gov/data/cache/metars.cache.csv.gz"
 WORKDIR="./uat-discovery/METAR/"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#
+# ============================================================================
 # discover-historical-metars.sh (weths_discover-historical-metars.sh)
 #
 # Exploratory tool (standalone — NOT part of the wethuat_* UAT toolchain).
@@ -17,12 +17,16 @@
 # safely Ctrl+C'd as soon as it's told you what you need.
 #
 # Usage:
-#   ./weths_discover-historical-metars.sh <LETTER>
+#   ./scripts/uat/weths_discover-historical-metars.sh <LETTER>
 #
 # Example:
-#   ./weths_discover-historical-metars.sh C
+#   ./scripts/uat/weths_discover-historical-metars.sh C
+# ============================================================================
 
 set -uo pipefail
+
+REPO_ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)" || exit 1
+cd "$REPO_ROOT" || exit 1
 
 START_TIME=$(date +%s)
 
