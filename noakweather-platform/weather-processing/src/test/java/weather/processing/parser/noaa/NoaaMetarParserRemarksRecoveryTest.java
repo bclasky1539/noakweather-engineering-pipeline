@@ -683,6 +683,20 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .isEqualTo(1003.4);
                         }),
 
+                arguments("CYVR-VariableRvrTrendSuffixDoesNotBlockMainBodyOrSLP",
+                        "2026/10/08 15:00 CYVR 081500Z 11004KT 1/2SM R08L/0800V1000FT/N R08R/1600V2000FT/N " +
+                                "FG VV002 10/10 A3009 RMK FG8 SLP192",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getUnparsedMainBody())
+                                    .as("Both FT/N RVR groups parse, so FG VV002 10/10 A3009 are no longer stranded (#113)")
+                                    .isNullOrEmpty();
+                            assertThat(data.getRunwayVisualRange()).hasSize(2);
+                            assertThat(data.getRemarks().freeText())
+                                    .as("FG8 (Canadian obscuration with oktas) is a separate, unwired finding")
+                                    .isEqualTo("FG8");
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1019.2);
+                        }),
+
                 arguments("KATL-SpaceSeparatedThunderstormContinuationNowParsesCorrectly",
                         "2026/10/02 18:52 KATL 021852Z 00000KT 10SM SCT028TCU SCT100 BKN180 BKN250 27/21 A3009 " +
                                 "RMK AO2 SLP180 TCU NW DSNT N NE S SW MDT CU ALQDS T02720206",
@@ -758,12 +772,20 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD " +
                         "PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E TCU N-NE AND NW " +
                         "TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB T02780206 DENSITY ALT 900FT $",
+                "2017/04/01 23:30 UAAA 012330Z 20002MPS 180V240 0100 R23R/0450N R23L/0350N FG VV002 01/00 Q1017 R23R/1///60 R23L/2/0150 NOSIG",
+                "2017/08/16 18:30 UHHH 161830Z 02005MPS CAVOK 16/15 Q1014 R05R/090060 NOSIG",
+                "2026/10/08 15:00 CYVR 081500Z 11004KT 1/2SM R08L/0800V1000FT/N R08R/1600V2000FT/N FG VV002 10/10 A3009 RMK FG8 SLP192",
         };
 
         for (String raw : raws) {
             NoaaMetarData data = parse(raw);
             LOGGER.info("=== {} ===", truncate(raw));
             LOGGER.info("*** {} ***", raw);
+            LOGGER.info(separator());
+            LOGGER.info("  unparsedMainBody: {}", data.getUnparsedMainBody());
+            LOGGER.info("  runwayVisualRange: {}", data.getRunwayVisualRange());
+            LOGGER.info("  conditions: {}", data.getConditions());
+            LOGGER.info(separator());
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
             LOGGER.info("  pressureRapidChange: {}", data.getPressureRapidChange());
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
@@ -781,11 +803,14 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
             LOGGER.info("  predominantCloudTypes: {}", data.getRemarks() != null ? data.getRemarks().predominantCloudTypes() : "n/a");
             LOGGER.info("  densityAltitudeFeet: {}", data.getRemarks() != null ? data.getRemarks().densityAltitudeFeet() : "n/a");
-            LOGGER.info("\n");
+            LOGGER.info(separator());
+            LOGGER.info(" ");
         }
     }
 
     private static String truncate(String s) {
         return s.length() <= 40 ? s : s.substring(0, 40) + "...";
     }
+
+    private static String separator() {return "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";}
 }

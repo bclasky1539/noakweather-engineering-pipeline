@@ -111,12 +111,14 @@ public final class RegExprConst {
 
     /**
      * RVR Runway visual range
-     * Example: "R28L/1200V1800FT", "R06/P6000FT"
-     * Complexity is required to capture runway designator, visibility range, and units
+     * Example: "R28L/1200V1800FT", "R06/P6000FT", "R24/P1500N", "R08L/0800V1000FT/N"
+     * The trend (U/D/N) appears either directly after a metre value (captured by "unit")
+     * or after "FT" with a slash (captured by "trend").
+     * Complexity is required to capture runway designator, visibility range, units and trend
      */
     @SuppressWarnings("java:S5843") // Complex regex required for runway visual range format
     public static final Pattern RUNWAY_PATTERN = Pattern.compile(
-            "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?\\s+"
+            "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?(?:/(?<trend>[UDN]))?\\s+"
     );
 
     /**

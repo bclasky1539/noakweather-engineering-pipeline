@@ -266,6 +266,62 @@ class RegExprConstTest {
         assertThat(matcher.group("unit")).isEqualTo("70");
     }
 
+    @ParameterizedTest(name = "{5}")
+    @CsvSource({
+            "'R28L/1200FT/U ',      28L, ,     U, 1200, 'Fixed RVR FT with upward trend'",
+            "'R28L/1200FT/D ',      28L, ,     D, 1200, 'Fixed RVR FT with downward trend'",
+            "'R28L/1200FT/N ',      28L, ,     N, 1200, 'Fixed RVR FT with no-change trend'",
+            "'R08L/0800V1000FT/U ', 08L, 1000, U, 0800, 'Variable RVR FT with upward trend'",
+            "'R08L/0800V1000FT/D ', 08L, 1000, D, 0800, 'Variable RVR FT with downward trend'",
+            "'R08L/0800V1000FT/N ', 08L, 1000, N, 0800, 'Variable RVR FT with no-change trend'"
+    })
+    @DisplayName("RUNWAY_PATTERN should capture FT unit and slash trend suffix separately")
+    void testRunwayPattern_FtWithTrendSuffix(String input, String expectedName, String expectedHigh,
+                                             String expectedTrend, String expectedLvalue,
+                                             String description) {
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(description).isTrue();
+        assertThat(matcher.group("name")).isEqualTo(expectedName);
+        assertThat(matcher.group("lvalue")).isEqualTo(expectedLvalue);
+        assertThat(matcher.group("high")).isEqualTo(expectedHigh);
+        assertThat(matcher.group("unit")).isEqualTo("FT");
+        assertThat(matcher.group("trend")).isEqualTo(expectedTrend);
+    }
+
+    @Test
+    @DisplayName("RUNWAY_PATTERN should leave trend group null when trend follows a metre value directly")
+    void testRunwayPattern_MetreTrendStaysInUnitGroup() {
+        // Metre form: trend letter is captured by "unit"; the handler reads it from there
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher("R24/P2000N ");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("unit")).isEqualTo("N");
+        assertThat(matcher.group("trend")).isNull();
+    }
+
+    @Test
+    @DisplayName("RUNWAY_PATTERN should consume only the first CYVR RVR group (Issue #113)")
+    void testRunwayPattern_CyvrConsumesOneGroup() {
+        String input = "R08L/0800V1000FT/N R08R/1600V2000FT/N FG VV002 10/10 A3009";
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo("08L");
+        assertThat(matcher.group("trend")).isEqualTo("N");
+        assertThat(input.substring(matcher.end()))
+                .isEqualTo("R08R/1600V2000FT/N FG VV002 10/10 A3009");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"R28L/1200FT/X ", "R08L/0800V1000FT/X ", "R28L/1200FT/UU "})
+    @DisplayName("RUNWAY_PATTERN should not match an unrecognized trend suffix")
+    void testRunwayPattern_UnrecognizedTrendSuffix(String input) {
+        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isFalse();
+    }
+
     // ========== REMARKS PATTERNS ==========
 
     @Test
