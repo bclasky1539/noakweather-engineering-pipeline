@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.10-SNAPSHOT] - 2026-10-10
+
+### Fixed
+- RVR groups with a slash trend suffix after the FT unit (e.g. `R08L/0800V1000FT/N`, `R28L/1200FT/U`)
+  are now parsed. Previously `RUNWAY_PATTERN` rejected them, stopping main-body
+  parsing and leaving present weather, vertical visibility, temperature/dewpoint and
+  altimeter in `unparsedMainBody` (#113)
+  - `RUNWAY_PATTERN`: new optional `trend` group (`/U`, `/D`, `/N`) after the unit
+  - `extractRvrTrend()`: reads the slash-form trend first, falls back to the metre-form
+     trend in the `unit` group
+
+### Added
+- `NoaaMetarParserTest`: trend-suffix cases for fixed and variable FT RVR
+   (`/U`, `/D`, `/N`, none), each asserting the trailing main-body tokens
+   parse; CYVR acceptance test; guard test that an unrecognized RVR suffix surfaces 
+   in `unparsedMainBody` (#113)
+- `NoaaMetarParserTest`: `knownGap_unrecognizedMainBodyTokenStrandsLaterTokens`,
+   documenting that the main-body loop stops at the first unmatched token
+- `RegExprConstTest`: pattern-level tests for FT plus trend suffix, metre-form
+   trend staying in `unit`, CYVR single-group consumption, and rejection of
+   unrecognized suffixes (#113)
+- `NoaaMetarParserRemarksRecoveryTest`: CYVR recovery case; `printRemarksParsingDiagnostics()`
+   now logs `unparsedMainBody`, `runwayVisualRange` and `conditions`, with CYVR (#113)
+   and UAAA/UHHH (#121) entries
+- `scripts/uat/wethuat_discover_stations.sh`: `113-rvr-ft-trend-suffix` watch pattern
+
+### Known issues
+- Runway state groups (`Rdd/ERCReeBB`, e.g. `R23R/1///60`, `R05R/090060`) are
+  matched by `RUNWAY_PATTERN` and stored as false RVR values; found during #113
+  diagnostics, tracked in #121
+- Main-body parsing stops at the first unrecognized token, stranding later
+  tokens in `unparsedMainBody`; documented by `knownGap_unrecognizedMainBodyTokenStrandsLaterTokens`
+
 ### Version 1.20.9-SNAPSHOT - October 7, 2026
 
 #### Fixed

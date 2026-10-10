@@ -621,6 +621,7 @@ class NoaaMetarParserTest {
     }
 
     // ========== RUNWAY VISUAL RANGE (RVR) TESTS ==========
+
     @ParameterizedTest
     @CsvSource({
             // Simple RVR with trend
@@ -823,6 +824,124 @@ class NoaaMetarParserTest {
         // RVRNO means RVR is not available - no RVR objects should be created
         assertThat(data.getRunwayVisualRange()).isEmpty();
     }
+
+    // ========== RVR TREND SUFFIX TESTS ==========
+
+    @ParameterizedTest(name = "{6}")
+    @CsvSource({
+            // Fixed RVR, FT unit
+            "R28L/1200FT,      28L, 1200,     ,     ,  , 'Fixed RVR FT, no suffix'",
+            "R28L/1200FT/U,    28L, 1200,     ,     , U, 'Fixed RVR FT, upward trend'",
+            "R28L/1200FT/D,    28L, 1200,     ,     , D, 'Fixed RVR FT, downward trend'",
+            "R28L/1200FT/N,    28L, 1200,     ,     , N, 'Fixed RVR FT, no-change trend'",
+            // Variable RVR, FT unit
+            "R08L/0800V1000FT,   08L, , 800, 1000,  , 'Variable RVR FT, no suffix'",
+            "R08L/0800V1000FT/U, 08L, , 800, 1000, U, 'Variable RVR FT, upward trend'",
+            "R08L/0800V1000FT/D, 08L, , 800, 1000, D, 'Variable RVR FT, downward trend'",
+            "R08L/0800V1000FT/N, 08L, , 800, 1000, N, 'Variable RVR FT, no-change trend'"
+    })
+    @DisplayName("Should parse RVR trend suffix and continue parsing the main body")
+    void testParseRvrTrendSuffixContinuesMainBody(String rvrGroup, String expectedRunway,
+                                                  Integer expectedVisualRange, Integer expectedVarLow,
+                                                  Integer expectedVarHigh, String expectedTrend,
+                                                  String description) {
+        String metar = "METAR CYVR 081500Z 11004KT 1/2SM " + rvrGroup + " FG VV002 10/10 A3009";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // RVR group parsed
+        RunwayVisualRange rvr = data.getRvrForRunway(expectedRunway);
+        assertThat(rvr).as("RVR for runway " + expectedRunway).isNotNull();
+        if (expectedVisualRange != null) {
+            assertThat(rvr.isVariable()).as("Should not be variable").isFalse();
+            assertThat(rvr.visualRangeFeet()).as("Visual range").isEqualTo(expectedVisualRange);
+        } else {
+            assertThat(rvr.isVariable()).as("Should be variable").isTrue();
+            assertThat(rvr.variableLow()).as("Variable low").isEqualTo(expectedVarLow);
+            assertThat(rvr.variableHigh()).as("Variable high").isEqualTo(expectedVarHigh);
+        }
+        // Null expected for the no-suffix rows: a missing suffix must not invent a trend
+        assertThat(rvr.trend()).as("Trend").isEqualTo(expectedTrend);
+
+        // Everything after the RVR group was consumed
+        assertThat(data.getUnparsedMainBody())
+                .as("Tokens after the RVR group should not be left unparsed")
+                .isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should parse CYVR variable RVR with /N on both runways (Issue #113)")
+    void testParseCyvrVariableRvrWithTrendSuffix() {
+        String metar = "METAR CYVR 081500Z 11004KT 1/2SM R08L/0800V1000FT/N R08R/1600V2000FT/N "
+                + "FG VV002 10/10 A3009 RMK FG8 SLP192";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // Both RVR groups
+        assertThat(data.getRunwayVisualRange()).hasSize(2);
+
+        RunwayVisualRange rvr08L = data.getRvrForRunway("08L");
+        assertThat(rvr08L).isNotNull();
+        assertThat(rvr08L.isVariable()).isTrue();
+        assertThat(rvr08L.variableLow()).isEqualTo(800);
+        assertThat(rvr08L.variableHigh()).isEqualTo(1000);
+        assertThat(rvr08L.trend()).isEqualTo("N");
+
+        RunwayVisualRange rvr08R = data.getRvrForRunway("08R");
+        assertThat(rvr08R).isNotNull();
+        assertThat(rvr08R.isVariable()).isTrue();
+        assertThat(rvr08R.variableLow()).isEqualTo(1600);
+        assertThat(rvr08R.variableHigh()).isEqualTo(2000);
+        assertThat(rvr08R.trend()).isEqualTo("N");
+
+        // The fields that were being dropped
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(10.0);
+        assertThat(data.getConditions().temperature().dewpointCelsius()).isEqualTo(10.0);
+        assertThat(data.getConditions().pressure().value()).isCloseTo(30.09, within(0.001));
+
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should keep an unrecognized RVR suffix visible in unparsedMainBody")
+    void testUnrecognizedRvrSuffixIsReportedNotDropped() {
+        String metar = "METAR CYVR 081500Z 11004KT 1/2SM R28L/1200FT/X FG VV002 10/10 A3009";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // The bad group must not be silently consumed or turned into an RVR
+        assertThat(data.getRvrForRunway("28L")).isNull();
+        assertThat(data.getUnparsedMainBody())
+                .as("Unrecognized RVR group should surface in unparsedMainBody")
+                .startsWith("R28L/1200FT/X");
+    }
+
+    /**
+     * Known gap: parseWithHandlers() stops at the first main-body token no pattern matches,
+     * so every token after it is stranded in unparsedMainBody (the #113 failure mode, for any
+     * unrecognized token). This test asserts the current behavior and is expected to fail
+     * once the main-body loop skips unmatched tokens and continues; flip it then.
+     */
+    @Test
+    @DisplayName("Known gap: unrecognized main-body token strands the tokens after it")
+    void knownGap_unrecognizedMainBodyTokenStrandsLaterTokens() {
+        String metar = "METAR CYVR 081500Z 11004KT 1/2SM R28L/1200FT/X FG VV002 10/10 A3009";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getUnparsedMainBody())
+                .isEqualTo("R28L/1200FT/X FG VV002 10/10 A3009");
+    }
+
+    // ========== VISIBILITY TESTS ==========
 
     @Test
     @DisplayName("Should handle unknown visibility (////) gracefully")

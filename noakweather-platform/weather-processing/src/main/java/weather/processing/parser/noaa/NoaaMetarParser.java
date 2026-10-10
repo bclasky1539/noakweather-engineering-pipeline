@@ -591,8 +591,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         // Parse variable range if present
         RvrRange range = parseVariableRange(matcher, visualRange);
 
-        // Extract trend
-        String trend = extractRvrTrend(matcher.group("unit"), runwayName);
+        // Extract trend (slash form after FT, or bare letter after a metre value)
+        String trend = extractRvrTrend(matcher.group("trend"), matcher.group("unit"), runwayName);
 
         // Create and add RVR
         createAndAddRvr(runwayName, range, prefix, trend);
@@ -663,13 +663,20 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Extract trend indicator from unit group.
+     * Extract trend indicator (U/D/N).
+     * The slash form ("1000FT/N") is captured in the trend group; the metre form
+     * ("P1500N") puts the trend letter in the unit group.
      *
+     * @param trendGroup The trend group from regex (slash form), may be null
      * @param unit       The unit group from regex
      * @param runwayName The runway identifier (for logging)
      * @return Trend indicator (N/D/U) or null
      */
-    private String extractRvrTrend(String unit, String runwayName) {
+    private String extractRvrTrend(String trendGroup, String unit, String runwayName) {
+        if (trendGroup != null) {
+            return trendGroup;
+        }
+
         if (unit == null) {
             return null;
         }
