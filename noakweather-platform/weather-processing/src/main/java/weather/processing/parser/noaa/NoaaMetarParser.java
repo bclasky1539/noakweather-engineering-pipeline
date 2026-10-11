@@ -418,7 +418,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 // Shared handlers (from base class)
                 case "wind" -> handleWind(matcher);
                 case "visibility" -> handleVisibility(matcher);
-                case "runway" -> handleRunway(matcher);  // Override for full RVR support
+                case "runway" -> handleRunway(matcher);
+                case "runwayState" -> handleRunwayState(matcher);
                 case "presentWeather" -> handlePresentWeather(matcher);
                 case "skyCondition" -> handleSkyCondition(matcher);
 
@@ -538,7 +539,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Handle special RVR cases (RVRNO, CLRD).
+     * Handle special RVR case (RVRNO).
      *
      * @param matcher The regex matcher
      * @return true if special case was handled
@@ -549,20 +550,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             LOGGER.debug("RVR: Not available (RVRNO)");
             return true;
         }
-
-        String lowValue = matcher.group("lvalue");
-        if ("CLRD".equals(lowValue)) {
-            String runwayName = matcher.group("name");
-
-            // Create a cleared RVR
-            RunwayVisualRange clearedRvr = RunwayVisualRange.cleared(runwayName);
-            weatherData.addRunwayVisualRange(clearedRvr);
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("RVR: Cleared for runway {}", runwayName);
-            }
-            return true;
-        }
-
         return false;
     }
 
@@ -687,8 +674,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         if ("FT".equals(unit)) {
             LOGGER.debug("RVR: Explicit FT unit for runway {}", runwayName);
-        } else if (unit.matches("\\d{2,4}")) {
-            LOGGER.debug("RVR: Numeric suffix '{}' for runway {}", unit, runwayName);
         }
 
         return null;
@@ -720,6 +705,32 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Failed to create RVR for runway {}: {}", runwayName, e.getMessage());
+        }
+    }
+
+    // ==================== RUNWAY STATE HANDLER ====================
+
+    /**
+     * Handle runway state group: "R23R/1///60", "R05R/090060", "R34L/CLRD70", "R24///////".
+     * Decoding of the code fields is done by RunwayState.
+     *
+     * @param matcher The regex matcher
+     */
+    private void handleRunwayState(Matcher matcher) {
+        if (weatherData == null) {
+            return;
+        }
+
+        String runwayName = matcher.group("name");
+        try {
+            RunwayState state = matcher.group("clrd") != null
+                    ? RunwayState.clearedFromCode(runwayName, matcher.group("friction"))
+                    : RunwayState.fromCodes(runwayName, matcher.group("deposit"), matcher.group("extent"),
+                    matcher.group("depth"), matcher.group("friction"));
+            weatherData.addRunwayState(state);
+            LOGGER.debug("Runway state: {}", state);
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Failed to create runway state for runway {}: {}", runwayName, e.getMessage());
         }
     }
 

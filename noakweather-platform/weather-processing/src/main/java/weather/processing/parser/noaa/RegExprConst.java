@@ -110,15 +110,28 @@ public final class RegExprConst {
     );
 
     /**
+     * Runway state group (runway surface condition): "R23R/1///60", "R05R/090060", "R34L/CLRD70", "R24///////"
+     * Format Rdd/ERCReeBB: deposit, extent, depth, friction; or Rdd/CLRDBB when contamination has cleared.
+     * Each field accepts only its defined codes, so an invalid group stays visible in unparsedMainBody.
+     * MUST be registered before RUNWAY_PATTERN: both start with Rdd/.
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for runway state code fields
+    public static final Pattern RUNWAY_STATE_PATTERN = Pattern.compile(
+            "^R(?<name>\\d{2}[LRC]?)/(?:(?<clrd>CLRD)|(?<deposit>[0-9/])(?<extent>[1259/])(?<depth>[0-8]\\d|90|9[2-9]|//))"
+                    + "(?<friction>0[1-9]|[1-8]\\d|90|9[1-5]|99|//)(?=\\s|$)"
+    );
+
+    /**
      * RVR Runway visual range
      * Example: "R28L/1200V1800FT", "R06/P6000FT", "R24/P1500N", "R08L/0800V1000FT/N"
      * The trend (U/D/N) appears either directly after a metre value (captured by "unit")
      * or after "FT" with a slash (captured by "trend").
+     * Runway state groups (Rdd/ERCReeBB, Rdd/CLRDBB) are matched by RUNWAY_STATE_PATTERN, not here.
      * Complexity is required to capture runway designator, visibility range, units and trend
      */
     @SuppressWarnings("java:S5843") // Complex regex required for runway visual range format
     public static final Pattern RUNWAY_PATTERN = Pattern.compile(
-            "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>CLRD|\\d{1,4}))(V(?<high>[MP]?\\d{4}))?/?/?/?/?(?<unit>\\d{2,4}|FT|N|D|U)?(?:/(?<trend>[UDN]))?\\s+"
+            "^(RVRNO|R(?<name>\\d{2}(?<inden>[RLC])?))/(?<low>[MP]?(?<lvalue>\\d{1,4}))(V(?<high>[MP]?\\d{4}))?(?<unit>FT|N|D|U)?(?:/(?<trend>[UDN]))?\\s+"
     );
 
     /**

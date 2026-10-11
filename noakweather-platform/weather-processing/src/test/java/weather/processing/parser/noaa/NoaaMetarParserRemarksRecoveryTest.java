@@ -784,6 +784,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info(separator());
             LOGGER.info("  unparsedMainBody: {}", data.getUnparsedMainBody());
             LOGGER.info("  runwayVisualRange: {}", data.getRunwayVisualRange());
+            LOGGER.info("  runwayStates: {}", data.getRunwayStates());
             LOGGER.info("  conditions: {}", data.getConditions());
             LOGGER.info(separator());
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
@@ -812,5 +813,7 @@ class NoaaMetarParserRemarksRecoveryTest {
         return s.length() <= 40 ? s : s.substring(0, 40) + "...";
     }
 
-    private static String separator() {return "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";}
+    private static String separator() {
+        return "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++";
+    }
 }

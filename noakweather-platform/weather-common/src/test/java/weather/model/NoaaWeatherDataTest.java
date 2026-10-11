@@ -30,6 +30,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -555,6 +556,49 @@ class NoaaWeatherDataTest {
         data.setRunwayVisualRange(null);
 
         assertThat(data.getRunwayVisualRange()).isEmpty();
+    }
+
+    // ========== RUNWAY STATE TESTS ==========
+
+    @Test
+    @DisplayName("Should start with an empty runway state list")
+    void testRunwayStatesDefaultEmpty() {
+        assertThat(new NoaaWeatherData().getRunwayStates()).isEmpty();
+        assertThat(new NoaaWeatherData("UAAA", Instant.now(), "METAR").getRunwayStates()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should add runway states, ignore null, and return an immutable copy")
+    void testAddRunwayState() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        RunwayState state = RunwayState.fromCodes("23R", "1", "/", "//", "60");
+
+        data.addRunwayState(state);
+        data.addRunwayState(null);
+
+        assertThat(data.getRunwayStates()).containsExactly(state);
+        assertThatThrownBy(() -> data.getRunwayStates().add(state))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("Should treat a null runway state list as empty")
+    void testSetRunwayStatesNull() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        data.setRunwayStates(null);
+
+        assertThat(data.getRunwayStates()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should include runway states in equals and hashCode")
+    void testRunwayStatesInEquals() {
+        NoaaWeatherData data1 = new NoaaWeatherData("UAAA", now, "METAR");
+        NoaaWeatherData data2 = new NoaaWeatherData("UAAA", now, "METAR");
+        assertThat(data1).isEqualTo(data2).hasSameHashCodeAs(data2);
+
+        data1.addRunwayState(RunwayState.fromCodes("23R", "1", "/", "//", "60"));
+        assertThat(data1).isNotEqualTo(data2);
     }
 
     // ========== UTILITY METHODS TESTS ==========

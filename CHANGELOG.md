@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.11-SNAPSHOT] - 2026-10-11
+
+### Fixed
+- Runway state groups (`Rdd/ERCReeBB`, e.g. `R23R/1///60`, `R05R/090060`) are no longer parsed as
+  RVR. Previously `RUNWAY_PATTERN` accepted them, producing false runway visual ranges (UAAA: 1 ft
+  and 2 ft entries, minimum RVR 1; UHHH: a 900 ft RVR on a CAVOK report) (#121)
+  - `RUNWAY_PATTERN` tightened: removed the `CLRD` alternative, the `/?/?/?/?` run and the numeric
+    `unit` alternative
+  - Malformed runway groups (undefined codes, bare `CLRD`) now stay visible in `unparsedMainBody`
+    instead of becoming RVR records
+
+### Added
+- `RunwayState` record (`weather-common`) for runway state groups, including the `CLRD`
+  (contamination cleared) and `//////` (report not updated) forms, with `getEquivalentBrakingAction()`
+  mapping measured friction to braking action (#121)
+- Enums `RunwayDeposit`, `RunwayContaminationExtent`, `DepthOfDeposit` and `FrictionCoefficient`
+  covering the full runway state code tables, including not-reported and not-significant codes (#121)
+- `RUNWAY_STATE_PATTERN`, registered before `RUNWAY_PATTERN`, and `handleRunwayState()`
+  in `NoaaMetarParser` (#121)
+- `runwayStates` list on `NoaaWeatherData`, included in `equals`, `hashCode` and `toString` (#121)
+- Tests: `RunwayStateTest`, `RunwayStateEnumsTest`; parser tests for UAAA and UHHH
+  and for runway state groups continuing the main body; pattern tests for `RUNWAY_STATE_PATTERN`
+  and for `RUNWAY_PATTERN` rejecting runway state groups (#121)
+- `printRemarksParsingDiagnostics()` logs `runwayStates`
+- `scripts/uat/wethuat_discover_stations.sh`: `121-runway-state-group` watch pattern
+
+### Changed
+- `RunwayVisualRange`: removed the `cleared` component, `cleared()` and `isCleared()`.
+  `CLRD` is a runway state concept and is now modelled by `RunwayState`. **Bronze JSON
+  shape change**: the RVR struct no longer has `cleared`, and records gain a `runwayStates`
+  array (#121)
+- `NoaaMetarParser.extractRvrTrend()`: removed the unreachable numeric-suffix branch
+- Rewrote `NoaaMetarParserTest` cases `testParseRvrCleared`, `testParseRvrClrd` and
+  `testParseRvrWithNumericSuffix`, and `RegExprConstTest` CLRD cases, which asserted
+  the misreading (#121)
+
+### Deferred
+- 8-figure runway designator conventions (`88` all runways, `99` repeat, 50 added for
+  right runways) and `SNOCLO`
+
+### Downstream impact
+- Bronze JSON shape changed (new `runwayStates` array; `cleared` removed from the RVR struct).
+  The Silver Glue job and Athena schema are to be reviewed against these changes in Silver pre-UAT.
+
 ## [1.20.10-SNAPSHOT] - 2026-10-10
 
 ### Fixed
