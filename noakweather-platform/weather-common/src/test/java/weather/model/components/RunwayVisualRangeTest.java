@@ -25,8 +25,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 
 /**
  * Tests for RunwayVisualRange record.
@@ -48,7 +48,6 @@ class RunwayVisualRangeTest {
         assertThat(rvr.variableHigh()).isNull();
         assertThat(rvr.prefix()).isNull();
         assertThat(rvr.trend()).isNull();
-        assertThat(rvr.isCleared()).isFalse();
     }
 
     @Test
@@ -60,7 +59,6 @@ class RunwayVisualRangeTest {
         assertThat(rvr.variableLow()).isEqualTo(1800);
         assertThat(rvr.variableHigh()).isEqualTo(2400);
         assertThat(rvr.isVariable()).isTrue();
-        assertThat(rvr.isCleared()).isFalse();
     }
 
     @Test
@@ -70,7 +68,6 @@ class RunwayVisualRangeTest {
         assertThat(rvr.prefix()).isEqualTo("P");
         assertThat(rvr.isGreaterThan()).isTrue();
         assertThat(rvr.isLessThan()).isFalse();
-        assertThat(rvr.isCleared()).isFalse();
     }
 
     @Test
@@ -79,7 +76,6 @@ class RunwayVisualRangeTest {
 
         assertThat(rvr.trend()).isEqualTo("D");
         assertThat(rvr.getTrendDescription()).isEqualTo("Decreasing");
-        assertThat(rvr.isCleared()).isFalse();
     }
 
     @Test
@@ -90,210 +86,6 @@ class RunwayVisualRangeTest {
         assertThat(rvr.isVariable()).isTrue();
         assertThat(rvr.isLessThan()).isTrue();
         assertThat(rvr.getTrendDescription()).isEqualTo("Increasing");
-        assertThat(rvr.isCleared()).isFalse();
-    }
-
-    // ==================== CLRD (Cleared) Tests ====================
-
-    @Nested
-    @DisplayName("CLRD (Cleared) RVR Tests")
-    class ClearedRvrTests {
-
-        @Test
-        @DisplayName("Should create cleared RVR using factory method")
-        void testClearedRVR_FactoryMethod() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("22R");
-
-            assertThat(rvr.runway()).isEqualTo("22R");
-            assertThat(rvr.isCleared()).isTrue();
-            assertThat(rvr.visualRangeFeet()).isNull();
-            assertThat(rvr.variableLow()).isNull();
-            assertThat(rvr.variableHigh()).isNull();
-            assertThat(rvr.prefix()).isNull();
-        }
-
-        @Test
-        @DisplayName("Should create cleared RVR using 7-parameter constructor")
-        void testClearedRVR_Constructor() {
-            RunwayVisualRange rvr = new RunwayVisualRange("04L", null, null, null, null, null, true);
-
-            assertThat(rvr.runway()).isEqualTo("04L");
-            assertThat(rvr.isCleared()).isTrue();
-            assertThat(rvr.visualRangeFeet()).isNull();
-            assertThat(rvr.variableLow()).isNull();
-            assertThat(rvr.variableHigh()).isNull();
-        }
-
-        @Test
-        @DisplayName("Cleared RVR should return false for isVariable")
-        void testClearedRVR_NotVariable() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("18");
-
-            assertThat(rvr.isVariable()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Cleared RVR should return false for isGreaterThan")
-        void testClearedRVR_NotGreaterThan() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("27");
-
-            assertThat(rvr.isGreaterThan()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Cleared RVR should return false for isLessThan")
-        void testClearedRVR_NotLessThan() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("09");
-
-            assertThat(rvr.isLessThan()).isFalse();
-        }
-
-        @Test
-        @DisplayName("Cleared RVR should return 'Cleared' trend description")
-        void testClearedRVR_TrendDescription() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("36");
-
-            assertThat(rvr.getTrendDescription()).isEqualTo("Cleared");
-        }
-
-        @Test
-        @DisplayName("Cleared RVR should return 0.0 for statute miles")
-        void testClearedRVR_StatuteMiles() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("04L");
-
-            assertThat(rvr.getVisualRangeStatuteMiles()).isEqualTo(0.0);
-        }
-
-        @Test
-        @DisplayName("Cleared RVR should return 0.0 for meters")
-        void testClearedRVR_Meters() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("22R");
-
-            assertThat(rvr.getVisualRangeMeters()).isEqualTo(0.0);
-        }
-
-        @Test
-        @DisplayName("Cleared RVR summary should indicate cleared status")
-        void testClearedRVR_Summary() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("18C");
-
-            assertThat(rvr.getSummary()).isEqualTo("Runway 18C: CLEARED (conditions improved)");
-        }
-
-        @Test
-        @DisplayName("Cleared RVR toString should indicate CLEARED")
-        void testClearedRVR_ToString() {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("27L");
-
-            assertThat(rvr).hasToString("RunwayVisualRange{runway='27L', CLEARED}");
-        }
-
-        @Test
-        @DisplayName("Should reject CLRD RVR with visual range value")
-        void testClearedRVR_WithVisualRange_ThrowsException() {
-            assertThatThrownBy(() -> new RunwayVisualRange("04L", 2200, null, null, null, null, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("CLRD runway cannot have visual range values");
-        }
-
-        @Test
-        @DisplayName("Should reject CLRD RVR with variable low")
-        void testClearedRVR_WithVariableLow_ThrowsException() {
-            assertThatThrownBy(() -> new RunwayVisualRange("04L", null, 1800, null, null, null, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("CLRD runway cannot have visual range values");
-        }
-
-        @Test
-        @DisplayName("Should reject CLRD RVR with variable high")
-        void testClearedRVR_WithVariableHigh_ThrowsException() {
-            assertThatThrownBy(() -> new RunwayVisualRange("04L", null, null, 2400, null, null, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("CLRD runway cannot have visual range values");
-        }
-
-        @Test
-        @DisplayName("Should reject CLRD RVR with both variable values")
-        void testClearedRVR_WithVariableRange_ThrowsException() {
-            assertThatThrownBy(() -> new RunwayVisualRange("04L", null, 1800, 2400, null, null, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("CLRD runway cannot have visual range values");
-        }
-
-        @Test
-        @DisplayName("Should reject CLRD RVR with M prefix")
-        void testClearedRVR_WithPrefixM_ThrowsException() {
-            assertThatThrownBy(() -> new RunwayVisualRange("04L", null, null, null, "M", null, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("CLRD runway cannot have prefix");
-        }
-
-        @Test
-        @DisplayName("Should reject CLRD RVR with P prefix")
-        void testClearedRVR_WithPrefixP_ThrowsException() {
-            assertThatThrownBy(() -> new RunwayVisualRange("04L", null, null, null, "P", null, true))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("CLRD runway cannot have prefix");
-        }
-
-        @Test
-        @DisplayName("Should allow CLRD RVR with null prefix")
-        void testClearedRVR_WithNullPrefix() {
-            RunwayVisualRange rvr = new RunwayVisualRange("04L", null, null, null, null, null, true);
-
-            assertThat(rvr.isCleared()).isTrue();
-            assertThat(rvr.prefix()).isNull();
-        }
-
-        @Test
-        @DisplayName("Should allow CLRD RVR with blank prefix")
-        void testClearedRVR_WithBlankPrefix() {
-            RunwayVisualRange rvr = new RunwayVisualRange("04L", null, null, null, "  ", null, true);
-
-            assertThat(rvr.isCleared()).isTrue();
-        }
-
-        @Test
-        @DisplayName("Should allow CLRD RVR with trend")
-        void testClearedRVR_WithTrend() {
-            // Trend is allowed (though may be ignored) when cleared
-            RunwayVisualRange rvr = new RunwayVisualRange("04L", null, null, null, null, "N", true);
-
-            assertThat(rvr.isCleared()).isTrue();
-            assertThat(rvr.trend()).isEqualTo("N");
-            assertThat(rvr.getTrendDescription()).isEqualTo("Cleared"); // Should override trend
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"04L", "22R", "18C", "27", "36L", "09R"})
-        @DisplayName("Should create cleared RVR for various runway identifiers")
-        void testClearedRVR_VariousRunways(String runway) {
-            RunwayVisualRange rvr = RunwayVisualRange.cleared(runway);
-
-            assertThat(rvr.runway()).isEqualTo(runway);
-            assertThat(rvr.isCleared()).isTrue();
-        }
-
-        @Test
-        @DisplayName("Real world example: R22R/CLRD")
-        void testRealWorldExample_R22R_CLRD() {
-            // R22R/CLRD - Runway 22 Right cleared
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("22R");
-
-            assertThat(rvr.runway()).isEqualTo("22R");
-            assertThat(rvr.isCleared()).isTrue();
-            assertThat(rvr.getSummary()).contains("CLEARED");
-        }
-
-        @Test
-        @DisplayName("Real world example: R34L/CLRD70")
-        void testRealWorldExample_R34L_CLRD70() {
-            // R34L/CLRD70 - Runway 34 Left cleared (70 is unit suffix, ignored)
-            RunwayVisualRange rvr = RunwayVisualRange.cleared("34L");
-
-            assertThat(rvr.runway()).isEqualTo("34L");
-            assertThat(rvr.isCleared()).isTrue();
-        }
     }
 
     // ==================== Runway Validation Tests ====================
@@ -324,14 +116,6 @@ class RunwayVisualRangeTest {
     void testValidRunway_Formats(String runway) {
         RunwayVisualRange rvr = new RunwayVisualRange(runway, 2200, null, null, null, null);
         assertThat(rvr.runway()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("CLRD RVR should still validate runway identifier")
-    void testClearedRVR_InvalidRunway() {
-        assertThatThrownBy(() -> RunwayVisualRange.cleared("00"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid runway identifier format");
     }
 
     // ==================== Visual Range Validation Tests ====================
@@ -754,7 +538,6 @@ class RunwayVisualRangeTest {
         assertThat(rvr.prefix()).isNull();
         assertThat(rvr.trend()).isNull();
         assertThat(rvr.isVariable()).isFalse();
-        assertThat(rvr.isCleared()).isFalse();
     }
 
     @Test
@@ -768,21 +551,6 @@ class RunwayVisualRangeTest {
         assertThat(rvr.prefix()).isNull();
         assertThat(rvr.trend()).isNull();
         assertThat(rvr.isVariable()).isTrue();
-        assertThat(rvr.isCleared()).isFalse();
-    }
-
-    @Test
-    void testFactoryMethod_Cleared() {
-        RunwayVisualRange rvr = RunwayVisualRange.cleared("18C");
-
-        assertThat(rvr.runway()).isEqualTo("18C");
-        assertThat(rvr.visualRangeFeet()).isNull();
-        assertThat(rvr.variableLow()).isNull();
-        assertThat(rvr.variableHigh()).isNull();
-        assertThat(rvr.prefix()).isNull();
-        assertThat(rvr.trend()).isNull();
-        assertThat(rvr.isVariable()).isFalse();
-        assertThat(rvr.isCleared()).isTrue();
     }
 
     // ==================== Real World Examples ====================

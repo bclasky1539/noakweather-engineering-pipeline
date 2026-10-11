@@ -73,6 +73,12 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     private List<RunwayVisualRange> runwayVisualRange;
 
     /**
+     * Runway state (runway surface condition) groups, one per runway.
+     * METAR/SPECI only; empty for products that do not carry them.
+     */
+    private List<RunwayState> runwayStates;
+
+    /**
      * Raw text of the weather report as received from NOAA
      */
     private String rawText;
@@ -120,6 +126,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         super();
         this.conditions = WeatherConditions.empty();
         this.runwayVisualRange = new ArrayList<>();
+        this.runwayStates = new ArrayList<>();
     }
 
     public NoaaWeatherData(String stationId, Instant observationTime, String reportType) {
@@ -127,6 +134,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         this.reportType = reportType;
         this.conditions = WeatherConditions.empty();
         this.runwayVisualRange = new ArrayList<>();
+        this.runwayStates = new ArrayList<>();
     }
 
     // ========== CONDITIONS GETTER/SETTER ==========
@@ -265,6 +273,25 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     public void addRunwayVisualRange(RunwayVisualRange rvr) {
         if (rvr != null) {
             this.runwayVisualRange.add(rvr);
+        }
+    }
+
+    /**
+     * Get runway states as an immutable copy.
+     *
+     * @return immutable copy of runway state list
+     */
+    public List<RunwayState> getRunwayStates() {
+        return List.copyOf(runwayStates);
+    }
+
+    public void setRunwayStates(List<RunwayState> runwayStates) {
+        this.runwayStates = runwayStates != null ? runwayStates : new ArrayList<>();
+    }
+
+    public void addRunwayState(RunwayState runwayState) {
+        if (runwayState != null) {
+            this.runwayStates.add(runwayState);
         }
     }
 
@@ -484,6 +511,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         return Objects.equals(reportType, that.reportType) &&
                 Objects.equals(conditions, that.conditions) &&
                 Objects.equals(runwayVisualRange, that.runwayVisualRange) &&
+                Objects.equals(runwayStates, that.runwayStates) &&
                 Objects.equals(rawText, that.rawText) &&
                 Objects.equals(unparsedMainBody, that.unparsedMainBody) &&
                 Objects.equals(reportModifier, that.reportModifier) &&
@@ -498,6 +526,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
                 reportType,
                 conditions,
                 runwayVisualRange,
+                runwayStates,
                 rawText,
                 unparsedMainBody,
                 reportModifier,
@@ -508,7 +537,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     @Override
     public String toString() {
         return String.format(
-                "NoaaWeatherData{station=%s, time=%s, type=%s, wind=%s, vis=%s, temp=%s, pressure=%s, skyCond=%d, rvr=%d}",
+                "NoaaWeatherData{station=%s, time=%s, type=%s, wind=%s, vis=%s, temp=%s, pressure=%s, skyCond=%d, rvr=%d, runwayStates=%d}",
                 getStationId(),
                 getObservationTime(),
                 reportType,
@@ -517,7 +546,8 @@ public non-sealed class NoaaWeatherData extends WeatherData {
                 getTemperature(),
                 getPressure(),
                 getSkyConditions().size(),
-                runwayVisualRange.size()
+                runwayVisualRange.size(),
+                runwayStates.size()
         );
     }
 }

@@ -732,40 +732,32 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should handle CLRD (RVR cleared)")
-    void testParseRvrCleared() {
+    @DisplayName("Should parse CLRD as a cleared runway state, not RVR (Issue #121)")
+    void testParseRunwayStateCleared() {
         String metar = "METAR KJFK 251651Z 19005KT R34L/CLRD70";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
         assertThat(result.isSuccess()).isTrue();
         NoaaWeatherData data = extractData(result);
 
-        // CLRD should now create an RVR object
-        assertThat(data.getRunwayVisualRange()).hasSize(1);
-
-        RunwayVisualRange rvr = data.getRunwayVisualRange().get(0);
-        assertThat(rvr.runway()).isEqualTo("34L");
-        assertThat(rvr.isCleared()).isTrue();
-        assertThat(rvr.visualRangeFeet()).isNull();
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getRunwayStates()).containsExactly(RunwayState.clearedFromCode("34L", "70"));
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
     }
 
     @Test
-    @DisplayName("Should handle RVR with numeric suffix")
-    void testParseRvrWithNumericSuffix() {
+    @DisplayName("Should leave a malformed runway group visible in unparsedMainBody, not invent an RVR (Issue #121)")
+    void testParseMalformedRunwayGroupLeftUnparsed() {
+        // Extent digit 4 is undefined, so this is neither a runway state group nor an RVR
         String metar = "METAR KJFK 251651Z 19005KT R34L/040070";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
         assertThat(result.isSuccess()).isTrue();
         NoaaMetarData data = extractMetarData(result);
 
-        // Should parse successfully
-        List<RunwayVisualRange> rvrList = data.getRunwayVisualRange();
-        assertThat(rvrList).isNotEmpty();
-
-        RunwayVisualRange rvr = data.getRvrForRunway("34L");
-        assertThat(rvr).isNotNull();
-        assertThat(rvr.runway()).isEqualTo("34L");
-        assertThat(rvr.visualRangeFeet()).isEqualTo(400);
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getRunwayStates()).isEmpty();
+        assertThat(data.getUnparsedMainBody()).isEqualTo("R34L/040070");
     }
 
     @Test
@@ -792,23 +784,17 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should handle CLRD runway visual range")
-    void testParseRvrClrd() {
+    @DisplayName("Should leave bare CLRD without friction visible in unparsedMainBody (Issue #121)")
+    void testParseBareClrdLeftUnparsed() {
         String metar = "METAR KJFK 251651Z 19005KT R22R/CLRD";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
-
         assertTrue(result.isSuccess());
         NoaaMetarData data = extractMetarData(result);
 
-        // CLRD should now create an RVR object (not skip it)
-        assertThat(data.getRunwayVisualRange()).hasSize(1);
-
-        RunwayVisualRange rvr = data.getRunwayVisualRange().get(0);
-        assertThat(rvr.runway()).isEqualTo("22R");
-        assertThat(rvr.isCleared()).isTrue();
-        assertThat(rvr.visualRangeFeet()).isNull();
-        assertThat(rvr.isVariable()).isFalse();
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getRunwayStates()).isEmpty();
+        assertThat(data.getUnparsedMainBody()).isEqualTo("R22R/CLRD");
     }
 
     @Test
@@ -939,6 +925,92 @@ class NoaaMetarParserTest {
 
         assertThat(data.getUnparsedMainBody())
                 .isEqualTo("R28L/1200FT/X FG VV002 10/10 A3009");
+    }
+
+    // ========== RUNWAY STATE GROUP TESTS (Issue #121) ==========
+
+    @Test
+    @DisplayName("Should parse UAAA RVR and runway state groups separately (Issue #121)")
+    void testParseUaaaRvrAndRunwayState() {
+        String metar = "2017/04/01 23:30 UAAA 012330Z 20002MPS 180V240 0100 R23R/0450N R23L/0350N "
+                + "FG VV002 01/00 Q1017 R23R/1///60 R23L/2/0150 NOSIG";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // Exactly the two real RVR groups - no 1 ft / 2 ft entries
+        assertThat(data.getRunwayVisualRange()).hasSize(2);
+        assertThat(data.getRvrForRunway("23R").visualRangeFeet()).isEqualTo(450);
+        assertThat(data.getRvrForRunway("23L").visualRangeFeet()).isEqualTo(350);
+        assertThat(data.getMinimumRvrFeet()).isEqualTo(350);
+
+        assertThat(data.getRunwayStates()).containsExactly(
+                RunwayState.fromCodes("23R", "1", "/", "//", "60"),
+                RunwayState.fromCodes("23L", "2", "/", "01", "50"));
+
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should parse UHHH runway state with no RVR on a CAVOK report (Issue #121)")
+    void testParseUhhhRunwayStateOnCavok() {
+        String metar = "2017/08/16 18:30 UHHH 161830Z 02005MPS CAVOK 16/15 Q1014 R05R/090060 NOSIG";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getMinimumRvrFeet()).isNull();
+        assertThat(data.getRunwayStates()).containsExactly(RunwayState.fromCodes("05R", "0", "9", "00", "60"));
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "R27/451291, 27,  DRY_SNOW,     BRAKING_POOR",
+            "R09/899299, 09,  COMPACTED_OR_ROLLED_SNOW, UNRELIABLE",
+            "R10/5998//, 10,  WET_SNOW,     NOT_REPORTED",
+            "R10///99//, 10,  NOT_REPORTED, NOT_REPORTED",
+            "R24/CLRD93, 24,  ,             BRAKING_MEDIUM",
+            "R24///////, 24,  ,             "
+    })
+    @DisplayName("Should parse runway state groups and continue parsing the main body")
+    void testParseRunwayStateContinuesMainBody(String group, String expectedRunway,
+                                               RunwayDeposit expectedDeposit,
+                                               FrictionCoefficient expectedFriction) {
+        String metar = "METAR XXXX 111200Z 00000KT 9999 " + group + " M05/M07 Q1020";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getRunwayStates()).hasSize(1);
+        RunwayState state = data.getRunwayStates().get(0);
+        assertThat(state.runway()).isEqualTo(expectedRunway);
+        assertThat(state.deposit()).isEqualTo(expectedDeposit);
+        assertThat(state.friction()).isEqualTo(expectedFriction);
+
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(-5.0);
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"R10/119150", "R10/111000", "R10/131050"})
+    @DisplayName("Should leave runway state groups with undefined codes visible in unparsedMainBody")
+    void testParseRunwayStateUndefinedCodesLeftUnparsed(String group) {
+        // depth 91 (not used), friction 00 (undefined), extent 3 (undefined)
+        String metar = "METAR XXXX 111200Z 00000KT 9999 " + group;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRunwayStates()).isEmpty();
+        assertThat(data.getRunwayVisualRange()).isEmpty();
+        assertThat(data.getUnparsedMainBody()).isEqualTo(group);
     }
 
     // ========== VISIBILITY TESTS ==========

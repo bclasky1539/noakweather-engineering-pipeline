@@ -240,30 +240,64 @@ class RegExprConstTest {
         assertThat(matcher.group("unit")).isEqualTo("N");
     }
 
-    @Test
-    void testRunwayPattern_ClrdStandalone() {
-        // CLRD without any suffix (the case we just fixed!)
-        String input = "R22R/CLRD ";
-        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+    @ParameterizedTest
+    @ValueSource(strings = {"R22R/CLRD ", "R34L/CLRD70 ", "R23R/1///60 ", "R23L/2/0150 ", "R05R/090060 ", "R34L/040070 "})
+    @DisplayName("RUNWAY_PATTERN should not match CLRD or runway state groups (Issue #121)")
+    void testRunwayPattern_RejectsRunwayStateGroups(String input) {
+        assertThat(RegExprConst.RUNWAY_PATTERN.matcher(input).find()).isFalse();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'R23R/1///60 ', 23R, 1, /, //, 60",
+            "'R23L/2/0150 ', 23L, 2, /, 01, 50",
+            "'R05R/090060 ', 05R, 0, 9, 00, 60",
+            "'R10///99// ',  10,  /, /, 99, //",
+            "'R24/////// ',  24,  /, /, //, //"
+    })
+    @DisplayName("RUNWAY_STATE_PATTERN should capture each code field")
+    void testRunwayStatePattern_Fields(String input, String name, String deposit, String extent,
+                                       String depth, String friction) {
+        Matcher matcher = RegExprConst.RUNWAY_STATE_PATTERN.matcher(input);
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("name")).isEqualTo("22R"); // Includes suffix
-        assertThat(matcher.group("inden")).isEqualTo("R");
-        assertThat(matcher.group("lvalue")).isEqualTo("CLRD");
-        assertThat(matcher.group("unit")).isNull(); // No unit for standalone CLRD
+        assertThat(matcher.group("name")).isEqualTo(name);
+        assertThat(matcher.group("clrd")).isNull();
+        assertThat(matcher.group("deposit")).isEqualTo(deposit);
+        assertThat(matcher.group("extent")).isEqualTo(extent);
+        assertThat(matcher.group("depth")).isEqualTo(depth);
+        assertThat(matcher.group("friction")).isEqualTo(friction);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"'R34L/CLRD70 ', 34L, 70", "'R24/CLRD93 ', 24, 93", "'R22R/CLRD// ', 22R, //"})
+    @DisplayName("RUNWAY_STATE_PATTERN should capture the cleared form with friction")
+    void testRunwayStatePattern_Cleared(String input, String name, String friction) {
+        Matcher matcher = RegExprConst.RUNWAY_STATE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("name")).isEqualTo(name);
+        assertThat(matcher.group("clrd")).isEqualTo("CLRD");
+        assertThat(matcher.group("deposit")).isNull();
+        assertThat(matcher.group("friction")).isEqualTo(friction);
     }
 
     @Test
-    void testRunwayPattern_ClrdWithSuffix() {
-        // CLRD with numeric suffix
-        String input = "R34L/CLRD70 ";
-        Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
+    @DisplayName("RUNWAY_STATE_PATTERN should match at end of string")
+    void testRunwayStatePattern_EndOfString() {
+        assertThat(RegExprConst.RUNWAY_STATE_PATTERN.matcher("R05R/090060").find()).isTrue();
+    }
 
-        assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("name")).isEqualTo("34L"); // Includes suffix
-        assertThat(matcher.group("inden")).isEqualTo("L");
-        assertThat(matcher.group("lvalue")).isEqualTo("CLRD");
-        assertThat(matcher.group("unit")).isEqualTo("70");
+    @ParameterizedTest
+    @ValueSource(strings = {
+            // RVR shapes
+            "R22R/0400N ", "R24/P2000N ", "R23L/0900V6000FT ", "R08L/0800V1000FT/N ", "R24/1100 ", "R06/1200FT ",
+            // undefined codes and malformed groups
+            "R22R/CLRD ", "R34L/040070 ", "R10/119150 ", "R10/111000 ", "R10/111096 ", "R10/131050 ", "R10/11105 "
+    })
+    @DisplayName("RUNWAY_STATE_PATTERN should not match RVR shapes or undefined codes")
+    void testRunwayStatePattern_Rejects(String input) {
+        assertThat(RegExprConst.RUNWAY_STATE_PATTERN.matcher(input).find()).isFalse();
     }
 
     @ParameterizedTest(name = "{5}")
