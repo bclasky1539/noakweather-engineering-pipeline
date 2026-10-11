@@ -18,10 +18,10 @@ package weather.model.components;
 
 /**
  * Represents present weather phenomena in aviation weather reports.
- *
+ * <p>
  * Present weather describes current atmospheric conditions using standardized codes.
  * Multiple phenomena can be reported simultaneously (e.g., light rain and mist).
- *
+ * <p>
  * Format: [Intensity][Descriptor][Precipitation][Obscuration][Other]
  * Examples:
  * - "-RA" = Light rain
@@ -30,13 +30,12 @@ package weather.model.components;
  * - "BR" = Mist
  * - "NSW" = No significant weather
  *
- * @param intensity Intensity indicator: "-" (light), "+" (heavy), "VC" (vicinity), or null (moderate)
- * @param descriptor Weather descriptor: TS, FZ, SH, etc.
+ * @param intensity     Intensity indicator: "-" (light), "+" (heavy), "VC" (vicinity), or null (moderate)
+ * @param descriptor    Weather descriptor: TS, FZ, SH, etc.
  * @param precipitation Precipitation type: RA, SN, DZ, etc.
- * @param obscuration Obscuration type: FG, BR, HZ, etc.
- * @param other Other phenomena: SQ, FC, DS, NSW, etc.
- * @param rawCode Original weather code as it appeared in the report
- *
+ * @param obscuration   Obscuration type: FG, BR, HZ, etc.
+ * @param other         Other phenomena: SQ, FC, DS, NSW, etc.
+ * @param rawCode       Original weather code as it appeared in the report
  * @author bclasky1539
  *
  */
@@ -64,7 +63,7 @@ public record PresentWeather(
 
     /**
      * Parse a weather code string into its components.
-     *
+     * <p>
      * Format: [Intensity][Descriptor][Precipitation][Obscuration][Other]
      * Examples:
      * - "-RA" = Light rain
@@ -95,7 +94,7 @@ public record PresentWeather(
 
         // Extract components in order
         ctx.descriptor = extractComponent(ctx, PresentWeather::isDescriptor);
-        ctx.precipitation = extractComponent(ctx, PresentWeather::isPrecipitation);
+        ctx.precipitation = extractRepeatedComponent(ctx, PresentWeather::isPrecipitation);
         ctx.obscuration = extractComponent(ctx, PresentWeather::isObscuration);
         ctx.other = extractComponent(ctx, PresentWeather::isOther);
 
@@ -139,6 +138,21 @@ public record PresentWeather(
             }
         }
         return null;
+    }
+
+    /**
+     * Extract consecutive 2-letter components using the provided validator,
+     * e.g. "DZRA" or "RASN" for mixed precipitation types.
+     *
+     * @return the concatenated codes, or null if none matched
+     */
+    private static String extractRepeatedComponent(ParseContext ctx, java.util.function.Predicate<String> validator) {
+        StringBuilder sb = new StringBuilder();
+        String next;
+        while ((next = extractComponent(ctx, validator)) != null) {
+            sb.append(next);
+        }
+        return sb.isEmpty() ? null : sb.toString();
     }
 
     /**
@@ -376,11 +390,23 @@ public record PresentWeather(
     }
 
     /**
-     * Get precipitation description.
+     * Get precipitation description. Mixed precipitation (e.g. "DZRA")
+     * is described type by type, joined with "and".
      */
     private String getPrecipitationDescription() {
         if (precipitation == null) return "";
-        return switch (precipitation) {
+        java.util.List<String> parts = new java.util.ArrayList<>();
+        for (int i = 0; i + 2 <= precipitation.length(); i += 2) {
+            parts.add(describePrecipitationCode(precipitation.substring(i, i + 2)));
+        }
+        return String.join(" and ", parts);
+    }
+
+    /**
+     * Describe a single 2-letter precipitation code.
+     */
+    private static String describePrecipitationCode(String code) {
+        return switch (code) {
             case "DZ" -> "Drizzle";
             case "RA" -> "Rain";
             case "SN" -> "Snow";
@@ -390,7 +416,7 @@ public record PresentWeather(
             case "GR" -> "Hail";
             case "GS" -> "Small Hail/Snow Pellets";
             case "UP" -> "Unknown Precipitation";
-            default -> precipitation;
+            default -> code;
         };
     }
 

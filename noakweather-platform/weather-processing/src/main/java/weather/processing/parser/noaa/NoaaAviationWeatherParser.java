@@ -71,6 +71,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     // Pattern for RVR M/P prefix
     private static final String RVR_PREFIX_PATTERN = "^[MP]";
 
+    private static final String RECENT_WEATHER_NOT_OBSERVABLE = "//";
+
     // ==================== SHARED STATE FOR BUILDING CONDITIONS ====================
 
     /**
@@ -521,6 +523,33 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return weather.obscuration();
         }
         return weather.other();
+    }
+
+    /**
+     * Handle recent weather group: "REDZRA", "RESHRA", "RE//".
+     * Stored separately from present weather; "RE//" flags recent weather as not observable.
+     *
+     * @param matcher The regex matcher
+     */
+    protected void handleRecentWeather(Matcher matcher) {
+        if (weatherData == null) {
+            return;
+        }
+
+        String code = matcher.group("code");
+        if (RECENT_WEATHER_NOT_OBSERVABLE.equals(code)) {
+            weatherData.setRecentWeatherNotObservable(true);
+            LOGGER.debug("Recent weather: not observable (RE//)");
+            return;
+        }
+
+        try {
+            PresentWeather recent = PresentWeather.parse(code);
+            weatherData.addRecentWeather(recent);
+            LOGGER.debug("Recent weather: {} ({})", code, recent.getDescription());
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Failed to parse recent weather '{}': {}", code, e.getMessage());
+        }
     }
 
     /**

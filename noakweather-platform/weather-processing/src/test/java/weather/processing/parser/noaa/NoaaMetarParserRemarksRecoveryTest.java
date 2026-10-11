@@ -775,6 +775,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2017/04/01 23:30 UAAA 012330Z 20002MPS 180V240 0100 R23R/0450N R23L/0350N FG VV002 01/00 Q1017 R23R/1///60 R23L/2/0150 NOSIG",
                 "2017/08/16 18:30 UHHH 161830Z 02005MPS CAVOK 16/15 Q1014 R05R/090060 NOSIG",
                 "2026/10/08 15:00 CYVR 081500Z 11004KT 1/2SM R08L/0800V1000FT/N R08R/1600V2000FT/N FG VV002 10/10 A3009 RMK FG8 SLP192",
+                "2026/10/08 16:00 BIRK 081600Z 10014KT 8000 -DZ OVC015 08/06 Q0988 REDZRA",
+                "2026/10/08 16:00 LIMC 081520Z 06003KT 040V110 8000 VCSH FEW015TCU SCT025 BKN050 19/16 Q1010 RESHRA NOSIG",
         };
 
         for (String raw : raws) {
@@ -785,6 +787,9 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  unparsedMainBody: {}", data.getUnparsedMainBody());
             LOGGER.info("  runwayVisualRange: {}", data.getRunwayVisualRange());
             LOGGER.info("  runwayStates: {}", data.getRunwayStates());
+            LOGGER.info("  recentWeather: {}", data.getRecentWeather());
+            LOGGER.info("  recentWeatherNotObservable: {}", data.isRecentWeatherNotObservable());
+            LOGGER.info("  noSignificantChange: {}", data.isNoSignificantChange());
             LOGGER.info("  conditions: {}", data.getConditions());
             LOGGER.info(separator());
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");

@@ -601,6 +601,56 @@ class NoaaWeatherDataTest {
         assertThat(data1).isNotEqualTo(data2);
     }
 
+    // ========== RECENT WEATHER TESTS (Issue #116) ==========
+
+    @Test
+    @DisplayName("Should start with no recent weather and not-observable false")
+    void testRecentWeatherDefaults() {
+        NoaaWeatherData data = new NoaaWeatherData("BIRK", now, "METAR");
+
+        assertThat(data.getRecentWeather()).isEmpty();
+        assertThat(new NoaaWeatherData().getRecentWeather()).isEmpty();
+        assertThat(data.isRecentWeatherNotObservable()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should add recent weather, ignore null, and return an immutable copy")
+    void testAddRecentWeather() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        PresentWeather recent = PresentWeather.parse("DZRA");
+
+        data.addRecentWeather(recent);
+        data.addRecentWeather(null);
+
+        assertThat(data.getRecentWeather()).containsExactly(recent);
+        assertThatThrownBy(() -> data.getRecentWeather().add(recent))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("Should treat a null recent weather list as empty")
+    void testSetRecentWeatherNull() {
+        NoaaWeatherData data = new NoaaWeatherData();
+        data.setRecentWeather(null);
+
+        assertThat(data.getRecentWeather()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should include recent weather and the not-observable flag in equals and hashCode")
+    void testRecentWeatherInEquals() {
+        NoaaWeatherData data1 = new NoaaWeatherData("BIRK", now, "METAR");
+        NoaaWeatherData data2 = new NoaaWeatherData("BIRK", now, "METAR");
+        assertThat(data1).isEqualTo(data2).hasSameHashCodeAs(data2);
+
+        data1.addRecentWeather(PresentWeather.parse("DZRA"));
+        assertThat(data1).isNotEqualTo(data2);
+
+        NoaaWeatherData data3 = new NoaaWeatherData("BIRK", now, "METAR");
+        data3.setRecentWeatherNotObservable(true);
+        assertThat(data3).isNotEqualTo(data2);
+    }
+
     // ========== UTILITY METHODS TESTS ==========
 
     @Test

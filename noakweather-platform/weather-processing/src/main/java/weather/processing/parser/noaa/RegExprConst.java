@@ -145,6 +145,17 @@ public final class RegExprConst {
     );
 
     /**
+     * Recent weather (RE groups): weather during the past hour that has ended or weakened.
+     * Example: "REDZRA", "RESHRA", "RETSRA", "RE//" (not observable)
+     * Same code grammar as present weather but without intensity or vicinity (not allowed for recent weather).
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for weather phenomena combinations
+    public static final Pattern RECENT_WEATHER_PATTERN = Pattern.compile(
+            "^RE(?<code>//|(?=[A-Z]{2})(?:MI|PR|BC|DR|BL|SH|TS|FZ)?(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP)*+"
+                    + "(?:BR|FG|FU|VA|DU|SA|HZ|PY)?(?:PO|SQ|FC|SS|DS)?)(?=\\s|$)"
+    );
+
+    /**
      * Sky condition (cloud layers)
      * Example: "FEW250", "SCT100", "BKN050CB", "OVC020"
      */

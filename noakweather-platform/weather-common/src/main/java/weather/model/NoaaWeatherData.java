@@ -79,6 +79,19 @@ public non-sealed class NoaaWeatherData extends WeatherData {
     private List<RunwayState> runwayStates;
 
     /**
+     * Recent weather (RE groups): weather observed during the past hour, or since
+     * the last report, that has ended or weakened. Kept separate from present
+     * weather so "now" and "recently" are never mixed.
+     * METAR/SPECI only; empty for products that do not carry it.
+     */
+    private List<PresentWeather> recentWeather;
+
+    /**
+     * True when recent weather is reported as not observable ("RE//"), typically by automated stations.
+     */
+    private boolean recentWeatherNotObservable;
+
+    /**
      * Raw text of the weather report as received from NOAA
      */
     private String rawText;
@@ -127,6 +140,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         this.conditions = WeatherConditions.empty();
         this.runwayVisualRange = new ArrayList<>();
         this.runwayStates = new ArrayList<>();
+        this.recentWeather = new ArrayList<>();
     }
 
     public NoaaWeatherData(String stationId, Instant observationTime, String reportType) {
@@ -135,6 +149,7 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         this.conditions = WeatherConditions.empty();
         this.runwayVisualRange = new ArrayList<>();
         this.runwayStates = new ArrayList<>();
+        this.recentWeather = new ArrayList<>();
     }
 
     // ========== CONDITIONS GETTER/SETTER ==========
@@ -223,6 +238,33 @@ public non-sealed class NoaaWeatherData extends WeatherData {
         return conditions != null && conditions.skyConditions() != null
                 ? List.copyOf(conditions.skyConditions())
                 : List.of();
+    }
+
+    /**
+     * Get recent weather as an immutable copy.
+     *
+     * @return immutable copy of recent weather list
+     */
+    public List<PresentWeather> getRecentWeather() {
+        return List.copyOf(recentWeather);
+    }
+
+    public void setRecentWeather(List<PresentWeather> recentWeather) {
+        this.recentWeather = recentWeather != null ? recentWeather : new ArrayList<>();
+    }
+
+    public void addRecentWeather(PresentWeather weather) {
+        if (weather != null) {
+            this.recentWeather.add(weather);
+        }
+    }
+
+    public boolean isRecentWeatherNotObservable() {
+        return recentWeatherNotObservable;
+    }
+
+    public void setRecentWeatherNotObservable(boolean recentWeatherNotObservable) {
+        this.recentWeatherNotObservable = recentWeatherNotObservable;
     }
 
     /**
@@ -512,6 +554,8 @@ public non-sealed class NoaaWeatherData extends WeatherData {
                 Objects.equals(conditions, that.conditions) &&
                 Objects.equals(runwayVisualRange, that.runwayVisualRange) &&
                 Objects.equals(runwayStates, that.runwayStates) &&
+                Objects.equals(recentWeather, that.recentWeather) &&
+                Objects.equals(recentWeatherNotObservable, that.recentWeatherNotObservable) &&
                 Objects.equals(rawText, that.rawText) &&
                 Objects.equals(unparsedMainBody, that.unparsedMainBody) &&
                 Objects.equals(reportModifier, that.reportModifier) &&
@@ -527,6 +571,8 @@ public non-sealed class NoaaWeatherData extends WeatherData {
                 conditions,
                 runwayVisualRange,
                 runwayStates,
+                recentWeather,
+                recentWeatherNotObservable,
                 rawText,
                 unparsedMainBody,
                 reportModifier,

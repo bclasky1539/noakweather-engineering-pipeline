@@ -421,6 +421,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 case "runway" -> handleRunway(matcher);
                 case "runwayState" -> handleRunwayState(matcher);
                 case "presentWeather" -> handlePresentWeather(matcher);
+                case "recentWeather" -> handleRecentWeather(matcher);
                 case "skyCondition" -> handleSkyCondition(matcher);
 
                 // Remarks handlers
