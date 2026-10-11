@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.12-SNAPSHOT] - 2026-10-11
+
+### Fixed
+- Recent weather groups (`RE` + weather code, e.g. `REDZRA`, `RESHRA`) in the METAR main body are now
+  parsed. Previously they were left in `unparsedMainBody`, and because main-body parsing stops at the
+  first unrecognized token, a following `NOSIG` was stranded too (BIRK, LIMC) (#116)
+- `PresentWeather.parse()` now keeps consecutive precipitation types together (`DZRA`, `RASN`, `RAGR`).
+  Previously only the first type was stored in `precipitation` and the rest fell into `other`; this affected
+  present weather as well as recent weather (#116)
+
+### Added
+- `RECENT_WEATHER_PATTERN`, registered before `NO_SIG_CHANGE_PATTERN`, and `handleRecentWeather()`;
+  intensity and vicinity forms (`RE-RA`, `REVCSH`) are rejected and stay visible in `unparsedMainBody` (#116)
+- `recentWeather` list (`List<PresentWeather>`) and `recentWeatherNotObservable` flag (`RE//`)
+   on `NoaaWeatherData`, included in `equals`, `hashCode` and `toString` (#116)
+- `PresentWeather`: mixed-precipitation descriptions (e.g. "Drizzle and Rain")
+- Tests: BIRK and LIMC parser tests, single/combined/multiple `RE` groups, `RE//`, regression
+  with no `RE`, invalid `RE` forms, mixed present-weather precipitation; `RECENT_WEATHER_PATTERN`
+  pattern tests; `PresentWeather` mixed-precipitation tests; `NoaaWeatherData` recent-weather tests (#116)
+- `printRemarksParsingDiagnostics()` logs `recentWeather`, `recentWeatherNotObservable`
+   and `noSignificantChange`, with BIRK and LIMC entries
+- `scripts/uat/wethuat_discover_stations.sh`: `116-recent-weather` watch pattern
+
+### Changed
+- `knownGap_RecentWeatherGroup_BlocksNoSig` flipped to `testRecentWeatherGroupFollowedByNoSig`,
+   asserting the fixed behaviour (#116)
+
+### Downstream impact
+- Bronze JSON shape change: records gain a `recentWeather` array (same struct as `presentWeather`)
+  and a `recentWeatherNotObservable` boolean. `precipitation` in present and recent weather can now
+  hold mixed codes (e.g. `"RASN"`), and `other` no longer receives the second precipitation type.
+  Silver Glue job and Athena schema to be reviewed in Silver pre-UAT.
+
 ## [1.20.11-SNAPSHOT] - 2026-10-11
 
 ### Fixed

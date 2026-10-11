@@ -1303,6 +1303,152 @@ class NoaaMetarParserTest {
         assertThat(fog.obscuration()).isEqualTo("FG");
     }
 
+    // ========== RECENT WEATHER TESTS ==========
+
+    @Test
+    @DisplayName("Should parse BIRK recent weather separately from present weather (Issue #116)")
+    void testParseBirkRecentWeather() {
+        String metar = "2026/10/08 16:00 BIRK 081600Z 10014KT 8000 -DZ OVC015 08/06 Q0988 REDZRA";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // Present weather: light drizzle now - recent weather must not leak into it
+        assertThat(data.getPresentWeather()).hasSize(1);
+        assertThat(data.getPresentWeather().get(0).rawCode()).isEqualTo("-DZ");
+
+        // Recent weather: drizzle and rain, held together as mixed precipitation
+        assertThat(data.getRecentWeather()).hasSize(1);
+        PresentWeather recent = data.getRecentWeather().get(0);
+        assertThat(recent.intensity()).isNull();
+        assertThat(recent.precipitation()).isEqualTo("DZRA");
+        assertThat(recent.other()).isNull();
+        assertThat(data.isRecentWeatherNotObservable()).isFalse();
+
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should parse LIMC recent weather and the NOSIG after it (Issue #116)")
+    void testParseLimcRecentWeatherThenNosig() {
+        String metar = "METAR LIMC 081620Z 03004KT 9999 FEW030 15/12 Q1010 RESHRA NOSIG";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRecentWeather()).hasSize(1);
+        assertThat(data.getRecentWeather().get(0).descriptor()).isEqualTo("SH");
+        assertThat(data.getRecentWeather().get(0).precipitation()).isEqualTo("RA");
+
+        // NOSIG previously stranded behind the unrecognized RE group
+        assertThat(data.isNoSignificantChange()).isTrue();
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'RERA',          RE,  ,   RA",
+            "'RETSRA',        RE,  TS, RA",
+            "'REFZRA',        RE,  FZ, RA",
+            "'REBLSN',        RE,  BL, SN",
+            "'RESHRASN',      RE,  SH, RASN",
+            "'REUP',          RE,  ,   UP"
+    })
+    @DisplayName("Should parse single and combined recent weather codes")
+    void testParseRecentWeatherCodes(String group, String prefix, String expectedDescriptor,
+                                     String expectedPrecipitation) {
+        String metar = "METAR XXXX 111200Z 00000KT 9999 FEW030 10/05 Q1015 " + group;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRecentWeather()).hasSize(1);
+        PresentWeather recent = data.getRecentWeather().get(0);
+        assertThat(recent.rawCode()).isEqualTo(group.substring(prefix.length()));
+        assertThat(recent.descriptor()).isEqualTo(expectedDescriptor);
+        assertThat(recent.precipitation()).isEqualTo(expectedPrecipitation);
+        assertThat(data.getPresentWeather()).isEmpty();
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should parse multiple recent weather groups in order")
+    void testParseMultipleRecentWeatherGroups() {
+        String metar = "METAR EKXX 111200Z 27015KT 4000 -SN BKN008 M01/M02 Q1003 RESN REBLSN NOSIG";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRecentWeather())
+                .extracting(PresentWeather::rawCode)
+                .containsExactly("SN", "BLSN");
+        assertThat(data.isNoSignificantChange()).isTrue();
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should flag RE// as recent weather not observable")
+    void testParseRecentWeatherNotObservable() {
+        String metar = "METAR EGXX 111200Z AUTO 24010KT 9999 NCD 12/08 Q1015 RE//";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.isRecentWeatherNotObservable()).isTrue();
+        assertThat(data.getRecentWeather()).isEmpty();
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Should have no recent weather when the report has no RE group (regression)")
+    void testParseNoRecentWeather() {
+        String metar = "METAR KJFK 251651Z 19005KT 10SM -RA BKN020 18/15 A2998";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRecentWeather()).isEmpty();
+        assertThat(data.isRecentWeatherNotObservable()).isFalse();
+        assertThat(data.getPresentWeather()).hasSize(1);
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RE-RA", "RE+TSRA", "REVCSH"})
+    @DisplayName("Should leave recent weather with intensity or vicinity visible in unparsedMainBody")
+    void testParseInvalidRecentWeatherLeftUnparsed(String group) {
+        String metar = "METAR XXXX 111200Z 00000KT 9999 FEW030 10/05 Q1015 " + group;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRecentWeather()).isEmpty();
+        assertThat(data.getUnparsedMainBody()).isEqualTo(group);
+    }
+
+    @Test
+    @DisplayName("Should keep mixed present weather precipitation together (Issue #116)")
+    void testParseMixedPresentWeatherPrecipitation() {
+        String metar = "METAR EGXX 111200Z 24010KT 4000 -RASN BKN008 02/01 Q1003";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getPresentWeather()).hasSize(1);
+        PresentWeather weather = data.getPresentWeather().get(0);
+        assertThat(weather.intensity()).isEqualTo("-");
+        assertThat(weather.precipitation()).isEqualTo("RASN");
+        assertThat(weather.other()).isNull();
+    }
+
     // ========== SKY CONDITION TESTS ==========
 
     @ParameterizedTest
@@ -10759,11 +10905,12 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Known gap (#116): an RE group stops main-body parsing before NOSIG")
-    void knownGap_RecentWeatherGroup_BlocksNoSig() {
+    @DisplayName("Should parse an RE group and the NOSIG after it (Issue #116)")
+    void testRecentWeatherGroupFollowedByNoSig() {
         NoaaMetarData data = parseData(LEGE_BODY + "RERA NOSIG");
 
-        assertThat(data.getUnparsedMainBody()).isEqualTo("RERA NOSIG");
-        assertThat(data.isNoSignificantChange()).isFalse();    // fixed behavior: true, with unparsedMainBody null
+        assertThat(data.getRecentWeather()).extracting(PresentWeather::rawCode).containsExactly("RA");
+        assertThat(data.isNoSignificantChange()).isTrue();
+        assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
     }
 }

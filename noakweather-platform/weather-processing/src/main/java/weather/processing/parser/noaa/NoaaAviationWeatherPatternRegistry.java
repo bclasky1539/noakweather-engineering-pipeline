@@ -89,6 +89,10 @@ public class NoaaAviationWeatherPatternRegistry {
         handlers.put(RegExprConst.PRESENT_WEATHER_PATTERN,
                 NoaaAviationWeatherPatternHandler.repeating("presentWeather"));
 
+        // Recent weather (RE groups) - up to three, after pressure and before NOSIG
+        handlers.put(RegExprConst.RECENT_WEATHER_PATTERN,
+                NoaaAviationWeatherPatternHandler.repeating("recentWeather"));
+
         // Sky conditions (can have multiple cloud layers: FEW250 SCT100 BKN050)
         handlers.put(RegExprConst.SKY_CONDITION_PATTERN,
                 NoaaAviationWeatherPatternHandler.repeating("skyCondition"));

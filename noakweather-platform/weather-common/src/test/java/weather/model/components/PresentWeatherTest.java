@@ -19,6 +19,8 @@ package weather.model.components;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -452,6 +454,28 @@ class PresentWeatherTest {
 
             assertThat(weather.other()).isEqualTo("SQ");
             assertThat(weather.getDescription()).contains("Squall");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @CsvSource({
+                "DZRA,   ,   ,   DZRA, Moderate Drizzle and Rain",
+                "-DZRA,  -,  ,   DZRA, Light Drizzle and Rain",
+                "RASN,   ,   ,   RASN, Moderate Rain and Snow",
+                "SHRASN, ,   SH, RASN, Moderate Showers Rain and Snow",
+                "TSRAGR, ,   TS, RAGR, Moderate Thunderstorm Rain and Hail",
+                "SHRA,   ,   SH, RA,   Moderate Showers Rain",
+                "FZDZ,   ,   FZ, DZ,   Moderate Freezing Drizzle"
+        })
+        @DisplayName("Should keep consecutive precipitation types together (Issue #116)")
+        void testParseMixedPrecipitation(String code, String expectedIntensity, String expectedDescriptor,
+                                         String expectedPrecipitation, String expectedDescription) {
+            PresentWeather weather = PresentWeather.parse(code);
+
+            assertThat(weather.intensity()).isEqualTo(expectedIntensity);
+            assertThat(weather.descriptor()).isEqualTo(expectedDescriptor);
+            assertThat(weather.precipitation()).isEqualTo(expectedPrecipitation);
+            assertThat(weather.other()).isNull();
+            assertThat(weather.getDescription()).isEqualTo(expectedDescription);
         }
     }
 

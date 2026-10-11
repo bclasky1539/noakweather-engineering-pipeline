@@ -356,6 +356,53 @@ class RegExprConstTest {
         assertThat(matcher.find()).isFalse();
     }
 
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource({
+            "'REDZRA ',   DZRA",
+            "'RESHRA ',   SHRA",
+            "'RETSRA ',   TSRA",
+            "'REFZRA ',   FZRA",
+            "'REBLSN ',   BLSN",
+            "'RERA ',     RA",
+            "'REUP ',     UP",
+            "'RESHRASN ', SHRASN",
+            "'REFC ',     FC",
+            "'REVA ',     VA",
+            "'RE// ',     //"
+    })
+    @DisplayName("RECENT_WEATHER_PATTERN should capture the weather code (Issue #116)")
+    void testRecentWeatherPattern_Code(String input, String expectedCode) {
+        Matcher matcher = RegExprConst.RECENT_WEATHER_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("code")).isEqualTo(expectedCode);
+    }
+
+    @Test
+    @DisplayName("RECENT_WEATHER_PATTERN should match at end of string and leave NOSIG for the next pass")
+    void testRecentWeatherPattern_EndOfStringAndNosig() {
+        assertThat(RegExprConst.RECENT_WEATHER_PATTERN.matcher("REDZRA").find()).isTrue();
+
+        String input = "RESHRA NOSIG";
+        Matcher matcher = RegExprConst.RECENT_WEATHER_PATTERN.matcher(input);
+        assertThat(matcher.find()).isTrue();
+        assertThat(input.substring(matcher.end())).isEqualTo(" NOSIG");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RE ", "RE-RA ", "RE+TSRA ", "REVCSH ", "RENSW ", "REXX ", "RERAX ", "-RA ", "RA "})
+    @DisplayName("RECENT_WEATHER_PATTERN should reject intensity, vicinity, NSW, junk and plain present weather")
+    void testRecentWeatherPattern_Rejects(String input) {
+        assertThat(RegExprConst.RECENT_WEATHER_PATTERN.matcher(input).find()).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"REDZRA ", "RESHRA ", "RE// "})
+    @DisplayName("PRESENT_WEATHER_PATTERN should not match recent weather groups")
+    void testPresentWeatherPattern_RejectsRecentWeather(String input) {
+        assertThat(RegExprConst.PRESENT_WEATHER_PATTERN.matcher(input).find()).isFalse();
+    }
+
     // ========== REMARKS PATTERNS ==========
 
     @Test
