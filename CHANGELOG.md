@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.13-SNAPSHOT] - 2026-10-11
+
+### Fixed
+- Directional weather in remarks no longer loses its direction when the next token starts with a
+  compass letter (e.g. `VCSH S SLP186`, `VCSH S STNRY`, `VCSH NE SLP186`). The possessive continuation
+  in `DIRECTION_LIST_PATTERN` consumed the leading letter of the next token, then failed without backtracking;
+  the direction and the follower were left in `remarks.freeText` (KDPG) (#118)
+- Multipoint direction lists where a later point is `NE`, `NW` or `SW` (e.g. `VCSH N NE S SW`,
+  `VCSH SE NE`, `HZ E SW`) are now kept. The same continuation matched `N` or `S` before trying the two-letter
+  point and could not recover, so the whole list was lost (#118)
+
+### Changed
+- `DIRECTION_LIST_PATTERN`: token-boundary lookahead moved inside each continuation step; `@SuppressWarnings`
+  comment corrected (#118)
+- `knownGap_DirectionLost_BeforeCompassLetterToken` flipped to `testDirectionKept_BeforeCompassLetterToken`,
+  asserting the fixed behavior (#118)
+
+### Added
+- Tests: compass-letter follower matrix (`SLP186`, `STNRY`, `WSHFT`, `NOSPECI`, `SNINCR`) with the previously
+  working followers as regressions; multipoint direction lists; `VCSH STNRY` with no direction;
+  `DIRECTION_LIST_PATTERN` pattern tests (#118)
+- `NoaaMetarParserRemarksRecoveryTest`: KDPG recovery case; KDPG entry in `printRemarksParsingDiagnostics()`
+- `scripts/uat/wethuat_discover_stations.sh`: `118-directional-weather-compass-follower` watch pattern
+
+### Not yet modeled
+- `NOSPECI` and `SNINCR` remarks have no handler and remain in `remarks.freeText`; found while testing #118
+
 ## [1.20.12-SNAPSHOT] - 2026-10-11
 
 ### Fixed
@@ -32,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `knownGap_RecentWeatherGroup_BlocksNoSig` flipped to `testRecentWeatherGroupFollowedByNoSig`,
-   asserting the fixed behaviour (#116)
+   asserting the fixed behavior (#116)
 
 ### Downstream impact
 - Bronze JSON shape change: records gain a `recentWeather` array (same struct as `presentWeather`)
@@ -68,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - `RunwayVisualRange`: removed the `cleared` component, `cleared()` and `isCleared()`.
-  `CLRD` is a runway state concept and is now modelled by `RunwayState`. **Bronze JSON
+  `CLRD` is a runway state concept and is now modeled by `RunwayState`. **Bronze JSON
   shape change**: the RVR struct no longer has `cleared`, and records gain a `runwayStates`
   array (#121)
 - `NoaaMetarParser.extractRvrTrend()`: removed the unreachable numeric-suffix branch
@@ -1269,8 +1296,8 @@ not to a versioned Maven artifact. Current artifact version remains
     though `CLOUD_OKTA_PATTERN` already matched them at the regex level
   - The mismatch caused `CloudType`'s constructor to throw
     `IllegalArgumentException` during cloud type extraction, which
-    `processCloudTypeMatch()` caught and logged rather than surfaced —
-    silently dropping the cloud type from the result while still advancing
+    `processCloudTypeMatch()` caught and logged rather than surfaced.
+    Silently dropping the cloud type from the result while still advancing
     past it in the text, corrupting parsing of everything remaining in the
     remarks string (including well-tested existing features like Sea Level
     Pressure)

@@ -10885,23 +10885,58 @@ class NoaaMetarParserTest {
         assertThat(data.isNoSignificantChange()).isTrue();
     }
 
-    // --- Known gaps: these assert TODAY's behavior. Flip them when the linked issue is fixed. ---
-
-    @ParameterizedTest
-    @CsvSource({
-            "RMK VCSH S SLP186,      S",
-            "RMK VCSH S STNRY,       'S STNRY'",
-            "RMK VCSH S WSHFT 1726,  S",
-            "RMK VCSH NE SLP186,     NE"
-    })
-    @DisplayName("Known gap (#118): direction is lost before a compass-letter token")
-    void knownGap_DirectionLost_BeforeCompassLetterToken(String remark, String expectedFreeText) {
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(value = {
+            // Previously working - regression
+            "RMK VCSH S,                          S,  NULL",
+            "RMK VCSH S T01720026,                S,  NULL",
+            "RMK VCSH S P0001,                    S,  NULL",
+            "RMK VCSH S AO2,                      S,  NULL",
+            // Previously lost the direction - compass-letter follower (#118)
+            "RMK VCSH S SLP186,                   S,  NULL",
+            "RMK VCSH S STNRY,                    S,  STNRY",
+            "RMK VCSH S STNRY SLP186 T01720026,   S,  STNRY",
+            "RMK VCSH S WSHFT 1726,               S,  NULL",
+            "RMK VCSH NE SLP186,                  NE, NULL",
+            "RMK VCSH NE STNRY,                   NE, STNRY",
+            "RMK VCSH S NOSPECI,                  S,  NOSPECI",
+            "RMK VCSH S SNINCR 1/10,              S,  'SNINCR 1/10'"
+    }, nullValues = "NULL")
+    @DisplayName("Should keep the direction when the next remark token starts with a compass letter (#118)")
+    void testDirectionKept_BeforeCompassLetterToken(String remark, String expectedDirection, String expectedFreeText) {
         NoaaMetarData data = parseData(KDPG_BODY + remark);
 
         DirectionalWeather weather = data.getRemarks().directionalWeather();
         assertThat(weather).isNotNull();
-        assertThat(weather.directions()).isNull();            // fixed behavior: contains the direction
-        assertThat(data.getRemarks().freeText()).isEqualTo(expectedFreeText);   // fixed behavior: null or only STNRY
+        assertThat(weather.directions()).containsExactly(expectedDirection);
+        assertThat(data.getRemarks().freeText()).isEqualTo(expectedFreeText);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'RMK VCSH E SE',              'E,SE'",
+            "'RMK VCSH N NE S SW',         'N,NE,S,SW'",
+            "'RMK VCSH SE NE',             'SE,NE'",
+            "'RMK VCSH E SW',              'E,SW'",
+            "'RMK VCSH NW SW SLP101',      'NW,SW'",
+            "'RMK VCSH E SE S SLP186',     'E,SE,S'"
+    })
+    @DisplayName("Should keep every point of a multi-point direction list, including NE/NW/SW after the first (#118)")
+    void testDirectionList_MultiplePoints(String remark, String expectedDirections) {
+        NoaaMetarData data = parseData(KDPG_BODY + remark);
+
+        assertThat(data.getRemarks().directionalWeather().directions())
+                .containsExactly(expectedDirections.split(","));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should store VCSH with no direction when followed by STNRY alone (#118)")
+    void testNoDirection_StnryOnly() {
+        NoaaMetarData data = parseData(KDPG_BODY + "RMK VCSH STNRY");
+
+        assertThat(data.getRemarks().directionalWeather().directions()).isNull();
+        assertThat(data.getRemarks().freeText()).isEqualTo("STNRY");
     }
 
     @Test
