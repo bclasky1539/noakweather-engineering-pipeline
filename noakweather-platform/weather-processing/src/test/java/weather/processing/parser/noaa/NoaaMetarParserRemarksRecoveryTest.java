@@ -722,6 +722,34 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().preciseTemperature()).isNotNull();
                         }),
 
+                arguments("KCRP-SpaceSeparatedThunderstormPointsNowParseCorrectly",
+                        "2026/10/08 15:51 KCRP 081551Z 04008KT 10SM FEW028 FEW065 FEW250 30/22 A2995 " +
+                                "RMK AO2 SLP142 CB DSNT E SE MOV SW TCU DSNT E SE T03000222",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("SE MOV SW SE no longer left in freeText (#114)")
+                                    .isNull();
+
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+                            ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+                            assertThat(cb.cloudType()).isEqualTo("CB");
+                            assertThat(cb.directionSegments()).containsExactly(
+                                    new DirectionSegment(List.of("E")),
+                                    new DirectionSegment(List.of("SE"))
+                            );
+                            assertThat(cb.movingDirection()).isEqualTo("SW");
+
+                            ThunderstormLocation tcu = data.getRemarks().thunderstormLocations().get(1);
+                            assertThat(tcu.cloudType()).isEqualTo("TCU");
+                            assertThat(tcu.directionSegments()).containsExactly(
+                                    new DirectionSegment(List.of("E")),
+                                    new DirectionSegment(List.of("SE"))
+                            );
+
+                            assertThat(data.getSeaLevelPressure()).isEqualTo(1014.2);
+                            assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+                        }),
+
                 arguments("KTRK-HazeAllQuadrantsNowParsesCorrectly",
                         "2026/10/02 00:47 KTRK 020047Z 29008KT 10SM CLR 26/M01 A3015 RMK HZ ALQDS",
                         (Consumer<NoaaMetarData>) data -> {
@@ -796,6 +824,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 16:00 BIRK 081600Z 10014KT 8000 -DZ OVC015 08/06 Q0988 REDZRA",
                 "2026/10/08 16:00 LIMC 081520Z 06003KT 040V110 8000 VCSH FEW015TCU SCT025 BKN050 19/16 Q1010 RESHRA NOSIG",
                 "2026/10/08 16:50 KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 RMK VCSH S STNRY SLP186 T01720026",
+                "2026/10/08 15:51 KCRP 081551Z 04008KT 10SM FEW028 FEW065 FEW250 30/22 A2995 RMK AO2 SLP142 CB DSNT E SE MOV SW TCU DSNT E SE T03000222",
         };
 
         for (String raw : raws) {

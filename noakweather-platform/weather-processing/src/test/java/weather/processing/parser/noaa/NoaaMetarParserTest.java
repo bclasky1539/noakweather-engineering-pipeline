@@ -6678,6 +6678,104 @@ class NoaaMetarParserTest {
     }
 
     @Test
+    @DisplayName("Should keep space-separated second point and MOV after a thunderstorm location - KCRP real-world (Issue #114)")
+    void testParseThunderstormLocation_SpaceSeparatedPoints_KCRP() {
+        String metar = "2026/10/08 15:51 KCRP 081551Z 04008KT 10SM FEW028 FEW065 FEW250 30/22 A2995 " +
+                "RMK AO2 SLP142 CB DSNT E SE MOV SW TCU DSNT E SE T03000222";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations())
+                .as("CB clause and TCU clause, two entries")
+                .hasSize(2);
+
+        ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(cb.cloudType()).isEqualTo("CB");
+        assertThat(cb.locationQualifier()).isEqualTo("DSNT");
+        assertThat(cb.directionSegments())
+                .as("Space-separated points are separate segments, following #106")
+                .containsExactly(
+                        new DirectionSegment(List.of("E")),
+                        new DirectionSegment(List.of("SE"))
+                );
+        assertThat(cb.movingDirection()).isEqualTo("SW");
+
+        ThunderstormLocation tcu = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(tcu.cloudType()).isEqualTo("TCU");
+        assertThat(tcu.locationQualifier()).isEqualTo("DSNT");
+        assertThat(tcu.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("E")),
+                new DirectionSegment(List.of("SE"))
+        );
+        assertThat(tcu.movingDirection()).isNull();
+
+        // Everything around the thunderstorm locations still parses
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1014.2, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(30.0, within(0.1));
+
+        assertThat(data.getRemarks().freeText())
+                .as("SE MOV SW SE no longer left in freeText")
+                .isNull();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'CB DSNT E SE',          DSNT, 'E|SE',   ",
+            "'CB DSNT E SE MOV SW',   DSNT, 'E|SE',   SW",
+            "'CB DSNT E-SE MOV SW',   DSNT, 'E-SE',   SW",
+            "'CB DSNT N AND E-SE MOV NE', DSNT, 'N|E-SE', NE"
+    })
+    @DisplayName("Should model space-separated points as separate segments and hyphenated ranges as one (Issue #114)")
+    void testParseThunderstormLocation_SpaceSeparatedVsRange(String remark, String expectedLoc,
+                                                             String expectedSegments, String expectedMov) {
+        String metar = "METAR KCRP 081551Z 04008KT 10SM FEW028 A2995 RMK AO2 " + remark;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation location = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(location.cloudType()).isEqualTo("CB");
+        assertThat(location.locationQualifier()).isEqualTo(expectedLoc);
+        assertThat(location.directionSegments())
+                .extracting(DirectionSegment::getSummary)
+                .containsExactly(expectedSegments.split("\\|"));
+        assertThat(location.movingDirection()).isEqualTo(expectedMov);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse supporting KCRP form: single point with MOV, then space-separated points (Issue #114)")
+    void testParseThunderstormLocation_SpaceSeparatedPoints_Supporting() {
+        String metar = "METAR KCRP 081551Z 04008KT 10SM FEW028 A2995 RMK AO2 CB DSNT E MOV SW TCU DSNT SE S";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(2);
+
+        ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(cb.directionSegments()).containsExactly(new DirectionSegment(List.of("E")));
+        assertThat(cb.movingDirection()).isEqualTo("SW");
+
+        ThunderstormLocation tcu = data.getRemarks().thunderstormLocations().get(1);
+        assertThat(tcu.cloudType()).isEqualTo("TCU");
+        assertThat(tcu.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("SE")),
+                new DirectionSegment(List.of("S"))
+        );
+        assertThat(tcu.movingDirection()).isNull();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
     @DisplayName("Should parse continuation with ranges and AND-chains")
     void testParseThunderstormLocation_Continuation_RangesAndAndChain() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB W DSNT N-NE AND S-SW";

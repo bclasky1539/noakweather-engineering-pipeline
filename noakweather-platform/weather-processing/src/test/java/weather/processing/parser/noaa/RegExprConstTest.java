@@ -1194,6 +1194,43 @@ class RegExprConstTest {
         assertThat(matcher.group("dirchain")).isNull();
     }
 
+    @ParameterizedTest(name = "{3}")
+    @CsvSource({
+            "'CB DSNT E SE MOV SW TCU DSNT E SE T03000222', 'CB DSNT E SE MOV SW', 'E SE',       SW, 'KCRP real-world, space-separated points then MOV (#114)'",
+            "'TCU DSNT E SE T03000222',                     'TCU DSNT E SE',       'E SE',         , 'KCRP real-world second clause, no MOV (#114)'",
+            "'CB DSNT E SE',                                'CB DSNT E SE',        'E SE',         , 'Space-separated points at end of remarks (#114)'",
+            "'CB DSNT E-SE MOV SW',                         'CB DSNT E-SE MOV SW', 'E-SE',       SW, 'Hyphenated range with MOV (regression)'",
+            "'CB DSNT N AND E-SE MOV NE',                   'CB DSNT N AND E-SE MOV NE', 'N AND E-SE', NE, 'AND-chain with range and MOV (regression)'",
+            "'CB DSNT SE S SNINCR 1/10',                    'CB DSNT SE S',        'SE S',         , 'Space-separated points do not consume SNINCR (#114)'"
+    })
+    @DisplayName("TS_CLD_LOC_PATTERN should accept space-separated direction points (Issue #114)")
+    void testTsCldLocPattern_SpaceSeparatedPoints(String input, String expectedMatch,
+                                                  String expectedChain, String expectedMov,
+                                                  String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.start()).as(scenario).isZero();
+        assertThat(matcher.group().trim()).as(scenario).isEqualTo(expectedMatch);
+        assertThat(matcher.group("dirchain")).as(scenario).isEqualTo(expectedChain);
+        assertThat(matcher.group("dirm")).as(scenario).isEqualTo(expectedMov);
+    }
+
+    @ParameterizedTest(name = "{2}")
+    @CsvSource({
+            "'CB DSNT E SE SLP142', 'CB DSNT E SE', 'Space step stops before SLP142, S is not consumed'",
+            "'CB DSNT E SEMOV',     'CB DSNT E',    'SEMOV is not split into SE plus MOV'",
+            "'CB W SLP142',         'CB W',         'Single point stops before SLP142'",
+            "'TCU NW DSNT N NE S SW', 'TCU NW',     'KATL, DSNT clause still left for the continuation pattern'"
+    })
+    @DisplayName("TS_CLD_LOC_PATTERN space-separated step should not consume part of the following token (Issue #114)")
+    void testTsCldLocPattern_SpaceSeparatedPointsTokenBoundary(String input, String expectedMatch, String scenario) {
+        Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.group().trim()).as(scenario).isEqualTo(expectedMatch);
+    }
+
     // ========== CB / TCU PATTERN AMBIGUITY REGRESSION TESTS ==========
 
     @ParameterizedTest
