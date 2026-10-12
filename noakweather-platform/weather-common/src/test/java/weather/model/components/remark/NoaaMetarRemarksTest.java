@@ -3502,7 +3502,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be empty when only lightningRemarks is present")
     void testIsEmptyWithOnlyLightningRemarks() {
         LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addLightningRemark(remark)
@@ -3537,7 +3537,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should create remarks with single lightningRemark via record constructor")
     void testRecordConstructorWithSingleLightningRemark() {
         LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
                 null, null, null, null, null,
@@ -3557,7 +3557,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should build remarks with single lightningRemark via builder")
     void testBuilderWithSingleLightningRemark() {
         LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addLightningRemark(remark)
@@ -3572,7 +3572,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should build remarks with multiple lightningRemarks via addLightningRemark")
     void testBuilderWithMultipleLightningRemarksViaAdd() {
         LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
         LightningRemark remark2 = new LightningRemark(LightningFrequency.CONTINUOUS, List.of("CW", "CA"), null,
                 null, true);
 
@@ -3590,9 +3590,9 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should build remarks with lightningRemarks list via builder")
     void testBuilderWithLightningRemarksList() {
         LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
         LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
-                new DirectionSegment(List.of("W")), false);
+                List.of(new DirectionSegment(List.of("W"))), false);
         List<LightningRemark> lightningList = List.of(remark1, remark2);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
@@ -3607,9 +3607,9 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should add multiple lightningRemarks via addLightningRemarks bulk method")
     void testBuilderWithAddLightningRemarksBulk() {
         LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
         LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
-                new DirectionSegment(List.of("W")), false);
+                List.of(new DirectionSegment(List.of("W"))), false);
         List<LightningRemark> lightningList = List.of(remark1, remark2);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
@@ -3645,14 +3645,14 @@ class NoaaMetarRemarksTest {
     void testBuilderDefensiveCopyOfLightningRemarks() {
         List<LightningRemark> originalList = new ArrayList<>();
         originalList.add(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false));
+                List.of(new DirectionSegment(List.of("N"))), false));
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .lightningRemarks(originalList)
                 .build();
 
         originalList.add(new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
-                new DirectionSegment(List.of("W")), false));
+                List.of(new DirectionSegment(List.of("W"))), false));
 
         assertThat(remarks.lightningRemarks()).hasSize(1);
     }
@@ -3661,7 +3661,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should include single lightningRemark in toString()")
     void testToStringWithSingleLightningRemark() {
         LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addLightningRemark(remark)
@@ -3675,9 +3675,9 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should include multiple lightningRemarks with semicolon separator in toString()")
     void testToStringWithMultipleLightningRemarks() {
         LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
         LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
-                new DirectionSegment(List.of("W")), false);
+                List.of(new DirectionSegment(List.of("W"))), false);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addLightningRemark(remark1)
@@ -3694,7 +3694,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should be equal when lightningRemarks are the same")
     void testEqualityWithLightningRemarks() {
         LightningRemark remark = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
 
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
                 .automatedStationType(AutomatedStationType.AO2)
@@ -3714,9 +3714,9 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be equal when lightningRemarks differ")
     void testInequalityWithDifferentLightningRemarks() {
         LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
         LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
-                new DirectionSegment(List.of("W")), false);
+                List.of(new DirectionSegment(List.of("W"))), false);
 
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
                 .addLightningRemark(remark1)
@@ -3733,9 +3733,9 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be equal when lightningRemarks count differs")
     void testInequalityWithDifferentLightningRemarksCounts() {
         LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                new DirectionSegment(List.of("N")), false);
+                List.of(new DirectionSegment(List.of("N"))), false);
         LightningRemark remark2 = new LightningRemark(LightningFrequency.FREQUENT, List.of("CG"), "VC",
-                new DirectionSegment(List.of("W")), false);
+                List.of(new DirectionSegment(List.of("W"))), false);
 
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
                 .addLightningRemark(remark1)
@@ -5235,7 +5235,7 @@ class NoaaMetarRemarksTest {
                 .addThunderstormLocation(ThunderstormLocation.of("TS", "SE"))
                 .addExceptDirection(ExceptDirection.of(List.of(new DirectionSegment(List.of("N")))))
                 .addLightningRemark(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                        new DirectionSegment(List.of("N")), false))
+                        List.of(new DirectionSegment(List.of("N"))), false))
                 .updatePressure(p -> p.withPressureTendency(PressureTendency.of(2, 3.2)))
                 .updatePressure(p -> p.withPressureRapidChange(PressureRapidChange.of("R")))
                 .icing(Icing.of(true, false, "PAST HR"))
@@ -5313,7 +5313,7 @@ class NoaaMetarRemarksTest {
                 .addThunderstormLocation(ThunderstormLocation.of("TS", "SE"))
                 .addExceptDirection(ExceptDirection.of(List.of(new DirectionSegment(List.of("N")))))
                 .addLightningRemark(new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                        new DirectionSegment(List.of("N")), false))
+                        List.of(new DirectionSegment(List.of("N"))), false))
                 .updatePressure(p -> p.withPressureTendency(PressureTendency.of(2, 3.2)))
                 .updatePressure(p -> p.withPressureRapidChange(PressureRapidChange.of("R")))
                 .icing(Icing.of(true, false, "PAST HR"))
@@ -5428,9 +5428,9 @@ class NoaaMetarRemarksTest {
         ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0, null);
         List<LightningRemark> lightningRemarks = List.of(
                 new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                        new DirectionSegment(List.of("N")), false),
+                        List.of(new DirectionSegment(List.of("N"))), false),
                 new LightningRemark(LightningFrequency.FREQUENT, List.of("CC", "CG"), "VC",
-                        new DirectionSegment(List.of("SE", "S")), false)
+                        List.of(new DirectionSegment(List.of("SE", "S"))), false)
         );
         PredominantCloudTypes predominantCloudTypes = new PredominantCloudTypes(
                 LowCloudType.CUMULONIMBUS_CALVUS,
@@ -5539,9 +5539,9 @@ class NoaaMetarRemarksTest {
         ObservationProgramStatus observationProgramStatus = ObservationProgramStatus.of(true, 26, 12, 0, null);
         List<LightningRemark> lightningRemarks = List.of(
                 new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT",
-                        new DirectionSegment(List.of("N")), false),
+                        List.of(new DirectionSegment(List.of("N"))), false),
                 new LightningRemark(LightningFrequency.FREQUENT, List.of("CC", "CG"), "VC",
-                        new DirectionSegment(List.of("SE", "S")), false)
+                        List.of(new DirectionSegment(List.of("SE", "S"))), false)
         );
         PredominantCloudTypes predominantCloudTypes = new PredominantCloudTypes(
                 LowCloudType.CUMULONIMBUS_CALVUS,

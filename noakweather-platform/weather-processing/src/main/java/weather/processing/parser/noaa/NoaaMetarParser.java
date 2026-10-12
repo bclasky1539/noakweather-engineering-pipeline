@@ -2657,6 +2657,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * lightning, in vicinity, west
      * - LTG DSNT ALQDS → lightning, distant, all quadrants
      * - LTGIC SW → in-cloud lightning, southwest (no frequency, no location)
+     * - LTG DSNT S AND SW → lightning, distant, south and southwest (one remark, two segments)
+     * - OCNL LTGIC DSNT SE AND S-SW → occasional in-cloud lightning, distant, SE and the S-SW range
      *
      * @param remarksText the remaining remarks text to process
      * @param remarks     the remarks builder to populate
@@ -2694,6 +2696,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse LightningRemark from a LightningMatcher.
+     * <p>
+     * The direction is either ALQDS (alqds group, sets allQuadrants) or a
+     * direction chain (dirchain group) of one or more segments joined by AND,
+     * each a single point or a hyphenated range. The chain is split with the
+     * same {@link #parseDirectionChain(String)} used for thunderstorm locations,
+     * so "SE AND S-SW" becomes [SE], [S, SW].
      *
      * @param matcher the lightning matcher positioned at a match
      * @return LightningRemark object with all extracted fields
@@ -2706,17 +2714,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         String location = matcher.group("loc");
 
-        String dir = matcher.group("dir");
-        boolean allQuadrants = "ALQDS".equals(dir);
+        boolean allQuadrants = matcher.group("alqds") != null;
+        List<DirectionSegment> directionSegments = parseDirectionChain(matcher.group(DIRECTION_CHAIN_CODE));
 
-        DirectionSegment directionSegment = null;
-        if (dir != null && !allQuadrants) {
-            String dir2 = matcher.group("dir2");
-            List<String> points = dir2 != null ? List.of(dir, dir2) : List.of(dir);
-            directionSegment = new DirectionSegment(points);
-        }
-
-        return new LightningRemark(frequency, types, location, directionSegment, allQuadrants);
+        return new LightningRemark(frequency, types, location, directionSegments, allQuadrants);
     }
 
     /**

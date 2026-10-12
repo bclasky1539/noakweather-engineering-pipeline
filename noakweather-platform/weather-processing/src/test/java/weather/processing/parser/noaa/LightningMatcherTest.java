@@ -76,8 +76,7 @@ class LightningMatcherTest {
         assertThat(matcher.group("typeca")).isNull();
         assertThat(matcher.group("typecw")).isNull();
         assertThat(matcher.group("loc")).isEqualTo("VC");
-        assertThat(matcher.group("dir")).isEqualTo("N");
-        assertThat(matcher.group("dir2")).isEqualTo("NE");
+        assertThat(matcher.group("dirchain")).isEqualTo("N-NE");
         assertThat(matcher.getTypesString()).isEqualTo("ICCCCG");
     }
 
@@ -129,8 +128,8 @@ class LightningMatcherTest {
         LightningMatcher matcher = new LightningMatcher("LTG DSNT NE ");
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("dir")).isEqualTo("NE");
-        assertThat(matcher.group("dir2")).isNull();
+        assertThat(matcher.group("dirchain")).isEqualTo("NE");
+        assertThat(matcher.group("alqds")).isNull();
     }
 
     @Test
@@ -138,8 +137,10 @@ class LightningMatcherTest {
         LightningMatcher matcher = new LightningMatcher("LTGCG VC SE-S ");
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("dir")).isEqualTo("SE");
-        assertThat(matcher.group("dir2")).isEqualTo("S");
+        assertThat(matcher.group("dirchain"))
+                .as("A range is one segment; the parser splits it into [SE, S]")
+                .isEqualTo("SE-S");
+        assertThat(matcher.group("alqds")).isNull();
     }
 
     @Test
@@ -323,5 +324,91 @@ class LightningMatcherTest {
         LightningMatcher matcher = new LightningMatcher("   ");
 
         assertThat(matcher.find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should expose the AND-chained direction through the wrapper (Issue #117)")
+    void testLightningWithAndChain() {
+        LightningMatcher matcher = new LightningMatcher("OCNL LTGIC DSNT SE AND S-SW CB DSNT SE AND S-SW");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("freq")).isEqualTo("OCNL");
+        assertThat(matcher.group("loc")).isEqualTo("DSNT");
+        assertThat(matcher.group("dirchain")).isEqualTo("SE AND S-SW");
+        assertThat(matcher.group("alqds")).isNull();
+        assertThat(matcher.group(0).trim())
+                .as("Match stops before the CB group")
+                .isEqualTo("OCNL LTGIC DSNT SE AND S-SW");
+    }
+
+    @Test
+    @DisplayName("Should keep virtual type groups working alongside an AND chain (Issue #117)")
+    void testVirtualTypeGroupsWithAndChain() {
+        LightningMatcher matcher = new LightningMatcher("FRQ LTGICCG DSNT N AND NE");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("typeic")).isEqualTo("IC");
+        assertThat(matcher.group("typecg")).isEqualTo("CG");
+        assertThat(matcher.group("typecc")).isNull();
+        assertThat(matcher.getTypesString()).isEqualTo("ICCG");
+        assertThat(matcher.group("dirchain")).isEqualTo("N AND NE");
+    }
+
+    @Test
+    @DisplayName("Should expose ALQDS through the alqds group, not the direction chain")
+    void testLightningWithAllQuadrants() {
+        LightningMatcher matcher = new LightningMatcher("LTG DSNT ALQDS");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("alqds")).isEqualTo("ALQDS");
+        assertThat(matcher.group("dirchain")).isNull();
+    }
+
+    @Test
+    @DisplayName("Should reject the removed dir group name")
+    void testRemovedDirGroupThrows() {
+        LightningMatcher matcher = new LightningMatcher("LTG DSNT N");
+
+        assertThat(matcher.find()).isTrue();
+        assertThatThrownBy(() -> matcher.group("dir"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest(name = "{0}: IC={1} CC={2} CG={3} CA={4} CW={5}")
+    @CsvSource({
+            "ICCG,   true,  false, true,  false, false",
+            "ICCA,   true,  false, false, true,  false",
+            "ICCW,   true,  false, false, false, true",
+            "ICCCCG, true,  true,  true,  false, false",
+            "CCCG,   false, true,  true,  false, false",
+            "CGIC,   true,  false, true,  false, false",
+            "CWCA,   false, false, false, true,  true"
+    })
+    @DisplayName("hasType should check only 2-letter-aligned codes, not substrings across code boundaries")
+    void testHasType_AlignedToCodeBoundaries(String types, boolean ic, boolean cc,
+                                             boolean cg, boolean ca, boolean cw) {
+        LightningMatcher matcher = new LightningMatcher("LTG" + types + " DSNT N");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.getTypesString()).isEqualTo(types);
+        assertThat(matcher.hasType("IC")).as("IC in %s", types).isEqualTo(ic);
+        assertThat(matcher.hasType("CC")).as("CC in %s", types).isEqualTo(cc);
+        assertThat(matcher.hasType("CG")).as("CG in %s", types).isEqualTo(cg);
+        assertThat(matcher.hasType("CA")).as("CA in %s", types).isEqualTo(ca);
+        assertThat(matcher.hasType("CW")).as("CW in %s", types).isEqualTo(cw);
+    }
+
+    @Test
+    @DisplayName("hasType should return false for null, wrong-length, or no types captured")
+    void testHasType_EdgeCases() {
+        LightningMatcher withTypes = new LightningMatcher("LTGICCG DSNT N");
+        assertThat(withTypes.find()).isTrue();
+        assertThat(withTypes.hasType(null)).isFalse();
+        assertThat(withTypes.hasType("C")).isFalse();
+        assertThat(withTypes.hasType("ICC")).isFalse();
+
+        LightningMatcher noTypes = new LightningMatcher("LTG DSNT N");
+        assertThat(noTypes.find()).isTrue();
+        assertThat(noTypes.hasType("IC")).isFalse();
     }
 }

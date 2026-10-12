@@ -5,9 +5,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /**
  * Tests for LightningRemark value object.
@@ -24,13 +26,13 @@ class LightningRemarkTest {
     void testConstructor_AllFields() {
         DirectionSegment dir = new DirectionSegment(List.of("N"));
         LightningRemark remark = new LightningRemark(
-                LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", dir, false
+                LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", List.of(dir), false
         );
 
         assertThat(remark.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
         assertThat(remark.types()).containsExactly("IC");
         assertThat(remark.location()).isEqualTo("DSNT");
-        assertThat(remark.directionSegment()).isEqualTo(dir);
+        assertThat(remark.directionSegments()).containsExactly(dir);
         assertThat(remark.allQuadrants()).isFalse();
     }
 
@@ -42,7 +44,9 @@ class LightningRemarkTest {
         assertThat(remark.frequency()).isNull();
         assertThat(remark.types()).isEmpty();
         assertThat(remark.location()).isNull();
-        assertThat(remark.directionSegment()).isNull();
+        assertThat(remark.directionSegments())
+                .as("Null direction segments default to an empty list")
+                .isEmpty();
         assertThat(remark.allQuadrants()).isFalse();
     }
 
@@ -62,7 +66,7 @@ class LightningRemarkTest {
         );
 
         assertThat(remark.allQuadrants()).isTrue();
-        assertThat(remark.directionSegment()).isNull();
+        assertThat(remark.directionSegments()).isEmpty();
     }
 
     @Test
@@ -83,7 +87,7 @@ class LightningRemarkTest {
     void testGetSummary_Complete() {
         DirectionSegment dir = new DirectionSegment(List.of("SE", "S"));
         LightningRemark remark = new LightningRemark(
-                LightningFrequency.FREQUENT, List.of("CC", "CG"), "VC", dir, false
+                LightningFrequency.FREQUENT, List.of("CC", "CG"), "VC", List.of(dir), false
         );
 
         assertThat(remark.getSummary())
@@ -98,7 +102,7 @@ class LightningRemarkTest {
     @DisplayName("Should summarize with no frequency, no types, no location")
     void testGetSummary_Minimal() {
         DirectionSegment dir = new DirectionSegment(List.of("SW"));
-        LightningRemark remark = new LightningRemark(null, null, null, dir, false);
+        LightningRemark remark = new LightningRemark(null, null, null, List.of(dir), false);
 
         assertThat(remark.getSummary())
                 .isEqualTo("lightning SW");
@@ -189,10 +193,10 @@ class LightningRemarkTest {
     }
 
     @Test
-    @DisplayName("Should report hasDirection true when directionSegment present")
+    @DisplayName("Should report hasDirection true when direction segments present")
     void testHasDirection_TrueWithSegment() {
         LightningRemark remark = new LightningRemark(
-                null, null, null, new DirectionSegment(List.of("N")), false
+                null, null, null, List.of(new DirectionSegment(List.of("N"))), false
         );
 
         assertThat(remark.hasDirection()).isTrue();
@@ -220,8 +224,8 @@ class LightningRemarkTest {
     @DisplayName("Should be equal when all fields match")
     void testEquality_SameFields() {
         DirectionSegment dir = new DirectionSegment(List.of("N"));
-        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", dir, false);
-        LightningRemark remark2 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", dir, false);
+        LightningRemark remark1 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", List.of(dir), false);
+        LightningRemark remark2 = new LightningRemark(LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", List.of(dir), false);
 
         assertThat(remark1).isEqualTo(remark2).hasSameHashCodeAs(remark2);
     }
@@ -242,5 +246,56 @@ class LightningRemarkTest {
         LightningRemark remark2 = new LightningRemark(null, null, null, null, false);
 
         assertThat(remark1).isNotEqualTo(remark2);
+    }
+
+    // ==================== Other Tests ====================
+
+    @Test
+    @DisplayName("Should hold multiple direction segments from an AND chain (Issue #117)")
+    void testMultipleDirectionSegments() {
+        List<DirectionSegment> segments = List.of(
+                new DirectionSegment(List.of("SE")),
+                new DirectionSegment(List.of("S", "SW"))
+        );
+        LightningRemark remark = new LightningRemark(
+                LightningFrequency.OCCASIONAL, List.of("IC"), "DSNT", segments, false);
+
+        assertThat(remark.directionSegments()).containsExactlyElementsOf(segments);
+        assertThat(remark.hasDirection()).isTrue();
+        assertThat(remark.getDirectionsSummary()).isEqualTo("SE AND S-SW");
+        assertThat(remark.getSummary()).endsWith("distant SE AND S-SW");
+    }
+
+    @Test
+    @DisplayName("Should default null direction segments to an empty list")
+    void testNullDirectionSegmentsDefaultsToEmpty() {
+        LightningRemark remark = new LightningRemark(null, null, "DSNT", null, false);
+
+        assertThat(remark.directionSegments()).isEmpty();
+        assertThat(remark.hasDirection()).isFalse();
+        assertThat(remark.getDirectionsSummary()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Should defensively copy direction segments")
+    void testDirectionSegmentsDefensiveCopy() {
+        List<DirectionSegment> mutable = new ArrayList<>();
+        mutable.add(new DirectionSegment(List.of("N")));
+        LightningRemark remark = new LightningRemark(null, null, null, mutable, false);
+
+        mutable.add(new DirectionSegment(List.of("S")));
+
+        assertThat(remark.directionSegments()).containsExactly(new DirectionSegment(List.of("N")));
+        assertThatThrownBy(() -> remark.directionSegments().add(new DirectionSegment(List.of("E"))))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    @DisplayName("Should report all quadrants in summary even with no segments")
+    void testAllQuadrantsSummary() {
+        LightningRemark remark = new LightningRemark(null, null, "DSNT", List.of(), true);
+
+        assertThat(remark.hasDirection()).isTrue();
+        assertThat(remark.getSummary()).endsWith("all quadrants");
     }
 }

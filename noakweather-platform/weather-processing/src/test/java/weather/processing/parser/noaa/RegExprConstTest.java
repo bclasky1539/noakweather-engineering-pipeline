@@ -1314,7 +1314,9 @@ class RegExprConstTest {
     @CsvSource({
             "'LTG DSNT N ', freq",
             "'LTG DSNT N ', types",
-            "'LTG DSNT ', dir"
+            "'LTG DSNT N ', alqds",
+            "'LTG DSNT ', dirchain",
+            "'LTG DSNT ', alqds"
     })
     @DisplayName("LIGHTNING_PATTERN should match with optional groups absent")
     void testLightningPattern_OptionalGroupsAbsent(String input, String groupName) {
@@ -1341,7 +1343,7 @@ class RegExprConstTest {
     @CsvSource({
             "'FRQ LTGCGICCC NW ', types, CGICCC, 'MANOBS chained types example'",
             "'CONS LTGCG AT AP ', loc, 'AT AP', 'Two-word AT AP location qualifier'",
-            "'OCNL LTGIC DSNT N', dir, N, 'At end of string, no trailing space'"
+            "'OCNL LTGIC DSNT N', dirchain, N, 'At end of string, no trailing space'"
     })
     @DisplayName("LIGHTNING_PATTERN should match various single-group scenarios")
     void testLightningPattern_VariousGroupScenarios(String input, String groupName,
@@ -1365,8 +1367,7 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("types")).isEqualTo("ICCG");
         assertThat(matcher.group("loc")).isEqualTo("DSNT");
-        assertThat(matcher.group("dir")).isEqualTo("SE");
-        assertThat(matcher.group("dir2")).isEqualTo("S");
+        assertThat(matcher.group("dirchain")).isEqualTo("SE-S");
     }
 
     @ParameterizedTest
@@ -1388,7 +1389,7 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("loc")).isNull();
-        assertThat(matcher.group("dir")).isEqualTo("SW");
+        assertThat(matcher.group("dirchain")).isEqualTo("SW");
     }
 
     @Test
@@ -1398,8 +1399,8 @@ class RegExprConstTest {
         Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("dir")).isEqualTo("ALQDS");
-        assertThat(matcher.group("dir2")).isNull();
+        assertThat(matcher.group("alqds")).isEqualTo("ALQDS");
+        assertThat(matcher.group("dirchain")).isNull();
     }
 
     @Test
@@ -1411,7 +1412,7 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("types")).isEqualTo("CWCA");
         assertThat(matcher.group("loc")).isNull();
-        assertThat(matcher.group("dir")).isEqualTo("ALQDS");
+        assertThat(matcher.group("alqds")).isEqualTo("ALQDS");
     }
 
     @Test
@@ -1421,8 +1422,7 @@ class RegExprConstTest {
         Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("dir")).isEqualTo("N");
-        assertThat(matcher.group("dir2")).isNull();
+        assertThat(matcher.group("dirchain")).isEqualTo("N");
     }
 
     @Test
@@ -1432,8 +1432,7 @@ class RegExprConstTest {
         Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("dir")).isEqualTo("SE");
-        assertThat(matcher.group("dir2")).isEqualTo("S");
+        assertThat(matcher.group("dirchain")).isEqualTo("SE-S");
     }
 
     @Test
@@ -1446,7 +1445,7 @@ class RegExprConstTest {
         assertThat(matcher.group("freq")).isNull();
         assertThat(matcher.group("types")).isEqualTo("IC");
         assertThat(matcher.group("loc")).isNull();
-        assertThat(matcher.group("dir")).isEqualTo("SW");
+        assertThat(matcher.group("dirchain")).isEqualTo("SW");
     }
 
     @Test
@@ -1459,7 +1458,7 @@ class RegExprConstTest {
         assertThat(matcher.group("freq")).isEqualTo("FRQ");
         assertThat(matcher.group("types")).isEqualTo("CCCG");
         assertThat(matcher.group("loc")).isEqualTo("VC");
-        assertThat(matcher.group("dir")).isEqualTo("W");
+        assertThat(matcher.group("dirchain")).isEqualTo("W");
     }
 
     @ParameterizedTest
@@ -1492,7 +1491,44 @@ class RegExprConstTest {
         assertThat(matcher.group(0).trim()).isEqualTo("LTG");
         assertThat(matcher.group("types")).isNull();
         assertThat(matcher.group("loc")).isNull();
-        assertThat(matcher.group("dir")).isNull();
+        assertThat(matcher.group("dirchain")).isNull();
+        assertThat(matcher.group("alqds")).isNull();
+    }
+
+    @ParameterizedTest(name = "{4}")
+    @CsvSource({
+            "'LTG DSNT S AND SW',                                     'LTG DSNT S AND SW',           DSNT, 'S AND SW',    'K46D real-world, simple AND (#117)'",
+            "'LTG DSNT N AND NE SLP110 T03110244',                    'LTG DSNT N AND NE',           DSNT, 'N AND NE',    'KFMY real-world, AND then other remarks (#117)'",
+            "'LTG DSNT SW AND W T02560244',                           'LTG DSNT SW AND W',           DSNT, 'SW AND W',    'KSPG real-world (#117)'",
+            "'OCNL LTGIC DSNT SE AND S-SW CB DSNT SE AND S-SW P0001', 'OCNL LTGIC DSNT SE AND S-SW', DSNT, 'SE AND S-SW', 'KTPA real-world, range on right side, CB left for TS handler (#117)'",
+            "'FRQ LTGCCCG VC NW-N AND W',                             'FRQ LTGCCCG VC NW-N AND W',   VC,   'NW-N AND W',  'Range on left side (#117)'"
+    })
+    @DisplayName("LIGHTNING_PATTERN should capture an AND-chained direction (Issue #117)")
+    void testLightningPattern_AndChain(String input, String expectedMatch, String expectedLoc,
+                                       String expectedChain, String scenario) {
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.start()).as(scenario).isZero();
+        assertThat(matcher.group().trim()).as(scenario).isEqualTo(expectedMatch);
+        assertThat(matcher.group("loc")).as(scenario).isEqualTo(expectedLoc);
+        assertThat(matcher.group("dirchain")).as(scenario).isEqualTo(expectedChain);
+        assertThat(matcher.group("alqds")).as(scenario).isNull();
+    }
+
+    @ParameterizedTest(name = "{2}")
+    @CsvSource({
+            "'LTG DSNT S AND',                 'LTG DSNT S',     'Dangling AND is not consumed'",
+            "'LTG DSNT N AND OHD',             'LTG DSNT N',     'AND plus qualifier is out of scope and left unconsumed'",
+            "'LTG DSNT S SLP110',              'LTG DSNT S',     'Single point stops before SLP110, S is not consumed'",
+            "'LTG DSNT NE-SE OCNL LTGICCC DSNT E', 'LTG DSNT NE-SE', 'KCLT regression, next lightning group left for the next match'"
+    })
+    @DisplayName("LIGHTNING_PATTERN AND chain should stop at the token boundary (Issue #117)")
+    void testLightningPattern_AndChainTokenBoundary(String input, String expectedMatch, String scenario) {
+        Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.group().trim()).as(scenario).isEqualTo(expectedMatch);
     }
 
     // ========== PRESSURE Q PATTERN TESTS ==========
