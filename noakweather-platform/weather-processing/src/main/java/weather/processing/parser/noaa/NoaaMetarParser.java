@@ -1624,21 +1624,27 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Handle variable visibility remark for sequential parsing.
      * <p>
-     * Format: VIS [DIR] minVmax [RWY]
+     * Format: VIS [DIR] minVmax
      * - DIR = Optional direction (N, NE, E, SE, S, SW, W, NW)
      * - min = Minimum visibility (fraction, mixed, or whole number)
      * - V = "V" separator
      * - max = Maximum visibility (same formats as min)
-     * - RWY = Optional runway/location qualifier
      * <p>
      * Examples:
      * - VIS 1/2V2 → min=1/2 SM, max=2 SM
      * - VIS NE 2V4 → Northeast, min=2 SM, max=4 SM
      * - VIS 1 1/4V3 → min=1.25 SM, max=3 SM
+     * <p>
+     * The pattern requires both distances and the V separator, so sector
+     * visibility and visibility at a second location do not match and are left
+     * for freeText. If a match is rejected (a distance fails to parse, or the
+     * values fail validation), the text is returned unchanged so the remark
+     * surfaces in freeText rather than being dropped (#92 rule, #115).
      *
      * @param remarksText the remaining remarks text to process
      * @param remarks     the remarks builder to populate
-     * @return the remaining text after this remark is processed
+     * @return the remaining text after this remark, or remarksText unchanged if
+     *         there is no match or the match is rejected
      */
     private String handleVariableVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
         // Precondition: remarksText is non-null and non-blank
@@ -1649,55 +1655,25 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
+        String direction = matcher.group("dir");
+        String dist1Str = matcher.group("dist1");
+        String dist2Str = matcher.group("dist2");
+
         try {
-            // Extract direction (optional)
-            String direction = matcher.group("dir");
-
-            // Extract minimum visibility
-            String dist1Str = matcher.group("dist1");
-            if (dist1Str == null || dist1Str.isBlank()) {
-                LOGGER.debug("Variable visibility missing minimum distance, skipping");
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            // Extract maximum visibility indicator and value
-            String addStr = matcher.group("add");
-            String dist2Str = matcher.group("dist2");
-
-            // "V" indicates variable visibility, "RWY" is for runway
-            if (!"V".equals(addStr)) {
-                LOGGER.debug("Variable visibility not marked with 'V', skipping");
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            if (dist2Str == null || dist2Str.isBlank()) {
-                LOGGER.debug("Variable visibility missing maximum distance, skipping");
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            // Parse minimum visibility
             Visibility minVisibility = parseVisibilityDistance(dist1Str);
-            if (minVisibility == null) {
-                LOGGER.warn("Failed to parse minimum visibility: {}", dist1Str);
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            // Parse maximum visibility
             Visibility maxVisibility = parseVisibilityDistance(dist2Str);
-            if (maxVisibility == null) {
-                LOGGER.warn("Failed to parse maximum visibility: {}", dist2Str);
-                return remarksText.substring(matcher.end()).trim();
+            if (minVisibility == null || maxVisibility == null) {
+                LOGGER.debug("Variable visibility distance could not be parsed, leaving for freeText: {}",
+                        matchedText);
+                return remarksText;
             }
 
-            // Determine location (currently not used in pattern, but keeping for future)
-            String location = null; // Pattern doesn't capture RWY separately in current regex
-
-            // Create VariableVisibility object
             VariableVisibility variableVisibility = new VariableVisibility(
                     minVisibility,
                     maxVisibility,
                     direction,
-                    location
+                    null // location is not part of this remark form
             );
 
             remarks.updateVisibility(v -> v.withVariableVisibility(variableVisibility));
@@ -1710,9 +1686,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid variable visibility in remarks: {}",
-                    remarksText.substring(0, Math.min(30, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid variable visibility, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 

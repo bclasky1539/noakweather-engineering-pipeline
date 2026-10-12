@@ -2580,6 +2580,46 @@ class RegExprConstTest {
         assertThat(RegExprConst.DIRECTION_LIST_PATTERN.matcher(input).find()).isFalse();
     }
 
+    // ========== VARIABLE VISIBILITY PATTERN TESTS ==========
+
+    @ParameterizedTest(name = "{4}")
+    @CsvSource({
+            "'VIS 1/2V2',              'VIS 1/2V2',       ,   1/2,   2,     'Fraction to whole'",
+            "'VIS NE 2V4',             'VIS NE 2V4',      NE, 2,     4,     'Direction then range'",
+            "'VIS 1 1/4V3',            'VIS 1 1/4V3',     ,   1 1/4, 3,     'Mixed number minimum'",
+            "'VIS 1 1/2V2 1/2 AO2',    'VIS 1 1/2V2 1/2', ,   1 1/2, 2 1/2, 'Mixed both sides, stops before AO2'",
+            "'VIS NE 2V4 CIG 005V010', 'VIS NE 2V4',      NE, 2,     4,     'Stops before variable ceiling'"
+    })
+    @DisplayName("VPV_SV_VSL_PATTERN should match variable visibility ranges (Issue #115)")
+    void testVariableVisibilityPattern_Matches(String input, String expectedMatch, String expectedDir,
+                                               String expectedMin, String expectedMax, String scenario) {
+        Matcher matcher = RegExprConst.VPV_SV_VSL_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.group()).as(scenario).isEqualTo(expectedMatch);
+        assertThat(matcher.group("dir")).as(scenario).isEqualTo(expectedDir);
+        assertThat(matcher.group("dist1")).as(scenario).isEqualTo(expectedMin);
+        assertThat(matcher.group("dist2")).as(scenario).isEqualTo(expectedMax);
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "'VIS N-NE 2',               'KMCO sector visibility, direction range then distance'",
+            "'VIS 1/2 E-SE-SW-W SLP190', 'CYLK sector visibility, distance then directions'",
+            "'VIS NE 2',                 'Sector visibility, single direction'",
+            "'VIS 2 RWY11',              'Visibility at second location'",
+            "'VIS 1/2',                  'Missing V and maximum'",
+            "'VIS 1/2V',                 'V with no maximum'",
+            "'VIS 2V4SLP',               'Maximum runs into the next token'",
+            "'VIS',                      'Bare VIS'"
+    })
+    @DisplayName("VPV_SV_VSL_PATTERN should not match forms the parser does not store (Issue #115)")
+    void testVariableVisibilityPattern_DoesNotMatch(String input, String scenario) {
+        assertThat(RegExprConst.VPV_SV_VSL_PATTERN.matcher(input).find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
+    }
+
     // ========== THUNDERSTORM LOCATION CONTINUATION PATTERN TESTS ==========
 
     @ParameterizedTest

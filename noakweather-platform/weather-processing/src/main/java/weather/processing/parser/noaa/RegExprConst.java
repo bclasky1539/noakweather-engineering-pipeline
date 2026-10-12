@@ -303,18 +303,25 @@ public final class RegExprConst {
     );
 
     /**
-     * Variable Prevailing Visibility (VIS_vnvn vnvnVvxvxvx vxvx). Variable
-     * prevailing visibility shall be coded in the format VIS_vn vnvnvnVvxvx
-     * vxvxvx Sector Visibility (VIS_[DIR]_vvvvv){Plain Language}. The sector
-     * visibility shall be coded in the format VIS_[DIR]_vvvvv Visibility At
-     * Second Location (VIS_vvvvv_[LOC]). At designated automated stations, the
-     * visibility at a second location shall be coded in the format
-     * VIS_vvvvv_[LOC] visibility shall be coded in the formats, TWR_VIS_vvvvv
-     * or SFC_VIS_vvvvv, respectively
+     * Variable Prevailing Visibility (VIS [DIR] vnvnvnVvxvxvx).
+     * <p>
+     * Matches only the form the parser stores as {@code VariableVisibility}:
+     * VIS, an optional single compass direction, a minimum distance, V, and a
+     * maximum distance. Distances are a fraction (1/2), a mixed number (1 1/4)
+     * or a whole number (2). Examples: "VIS 1/2V2", "VIS NE 2V4", "VIS 1 1/4V3".
+     * <p>
+     * Sector visibility (VIS [DIR] vvvvv, e.g. "VIS N-NE 2", "VIS 1/2 E-SE-SW-W")
+     * and visibility at a second location (VIS vvvvv [LOC], e.g. "VIS 2 RWY11")
+     * are not modeled and deliberately do not match, so they surface whole in
+     * remarks freeText instead of being partially consumed (#115).
+     * Tower and surface visibility (TWR VIS, SFC VIS) have their own patterns.
      */
-    @SuppressWarnings("java:S5843") // Complex regex required for variable visibility formats
+    @SuppressWarnings("java:S5843") // Complex regex required for variable visibility distances
     public static final Pattern VPV_SV_VSL_PATTERN = Pattern.compile(
-            "^(?<vis>VIS)\\s+(?<dir>([NSEW]([EW])?))?\\s*(?<dist1>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+)?(\\s*(?<add>V|RWY)\\s*(?<dist2>\\d{1,2}/\\d{1,2}|\\d+\\s+\\d{1,2}/\\d{1,2}|\\d+))?\\s*"
+            "^(?<vis>VIS)\\s+(?:(?<dir>NE|NW|SE|SW|N|E|S|W)\\s+)?" +
+                    "(?<dist1>\\d+\\s+\\d{1,2}/\\d{1,2}|\\d{1,2}/\\d{1,2}|\\d+)" +
+                    "\\s*V\\s*" +
+                    "(?<dist2>\\d+\\s+\\d{1,2}/\\d{1,2}|\\d{1,2}/\\d{1,2}|\\d+)(?=\\s|$)"
     );
 
     /**

@@ -820,6 +820,26 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .isEqualTo("ALQDS");
                         }),
 
+                arguments("KMCO-SectorVisibilityNowSurfacesWhole",
+                        "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 RMK RAB35 VIS N-NE 2",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Whole VIS N-NE 2, not the fragment -NE 2 (#115)")
+                                    .isEqualTo("VIS N-NE 2");
+                            assertThat(data.getRemarks().variableVisibility()).isNull();
+                        }),
+
+                arguments("CYLK-CanadianSectorVisibilityNowSurfacesWhole",
+                        "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 " +
+                                "RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Whole VIS 1/2 E-SE-SW-W; VIS 1/2 no longer silently consumed (#115)")
+                                    .isEqualTo("VIS 1/2 E-SE-SW-W");
+                            assertThat(data.getRemarks().variableVisibility()).isNull();
+                            assertThat(data.getSeaLevelPressure()).isNotNull();
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -854,6 +874,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 15:51 KCRP 081551Z 04008KT 10SM FEW028 FEW065 FEW250 30/22 A2995 RMK AO2 SLP142 CB DSNT E SE MOV SW TCU DSNT E SE T03000222",
                 "2026/10/08 17:55 K46D 081755Z AUTO 00000KT 10SM CLR 15/02 A3010 RMK AO2 LTG DSNT S AND SW",
                 "2026/10/08 17:53 KFMY 081753Z 21010G17KT 10SM SCT027 31/24 A2985 RMK AO2 LTG DSNT N AND NE SLP110 T03110244 10317 20244 55013",
+                "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 RMK RAB35 VIS N-NE 2",
+                "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190",
         };
 
         for (String raw : raws) {

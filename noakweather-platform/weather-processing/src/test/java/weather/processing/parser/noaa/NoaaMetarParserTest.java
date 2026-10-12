@@ -4284,6 +4284,79 @@ class NoaaMetarParserTest {
         }
     }
 
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2',         'VIS 1/2',         'Missing maximum'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2V',        'VIS 1/2V',        'V with no maximum'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS RWY 1/2',     'VIS RWY 1/2',     'RWY instead of V'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 5V2',         'VIS 5V2',         'Minimum greater than maximum (validation rejects)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS NE 2',        'VIS NE 2',        'Sector visibility, direction then distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 2 RWY11',     'VIS 2 RWY11',     'Visibility at second location'"
+    })
+    @DisplayName("Should leave a rejected or unmodelled VIS remark whole in freeText (Issue #115)")
+    void testVariableVisibility_RejectedRemarkSurfacesWhole(String metar, String expectedFreeText, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).as(scenario).isNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped: %s", scenario)
+                .isEqualTo(expectedFreeText);
+    }
+
+    @Test
+    @DisplayName("Should leave sector visibility whole in freeText - KMCO real-world (Issue #115)")
+    void testVariableVisibility_SectorVisibility_KMCO() {
+        String metar = "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 " +
+                "RMK RAB35 VIS N-NE 2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).isNull();
+        assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
+        assertThat(data.getRemarks().freeText())
+                .as("Whole VIS N-NE 2 surfaces, not the fragment -NE 2")
+                .isEqualTo("VIS N-NE 2");
+    }
+
+    @Test
+    @DisplayName("Should leave Canadian sector visibility whole in freeText - CYLK real-world (Issue #115)")
+    void testVariableVisibility_SectorVisibility_CYLK() {
+        String metar = "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 " +
+                "RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Whole VIS 1/2 E-SE-SW-W surfaces; VIS 1/2 is no longer consumed")
+                .isEqualTo("VIS 1/2 E-SE-SW-W");
+    }
+
+    @Test
+    @DisplayName("Should still parse a valid variable visibility followed by variable ceiling (Issue #115 regression)")
+    void testVariableVisibility_FollowedByVariableCeiling() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 VIS NE 2V4 CIG 005V010";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).isNotNull();
+        assertThat(data.getRemarks().variableVisibility().direction()).isEqualTo("NE");
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
     // ========== TOWER VISIBILITY PARSING TESTS ==========
 
     @ParameterizedTest
