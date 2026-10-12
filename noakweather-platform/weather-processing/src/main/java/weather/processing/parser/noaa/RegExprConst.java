@@ -188,10 +188,13 @@ public final class RegExprConst {
     /**
      * One or more space-separated compass directions following a present-weather
      * remark, e.g. "E SE", "N NE S SW".
+     * Each continuation point must end at a token boundary. So a following token that
+     * starts with a compass letter (SLP186, STNRY, WSHFT, NOSPECI) is never partly consumed,
+     * and a two-letter point (NE, NW, SW) is matched in full rather than as its first letter.
      */
-    @SuppressWarnings("java:S5843") // Complex regex required for precipitation timing format
+    @SuppressWarnings("java:S5843") // Complex regex required for compass direction list
     public static final Pattern DIRECTION_LIST_PATTERN = Pattern.compile(
-            "^((?:N|NE|E|SE|S|SW|W|NW)(?:\\s+(?:N|NE|E|SE|S|SW|W|NW))*+)(?=\\s|$)"
+            "^((?:N|NE|E|SE|S|SW|W|NW)(?:\\s+(?:N|NE|E|SE|S|SW|W|NW)(?=\\s|$))*+)(?=\\s|$)"
     );
 
     /**

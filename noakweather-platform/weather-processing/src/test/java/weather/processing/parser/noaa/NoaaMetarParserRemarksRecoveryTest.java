@@ -736,6 +736,24 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().directionalWeather().allQuadrants()).isTrue();
                             assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
                         }),
+
+                arguments("KDPG-DirectionKeptBeforeCompassLetterFollower",
+                        "2026/10/08 16:50 KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 " +
+                                "RMK VCSH S STNRY SLP186 T01720026",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().directionalWeather().directions())
+                                    .as("S must be kept even though the next token (STNRY) starts with a compass letter (#118)")
+                                    .containsExactly("S");
+                            assertThat(data.getRemarks().freeText())
+                                    .as("STNRY has no model yet, so only it remains")
+                                    .isEqualTo("STNRY");
+                            assertThat(data.getSeaLevelPressure())
+                                    .as("SLP186 must survive after STNRY")
+                                    .isEqualTo(1018.6);
+                            assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(17.2);
+                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(2.6);
+                        }),
+
                 arguments("PTRO-CbOverheadAndAllQuadrantsNowParsesCorrectly",
                         "2026/10/02 00:50 PTRO 020050Z 21010G20KT 4SM RA BKN014CB OVC100 26/24 A2991 " +
                                 "RMK CB OHD AND ALQDS",
@@ -777,6 +795,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 15:00 CYVR 081500Z 11004KT 1/2SM R08L/0800V1000FT/N R08R/1600V2000FT/N FG VV002 10/10 A3009 RMK FG8 SLP192",
                 "2026/10/08 16:00 BIRK 081600Z 10014KT 8000 -DZ OVC015 08/06 Q0988 REDZRA",
                 "2026/10/08 16:00 LIMC 081520Z 06003KT 040V110 8000 VCSH FEW015TCU SCT025 BKN050 19/16 Q1010 RESHRA NOSIG",
+                "2026/10/08 16:50 KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 RMK VCSH S STNRY SLP186 T01720026",
         };
 
         for (String raw : raws) {

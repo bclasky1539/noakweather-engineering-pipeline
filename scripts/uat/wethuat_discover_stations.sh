@@ -86,6 +86,7 @@ declare -a PATTERNS=(
      "113-rvr-ft-trend-suffix|(^| )R[0-9]{2}[LRC]?/[MP]?[0-9]{4}(V[MP]?[0-9]{4})?FT/[UDN]( |$)"
      "121-runway-state-group|(^| )R[0-9]{2}[LRC]?/([0-9/][1259/]([0-8][0-9]|90|9[2-9]|//)|CLRD)(0[1-9]|[1-8][0-9]|90|9[1-5]|99|//)( |$)"
      "116-recent-weather|(^| )RE(//|[A-Z]{2,8})( |$)"
+     "118-directional-weather-compass-follower|(^| )(VC[A-Z]{2}|HZ|FG|BR|FU|DU)( (N|NE|E|SE|S|SW|W|NW))+ ([NSEW][A-Z0-9]{2,}|NE|NW|SW)( |$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

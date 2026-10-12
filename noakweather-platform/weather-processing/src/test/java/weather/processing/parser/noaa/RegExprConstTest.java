@@ -2479,6 +2479,34 @@ class RegExprConstTest {
         assertThat(matcher.group("dirchain")).isEqualTo("N");
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'S SLP186',       S",
+            "'S STNRY',        S",
+            "'S WSHFT 1726',   S",
+            "'NE SLP186',      NE",
+            "'S NOSPECI',      S",
+            "'N NE S SW',      'N NE S SW'",
+            "'SE NE',          'SE NE'",
+            "'E SE S SLP186',  'E SE S'",
+            "'S T01720026',    S",
+            "'E SE',           'E SE'"
+    })
+    @DisplayName("DIRECTION_LIST_PATTERN should stop at a token boundary and match two-letter points in full (#118)")
+    void testDirectionListPattern(String input, String expectedList) {
+        Matcher matcher = RegExprConst.DIRECTION_LIST_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group(1)).isEqualTo(expectedList);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"STNRY", "SLP186", "NOSPECI", "SSW", "ALQDS", "NNE SLP"})
+    @DisplayName("DIRECTION_LIST_PATTERN should not match a token that only starts with a compass letter")
+    void testDirectionListPattern_Rejects(String input) {
+        assertThat(RegExprConst.DIRECTION_LIST_PATTERN.matcher(input).find()).isFalse();
+    }
+
     // ========== THUNDERSTORM LOCATION CONTINUATION PATTERN TESTS ==========
 
     @ParameterizedTest
