@@ -334,12 +334,22 @@ public final class RegExprConst {
      * Thunderstorm(s) shall be coded in the format, TS_LOC_(MOV_DIR)
      * Significant Cloud Types - Cumulonimbus (CB), Towering Cumulus (TCU),
      * Altocumulus Castellanus (ACC) Cumulonimbus Mammatus (CBMAM), Virga (VIRGA)
-     * Example: "TS SE MOV E", "CB OHD", "TCU DSNT S"
+     * Example: "TS SE MOV E", "CB OHD", "TCU DSNT S", "CB DSNT E SE MOV SW"
+     * <p>
+     * The direction chain is one or more segments separated by whitespace or
+     * AND; each segment is a point or a hyphenated range (e.g. "E SE",
+     * "N AND E-SE"). Each segment is followed by a token-boundary lookahead so
+     * a continuation step can never consume the start of a following token
+     * such as MOV, SLP142 or SNINCR (see #118).
      * Complexity is required to capture cloud type, location, and movement
      */
     @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern TS_CLD_LOC_PATTERN = Pattern.compile(
-            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)?\\s*(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+)*+)?(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
+            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*"
+                    + "(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)?\\s*"
+                    + "(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$)"
+                    + "(?:\\s+(?:AND\\s+)?[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$))*+)?"
+                    + "(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
     );
 
     /**

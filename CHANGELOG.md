@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.14-SNAPSHOT]
+
+### Fixed
+- Thunderstorm/cloud location remarks with space-separated direction points
+  (e.g. `CB DSNT E SE MOV SW`) now parse completely. Previously only the first
+  point was captured, and the remaining point and the `MOV` direction were left
+  in `freeText` (KCRP: `'SE MOV SW SE'`). (#114)
+  - `TS_CLD_LOC_PATTERN` direction chain now accepts a whitespace-separated
+    continuation in addition to `-` ranges and `AND` chains. Each continuation
+    step carries its own token-boundary lookahead so it cannot consume the start
+    of a following token (`SLP142`, `SNINCR`, `SEMOV`).
+  - Space-separated points are modeled as separate `DirectionSegment`s
+    (`E SE` → `[E],[SE]`), consistent with the #106 continuation behavior;
+    hyphenated ranges remain a single segment (`E-SE` → `[E,SE]`).
+  - `movingDirection` is now captured when `MOV` follows space-separated points.
+
+### Downstream impact
+- No Bronze JSON shape change. `thunderstormLocations[].directionSegments` may now
+  hold additional segments, and `movingDirection` is populated, for remarks that
+  were previously truncated; the corresponding text no longer appears in
+  `remarks.freeText`.
+
+### Tests
+- `RegExprConstTest`: space-separated point cases (KCRP) and token-boundary cases.
+- `NoaaMetarParserTest`: KCRP real-world, the supporting form, and points-vs-range modeling.
+- `NoaaMetarParserRemarksRecoveryTest`: KCRP recovery row; KCRP added to diagnostics raws.
+- UAT watch pattern `114-ts-location-space-separated-points` added to
+  `scripts/uat/wethuat_discover_stations.sh`.
+
 ## [1.20.13-SNAPSHOT] - 2026-10-11
 
 ### Fixed
