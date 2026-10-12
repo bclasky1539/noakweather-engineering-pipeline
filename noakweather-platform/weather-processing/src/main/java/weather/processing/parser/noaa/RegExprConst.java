@@ -318,15 +318,22 @@ public final class RegExprConst {
     );
 
     /**
-     * Lightning (Frequency_LTG(type)_[LOC]).
-     * Example: "OCNL LTGICCG VC"
-     * Complexity is required to capture frequency, types, and location
+     * Lightning (Frequency_LTG(type)_[LOC]_[DIR [AND DIR]...]).
+     * Example: "OCNL LTGICCG VC", "LTG DSNT S AND SW", "OCNL LTGIC DSNT SE AND S-SW"
+     * <p>
+     * Direction is either ALQDS (alqds group) or a chain of one or more segments
+     * joined by AND (dirchain group); each segment is a point or hyphenated range.
+     * Each segment carries a token-boundary lookahead so the chain cannot consume
+     * the start of a following token.
+     * Complexity is required to capture frequency, types, location and direction chain
      */
     @SuppressWarnings("java:S5843") // Complex regex required for lightning format
     public static final Pattern LIGHTNING_PATTERN = Pattern.compile(
             "^(?:(?<freq>OCNL|FRQ|CONS|CONTUS)\\s+)?LTG(?<types>(?:IC|CC|CG|CA|CW)+)?" +
                     "(?:\\s+(?<loc>OHD|VC|DSNT|AT\\s+AP))?" +
-                    "(?:\\s+(?<dir>ALQDS|[NSEW]{1,2})(?:-(?<dir2>[NSEW]{1,2}))?)?(?=\\s|$)"
+                    "(?:\\s+(?:(?<alqds>ALQDS)" +
+                    "|(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$)" +
+                    "(?:\\s+AND\\s+[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$))*+)))?(?=\\s|$)"
     );
 
     /**

@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.20.15-SNAPSHOT]
+
+### Fixed
+- Lightning remarks with an AND-chained direction (e.g. `LTG DSNT S AND SW`,
+  `OCNL LTGIC DSNT SE AND S-SW`) now capture every sector. Previously only the
+  first sector was stored and `AND <direction>` was left in `freeText`
+  (K46D: `'AND SW'`, KFMY: `'AND NE'`). (#117)
+  - `LIGHTNING_PATTERN` now captures either `ALQDS` (`alqds` group) or a direction
+    chain (`dirchain` group) of one or more points/ranges joined by `AND`, each with
+    a token-boundary lookahead. The `dir`/`dir2` groups are removed.
+  - The chain is split by the same `parseDirectionChain` used for thunderstorm
+    locations: `SE AND S-SW` → `[SE]`, `[S, SW]`.
+- `LightningMatcher.hasType` now checks only 2-letter-aligned positions in the
+  discharge-type string. Previously a substring search reported `CC` for
+  `ICCG`/`ICCA`/`ICCW`, where `CC` straddles the `IC|C?` boundary. No Bronze data
+  impact: `LightningRemark.types` is built by `extractLightningTypes`, and the only
+  virtual group read by the parser (`typeic`) cannot be falsely matched. Found while
+  adding #117 tests.
+
+### Changed
+- `LightningRemark` now holds `List<DirectionSegment> directionSegments` instead of a
+  single `DirectionSegment directionSegment`. An AND chain is one lightning observation
+  seen in several sectors, so it is one remark with several segments, consistent with
+  `ThunderstormLocation.directionSegments` (#69). Adds `getDirectionsSummary()`
+  (e.g. `"SE AND S-SW"`). (#117)
+
+### Downstream impact
+- Bronze JSON shape change for **every** lightning remark, not only AND chains:
+  - `lightningRemarks[].directionSegment` (object, or null) is replaced by
+    `lightningRemarks[].directionSegments` (array, empty when no direction or ALQDS).
+  - `lightningRemarks[].directionsSummary` (string) is added, matching
+    `thunderstormLocations[].directionsSummary`.
+- Silver Glue/Athena schema to be updated in the Silver pre-UAT review.
+
+### Tests
+- `RegExprConstTest`: lightning group assertions moved to `alqds`/`dirchain`; AND-chain
+  and token-boundary cases (K46D, KFMY, KSPG, KTPA).
+- `LightningMatcherTest`: direction assertions moved to `dirchain`; AND-chain and
+  virtual-type-group cases; `hasType` boundary-alignment and edge cases.
+- `NoaaMetarParserTest`: K46D, KFMY and KTPA real-world tests; AND-chain segment modelling.
+- `NoaaMetarParserRemarksRecoveryTest`: K46D and KFMY rows; diagnostics raws added;
+  existing lightning assertions moved to `directionSegments`.
+- `LightningRemarkTest`, `NoaaMetarRemarksTest`: updated for `directionSegments`; new
+  tests for multiple segments, null default, defensive copy and the all-quadrants summary.
+- UAT watch pattern `117-lightning-and-chain` added to
+  `scripts/uat/wethuat_discover_stations.sh`.
+
 ## [1.20.14-SNAPSHOT]
 
 ### Fixed

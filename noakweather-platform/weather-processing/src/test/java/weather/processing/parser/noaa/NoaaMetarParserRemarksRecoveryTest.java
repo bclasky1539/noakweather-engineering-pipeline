@@ -92,7 +92,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(lightning.frequency()).isNull();
                             assertThat(lightning.types()).isEmpty();
                             assertThat(lightning.location()).isEqualTo("DSNT");
-                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("W")));
+                            assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("W")));
                             assertThat(data.getSeaLevelPressure())
                                     .as("SLP151 must parse despite the earlier LTG clause")
                                     .isEqualTo(1015.1);
@@ -183,12 +183,12 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(firstLtg.frequency()).isNull();
                             assertThat(firstLtg.types()).isEmpty();
                             assertThat(firstLtg.location()).isEqualTo("DSNT");
-                            assertThat(firstLtg.directionSegment()).isEqualTo(new DirectionSegment(List.of("NE", "SE")));
+                            assertThat(firstLtg.directionSegments()).containsExactly(new DirectionSegment(List.of("NE", "SE")));
                             LightningRemark secondLtg = data.getRemarks().lightningRemarks().get(1);
                             assertThat(secondLtg.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
                             assertThat(secondLtg.types()).containsExactly("IC", "CC");
                             assertThat(secondLtg.location()).isEqualTo("DSNT");
-                            assertThat(secondLtg.directionSegment()).isEqualTo(new DirectionSegment(List.of("E")));
+                            assertThat(secondLtg.directionSegments()).containsExactly(new DirectionSegment(List.of("E")));
                             assertThat(data.getRemarks().icing()).isEqualTo(Icing.of(false, false, "PAST HR"));
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.6);
@@ -216,7 +216,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(lightning.frequency()).isNull();
                             assertThat(lightning.types()).containsExactly("CG");
                             assertThat(lightning.location()).isNull();
-                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SE")));
+                            assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("SE")));
                             assertThat(data.getSeaLevelPressure()).isEqualTo(1004.4);
                             assertThat(data.getRemarks().cloudTypes())
                                     .as("SC5, AC3, and now CB EMBDD - three cloud types")
@@ -466,7 +466,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
                             LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
                             assertThat(lightning.location()).isEqualTo("DSNT");
-                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("N")));
+                            assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("N")));
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(23.9);
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.8);
@@ -487,7 +487,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(lightning.frequency()).isEqualTo(LightningFrequency.FREQUENT);
                             assertThat(lightning.types()).containsExactly("IC", "CG");
                             assertThat(lightning.location()).isEqualTo("DSNT");
-                            assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SE", "S")));
+                            assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("SE", "S")));
 
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
@@ -521,7 +521,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(first.types()).isEmpty();
                             assertThat(first.location()).isEqualTo("DSNT");
                             assertThat(first.allQuadrants()).isTrue();
-                            assertThat(first.directionSegment()).isNull();
+                            assertThat(first.directionSegments()).isEmpty();
 
                             LightningRemark second = data.getRemarks().lightningRemarks().get(1);
                             assertThat(second.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
@@ -548,6 +548,33 @@ class NoaaMetarParserRemarksRecoveryTest {
 
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(13.9, within(0.1));
                             assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(10.6, within(0.1));
+                        }),
+
+                arguments("K46D-LightningAndChainNowParsesBothSectors",
+                        "2026/10/08 17:55 K46D 081755Z AUTO 00000KT 10SM CLR 15/02 A3010 RMK AO2 LTG DSNT S AND SW",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("AND SW no longer left in freeText (#117)")
+                                    .isNull();
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+                            assertThat(data.getRemarks().lightningRemarks().get(0).directionSegments()).containsExactly(
+                                    new DirectionSegment(List.of("S")),
+                                    new DirectionSegment(List.of("SW"))
+                            );
+                        }),
+                arguments("KFMY-LightningAndChainNowParsesBothSectors",
+                        "2026/10/08 17:53 KFMY 081753Z 21010G17KT 10SM SCT027 31/24 A2985 " +
+                                "RMK AO2 LTG DSNT N AND NE SLP110 T03110244 10317 20244 55013",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("AND NE no longer left in freeText (#117)")
+                                    .isNull();
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+                            assertThat(data.getRemarks().lightningRemarks().get(0).directionSegments()).containsExactly(
+                                    new DirectionSegment(List.of("N")),
+                                    new DirectionSegment(List.of("NE"))
+                            );
+                            assertThat(data.getRemarks().preciseTemperature()).isNotNull();
                         }),
 
                 arguments("CXOL-AllTokensParse",
@@ -825,6 +852,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 16:00 LIMC 081520Z 06003KT 040V110 8000 VCSH FEW015TCU SCT025 BKN050 19/16 Q1010 RESHRA NOSIG",
                 "2026/10/08 16:50 KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 RMK VCSH S STNRY SLP186 T01720026",
                 "2026/10/08 15:51 KCRP 081551Z 04008KT 10SM FEW028 FEW065 FEW250 30/22 A2995 RMK AO2 SLP142 CB DSNT E SE MOV SW TCU DSNT E SE T03000222",
+                "2026/10/08 17:55 K46D 081755Z AUTO 00000KT 10SM CLR 15/02 A3010 RMK AO2 LTG DSNT S AND SW",
+                "2026/10/08 17:53 KFMY 081753Z 21010G17KT 10SM SCT027 31/24 A2985 RMK AO2 LTG DSNT N AND NE SLP110 T03110244 10317 20244 55013",
         };
 
         for (String raw : raws) {

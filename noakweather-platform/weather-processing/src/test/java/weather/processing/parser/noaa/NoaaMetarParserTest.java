@@ -6904,7 +6904,7 @@ class NoaaMetarParserTest {
         assertThat(lightning.frequency()).isEqualTo(LightningFrequency.FREQUENT);
         assertThat(lightning.types()).containsExactly("IC", "CG");
         assertThat(lightning.location()).isEqualTo("DSNT");
-        assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SE", "S")));
+        assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("SE", "S")));
         assertThat(lightning.allQuadrants()).isFalse();
 
         // Confirms the CB DSNT SE-S MOV NE thunderstorm location (same direction
@@ -6929,7 +6929,7 @@ class NoaaMetarParserTest {
         assertThat(lightning.frequency()).isNull();
         assertThat(lightning.types()).containsExactly("IC");
         assertThat(lightning.location()).isNull();
-        assertThat(lightning.directionSegment()).isEqualTo(new DirectionSegment(List.of("SW")));
+        assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("SW")));
         assertThat(lightning.allQuadrants()).isFalse();
     }
 
@@ -6948,7 +6948,7 @@ class NoaaMetarParserTest {
         assertThat(lightning.frequency()).isNull();
         assertThat(lightning.types()).isEmpty();
         assertThat(lightning.location()).isEqualTo("DSNT");
-        assertThat(lightning.directionSegment()).isNull();
+        assertThat(lightning.directionSegments()).isEmpty();
         assertThat(lightning.allQuadrants()).isTrue();
     }
 
@@ -7038,6 +7038,108 @@ class NoaaMetarParserTest {
         // Other remark fields should be null
         assertThat(data.getRemarks().automatedStationType()).isNull();
         assertThat(data.getRemarks().seaLevelPressure()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse lightning AND chain as one remark with two segments - K46D real-world (Issue #117)")
+    void testParseLightningRemark_AndChain_K46D() {
+        String metar = "2026/10/08 17:55 K46D 081755Z AUTO 00000KT 10SM CLR 15/02 A3010 RMK AO2 LTG DSNT S AND SW";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks())
+                .as("One observation seen in two sectors is one remark")
+                .hasSize(1);
+        LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+        assertThat(lightning.location()).isEqualTo("DSNT");
+        assertThat(lightning.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("S")),
+                new DirectionSegment(List.of("SW"))
+        );
+        assertThat(lightning.allQuadrants()).isFalse();
+        assertThat(data.getRemarks().freeText())
+                .as("AND SW no longer left in freeText")
+                .isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse lightning AND chain followed by other remarks - KFMY real-world (Issue #117)")
+    void testParseLightningRemark_AndChain_KFMY() {
+        String metar = "2026/10/08 17:53 KFMY 081753Z 21010G17KT 10SM SCT027 31/24 A2985 " +
+                "RMK AO2 LTG DSNT N AND NE SLP110 T03110244 10317 20244 55013";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        assertThat(data.getRemarks().lightningRemarks().get(0).directionSegments()).containsExactly(
+                new DirectionSegment(List.of("N")),
+                new DirectionSegment(List.of("NE"))
+        );
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1011.0, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(31.1, within(0.1));
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse lightning AND chain with frequency, types and a range, plus the CB AND chain - KTPA (Issue #117)")
+    void testParseLightningRemark_AndChain_KTPA() {
+        String metar = "METAR KTPA 081753Z 21010KT 10SM SCT027 31/24 A2985 " +
+                "RMK AO2 RAB27 SLP123 OCNL LTGIC DSNT SE AND S-SW CB DSNT SE AND S-SW P0001";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        LightningRemark lightning = data.getRemarks().lightningRemarks().get(0);
+        assertThat(lightning.frequency()).isEqualTo(LightningFrequency.OCCASIONAL);
+        assertThat(lightning.types()).containsExactly("IC");
+        assertThat(lightning.location()).isEqualTo("DSNT");
+        assertThat(lightning.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("SE")),
+                new DirectionSegment(List.of("S", "SW"))
+        );
+
+        assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
+        ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
+        assertThat(cb.cloudType()).isEqualTo("CB");
+        assertThat(cb.directionSegments()).containsExactly(
+                new DirectionSegment(List.of("SE")),
+                new DirectionSegment(List.of("S", "SW"))
+        );
+
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'LTG DSNT S AND SW',         'S|SW'",
+            "'LTG DSNT SE AND S-SW',      'SE|S-SW'",
+            "'LTG DSNT NW-N AND E',       'NW-N|E'",
+            "'LTG DSNT NE-SE',            'NE-SE'",
+            "'LTG DSNT N',                'N'"
+    })
+    @DisplayName("Should model lightning AND chains as segments, ranges intact (Issue #117)")
+    void testParseLightningRemark_AndChainSegments(String remark, String expectedSegments) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 " + remark;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        assertThat(data.getRemarks().lightningRemarks().get(0).directionSegments())
+                .extracting(DirectionSegment::getSummary)
+                .containsExactly(expectedSegments.split("\\|"));
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     @ParameterizedTest
