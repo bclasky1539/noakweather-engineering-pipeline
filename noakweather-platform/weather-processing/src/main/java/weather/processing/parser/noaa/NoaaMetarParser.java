@@ -1078,6 +1078,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
             String typeDigit = matcher.group("type");
             boolean augmented = matcher.group("augmented") != null;
@@ -1091,9 +1092,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid automated station type in remarks: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid automated station type, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -1131,6 +1134,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
             String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
 
@@ -1140,35 +1144,32 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 return remarksText.substring(matcher.end()).trim();
             }
 
-            // Parse pressure value
-            if (pressureStr != null && !pressureStr.isEmpty()) {
-                int ppp = Integer.parseInt(pressureStr);
+            // Pattern guarantees exactly three digits here
+            int ppp = Integer.parseInt(pressureStr);
 
-                // Apply decoding rules
-                double pressureHPa;
-                if (ppp >= 500) {
-                    // High values (500-999): add 900
-                    pressureHPa = 900.0 + (ppp / 10.0);
-                } else {
-                    // Low values (000-499): add 1000
-                    pressureHPa = 1000.0 + (ppp / 10.0);
-                }
-
-                // Create Pressure object using factory method
-                Pressure seaLevelPressure = Pressure.hectopascals(pressureHPa);
-
-                // Store in remarks builder
-                remarks.seaLevelPressure(seaLevelPressure);
-
-                LOGGER.debug("Sea level pressure: {} hPa (from SLP{})", pressureHPa, ppp);
+            // Apply decoding rules
+            double pressureHPa;
+            if (ppp >= 500) {
+                // High values (500-999): add 900
+                pressureHPa = 900.0 + (ppp / 10.0);
+            } else {
+                // Low values (000-499): add 1000
+                pressureHPa = 1000.0 + (ppp / 10.0);
             }
 
+            Pressure seaLevelPressure = Pressure.hectopascals(pressureHPa);
+            remarks.seaLevelPressure(seaLevelPressure);
+
+            LOGGER.debug("Sea level pressure: {} hPa (from SLP{})", pressureHPa, ppp);
+
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid sea level pressure format in remarks: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+        } catch (IllegalArgumentException e) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid sea level pressure, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -1198,57 +1199,45 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
-            // Parse temperature
-            String tempSign = matcher.group("tsign");
-            String tempStr = matcher.group("temp");
+            // Pattern guarantees sign and three digits for temperature
+            int tempTenths = Integer.parseInt(matcher.group("temp"));
+            double tempCelsius = tempTenths / 10.0;
+            if ("1".equals(matcher.group("tsign"))) {
+                tempCelsius = -tempCelsius;
+            }
 
-            if (tempStr != null && !tempStr.isEmpty()) {
-                int tempTenths = Integer.parseInt(tempStr);
-                double tempCelsius = tempTenths / 10.0;
+            // Dewpoint is optional
+            String dewptStr = matcher.group("dewpt");
 
-                // Apply sign (0=positive, 1=negative)
-                if ("1".equals(tempSign)) {
-                    tempCelsius = -tempCelsius;
+            if (dewptStr != null) {
+                double dewptCelsius = Integer.parseInt(dewptStr) / 10.0;
+                if ("1".equals(matcher.group("dsign"))) {
+                    dewptCelsius = -dewptCelsius;
                 }
 
-                // Parse dewpoint (optional)
-                String dewptSign = matcher.group("dsign");
-                String dewptStr = matcher.group("dewpt");
+                Temperature preciseTemp = Temperature.of(tempCelsius, dewptCelsius);
+                remarks.preciseTemperature(preciseTemp);
+                remarks.preciseDewpoint(preciseTemp); // Store the same object for dewpoint access
 
-                if (dewptStr != null && !dewptStr.isEmpty()) {
-                    // Both temperature and dewpoint present
-                    int dewptTenths = Integer.parseInt(dewptStr);
-                    double dewptCelsius = dewptTenths / 10.0;
+                LOGGER.debug("Precise temperature: {}°C, dewpoint: {}°C", tempCelsius, dewptCelsius);
 
-                    // Apply sign
-                    if ("1".equals(dewptSign)) {
-                        dewptCelsius = -dewptCelsius;
-                    }
+            } else {
+                Temperature preciseTemp = Temperature.of(tempCelsius);
+                remarks.preciseTemperature(preciseTemp);
 
-                    // Create Temperature with both values
-                    Temperature preciseTemp = Temperature.of(tempCelsius, dewptCelsius);
-                    remarks.preciseTemperature(preciseTemp);
-                    remarks.preciseDewpoint(preciseTemp); // Store the same object for dewpoint access
-
-                    LOGGER.debug("Precise temperature: {}°C, dewpoint: {}°C",
-                            tempCelsius, dewptCelsius);
-
-                } else {
-                    // Only temperature present, no dewpoint
-                    Temperature preciseTemp = Temperature.of(tempCelsius);
-                    remarks.preciseTemperature(preciseTemp);
-
-                    LOGGER.debug("Precise temperature: {}°C (no dewpoint)", tempCelsius);
-                }
+                LOGGER.debug("Precise temperature: {}°C (no dewpoint)", tempCelsius);
             }
 
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid hourly temperature format in remarks: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+        } catch (IllegalArgumentException e) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid hourly temperature, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -1279,52 +1268,38 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
-            // Parse direction (optional)
             String dirStr = matcher.group("dir");
-            Integer direction = null;
-            if (dirStr != null && !dirStr.isEmpty()) {
-                direction = Integer.parseInt(dirStr);
-            }
+            Integer direction = dirStr != null ? Integer.parseInt(dirStr) : null;
 
-            // Parse speed (required, but handle P prefix for >99 knots)
-            String speedStr = matcher.group("speed");
-            Integer speed = null;
-            if (speedStr != null && !speedStr.isEmpty()) {
-                // Remove 'P' prefix if present (indicates speed >99 knots)
-                speedStr = speedStr.replace("P", "");
-                speed = Integer.parseInt(speedStr);
-            }
+            // Speed is required; 'P' prefix indicates speed >99 knots
+            int speed = Integer.parseInt(matcher.group("speed").replace("P", ""));
 
-            // Parse hour (optional)
             String hourStr = matcher.group("hour");
-            Integer hour = null;
-            if (hourStr != null && !hourStr.isEmpty()) {
-                hour = Integer.parseInt(hourStr);
-            }
+            Integer hour = hourStr != null ? Integer.parseInt(hourStr) : null;
 
-            // Parse minute (optional)
-            String minStr = matcher.group("min");
-            Integer minute = null;
-            if (minStr != null && !minStr.isEmpty()) {
-                minute = Integer.parseInt(minStr);
-            }
+            // Minute is required by the pattern
+            int minute = Integer.parseInt(matcher.group("min"));
 
-            // Create PeakWind object
             PeakWind peakWind = new PeakWind(direction, speed, hour, minute);
             remarks.updateWind(w -> w.withPeakWind(peakWind));
 
-            LOGGER.debug("Peak wind: dir={}°, speed={}kt, time={}:{}",
-                    direction, speed,
-                    hour != null ? String.format("%02d", hour) : "XX",
-                    minute != null ? String.format("%02d", minute) : "XX");
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Peak wind: dir={}°, speed={}kt, time={}:{}",
+                        direction, speed,
+                        hour != null ? String.format("%02d", hour) : "XX",
+                        String.format("%02d", minute));
+            }
 
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid peak wind format in remarks: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+        } catch (IllegalArgumentException e) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid peak wind, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -1357,40 +1332,34 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
-            // Parse hour (optional)
             String hourStr = matcher.group("hour");
-            Integer hour = null;
-            if (hourStr != null && !hourStr.isEmpty()) {
-                hour = Integer.parseInt(hourStr);
-            }
+            Integer hour = hourStr != null ? Integer.parseInt(hourStr) : null;
 
-            // Parse minute (required)
-            String minStr = matcher.group("min");
-            Integer minute = null;
-            if (minStr != null && !minStr.isEmpty()) {
-                minute = Integer.parseInt(minStr);
-            }
+            // Minute is required by the pattern
+            int minute = Integer.parseInt(matcher.group("min"));
 
-            // Check for frontal passage (FROPA)
-            String frontStr = matcher.group("front");
-            boolean frontalPassage = "FROPA".equals(frontStr);
+            boolean frontalPassage = "FROPA".equals(matcher.group("front"));
 
-            // Create WindShift object
             WindShift windShift = new WindShift(hour, minute, frontalPassage);
             remarks.updateWind(w -> w.withWindShift(windShift));
 
-            LOGGER.debug("Wind shift: time={}:{}, frontal passage={}",
-                    hour != null ? String.format("%02d", hour) : "XX",
-                    minute != null ? String.format("%02d", minute) : "XX",
-                    frontalPassage);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Wind shift: time={}:{}, frontal passage={}",
+                        hour != null ? String.format("%02d", hour) : "XX",
+                        String.format("%02d", minute),
+                        frontalPassage);
+            }
 
             return remarksText.substring(matcher.end()).trim();
 
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid wind shift format in remarks: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+        } catch (IllegalArgumentException e) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid wind shift, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -1416,9 +1385,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         Matcher matcher = WIND_AT_LOCATION_PATTERN.matcher(remaining);
 
         while (matcher.find() && matcher.start() == 0) {
-            int matchEnd = matcher.end();
-            remaining = processWindAtLocationMatch(matcher, matchEnd, remaining, remarks);
-            remaining = remaining.trim();
+            if (!processWindAtLocationMatch(matcher, remarks)) {
+                // Rejected: leave the group in place for freeText and stop,
+                // otherwise the loop would re-match the same token forever (#115)
+                break;
+            }
+            remaining = remaining.substring(matcher.end()).trim();
             matcher = WIND_AT_LOCATION_PATTERN.matcher(remaining);
         }
 
@@ -1428,14 +1400,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Process a single wind-at-location pattern match.
      *
-     * @param matcher   the pattern matcher (must not be null)
-     * @param matchEnd  the end position of the match
-     * @param remaining the remaining text (must not be null)
-     * @param remarks   the remarks builder (must not be null)
-     * @return the remaining text after processing this match (never null)
+     * @param matcher the pattern matcher positioned at a match (must not be null)
+     * @param remarks the remarks builder (must not be null)
+     * @return true if the match was stored; false if it was rejected and should
+     * be left in the remarks text for freeText
      */
-    private String processWindAtLocationMatch(Matcher matcher, int matchEnd, String remaining,
-                                              NoaaMetarRemarks.Builder remarks) {
+    private boolean processWindAtLocationMatch(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+        String matchedText = matcher.group();
         try {
             WindAtLocation windAtLocation = buildWindAtLocation(matcher);
             remarks.updateWind(w -> w.addWindAtLocation(windAtLocation));
@@ -1443,13 +1414,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("Wind at location: {}", windAtLocation.getSummary());
             }
-        } catch (IllegalArgumentException e) {
-            int endIndex = Math.min(matchEnd, remaining.length());
-            LOGGER.warn("Invalid wind-at-location in remarks: {}",
-                    remaining.substring(0, endIndex), e);
-        }
+            return true;
 
-        return remaining.substring(matchEnd).trim();
+        } catch (IllegalArgumentException e) {
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid wind-at-location, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return false;
+        }
     }
 
     /**
@@ -1644,7 +1617,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @param remarksText the remaining remarks text to process
      * @param remarks     the remarks builder to populate
      * @return the remaining text after this remark, or remarksText unchanged if
-     *         there is no match or the match is rejected
+     * there is no match or the match is rejected
      */
     private String handleVariableVisibilitySequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
         // Precondition: remarksText is non-null and non-blank

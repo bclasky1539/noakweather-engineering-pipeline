@@ -219,9 +219,11 @@ public final class RegExprConst {
      * coded in all METAR/SPECI from automated stations; a trailing "A" suffix
      * (AO1A, AO2A) indicates the observation was manually augmented by a
      * human observer.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      */
     public static final Pattern AUTO_PATTERN = Pattern.compile(
-            "^A[O0](?<type>\\d)(?<augmented>A)?(?=\\s|$)"
+            "^A[O0](?<type>[12])(?<augmented>A)?(?=\\s|$)"
     );
 
     /**
@@ -252,30 +254,35 @@ public final class RegExprConst {
     /**
      * Sea-Level Pressure (SLPppp). At designated stations, the sea-level
      * pressure shall be coded in the format SLPppp
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "SLP210" = 1021.0 hPa
      */
     public static final Pattern SEALVL_PRESS_PATTERN = Pattern.compile(
-            "^(?<type>SLP)(?<press>\\d{3}|NO)?\\s*"
+            "^(?<type>SLP)(?<press>\\d{3}|NO)(?=\\s|$)"
     );
 
     /**
      * Peak Wind (PK_WND_dddff(f)/(hh)mm). The peak wind shall be coded in the
      * format, PK_WND_dddff(f)/(hh)mm of the next METAR
+     * Complexity is required to capture direction, speed, and time.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "PK WND 28032/15"
-     * Complexity is required to capture direction, speed, and time
      */
     public static final Pattern PEAK_WIND_PATTERN = Pattern.compile(
-            "^PK\\s+WND\\s+(?<dir>\\d{3})?(?<speed>P?\\d{2,3})/(?<hour>[01]\\d|2[0-3])?(?<min>\\d{2})?\\s*"
+            "^PK\\s+WND\\s+(?<dir>\\d{3})?(?<speed>P?\\d{2,3})/(?<hour>[01]\\d|2[0-3])?(?<min>[0-5]\\d)(?=\\s|$)"
     );
 
     /**
      * Wind Shift (WSHFT_(hh)mm). A wind shift shall be coded in the format
      * WSHFT_(hh)mm
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "WSHFT 15 FROPA"
      */
     public static final Pattern WIND_SHIFT_PATTERN = Pattern.compile(
-            "^WSHFT (?<hour>\\d{2})?(?<min>\\d{2})(\\s+(?<front>FROPA))?\\s*"
-
+            "^WSHFT (?<hour>[01]\\d|2[0-3])?(?<min>[0-5]\\d)(?:\\s+(?<front>FROPA))?(?=\\s|$)"
     );
 
     /**
@@ -495,11 +502,13 @@ public final class RegExprConst {
     /**
      * Hourly Temperature and Dew Point (TsnT'T'T'snT'dT'dT'd). At designated
      * stations, the hourly temperature and dew point group shall be coded to
-     * the tenth of a degree Celsius in the format, TsnT'T'T'snT'dT'dT'd
+     * the tenth of a degree Celsius in the format, TsnT'T'T'snT'dT'dT'd.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "T02330139" = temp 23.3°C, dewpoint 13.9°C
      */
     public static final Pattern TEMP_1HR_PATTERN = Pattern.compile(
-            "^(?<type>T)(?<tsign>[01])(?<temp>\\d{3})((?<dsign>[01])(?<dewpt>\\d{3}))?\\s*"
+            "^(?<type>T)(?<tsign>[01])(?<temp>\\d{3})(?:(?<dsign>[01])(?<dewpt>\\d{3}))?(?=\\s|$)"
     );
 
     /**

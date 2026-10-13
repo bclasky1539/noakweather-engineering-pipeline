@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -2904,6 +2905,64 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("unparsed")).isEqualTo("UNKNOWN_TOKEN");
+    }
+
+    // ========== MISC TESTS ==========
+
+    @ParameterizedTest(name = "{0}: ''{1}'' matches={2}")
+    @CsvSource({
+            "AUTO,  AO2,                 true",
+            "AUTO,  AO1A,                true",
+            "AUTO,  A02,                 true",
+            "AUTO,  AO3,                 false",
+            "AUTO,  AO9,                 false",
+            "SLP,   SLP210,              true",
+            "SLP,   SLPNO,               true",
+            "SLP,   SLP,                 false",
+            "SLP,   SLP12,               false",
+            "SLP,   SLP2101,             false",
+            "T1HR,  T02330139,           true",
+            "T1HR,  T0233,               true",
+            "T1HR,  T02331,              false",
+            "T1HR,  T023301399,          false",
+            "PKWND, 'PK WND 28032/1530', true",
+            "PKWND, 'PK WND 32035/15',   true",
+            "PKWND, 'PK WND P100/2145',  true",
+            "PKWND, 'PK WND 28032/',     false",
+            "PKWND, 'PK WND 28032/2530', false",
+            "PKWND, 'PK WND 28032/1575', false",
+            "PKWND, 'PK WND 28032/15301', false",
+            "WSHFT, 'WSHFT 1530',        true",
+            "WSHFT, 'WSHFT 30',          true",
+            "WSHFT, 'WSHFT 1530 FROPA',  true",
+            "WSHFT, 'WSHFT 2530',        false",
+            "WSHFT, 'WSHFT 1575',        false",
+            "WSHFT, 'WSHFT 15301',       false"
+    })
+    @DisplayName("Batch-1 remark patterns should require their value and end at a token boundary (Issue #115)")
+    void testBatch1Patterns_ValueRequiredAndTokenBounded(String patternName, String input, boolean expectedMatch) {
+        Pattern pattern = switch (patternName) {
+            case "AUTO" -> RegExprConst.AUTO_PATTERN;
+            case "SLP" -> RegExprConst.SEALVL_PRESS_PATTERN;
+            case "T1HR" -> RegExprConst.TEMP_1HR_PATTERN;
+            case "PKWND" -> RegExprConst.PEAK_WIND_PATTERN;
+            case "WSHFT" -> RegExprConst.WIND_SHIFT_PATTERN;
+            default -> throw new IllegalArgumentException(patternName);
+        };
+
+        assertThat(pattern.matcher(input).find())
+                .as("%s on '%s'", patternName, input)
+                .isEqualTo(expectedMatch);
+    }
+
+    @Test
+    @DisplayName("PEAK_WIND_PATTERN should read two digits after the slash as the minute (FMH-1 (hh)mm) (Issue #115)")
+    void testPeakWindPattern_TwoDigitsAreMinute() {
+        Matcher matcher = RegExprConst.PEAK_WIND_PATTERN.matcher("PK WND 32035/15");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("hour")).isNull();
+        assertThat(matcher.group("min")).isEqualTo("15");
     }
 
     // ========== TAF PATTERN TESTS ==========

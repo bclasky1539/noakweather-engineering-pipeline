@@ -896,6 +896,17 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
             LOGGER.info("  automatedStationType: {}", data.getRemarks() != null ? data.getRemarks().automatedStationType() : "n/a");
             LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
+            LOGGER.info("  peakWind: {}", data.getRemarks() != null ? data.getRemarks().peakWind() : "n/a");
+            LOGGER.info("  windShift: {}", data.getRemarks() != null ? data.getRemarks().windShift() : "n/a");
+            LOGGER.info("  windsAtLocation: {}", data.getRemarks() != null ? data.getRemarks().windsAtLocation() : "n/a");
+            LOGGER.info("  variableVisibility: {}", data.getRemarks() != null ? data.getRemarks().variableVisibility() : "n/a");
+            LOGGER.info("  hourlyPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().hourlyPrecipitation() : "n/a");
+            LOGGER.info("  pressureTendency: {}", data.getRemarks() != null ? data.getRemarks().pressureTendency() : "n/a");
+            LOGGER.info("  sixHourMaxTemperature: {}", data.getRemarks() != null ? data.getRemarks().sixHourMaxTemperature() : "n/a");
+            LOGGER.info("  sixHourMinTemperature: {}", data.getRemarks() != null ? data.getRemarks().sixHourMinTemperature() : "n/a");
+            LOGGER.info("  twentyFourHourMaxTemperature: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourMaxTemperature() : "n/a");
+            LOGGER.info("  twentyFourHourMinTemperature: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourMinTemperature() : "n/a");
+            LOGGER.info("  secondaryAltimeter: {}", data.getRemarks() != null ? data.getRemarks().secondaryAltimeter() : "n/a");
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");

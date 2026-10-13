@@ -3395,8 +3395,8 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse peak wind with partial time (hour only)")
-    void testParsePeakWindHourOnly() {
+    @DisplayName("Should parse peak wind with minute only (hour omitted, FMH-1 (hh)mm) (Issue #115)")
+    void testParsePeakWindMinuteOnly() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 32035/15";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -3409,8 +3409,8 @@ class NoaaMetarParserTest {
         PeakWind peakWind = data.getRemarks().peakWind();
         assertEquals(320, peakWind.directionDegrees());
         assertEquals(35, peakWind.speedKnots());
-        assertEquals(15, peakWind.hour(), "Hour should be 15");
-        assertNull(peakWind.minute(), "Minute should be null when not provided");
+        assertNull(peakWind.hour(), "Hour is omitted in (hh)mm when only two digits follow the slash");
+        assertEquals(15, peakWind.minute(), "Two digits after the slash are the minute");
     }
 
     @Test
@@ -3557,9 +3557,10 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse peak wind with only required fields")
-    void testParsePeakWindMinimal() {
-        // Direction and speed only (no time components)
+    @DisplayName("Should leave peak wind with no time whole in freeText (Issue #115)")
+    void testParsePeakWindNoTime_SurfacesInFreeText() {
+        // FMH-1 format is dddff(f)/(hh)mm: the minute is required, so a trailing
+        // slash with no time is not a valid peak wind group
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 280P105/";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -3567,12 +3568,27 @@ class NoaaMetarParserTest {
         assertTrue(result.isSuccess());
         NoaaMetarData data = extractMetarData(result);
 
-        // Should parse even with missing time components
-        assertNotNull(data.getRemarks().peakWind());
-        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
-        assertEquals(105, data.getRemarks().peakWind().speedKnots());
-        assertNull(data.getRemarks().peakWind().hour());
-        assertNull(data.getRemarks().peakWind().minute());
+        assertNull(data.getRemarks().peakWind());
+        assertEquals("PK WND 280P105/", data.getRemarks().freeText(),
+                "Group surfaces whole rather than being stored with no time");
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind with P-prefixed speed and full time")
+    void testParsePeakWindPrefixedSpeedWithTime() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 280P105/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        PeakWind peakWind = data.getRemarks().peakWind();
+        assertNotNull(peakWind);
+        assertEquals(280, peakWind.directionDegrees());
+        assertEquals(105, peakWind.speedKnots());
+        assertEquals(15, peakWind.hour());
+        assertEquals(30, peakWind.minute());
     }
 
     // ========== WIND SHIFT PARSING TESTS ==========
@@ -11121,6 +11137,73 @@ class NoaaMetarParserTest {
                 failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
         assertThat(result.isSuccess()).isTrue();
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "AO3,                 'Automated station type out of range (pattern rejects)'",
+            "SLP,                 'SLP with no value (pattern rejects)'",
+            "SLP12,               'SLP with two digits (pattern rejects)'",
+            "T02331,              'Hourly temperature with a trailing digit (pattern rejects)'",
+            "T00500100,           'Dewpoint higher than temperature (validation rejects)'",
+            "T09990000,           'Temperature 99.9 C (validation rejects)'",
+            "'PK WND 99932/1530', 'Peak wind direction 999 (validation rejects)'",
+            "'PK WND 28032/2530', 'Peak wind hour 25 (pattern rejects; previously stored minute=25)'",
+            "'WIND 1400FT 99910KT', 'Wind-at-location direction 999 (validation rejects)'"
+    })
+    @DisplayName("Should leave a rejected batch-1 remark whole in freeText (Issue #115)")
+    void testBatch1_RejectedRemarkSurfacesWhole(String remark, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped: %s", scenario)
+                .isEqualTo(remark);
+    }
+
+    @Test
+    @DisplayName("Should keep an accepted wind-at-location and stop at a rejected one (Issue #115)")
+    void testWindAtLocation_RejectedEntryStopsLoopAndSurfaces() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WIND RWY 26 00000KT WIND 1400FT 99910KT SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation())
+                .as("The valid runway reading is stored")
+                .hasSize(1);
+        assertThat(data.getRemarks().freeText())
+                .as("The rejected altitude reading surfaces whole; the loop does not spin on it")
+                .isEqualTo("WIND 1400FT 99910KT");
+        assertThat(data.getSeaLevelPressure())
+                .as("Remarks after the rejected group still parse")
+                .isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Should still parse every batch-1 remark in a normal report (Issue #115 regression)")
+    void testBatch1_ValidRemarksStillParse() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 " +
+                "RMK AO2 PK WND 28032/1530 WSHFT 1515 FROPA SLP210 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().peakWind()).isNotNull();
+        assertThat(data.getRemarks().windShift()).isNotNull();
+        assertThat(data.getRemarks().windShift().frontalPassage()).isTrue();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     // --- Correct behavior (regression) ---
