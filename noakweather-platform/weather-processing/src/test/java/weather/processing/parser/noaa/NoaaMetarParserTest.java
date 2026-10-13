@@ -8824,6 +8824,63 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
     }
 
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "2530,               'Bare 4-digit token is not an altimeter (previously stored as 25.30 inHg)'",
+            "1575,               'Bare 4-digit token is not an altimeter (previously WARN then dropped)'",
+            "A1575,              'Prefixed but out of range: Pressure rejects, group surfaces whole'",
+            "'WSHFT 2530',       'Wind shift hour 25: pattern rejects, 2530 no longer taken as an altimeter'",
+            "'WSHFT 1575',       'Wind shift minute 75: pattern rejects, 1575 no longer taken as an altimeter'",
+            "'WSHFT 2530 FROPA', 'Wind shift hour 25 with FROPA'"
+    })
+    @DisplayName("Should leave non-altimeter and rejected altimeter tokens whole in freeText (Issue #115)")
+    void testSecondaryAltimeter_RejectedOrNonAltimeterSurfacesWhole(String remark, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).as(scenario).isNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped or misattributed: %s", scenario)
+                .isEqualTo(remark);
+    }
+
+    @Test
+    @DisplayName("Should parse a QNH-style secondary altimeter in remarks (Issue #115 regression)")
+    void testSecondaryAltimeter_QPrefixInRemarks() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK Q1009";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
+        assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(1009.0, within(0.01));
+        assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.HECTOPASCALS);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should consume A//// as a not-available secondary altimeter without storing a value")
+    void testSecondaryAltimeter_NotAvailable() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK A//// SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).isNull();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText())
+                .as("A//// is a recognised 'not available' report, like SLPNO")
+                .isNull();
+    }
+
     // ========== OBSERVATION YEAR FROM HEADER TESTS ==========
 
     @Test

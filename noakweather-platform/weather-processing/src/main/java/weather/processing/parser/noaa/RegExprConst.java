@@ -186,6 +186,20 @@ public final class RegExprConst {
     );
 
     /**
+     * Secondary altimeter in remarks (e.g. "A2977", "Q1009", "QNH1009", "2977INS").
+     * <p>
+     * Same body as {@link #ALTIMETER_PATTERN}, but a unit is required: either a
+     * prefix (A, AA, Q, QNH) or the INS suffix. Without it, any bare 4-digit
+     * remark token (e.g. a wind shift time "2530") would be read as an
+     * altimeter setting (#115). The main-body pattern is unchanged.
+     */
+    @SuppressWarnings("java:S5843") // Complex regex required for altimeter unit/OCR variations
+    public static final Pattern SECONDARY_ALTIMETER_PATTERN = Pattern.compile(
+            "^(?=(?:A{1,2}|Q|QNH)[\\dO/]|[\\dO]{3,4}INS(?=\\s|$))" +
+                    "(?<unit>A{1,2}|Q|QNH)?(?<press>[\\dO]{3,4}|////)(?<unit2>INS)?(?=\\s|$)"
+    );
+
+    /**
      * One or more space-separated compass directions following a present-weather
      * remark, e.g. "E SE", "N NE S SW".
      * Each continuation point must end at a token boundary. So a following token that

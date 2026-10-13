@@ -2965,6 +2965,37 @@ class RegExprConstTest {
         assertThat(matcher.group("min")).isEqualTo("15");
     }
 
+    @ParameterizedTest(name = "''{0}'' matches={1}")
+    @CsvSource({
+            "A2977,      true",
+            "Q1009,      true",
+            "QNH1009,    true",
+            "AA2977,     true",
+            "2977INS,    true",
+            "A2977INS,   true",
+            "A2O15,      true",
+            "A////,      true",
+            "2530,       false",
+            "1575,       false",
+            "1015,       false",
+            "////,       false",
+            "A29775,     false",
+            "'QNH 1009', false"
+    })
+    @DisplayName("SECONDARY_ALTIMETER_PATTERN should require a unit prefix or INS suffix (Issue #115)")
+    void testSecondaryAltimeterPattern_UnitRequired(String input, boolean expectedMatch) {
+        assertThat(RegExprConst.SECONDARY_ALTIMETER_PATTERN.matcher(input).find())
+                .as("'%s'", input)
+                .isEqualTo(expectedMatch);
+    }
+
+    @Test
+    @DisplayName("ALTIMETER_PATTERN (main body) still accepts a bare 4-digit value; only the remarks pattern requires a unit")
+    void testAltimeterPattern_MainBodyUnchanged() {
+        assertThat(RegExprConst.ALTIMETER_PATTERN.matcher("2992").find()).isTrue();
+        assertThat(RegExprConst.SECONDARY_ALTIMETER_PATTERN.matcher("2992").find()).isFalse();
+    }
+
     // ========== TAF PATTERN TESTS ==========
 
     @Test

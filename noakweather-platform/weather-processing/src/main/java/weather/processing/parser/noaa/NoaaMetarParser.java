@@ -2880,10 +2880,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         String remaining = remarksText.trim();
-        Matcher matcher = ALTIMETER_PATTERN.matcher(remaining);
+        Matcher matcher = SECONDARY_ALTIMETER_PATTERN.matcher(remaining);
 
-        if (matcher.find() && matcher.start() == 0) {
-            processSecondaryAltimeterMatch(matcher, remarks);
+        if (matcher.find() && matcher.start() == 0 && processSecondaryAltimeterMatch(matcher, remarks)) {
             remaining = remaining.substring(matcher.end()).trim();
         }
 
@@ -2894,30 +2893,41 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Process a single secondary altimeter pattern match, storing the parsed
      * pressure on the remarks builder if valid.
      *
-     * @param matcher the pattern matcher (must not be null)
+     * @param matcher the pattern matcher positioned at a match (must not be null)
      * @param remarks the remarks builder (must not be null)
+     * @return true if the group was recognized (stored, or reported as not
+     *         available with "////"); false if it was rejected and should be
+     *         left in the remarks text for freeText (#115)
      */
-    private void processSecondaryAltimeterMatch(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+    private boolean processSecondaryAltimeterMatch(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+        String matchedText = matcher.group();
         String pressureStr = matcher.group(GROUP_PRESSURE_CHANGE);
 
         if ("////".equals(pressureStr)) {
-            return;
+            // e.g. "A////": a recognized "not available" report, nothing to store
+            return true;
         }
 
-        String unit1 = matcher.group("unit");
-        String unit2 = matcher.group("unit2");
-
         try {
-            Pressure pressure = parsePressure(unit1, pressureStr, unit2);
-            if (pressure != null) {
-                remarks.secondaryAltimeter(pressure);
-
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Secondary altimeter: {}", pressure.getSummary());
-                }
+            Pressure pressure = parsePressure(matcher.group("unit"), pressureStr, matcher.group("unit2"));
+            if (pressure == null) {
+                LOGGER.debug("Secondary altimeter could not be parsed, leaving for freeText: {}", matchedText);
+                return false;
             }
+
+            remarks.secondaryAltimeter(pressure);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Secondary altimeter: {}", pressure.getSummary());
+            }
+            return true;
+
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse secondary altimeter in remarks: {}", matcher.group(0).trim(), e);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid secondary altimeter, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return false;
         }
     }
 
