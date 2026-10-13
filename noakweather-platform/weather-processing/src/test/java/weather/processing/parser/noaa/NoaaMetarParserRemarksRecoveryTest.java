@@ -9,10 +9,7 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.*;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
-import weather.model.enums.AutomatedStationType;
-import weather.model.enums.HighCloudType;
-import weather.model.enums.LowCloudType;
-import weather.model.enums.MiddleCloudType;
+import weather.model.enums.*;
 import weather.processing.parser.common.ParseResult;
 
 import java.util.List;
@@ -838,6 +835,52 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .isEqualTo("VIS 1/2 E-SE-SW-W");
                             assertThat(data.getRemarks().variableVisibility()).isNull();
                             assertThat(data.getSeaLevelPressure()).isNotNull();
+                        }),
+
+                arguments("RPLL-RemarksAltimeterWithUnitStillParses",
+                        "METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("A2977 has the unit prefix, so the tightened pattern still takes it (#115)")
+                                    .isNull();
+                            assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
+                            assertThat(data.getRemarks().secondaryAltimeter().value()).isCloseTo(29.77, within(0.01));
+                            assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
+                        }),
+
+                arguments("KCLT-TightenedRemarkHandlersStillParseRealWorldGroups",
+                        "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
+                                "RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 " +
+                                "PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E " +
+                                "TCU N-NE AND NW TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB " +
+                                "T02780206 DENSITY ALT 900FT $",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Only the unmodelled F8 is left; no valid group was rejected (#115)")
+                                    .isEqualTo("F8");
+
+                            assertThat(data.getRemarks().peakWind().directionDegrees()).isEqualTo(330);
+                            assertThat(data.getRemarks().peakWind().speedKnots()).isEqualTo(35);
+                            assertThat(data.getRemarks().peakWind().hour()).isEqualTo(11);
+                            assertThat(data.getRemarks().peakWind().minute()).isEqualTo(42);
+
+                            assertThat(data.getRemarks().weatherEvents()).hasSize(4);
+                            assertThat(data.getRemarks().pressureRapidChange()).hasToString("RISING");
+                            assertThat(data.getRemarks().icing().qualifier()).isEqualTo("PAST HR");
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(2);
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(4);
+                            assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(4);
+
+                            assertThat(data.getRemarks().observationProgramStatus().staffed()).isTrue();
+                            assertThat(data.getRemarks().observationProgramStatus().day()).isEqualTo(2);
+                            assertThat(data.getRemarks().observationProgramStatus().hour()).isEqualTo(12);
+                            assertThat(data.getRemarks().observationProgramStatus().minute()).isZero();
+                            assertThat(data.getRemarks().observationProgramStatus().viaStation()).isEqualTo("CYQB");
+
+                            assertThat(data.getRemarks().densityAltitudeFeet()).isEqualTo(900);
+                            assertThat(data.getRemarks().maintenanceRequired()).isTrue();
+                            assertThat(data.getSeaLevelPressure()).isCloseTo(999.8, within(0.1));
                         }),
 
                 arguments("KBBF-OldFormatA01Alone",

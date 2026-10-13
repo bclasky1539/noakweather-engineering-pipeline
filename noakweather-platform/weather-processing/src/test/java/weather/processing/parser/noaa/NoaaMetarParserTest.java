@@ -11198,19 +11198,43 @@ class NoaaMetarParserTest {
 
     @ParameterizedTest(name = "{1}")
     @CsvSource({
-            "AO3,                 'Automated station type out of range (pattern rejects)'",
-            "SLP,                 'SLP with no value (pattern rejects)'",
-            "SLP12,               'SLP with two digits (pattern rejects)'",
-            "T02331,              'Hourly temperature with a trailing digit (pattern rejects)'",
-            "T00500100,           'Dewpoint higher than temperature (validation rejects)'",
-            "T09990000,           'Temperature 99.9 C (validation rejects)'",
-            "'PK WND 99932/1530', 'Peak wind direction 999 (validation rejects)'",
-            "'PK WND 28032/2530', 'Peak wind hour 25 (pattern rejects; previously stored minute=25)'",
-            "'WIND 1400FT 99910KT', 'Wind-at-location direction 999 (validation rejects)'"
+            // Batch 1: automated station type, SLP, hourly temperature, peak wind, wind-at-location
+            "AO3,                    'Automated station type out of range (pattern rejects)'",
+            "SLP,                    'SLP with no value (pattern rejects)'",
+            "SLP12,                  'SLP with two digits (pattern rejects)'",
+            "T02331,                 'Hourly temperature with a trailing digit (pattern rejects)'",
+            "T00500100,              'Dewpoint higher than temperature (validation rejects)'",
+            "T09990000,              'Temperature 99.9 C (validation rejects)'",
+            "'PK WND 99932/1530',    'Peak wind direction 999 (validation rejects)'",
+            "'PK WND 28032/2530',    'Peak wind hour 25 (pattern rejects; previously stored minute=25)'",
+            "'WIND 1400FT 99910KT',  'Wind-at-location direction 999 (validation rejects)'",
+            // Batch 3: tower/surface visibility, precipitation, variable ceiling, ceiling second site
+            "'TWR VIS 123',          'Tower visibility runs into an extra digit (pattern rejects)'",
+            "'SFC VIS 1/2SM',        'Surface visibility with a unit suffix (pattern rejects)'",
+            "'TWR VIS 1/0',          'Zero denominator (previously stored as infinity)'",
+            "'VIS 1/0V2',            'Variable visibility with a zero denominator'",
+            "P00151,                 'Hourly precipitation with a trailing digit (pattern rejects)'",
+            "7012345,                '24-hour precipitation with too many digits (pattern rejects)'",
+            "600,                    'Too few digits for a 6-hour precipitation group (pattern rejects)'",
+            "'CIG 010V005',          'Variable ceiling minimum above maximum (validation rejects); ceiling second site no longer grabs CIG 010'",
+            "'CIG 005V0105',         'Variable ceiling runs into an extra digit (pattern rejects)'",
+            "'CIG 0050',             'Ceiling second site with four digits (pattern rejects)'",
+            // Batch 4: max/min temperature, pressure, weather events, directions, rapid change
+            "10999,                  '6-hour max 99.9 C (validation rejects)'",
+            "1099,                   '6-hour max with two digits (pattern rejects)'",
+            "409990000,              '24-hour max 99.9 C (validation rejects)'",
+            "58999,                  'Pressure tendency change out of range (validation rejects)'",
+            "RAB99,                  'Weather event minute 99 (validation rejects)'",
+            "RAB2575,                'Weather event hour 25 (validation rejects)'",
+            "RAB123,                 'Weather event three-digit time (not a valid event)'",
+            "'XCPT NS',              'Except-direction with invalid point NS (validation rejects)'",
+            "'LTG DSNT NS',          'Lightning with invalid point NS (validation rejects)'",
+            "'TS NS',                'Thunderstorm location with invalid point NS (validation rejects)'",
+            "PRESXR,                 'Pressure rapid change with unknown code (validation rejects)'"
     })
-    @DisplayName("Should leave a rejected batch-1 remark whole in freeText (Issue #115)")
-    void testBatch1_RejectedRemarkSurfacesWhole(String remark, String scenario) {
-        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark;
+    @DisplayName("Should leave a rejected remark group whole in freeText and keep parsing after it (Issue #115)")
+    void testRejectedRemarkSurfacesWhole(String remark, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark + " SLP210";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
@@ -11220,6 +11244,9 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText())
                 .as("Nothing may be silently dropped: %s", scenario)
                 .isEqualTo(remark);
+        assertThat(data.getSeaLevelPressure())
+                .as("Remarks after the rejected group still parse: %s", scenario)
+                .isEqualTo(1021.0);
     }
 
     @Test
@@ -11362,36 +11389,6 @@ class NoaaMetarParserTest {
         assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
     }
 
-    @ParameterizedTest(name = "{1}")
-    @CsvSource({
-            "'TWR VIS 123',   'Tower visibility runs into an extra digit (pattern rejects)'",
-            "'SFC VIS 1/2SM', 'Surface visibility with a unit suffix (pattern rejects)'",
-            "'TWR VIS 1/0',   'Zero denominator (previously stored as infinity)'",
-            "'VIS 1/0V2',     'Variable visibility with a zero denominator'",
-            "P00151,          'Hourly precipitation with a trailing digit (pattern rejects)'",
-            "7012345,         '24-hour precipitation with too many digits (pattern rejects)'",
-            "600,             'Too few digits for a 6-hour precipitation group (pattern rejects)'",
-            "'CIG 010V005',   'Variable ceiling minimum above maximum (validation rejects); ceiling second site no longer grabs CIG 010'",
-            "'CIG 005V0105',  'Variable ceiling runs into an extra digit (pattern rejects)'",
-            "'CIG 0050',      'Ceiling second site with four digits (pattern rejects)'"
-    })
-    @DisplayName("Should leave a rejected batch-3 remark whole in freeText (Issue #115)")
-    void testBatch3_RejectedRemarkSurfacesWhole(String remark, String scenario) {
-        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark + " SLP210";
-
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
-
-        assertThat(result.isSuccess()).as(scenario).isTrue();
-        NoaaMetarData data = extractMetarData(result);
-
-        assertThat(data.getRemarks().freeText())
-                .as("Nothing may be silently dropped: %s", scenario)
-                .isEqualTo(remark);
-        assertThat(data.getSeaLevelPressure())
-                .as("Remarks after the rejected group still parse: %s", scenario)
-                .isEqualTo(1021.0);
-    }
-
     @Test
     @DisplayName("Known gap: a rejected hail group loses GR to directional weather (follow-up issue)")
     void knownGap_RejectedHailGroupLosesGrToDirectionalWeather() {
@@ -11432,6 +11429,43 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().twentyFourHourPrecipitation()).isNotNull();
         assertThat(data.getRemarks().hailSize()).isNotNull();
         assertThat(data.getRemarks().obscurationLayers()).hasSize(1);
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should keep an accepted lightning remark and stop at a rejected one (Issue #115)")
+    void testLightning_RejectedEntryStopsLoopAndSurfaces() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK LTG DSNT N LTG DSNT NS SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        assertThat(data.getRemarks().freeText()).isEqualTo("LTG DSNT NS");
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Should still parse valid batch-4 remarks together (Issue #115 regression)")
+    void testBatch4_ValidRemarksStillParse() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 " +
+                "RMK AO2 RAB15E30 PRESRR 10142 20012 400461006 52032 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
+        assertThat(data.getPressureRapidChange()).isNotNull();
+        assertThat(data.getRemarks().sixHourMaxTemperature()).isNotNull();
+        assertThat(data.getRemarks().sixHourMinTemperature()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourMaxTemperature()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourMinTemperature()).isNotNull();
+        assertThat(data.getRemarks().pressureTendency()).isNotNull();
         assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
         assertThat(data.getRemarks().freeText()).isNull();
     }

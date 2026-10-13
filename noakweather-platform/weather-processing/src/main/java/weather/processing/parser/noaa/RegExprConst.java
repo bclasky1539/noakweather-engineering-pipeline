@@ -461,7 +461,7 @@ public final class RegExprConst {
      * Example: "10142" or "20012"
      */
     public static final Pattern TEMP_6HR_MAX_MIN_PATTERN = Pattern.compile(
-            "^(?<type>[12])(?<sign>[01])(?<temp>\\d{2,3})\\s*"
+            "^(?<type>[12])(?<sign>[01])(?<temp>\\d{3})(?=\\s|$)"
     );
 
     /**
@@ -539,7 +539,7 @@ public final class RegExprConst {
      * Example: "400461006"
      */
     public static final Pattern TEMP_24HR_PATTERN = Pattern.compile(
-            "^(?<type>4)(?<maxsign>[01])(?<maxtemp>\\d{3})(?<minsign>[01])(?<mintemp>\\d{3})\\s*"
+            "^(?<type>4)(?<maxsign>[01])(?<maxtemp>\\d{3})(?<minsign>[01])(?<mintemp>\\d{3})(?=\\s|$)"
     );
 
     /**

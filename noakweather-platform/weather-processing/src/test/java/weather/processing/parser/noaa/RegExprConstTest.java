@@ -3045,6 +3045,30 @@ class RegExprConstTest {
                 .isEqualTo(expectedMatch);
     }
 
+    @ParameterizedTest(name = "{0}: ''{1}'' matches={2}")
+    @CsvSource({
+            "T6, 10142,      true",
+            "T6, 21001,      true",
+            "T6, 1014,       false",
+            "T6, 101420,     false",
+            "T6, 10142X,     false",
+            "T24, 400461006,  true",
+            "T24, 4004610061, false",
+            "T24, 40046100X,  false"
+    })
+    @DisplayName("Batch-4 temperature patterns should require exact digits and end at a token boundary (Issue #115)")
+    void testBatch4Patterns_ExactDigitsAndTokenBounded(String patternName, String input, boolean expectedMatch) {
+        Pattern pattern = switch (patternName) {
+            case "T6" -> RegExprConst.TEMP_6HR_MAX_MIN_PATTERN;
+            case "T24" -> RegExprConst.TEMP_24HR_PATTERN;
+            default -> throw new IllegalArgumentException(patternName);
+        };
+
+        assertThat(pattern.matcher(input).find())
+                .as("%s on '%s'", patternName, input)
+                .isEqualTo(expectedMatch);
+    }
+
     // ========== TAF PATTERN TESTS ==========
 
     @Test
