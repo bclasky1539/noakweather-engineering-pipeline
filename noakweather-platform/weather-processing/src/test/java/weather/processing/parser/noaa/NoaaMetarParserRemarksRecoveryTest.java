@@ -876,11 +876,9 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 17:53 KFMY 081753Z 21010G17KT 10SM SCT027 31/24 A2985 RMK AO2 LTG DSNT N AND NE SLP110 T03110244 10317 20244 55013",
                 "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 RMK RAB35 VIS N-NE 2",
                 "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190",
-
                 "METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977",
-                "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WSHFT 2530 SLP210",
-                "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 1575 SLP210",
-                "METAR KJFK 121853Z 28016KT 10SM A3015 RMK A1575 SLP210",
+                // Synthetic: tracks #129 (rejected hail group's GR claimed by directional weather)
+                "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210",
         };
 
         for (String raw : raws) {
@@ -924,6 +922,14 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
             LOGGER.info("  predominantCloudTypes: {}", data.getRemarks() != null ? data.getRemarks().predominantCloudTypes() : "n/a");
             LOGGER.info("  densityAltitudeFeet: {}", data.getRemarks() != null ? data.getRemarks().densityAltitudeFeet() : "n/a");
+            LOGGER.info("  towerVisibility: {}", data.getRemarks() != null ? data.getRemarks().towerVisibility() : "n/a");
+            LOGGER.info("  surfaceVisibility: {}", data.getRemarks() != null ? data.getRemarks().surfaceVisibility() : "n/a");
+            LOGGER.info("  twentyFourHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourPrecipitation() : "n/a");
+            LOGGER.info("  ppGroupValue: {}", data.getRemarks() != null ? data.getRemarks().ppGroupValue() : "n/a");
+            LOGGER.info("  hailSize: {}", data.getRemarks() != null ? data.getRemarks().hailSize() : "n/a");
+            LOGGER.info("  variableCeiling: {}", data.getRemarks() != null ? data.getRemarks().variableCeiling() : "n/a");
+            LOGGER.info("  ceilingSecondSite: {}", data.getRemarks() != null ? data.getRemarks().ceilingSecondSite() : "n/a");
+            LOGGER.info("  obscurationLayers: {}", data.getRemarks() != null ? data.getRemarks().obscurationLayers() : "n/a");
             LOGGER.info(separator());
             LOGGER.info(" ");
         }

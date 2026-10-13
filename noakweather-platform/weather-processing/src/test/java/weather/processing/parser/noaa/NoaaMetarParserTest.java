@@ -11361,4 +11361,78 @@ class NoaaMetarParserTest {
         assertThat(data.isNoSignificantChange()).isTrue();
         assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
     }
+
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "'TWR VIS 123',   'Tower visibility runs into an extra digit (pattern rejects)'",
+            "'SFC VIS 1/2SM', 'Surface visibility with a unit suffix (pattern rejects)'",
+            "'TWR VIS 1/0',   'Zero denominator (previously stored as infinity)'",
+            "'VIS 1/0V2',     'Variable visibility with a zero denominator'",
+            "P00151,          'Hourly precipitation with a trailing digit (pattern rejects)'",
+            "7012345,         '24-hour precipitation with too many digits (pattern rejects)'",
+            "600,             'Too few digits for a 6-hour precipitation group (pattern rejects)'",
+            "'CIG 010V005',   'Variable ceiling minimum above maximum (validation rejects); ceiling second site no longer grabs CIG 010'",
+            "'CIG 005V0105',  'Variable ceiling runs into an extra digit (pattern rejects)'",
+            "'CIG 0050',      'Ceiling second site with four digits (pattern rejects)'"
+    })
+    @DisplayName("Should leave a rejected batch-3 remark whole in freeText (Issue #115)")
+    void testBatch3_RejectedRemarkSurfacesWhole(String remark, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark + " SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped: %s", scenario)
+                .isEqualTo(remark);
+        assertThat(data.getSeaLevelPressure())
+                .as("Remarks after the rejected group still parse: %s", scenario)
+                .isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Known gap: a rejected hail group loses GR to directional weather (follow-up issue)")
+    void knownGap_RejectedHailGroupLosesGrToDirectionalWeather() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().hailSize())
+                .as("HailSize rejects 0 and the hail handler leaves GR 0 in place (#115)")
+                .isNull();
+        assertThat(data.getRemarks().directionalWeather())
+                .as("Known gap: directional weather then claims the bare GR")
+                .isNotNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Known gap: only the size reaches freeText; flip to 'GR 0' when the follow-up lands")
+                .isEqualTo("0");
+    }
+
+    @Test
+    @DisplayName("Should still parse valid batch-3 remarks together (Issue #115 regression)")
+    void testBatch3_ValidRemarksStillParse() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 " +
+                "RMK AO2 TWR VIS 1 1/2 SFC VIS 1/4 CIG 005V010 P0015 60009 70125 GR 1 3/4 SCT FU 010 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().towerVisibility()).isNotNull();
+        assertThat(data.getRemarks().surfaceVisibility()).isNotNull();
+        assertThat(data.getRemarks().variableCeiling()).isNotNull();
+        assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().sixHourPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().hailSize()).isNotNull();
+        assertThat(data.getRemarks().obscurationLayers()).hasSize(1);
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
 }

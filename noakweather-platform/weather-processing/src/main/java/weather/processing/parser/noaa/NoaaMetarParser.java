@@ -1697,24 +1697,27 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     String[] fractionParts = parts[1].split("/");
                     int numerator = Integer.parseInt(fractionParts[0]);
                     int denominator = Integer.parseInt(fractionParts[1]);
+                    if (denominator == 0) {
+                        return null; // e.g. "1/0" is not a valid distance
+                    }
                     double value = wholePart + ((double) numerator / denominator);
                     return Visibility.statuteMiles(value);
-
                 } else {
                     // Simple fraction: "1/2"
                     String[] fractionParts = distStr.split("/");
                     int numerator = Integer.parseInt(fractionParts[0]);
                     int denominator = Integer.parseInt(fractionParts[1]);
+                    if (denominator == 0) {
+                        return null; // e.g. "1/0" is not a valid distance
+                    }
                     double value = (double) numerator / denominator;
                     return Visibility.statuteMiles(value);
                 }
-
             } else {
                 // Whole number: "10"
                 double value = Double.parseDouble(distStr);
                 return Visibility.statuteMiles(value);
             }
-
         } catch (NumberFormatException e) {
             LOGGER.warn("Failed to parse visibility distance: {}", distStr, e);
             return null;
@@ -1747,7 +1750,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         Matcher matcher = TWR_SFC_VIS_PATTERN.matcher(remaining);
 
         while (matcher.find() && matcher.start() == 0) {
-            processTowerSurfaceVisibility(matcher, remarks);
+            if (!processTowerSurfaceVisibility(matcher, remarks)) {
+                break; // rejected: leave for freeText rather than re-matching it forever (#115)
+            }
             remaining = remaining.substring(matcher.end()).trim();
             matcher = TWR_SFC_VIS_PATTERN.matcher(remaining);
         }
@@ -1760,39 +1765,29 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      *
      * @param matcher the regex matcher positioned at a match
      * @param remarks the remarks builder to populate
+     * @return true if stored; false if rejected and left for freeText (#115)
      */
-    private void processTowerSurfaceVisibility(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+    private boolean processTowerSurfaceVisibility(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
+        String matchedText = matcher.group();
+        String type = matcher.group("type");
+        String distStr = matcher.group("dist"); // required by the pattern
+
         try {
-            String type = matcher.group("type");
-            String distStr = matcher.group("dist");
-
-            if (isValidDistanceString(distStr)) {
-                Visibility visibility = parseVisibilityDistance(distStr);
-
-                if (visibility != null) {
-                    setVisibilityByType(type, visibility, distStr, remarks);
-                } else {
-                    LOGGER.warn("Failed to parse tower/surface visibility: {}", distStr);
-                }
-            } else {
-                LOGGER.debug("Tower/Surface visibility missing distance, skipping");
+            Visibility visibility = parseVisibilityDistance(distStr);
+            if (visibility == null) {
+                LOGGER.debug("Tower/surface visibility could not be parsed, leaving for freeText: {}", matchedText);
+                return false;
             }
+            setVisibilityByType(type, visibility, distStr, remarks);
+            return true;
 
         } catch (IllegalArgumentException e) {
-            String matchText = matcher.group(0);
-            LOGGER.warn("Invalid tower/surface visibility in remarks: {}",
-                    matchText.substring(0, Math.min(30, matchText.length())), e);
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid tower/surface visibility, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return false;
         }
-    }
-
-    /**
-     * Check if distance string is valid (non-null and non-blank).
-     *
-     * @param distStr the distance string to validate
-     * @return true if valid
-     */
-    private boolean isValidDistanceString(String distStr) {
-        return distStr != null && !distStr.isBlank();
     }
 
     /**
@@ -1840,26 +1835,24 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
-            String precipStr = matcher.group("precip");
-
-            if (precipStr == null || precipStr.isBlank()) {
-                LOGGER.debug("Hourly precipitation missing value, skipping");
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            PrecipitationAmount precip = PrecipitationAmount.fromEncoded(precipStr, 1);
+            PrecipitationAmount precip = PrecipitationAmount.fromEncoded(matcher.group("precip"), 1);
             remarks.hourlyPrecipitation(precip);
 
-            LOGGER.debug("Hourly precipitation: {}",
-                    precip.isTrace() ? "trace" : String.format("%.2f inches", precip.inches()));
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Hourly precipitation: {}",
+                        precip.isTrace() ? "trace" : String.format("%.2f inches", precip.inches()));
+            }
 
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid hourly precipitation: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid hourly precipitation, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -1881,6 +1874,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         Matcher matcher = PREDOMINANT_CLOUD_TYPE_PATTERN.matcher(remaining);
 
         if (matcher.find() && matcher.start() == 0) {
+            String matchedText = matcher.group();
             try {
                 LowCloudType low = LowCloudType.fromCode(matcher.group("low"));
                 MiddleCloudType middle = MiddleCloudType.fromCode(matcher.group("middle"));
@@ -1891,11 +1885,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Predominant cloud types: low={}, middle={}, high={}", low, middle, high);
                 }
-            } catch (IllegalArgumentException e) {
-                LOGGER.warn("Invalid predominant cloud type group in remarks: {}", matcher.group(0), e);
-            }
 
-            remaining = remaining.substring(matcher.end()).trim();
+                remaining = remaining.substring(matcher.end()).trim();
+
+            } catch (IllegalArgumentException e) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Invalid predominant cloud type group, leaving for freeText: {} ({})",
+                            matchedText, e.getMessage());
+                }
+            }
         }
 
         return remaining;
@@ -1966,34 +1964,31 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
-            String type = matcher.group("type");
-            String precipStr = matcher.group("precip");
-
-            if (precipStr == null || precipStr.isBlank()) {
-                LOGGER.debug("Multi-hour precipitation missing value, skipping");
-                return remarksText.substring(matcher.end()).trim();
-            }
-
             // Determine period: 6 = 6-hour, 7 = 24-hour
-            int periodHours = "6".equals(type) ? 6 : 24;
+            int periodHours = "6".equals(matcher.group("type")) ? 6 : 24;
 
-            PrecipitationAmount precip = PrecipitationAmount.fromEncoded(precipStr, periodHours);
+            PrecipitationAmount precip = PrecipitationAmount.fromEncoded(matcher.group("precip"), periodHours);
 
             if (periodHours == 6) {
                 remarks.sixHourPrecipitation(precip);
-                LOGGER.debug("6-hour precipitation: {}", precip.getDescription());
             } else {
                 remarks.twentyFourHourPrecipitation(precip);
-                LOGGER.debug("24-hour precipitation: {}", precip.getDescription());
+            }
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("{}-hour precipitation: {}", periodHours, precip.getDescription());
             }
 
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid multi-hour precipitation: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid multi-hour precipitation, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -2016,6 +2011,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         Matcher matcher = DENSITY_ALTITUDE_PATTERN.matcher(remaining);
 
         if (matcher.find() && matcher.start() == 0) {
+            String matchedText = matcher.group();
             try {
                 int densityAlt = Integer.parseInt(matcher.group("denalt"));
                 remarks.densityAltitudeFeet(densityAlt);
@@ -2023,11 +2019,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Density altitude: {}FT", densityAlt);
                 }
-            } catch (NumberFormatException e) {
-                LOGGER.warn("Invalid density altitude value in remarks: {}", matcher.group(), e);
-            }
 
-            remaining = remaining.substring(matcher.end()).trim();
+                remaining = remaining.substring(matcher.end()).trim();
+
+            } catch (NumberFormatException e) {
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Invalid density altitude value, leaving for freeText: {} ({})",
+                            matchedText, e.getMessage());
+                }
+            }
         }
 
         return remaining;
@@ -2058,41 +2058,31 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText;
         }
 
+        String matchedText = matcher.group();
         try {
-            String sizeStr = matcher.group("size");
-
-            if (sizeStr == null || sizeStr.isBlank()) {
-                LOGGER.debug("Hail size missing value, skipping");
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            // Reuse parseVisibilityDistance - same format!
-            Visibility visibility = parseVisibilityDistance(sizeStr);
-
-            if (visibility == null) {
-                LOGGER.warn("Failed to parse hail size: {}", sizeStr);
-                return remarksText.substring(matcher.end()).trim();
-            }
-
-            // Convert visibility to hail size
-            Double sizeInches = visibility.toStatuteMiles();
+            // Reuse parseVisibilityDistance - same format (fraction, mixed, whole)
+            Visibility parsed = parseVisibilityDistance(matcher.group("size"));
+            Double sizeInches = parsed != null ? parsed.toStatuteMiles() : null;
             if (sizeInches == null) {
-                LOGGER.warn("Hail size conversion failed: {}", sizeStr);
-                return remarksText.substring(matcher.end()).trim();
+                LOGGER.debug("Hail size could not be parsed, leaving for freeText: {}", matchedText);
+                return remarksText;
             }
 
             HailSize hailSize = HailSize.inches(sizeInches);
             remarks.hailSize(hailSize);
 
-            LOGGER.debug("Hail size: {} inches ({})",
-                    sizeInches, hailSize.getSizeCategory());
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Hail size: {} inches ({})", sizeInches, hailSize.getSizeCategory());
+            }
 
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid hail size: {}",
-                    remarksText.substring(0, Math.min(20, remarksText.length())), e);
-            return remarksText.substring(matcher.end()).trim();
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Invalid hail size, leaving for freeText: {} ({})",
+                        matchedText, e.getMessage());
+            }
+            return remarksText;
         }
     }
 
@@ -2896,8 +2886,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @param matcher the pattern matcher positioned at a match (must not be null)
      * @param remarks the remarks builder (must not be null)
      * @return true if the group was recognized (stored, or reported as not
-     *         available with "////"); false if it was rejected and should be
-     *         left in the remarks text for freeText (#115)
+     * available with "////"); false if it was rejected and should be
+     * left in the remarks text for freeText (#115)
      */
     private boolean processSecondaryAltimeterMatch(Matcher matcher, NoaaMetarRemarks.Builder remarks) {
         String matchedText = matcher.group();
@@ -3146,14 +3136,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         Matcher matcher = VARIABLE_CEILING_PATTERN.matcher(remaining);
 
         if (matcher.find() && matcher.start() == 0) {
-            int matchEnd = matcher.end();
-
+            String matchedText = matcher.group();
             try {
-                String minStr = matcher.group("min");
-                String maxStr = matcher.group("max");
-
-                int minHundreds = Integer.parseInt(minStr);
-                int maxHundreds = Integer.parseInt(maxStr);
+                int minHundreds = Integer.parseInt(matcher.group("min"));
+                int maxHundreds = Integer.parseInt(matcher.group("max"));
 
                 VariableCeiling variableCeiling = VariableCeiling.fromHundreds(minHundreds, maxHundreds);
                 remarks.updateCeiling(c -> c.withVariableCeiling(variableCeiling));
@@ -3162,12 +3148,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     LOGGER.debug("Variable ceiling: {}", variableCeiling.getSummary());
                 }
 
-                remaining = remaining.substring(matchEnd).trim();
+                remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                LOGGER.warn("Invalid variable ceiling in remarks: {}",
-                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
-                remaining = remaining.substring(matchEnd).trim();
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Invalid variable ceiling, leaving for freeText: {} ({})",
+                            matchedText, e.getMessage());
+                }
             }
         }
 
@@ -3199,13 +3186,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         Matcher matcher = CEILING_SECOND_SITE_PATTERN.matcher(remaining);
 
         if (matcher.find() && matcher.start() == 0) {
-            int matchEnd = matcher.end();
-
+            String matchedText = matcher.group();
             try {
-                String heightStr = matcher.group(GROUP_HEIGHT_CODE);
+                int hundreds = Integer.parseInt(matcher.group(GROUP_HEIGHT_CODE));
                 String location = matcher.group("loc");
-
-                int hundreds = Integer.parseInt(heightStr);
 
                 CeilingSecondSite ceilingSecondSite = CeilingSecondSite.fromHundreds(hundreds, location);
                 remarks.updateCeiling(c -> c.withCeilingSecondSite(ceilingSecondSite));
@@ -3214,12 +3198,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     LOGGER.debug("Ceiling second site: {}", ceilingSecondSite.getSummary());
                 }
 
-                remaining = remaining.substring(matchEnd).trim();
+                remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                LOGGER.warn("Invalid ceiling second site in remarks: {}",
-                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
-                remaining = remaining.substring(matchEnd).trim();
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Invalid ceiling second site, leaving for freeText: {} ({})",
+                            matchedText, e.getMessage());
+                }
             }
         }
 
@@ -3250,30 +3235,26 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         // Process all obscuration layers (repeating pattern)
         while (matcher.find() && matcher.start() == 0) {
-            int matchEnd = matcher.end();
-
+            String matchedText = matcher.group();
             try {
-                String coverage = matcher.group("coverage");
-                String phenomenon = matcher.group("phenomenon");
-                String heightStr = matcher.group(GROUP_HEIGHT_CODE);
-
-                int hundreds = Integer.parseInt(heightStr);
-
-                ObscurationLayer layer = ObscurationLayer.fromHundreds(coverage, phenomenon, hundreds);
+                int hundreds = Integer.parseInt(matcher.group(GROUP_HEIGHT_CODE));
+                ObscurationLayer layer = ObscurationLayer.fromHundreds(
+                        matcher.group("coverage"), matcher.group("phenomenon"), hundreds);
                 remarks.addObscurationLayer(layer);
 
                 if (LOGGER.isDebugEnabled()) {
                     LOGGER.debug("Obscuration layer: {}", layer.getSummary());
                 }
 
-                remaining = remaining.substring(matchEnd).trim();
+                remaining = remaining.substring(matcher.end()).trim();
                 matcher = OBSCURATION_PATTERN.matcher(remaining);
 
             } catch (IllegalArgumentException e) {
-                LOGGER.warn("Invalid obscuration layer in remarks: {}",
-                        remaining.substring(0, Math.min(matchEnd, remaining.length())), e);
-                remaining = remaining.substring(matchEnd).trim();
-                matcher = OBSCURATION_PATTERN.matcher(remaining);
+                if (LOGGER.isDebugEnabled()) {
+                    LOGGER.debug("Invalid obscuration layer, leaving for freeText: {} ({})",
+                            matchedText, e.getMessage());
+                }
+                break; // rejected: leave for freeText rather than re-matching it forever (#115)
             }
         }
 

@@ -316,11 +316,13 @@ public final class RegExprConst {
     /**
      * Tower or Surface Visibility (TWR_VIS_vvvvv or SFC_VIS_vvvvv). Tower
      * visibility or surface visibility shall be coded in the formats,
-     * TWR_VIS_vvvvv or SFC_VIS_vvvvv, respectively
+     * TWR_VIS_vvvvv or SFC_VIS_vvvvv, respectively.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "TWR VIS 1 1/2"
      */
     public static final Pattern TWR_SFC_VIS_PATTERN = Pattern.compile(
-            "^(?<type>TWR VIS|SFC VIS)\\s+(?<dist>\\d+\\s\\d/\\d|\\d{1,2}/\\d{1,2}|\\d{1,2})?\\s*"
+            "^(?<type>TWR VIS|SFC VIS)\\s+(?<dist>\\d+\\s\\d/\\d|\\d{1,2}/\\d{1,2}|\\d{1,2})(?=\\s|$)"
     );
 
     /**
@@ -464,11 +466,13 @@ public final class RegExprConst {
 
     /**
      * Hourly Precipitation Amount (Prrrr). At designated automated stations,
-     * the hourly precipitation amount shall be coded in the format, Prrrr
+     * the hourly precipitation amount shall be coded in the format, Prrrr.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "P0015" = 0.15 inches
      */
     public static final Pattern PRECIP_1HR_PATTERN = Pattern.compile(
-            "^(?<type>P)(?<precip>\\d{4}|/{4})\\s*"
+            "^(?<type>P)(?<precip>\\d{4}|/{4})(?=\\s|$)"
     );
 
     /**
@@ -506,11 +510,13 @@ public final class RegExprConst {
      * 3- and 6-hour Precipitation (6RRRR). At designated stations, the 3- and
      * 6-hourly precipitation group shall be coded in the format 6RRRR 24-Hour
      * Precipitation Amount (7R24R24 R24R24). At designated stations, the
-     * 24-hour precipitation amount shall be coded in the format, 7R24R24R24R24
+     * 24-hour precipitation amount shall be coded in the format, 7R24R24R24R24.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Example: "60015" or "70123"
      */
     public static final Pattern PRECIP_3HR_24HR_PATTERN = Pattern.compile(
-            "^(?<type>[67])(?<precip>\\d{1,5}|/{1,5})\\s*"
+            "^(?<type>[67])(?<precip>\\d{4}|/{4})(?=\\s|$)"
     );
 
     /**
@@ -689,26 +695,30 @@ public final class RegExprConst {
      * Hail size (GR followed by size in inches).
      * Format: GR 1/2, GR 3/4, GR 1, GR 1 3/4
      * <p>
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Examples:
      * - "GR 1/2" → 0.5 inch hail
      * - "GR 1 3/4" → 1.75 inch hail
      * - "GR 2" → 2 inch hail
      */
     public static final Pattern HAIL_SIZE_PATTERN = Pattern.compile(
-            "^GR\\s+(?<size>\\d+\\s+\\d/\\d|\\d+/\\d+|\\d+)\\s*"
+            "^GR\\s+(?<size>\\d+\\s+\\d/\\d|\\d+/\\d+|\\d+)(?=\\s|$)"
     );
 
     /**
      * Variable Ceiling (CIG minVmax).
      * Ceiling varies between minimum and maximum heights in hundreds of feet.
      * <p>
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Examples:
      * - "CIG 005V010" → Ceiling 500-1000 feet
      * - "CIG 020V035" → Ceiling 2000-3500 feet
      * - "CIG 010V015" → Ceiling 1000-1500 feet
      */
     public static final Pattern VARIABLE_CEILING_PATTERN = Pattern.compile(
-            "^CIG\\s+(?<min>\\d{3})V(?<max>\\d{3})\\s*"
+            "^CIG\\s+(?<min>\\d{3})V(?<max>\\d{3})(?=\\s|$)"
     );
 
     /**
@@ -716,6 +726,8 @@ public final class RegExprConst {
      * Ceiling at a specific location (usually runway).
      * Height is in hundreds of feet, location is optional.
      * <p>
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * Examples:
      * - "CIG 002 RY11" → Ceiling 200 ft at runway 11
      * - "CIG 005 RWY06" → Ceiling 500 ft at runway 06
@@ -726,12 +738,14 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for TAF group format
     public static final Pattern CEILING_SECOND_SITE_PATTERN = Pattern.compile(
-            "^CIG\\s+(?<height>\\d{3})(?:\\s+(?<loc>RY\\d{1,2}[LRC]?|RWY\\d{1,2}[LRC]?|TWR|APCH))?\\s*"
+            "^CIG\\s+(?<height>\\d{3})(?:\\s+(?<loc>RY\\d{1,2}[LRC]?|RWY\\d{1,2}[LRC]?|TWR|APCH))?(?=\\s|$)"
     );
 
     /**
      * Obscuration Layer ([Coverage] [Phenomenon] [Height]).
      * Represents obscuration like fog, mist, smoke at a specific height.
+     * The value is required and the match ends at a token boundary, so a malformed
+     * group does not match and surfaces whole in remarks freeText (#115).
      * <p>
      * Examples:
      * - "FEW FG 000" → Few fog at ground level
@@ -745,7 +759,7 @@ public final class RegExprConst {
      * NOTE: Spaces distinguish this from SKY_CONDITION_PATTERN which has no spaces.
      */
     public static final Pattern OBSCURATION_PATTERN = Pattern.compile(
-            "^(?<coverage>FEW|SCT|BKN|OVC)\\s+(?<phenomenon>FG|BR|FU|HZ|DU|SA|VA|PY)\\s+(?<height>\\d{3})\\s*"
+            "^(?<coverage>FEW|SCT|BKN|OVC)\\s+(?<phenomenon>FG|BR|FU|HZ|DU|SA|VA|PY)\\s+(?<height>\\d{3})(?=\\s|$)"
     );
 
     /**
