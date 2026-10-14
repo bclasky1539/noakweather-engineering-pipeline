@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -1820,8 +1821,7 @@ class RegExprConstTest {
     @ParameterizedTest
     @CsvSource({
             "'CIG 010 ', 010, 'No location, trailing space'",
-            "'CIG 015', 015, 'No location, end of string'",
-            "'CIG 005V010 ', 005, 'Partial match against variable-ceiling input (ambiguity check) - V010 left unconsumed'"
+            "'CIG 015', 015, 'No location, end of string'"
     })
     @DisplayName("CEILING_SECOND_SITE_PATTERN should match height alone when no location follows")
     void testCeilingSecondSitePattern_HeightWithoutLocation(String input, String expectedHeight, String scenario) {
@@ -1843,6 +1843,17 @@ class RegExprConstTest {
         assertThat(matcher.group("loc"))
                 .as("Location should be null: %s", scenario)
                 .isNull();
+    }
+
+    @Test
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should not partially match variable-ceiling input (Issue #115)")
+    void testCeilingSecondSitePattern_DoesNotPartiallyMatchVariableCeiling() {
+        // Previously the trailing \s* let this pattern match "CIG 005" inside
+        // "CIG 005V010", leaving "V010" unconsumed, so only handler order kept
+        // the two patterns apart. The token boundary now rejects the partial
+        // match, so a variable ceiling rejected by its own handler (e.g.
+        // CIG 010V005) surfaces whole instead of being split here.
+        assertThat(RegExprConst.CEILING_SECOND_SITE_PATTERN.matcher("CIG 005V010 ").find()).isFalse();
     }
 
     @Test
@@ -2281,24 +2292,27 @@ class RegExprConstTest {
                 .isEqualTo(expectedPrecip);
     }
 
+    @Test
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should match a four-digit precip value (FMH-1 6RRRR / 7RRRR)")
+    void testPrecip3Hr24HrPattern_FourDigits() {
+        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher("60009 ");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("precip")).isEqualTo("0009");
+    }
+
     @ParameterizedTest
     @CsvSource({
-            "'60 ', 0, 'One digit'",
-            "'600 ', 00, 'Two digits'",
-            "'6000 ', 000, 'Three digits'",
-            "'60009 ', 0009, 'Four digits'",
-            "'600091 ', 00091, 'Five digits'"
+            "'60 ',     'One digit'",
+            "'600 ',    'Two digits'",
+            "'6000 ',   'Three digits'",
+            "'600091 ', 'Five digits'"
     })
-    @DisplayName("PRECIP_3HR_24HR_PATTERN should match precip values from 1 to 5 digits")
-    void testPrecip3Hr24HrPattern_DigitLengths(String input, String expectedPrecip, String scenario) {
-        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
-
-        assertThat(matcher.find())
-                .as("Pattern should match: %s", scenario)
-                .isTrue();
-        assertThat(matcher.group("precip"))
-                .as("Precip value should match: %s", scenario)
-                .isEqualTo(expectedPrecip);
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match precip values other than four digits (Issue #115)")
+    void testPrecip3Hr24HrPattern_RejectsOtherDigitLengths(String input, String scenario) {
+        assertThat(RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input).find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
     }
 
     @Test
@@ -2313,14 +2327,12 @@ class RegExprConstTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/", "//", "///", "////", "/////"})
-    @DisplayName("PRECIP_3HR_24HR_PATTERN should match trace indicator from 1 to 5 slashes")
-    void testPrecip3Hr24HrPattern_TraceSlashLengths(String slashes) {
-        String input = "7" + slashes + " ";
-        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
-
-        assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("precip")).isEqualTo(slashes);
+    @ValueSource(strings = {"/", "//", "///", "/////"})
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match a trace indicator other than four slashes (Issue #115)")
+    void testPrecip3Hr24HrPattern_RejectsOtherSlashLengths(String slashes) {
+        assertThat(RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher("7" + slashes + " ").find())
+                .as("Should not match '7%s'", slashes)
+                .isFalse();
     }
 
     @Test
@@ -2334,22 +2346,12 @@ class RegExprConstTest {
     }
 
     @Test
-    @DisplayName("PRECIP_3HR_24HR_PATTERN should partially match mixed slashes and letters, consuming only the leading slash (ambiguity check)")
-    void testPrecip3Hr24HrPattern_PartiallyMatchesMixedSlashesAndLetters() {
-        // precip's alternation (\d{1,5}|/{1,5}) only requires ONE leading
-        // digit-or-slash character to succeed - it doesn't require the whole
-        // token to be homogeneous. For "6/A/B ", precip greedily matches just
-        // "/" (a single slash; the following "A" breaks the slash run), and
-        // \s* then matches zero-width immediately after - so the pattern DOES
-        // match, consuming only "6/" and leaving "A/B " unconsumed. This
-        // isn't a rejection case; it's a partial-match ambiguity worth knowing
-        // about at the handler level.
-        String input = "6/A/B ";
-        Matcher matcher = RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input);
-
-        assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("type")).isEqualTo("6");
-        assertThat(matcher.group("precip")).isEqualTo("/");
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not partially match mixed slashes and letters (Issue #115)")
+    void testPrecip3Hr24HrPattern_DoesNotPartiallyMatchMixedSlashesAndLetters() {
+        // Previously "6/A/B" matched as "6/" with precip "/", leaving "A/B"
+        // unconsumed. The four-character value and token boundary now reject
+        // it, so the token surfaces whole in remarks freeText.
+        assertThat(RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher("6/A/B ").find()).isFalse();
     }
 
     @ParameterizedTest
@@ -2578,6 +2580,46 @@ class RegExprConstTest {
     @DisplayName("DIRECTION_LIST_PATTERN should not match a token that only starts with a compass letter")
     void testDirectionListPattern_Rejects(String input) {
         assertThat(RegExprConst.DIRECTION_LIST_PATTERN.matcher(input).find()).isFalse();
+    }
+
+    // ========== VARIABLE VISIBILITY PATTERN TESTS ==========
+
+    @ParameterizedTest(name = "{4}")
+    @CsvSource({
+            "'VIS 1/2V2',              'VIS 1/2V2',       ,   1/2,   2,     'Fraction to whole'",
+            "'VIS NE 2V4',             'VIS NE 2V4',      NE, 2,     4,     'Direction then range'",
+            "'VIS 1 1/4V3',            'VIS 1 1/4V3',     ,   1 1/4, 3,     'Mixed number minimum'",
+            "'VIS 1 1/2V2 1/2 AO2',    'VIS 1 1/2V2 1/2', ,   1 1/2, 2 1/2, 'Mixed both sides, stops before AO2'",
+            "'VIS NE 2V4 CIG 005V010', 'VIS NE 2V4',      NE, 2,     4,     'Stops before variable ceiling'"
+    })
+    @DisplayName("VPV_SV_VSL_PATTERN should match variable visibility ranges (Issue #115)")
+    void testVariableVisibilityPattern_Matches(String input, String expectedMatch, String expectedDir,
+                                               String expectedMin, String expectedMax, String scenario) {
+        Matcher matcher = RegExprConst.VPV_SV_VSL_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).as(scenario).isTrue();
+        assertThat(matcher.group()).as(scenario).isEqualTo(expectedMatch);
+        assertThat(matcher.group("dir")).as(scenario).isEqualTo(expectedDir);
+        assertThat(matcher.group("dist1")).as(scenario).isEqualTo(expectedMin);
+        assertThat(matcher.group("dist2")).as(scenario).isEqualTo(expectedMax);
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "'VIS N-NE 2',               'KMCO sector visibility, direction range then distance'",
+            "'VIS 1/2 E-SE-SW-W SLP190', 'CYLK sector visibility, distance then directions'",
+            "'VIS NE 2',                 'Sector visibility, single direction'",
+            "'VIS 2 RWY11',              'Visibility at second location'",
+            "'VIS 1/2',                  'Missing V and maximum'",
+            "'VIS 1/2V',                 'V with no maximum'",
+            "'VIS 2V4SLP',               'Maximum runs into the next token'",
+            "'VIS',                      'Bare VIS'"
+    })
+    @DisplayName("VPV_SV_VSL_PATTERN should not match forms the parser does not store (Issue #115)")
+    void testVariableVisibilityPattern_DoesNotMatch(String input, String scenario) {
+        assertThat(RegExprConst.VPV_SV_VSL_PATTERN.matcher(input).find())
+                .as("Should not match: %s", scenario)
+                .isFalse();
     }
 
     // ========== THUNDERSTORM LOCATION CONTINUATION PATTERN TESTS ==========
@@ -2864,6 +2906,167 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("unparsed")).isEqualTo("UNKNOWN_TOKEN");
+    }
+
+    // ========== MISC TESTS ==========
+
+    @ParameterizedTest(name = "{0}: ''{1}'' matches={2}")
+    @CsvSource({
+            "AUTO,  AO2,                 true",
+            "AUTO,  AO1A,                true",
+            "AUTO,  A02,                 true",
+            "AUTO,  AO3,                 false",
+            "AUTO,  AO9,                 false",
+            "SLP,   SLP210,              true",
+            "SLP,   SLPNO,               true",
+            "SLP,   SLP,                 false",
+            "SLP,   SLP12,               false",
+            "SLP,   SLP2101,             false",
+            "T1HR,  T02330139,           true",
+            "T1HR,  T0233,               true",
+            "T1HR,  T02331,              false",
+            "T1HR,  T023301399,          false",
+            "PKWND, 'PK WND 28032/1530', true",
+            "PKWND, 'PK WND 32035/15',   true",
+            "PKWND, 'PK WND P100/2145',  true",
+            "PKWND, 'PK WND 28032/',     false",
+            "PKWND, 'PK WND 28032/2530', false",
+            "PKWND, 'PK WND 28032/1575', false",
+            "PKWND, 'PK WND 28032/15301', false",
+            "WSHFT, 'WSHFT 1530',        true",
+            "WSHFT, 'WSHFT 30',          true",
+            "WSHFT, 'WSHFT 1530 FROPA',  true",
+            "WSHFT, 'WSHFT 2530',        false",
+            "WSHFT, 'WSHFT 1575',        false",
+            "WSHFT, 'WSHFT 15301',       false"
+    })
+    @DisplayName("Batch-1 remark patterns should require their value and end at a token boundary (Issue #115)")
+    void testBatch1Patterns_ValueRequiredAndTokenBounded(String patternName, String input, boolean expectedMatch) {
+        Pattern pattern = switch (patternName) {
+            case "AUTO" -> RegExprConst.AUTO_PATTERN;
+            case "SLP" -> RegExprConst.SEALVL_PRESS_PATTERN;
+            case "T1HR" -> RegExprConst.TEMP_1HR_PATTERN;
+            case "PKWND" -> RegExprConst.PEAK_WIND_PATTERN;
+            case "WSHFT" -> RegExprConst.WIND_SHIFT_PATTERN;
+            default -> throw new IllegalArgumentException(patternName);
+        };
+
+        assertThat(pattern.matcher(input).find())
+                .as("%s on '%s'", patternName, input)
+                .isEqualTo(expectedMatch);
+    }
+
+    @Test
+    @DisplayName("PEAK_WIND_PATTERN should read two digits after the slash as the minute (FMH-1 (hh)mm) (Issue #115)")
+    void testPeakWindPattern_TwoDigitsAreMinute() {
+        Matcher matcher = RegExprConst.PEAK_WIND_PATTERN.matcher("PK WND 32035/15");
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("hour")).isNull();
+        assertThat(matcher.group("min")).isEqualTo("15");
+    }
+
+    @ParameterizedTest(name = "''{0}'' matches={1}")
+    @CsvSource({
+            "A2977,      true",
+            "Q1009,      true",
+            "QNH1009,    true",
+            "AA2977,     true",
+            "2977INS,    true",
+            "A2977INS,   true",
+            "A2O15,      true",
+            "A////,      true",
+            "2530,       false",
+            "1575,       false",
+            "1015,       false",
+            "////,       false",
+            "A29775,     false",
+            "'QNH 1009', false"
+    })
+    @DisplayName("SECONDARY_ALTIMETER_PATTERN should require a unit prefix or INS suffix (Issue #115)")
+    void testSecondaryAltimeterPattern_UnitRequired(String input, boolean expectedMatch) {
+        assertThat(RegExprConst.SECONDARY_ALTIMETER_PATTERN.matcher(input).find())
+                .as("'%s'", input)
+                .isEqualTo(expectedMatch);
+    }
+
+    @Test
+    @DisplayName("ALTIMETER_PATTERN (main body) still accepts a bare 4-digit value; only the remarks pattern requires a unit")
+    void testAltimeterPattern_MainBodyUnchanged() {
+        assertThat(RegExprConst.ALTIMETER_PATTERN.matcher("2992").find()).isTrue();
+        assertThat(RegExprConst.SECONDARY_ALTIMETER_PATTERN.matcher("2992").find()).isFalse();
+    }
+
+    @ParameterizedTest(name = "{0}: ''{1}'' matches={2}")
+    @CsvSource({
+            "TWRSFC, 'TWR VIS 1 1/2',  true",
+            "TWRSFC, 'SFC VIS 1/4',    true",
+            "TWRSFC, 'TWR VIS 3',      true",
+            "TWRSFC, 'TWR VIS 123',    false",
+            "TWRSFC, 'SFC VIS 1/2SM',  false",
+            "P1HR,   P0015,            true",
+            "P1HR,   P////,            true",
+            "P1HR,   P00151,           false",
+            "P67,    60015,            true",
+            "P67,    70123,            true",
+            "P67,    6////,            true",
+            "P67,    7012345,          false",
+            "P67,    65,               false",
+            "P67,    600,              false",
+            "HAIL,   'GR 1 3/4',       true",
+            "HAIL,   'GR 3/4',         true",
+            "HAIL,   'GR 2',           true",
+            "HAIL,   'GR 1/2X',        false",
+            "VCIG,   'CIG 005V010',    true",
+            "VCIG,   'CIG 005V0105',   false",
+            "CIG2,   'CIG 002 RY11',   true",
+            "CIG2,   'CIG 010',        true",
+            "CIG2,   'CIG 005V010',    false",
+            "CIG2,   'CIG 0050',       false",
+            "OBSC,   'BKN FU 005',     true",
+            "OBSC,   'FEW FG 000',     true",
+            "OBSC,   'BKN FU 0055',    false"
+    })
+    @DisplayName("Batch-3 remark patterns should require their value and end at a token boundary (Issue #115)")
+    void testBatch3Patterns_ValueRequiredAndTokenBounded(String patternName, String input, boolean expectedMatch) {
+        Pattern pattern = switch (patternName) {
+            case "TWRSFC" -> RegExprConst.TWR_SFC_VIS_PATTERN;
+            case "P1HR" -> RegExprConst.PRECIP_1HR_PATTERN;
+            case "P67" -> RegExprConst.PRECIP_3HR_24HR_PATTERN;
+            case "HAIL" -> RegExprConst.HAIL_SIZE_PATTERN;
+            case "VCIG" -> RegExprConst.VARIABLE_CEILING_PATTERN;
+            case "CIG2" -> RegExprConst.CEILING_SECOND_SITE_PATTERN;
+            case "OBSC" -> RegExprConst.OBSCURATION_PATTERN;
+            default -> throw new IllegalArgumentException(patternName);
+        };
+
+        assertThat(pattern.matcher(input).find())
+                .as("%s on '%s'", patternName, input)
+                .isEqualTo(expectedMatch);
+    }
+
+    @ParameterizedTest(name = "{0}: ''{1}'' matches={2}")
+    @CsvSource({
+            "T6, 10142,      true",
+            "T6, 21001,      true",
+            "T6, 1014,       false",
+            "T6, 101420,     false",
+            "T6, 10142X,     false",
+            "T24, 400461006,  true",
+            "T24, 4004610061, false",
+            "T24, 40046100X,  false"
+    })
+    @DisplayName("Batch-4 temperature patterns should require exact digits and end at a token boundary (Issue #115)")
+    void testBatch4Patterns_ExactDigitsAndTokenBounded(String patternName, String input, boolean expectedMatch) {
+        Pattern pattern = switch (patternName) {
+            case "T6" -> RegExprConst.TEMP_6HR_MAX_MIN_PATTERN;
+            case "T24" -> RegExprConst.TEMP_24HR_PATTERN;
+            default -> throw new IllegalArgumentException(patternName);
+        };
+
+        assertThat(pattern.matcher(input).find())
+                .as("%s on '%s'", patternName, input)
+                .isEqualTo(expectedMatch);
     }
 
     // ========== TAF PATTERN TESTS ==========

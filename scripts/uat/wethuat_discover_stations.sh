@@ -89,6 +89,7 @@ declare -a PATTERNS=(
      "118-directional-weather-compass-follower|(^| )(VC[A-Z]{2}|HZ|FG|BR|FU|DU)( (N|NE|E|SE|S|SW|W|NW))+ ([NSEW][A-Z0-9]{2,}|NE|NW|SW)( |$)"
      "114-ts-location-space-separated-points|(^| )(TS|CB|TCU|ACC|CBMAM|VIRGA)( (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS))? (N|NE|E|SE|S|SW|W|NW) (N|NE|E|SE|S|SW|W|NW)( |$)"
      "117-lightning-and-chain|(^| )LTG(IC|CC|CG|CA|CW)*( (OHD|VC|DSNT|AT AP))? [NSEW]{1,2}(-[NSEW]{1,2})* AND [NSEW]{1,2}(-[NSEW]{1,2})*( |$)"
+     "115-vis-sector-or-second-location|(^| )VIS (([NSEW]{1,2}(-[NSEW]{1,2})*) [0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)?|[0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)? ([NSEW]{1,2}(-[NSEW]{1,2})*|RWY[0-9]{2}[LRC]?))( |$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

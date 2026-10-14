@@ -3395,8 +3395,8 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse peak wind with partial time (hour only)")
-    void testParsePeakWindHourOnly() {
+    @DisplayName("Should parse peak wind with minute only (hour omitted, FMH-1 (hh)mm) (Issue #115)")
+    void testParsePeakWindMinuteOnly() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 32035/15";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -3409,8 +3409,8 @@ class NoaaMetarParserTest {
         PeakWind peakWind = data.getRemarks().peakWind();
         assertEquals(320, peakWind.directionDegrees());
         assertEquals(35, peakWind.speedKnots());
-        assertEquals(15, peakWind.hour(), "Hour should be 15");
-        assertNull(peakWind.minute(), "Minute should be null when not provided");
+        assertNull(peakWind.hour(), "Hour is omitted in (hh)mm when only two digits follow the slash");
+        assertEquals(15, peakWind.minute(), "Two digits after the slash are the minute");
     }
 
     @Test
@@ -3557,9 +3557,10 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse peak wind with only required fields")
-    void testParsePeakWindMinimal() {
-        // Direction and speed only (no time components)
+    @DisplayName("Should leave peak wind with no time whole in freeText (Issue #115)")
+    void testParsePeakWindNoTime_SurfacesInFreeText() {
+        // FMH-1 format is dddff(f)/(hh)mm: the minute is required, so a trailing
+        // slash with no time is not a valid peak wind group
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 280P105/";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -3567,12 +3568,27 @@ class NoaaMetarParserTest {
         assertTrue(result.isSuccess());
         NoaaMetarData data = extractMetarData(result);
 
-        // Should parse even with missing time components
-        assertNotNull(data.getRemarks().peakWind());
-        assertEquals(280, data.getRemarks().peakWind().directionDegrees());
-        assertEquals(105, data.getRemarks().peakWind().speedKnots());
-        assertNull(data.getRemarks().peakWind().hour());
-        assertNull(data.getRemarks().peakWind().minute());
+        assertNull(data.getRemarks().peakWind());
+        assertEquals("PK WND 280P105/", data.getRemarks().freeText(),
+                "Group surfaces whole rather than being stored with no time");
+    }
+
+    @Test
+    @DisplayName("Should parse peak wind with P-prefixed speed and full time")
+    void testParsePeakWindPrefixedSpeedWithTime() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PK WND 280P105/1530";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertTrue(result.isSuccess());
+        NoaaMetarData data = extractMetarData(result);
+
+        PeakWind peakWind = data.getRemarks().peakWind();
+        assertNotNull(peakWind);
+        assertEquals(280, peakWind.directionDegrees());
+        assertEquals(105, peakWind.speedKnots());
+        assertEquals(15, peakWind.hour());
+        assertEquals(30, peakWind.minute());
     }
 
     // ========== WIND SHIFT PARSING TESTS ==========
@@ -4282,6 +4298,79 @@ class NoaaMetarParserTest {
             assertNull(data.getRemarks().variableVisibility(),
                     "Variable visibility should be null: " + scenario);
         }
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2',         'VIS 1/2',         'Missing maximum'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 1/2V',        'VIS 1/2V',        'V with no maximum'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS RWY 1/2',     'VIS RWY 1/2',     'RWY instead of V'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 5V2',         'VIS 5V2',         'Minimum greater than maximum (validation rejects)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS NE 2',        'VIS NE 2',        'Sector visibility, direction then distance'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIS 2 RWY11',     'VIS 2 RWY11',     'Visibility at second location'"
+    })
+    @DisplayName("Should leave a rejected or unmodelled VIS remark whole in freeText (Issue #115)")
+    void testVariableVisibility_RejectedRemarkSurfacesWhole(String metar, String expectedFreeText, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).as(scenario).isNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped: %s", scenario)
+                .isEqualTo(expectedFreeText);
+    }
+
+    @Test
+    @DisplayName("Should leave sector visibility whole in freeText - KMCO real-world (Issue #115)")
+    void testVariableVisibility_SectorVisibility_KMCO() {
+        String metar = "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 " +
+                "RMK RAB35 VIS N-NE 2";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).isNull();
+        assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
+        assertThat(data.getRemarks().freeText())
+                .as("Whole VIS N-NE 2 surfaces, not the fragment -NE 2")
+                .isEqualTo("VIS N-NE 2");
+    }
+
+    @Test
+    @DisplayName("Should leave Canadian sector visibility whole in freeText - CYLK real-world (Issue #115)")
+    void testVariableVisibility_SectorVisibility_CYLK() {
+        String metar = "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 " +
+                "RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).isNull();
+        assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Whole VIS 1/2 E-SE-SW-W surfaces; VIS 1/2 is no longer consumed")
+                .isEqualTo("VIS 1/2 E-SE-SW-W");
+    }
+
+    @Test
+    @DisplayName("Should still parse a valid variable visibility followed by variable ceiling (Issue #115 regression)")
+    void testVariableVisibility_FollowedByVariableCeiling() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK AO2 VIS NE 2V4 CIG 005V010";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().variableVisibility()).isNotNull();
+        assertThat(data.getRemarks().variableVisibility().direction()).isEqualTo("NE");
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 
     // ========== TOWER VISIBILITY PARSING TESTS ==========
@@ -8735,6 +8824,63 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
     }
 
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "2530,               'Bare 4-digit token is not an altimeter (previously stored as 25.30 inHg)'",
+            "1575,               'Bare 4-digit token is not an altimeter (previously WARN then dropped)'",
+            "A1575,              'Prefixed but out of range: Pressure rejects, group surfaces whole'",
+            "'WSHFT 2530',       'Wind shift hour 25: pattern rejects, 2530 no longer taken as an altimeter'",
+            "'WSHFT 1575',       'Wind shift minute 75: pattern rejects, 1575 no longer taken as an altimeter'",
+            "'WSHFT 2530 FROPA', 'Wind shift hour 25 with FROPA'"
+    })
+    @DisplayName("Should leave non-altimeter and rejected altimeter tokens whole in freeText (Issue #115)")
+    void testSecondaryAltimeter_RejectedOrNonAltimeterSurfacesWhole(String remark, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark;
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).as(scenario).isNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped or misattributed: %s", scenario)
+                .isEqualTo(remark);
+    }
+
+    @Test
+    @DisplayName("Should parse a QNH-style secondary altimeter in remarks (Issue #115 regression)")
+    void testSecondaryAltimeter_QPrefixInRemarks() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK Q1009";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
+        assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(1009.0, within(0.01));
+        assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.HECTOPASCALS);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should consume A//// as a not-available secondary altimeter without storing a value")
+    void testSecondaryAltimeter_NotAvailable() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK A//// SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().secondaryAltimeter()).isNull();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText())
+                .as("A//// is a recognised 'not available' report, like SLPNO")
+                .isNull();
+    }
+
     // ========== OBSERVATION YEAR FROM HEADER TESTS ==========
 
     @Test
@@ -11050,6 +11196,102 @@ class NoaaMetarParserTest {
         assertThat(result.isSuccess()).isTrue();
     }
 
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            // Batch 1: automated station type, SLP, hourly temperature, peak wind, wind-at-location
+            "AO3,                    'Automated station type out of range (pattern rejects)'",
+            "SLP,                    'SLP with no value (pattern rejects)'",
+            "SLP12,                  'SLP with two digits (pattern rejects)'",
+            "T02331,                 'Hourly temperature with a trailing digit (pattern rejects)'",
+            "T00500100,              'Dewpoint higher than temperature (validation rejects)'",
+            "T09990000,              'Temperature 99.9 C (validation rejects)'",
+            "'PK WND 99932/1530',    'Peak wind direction 999 (validation rejects)'",
+            "'PK WND 28032/2530',    'Peak wind hour 25 (pattern rejects; previously stored minute=25)'",
+            "'WIND 1400FT 99910KT',  'Wind-at-location direction 999 (validation rejects)'",
+            // Batch 3: tower/surface visibility, precipitation, variable ceiling, ceiling second site
+            "'TWR VIS 123',          'Tower visibility runs into an extra digit (pattern rejects)'",
+            "'SFC VIS 1/2SM',        'Surface visibility with a unit suffix (pattern rejects)'",
+            "'TWR VIS 1/0',          'Zero denominator (previously stored as infinity)'",
+            "'VIS 1/0V2',            'Variable visibility with a zero denominator'",
+            "'VIS 1V1/0',            'Variable visibility: maximum has zero denominator'",
+            "'TWR VIS 1 1/0',        'Tower visibility: mixed number with zero denominator'",
+            "P00151,                 'Hourly precipitation with a trailing digit (pattern rejects)'",
+            "7012345,                '24-hour precipitation with too many digits (pattern rejects)'",
+            "600,                    'Too few digits for a 6-hour precipitation group (pattern rejects)'",
+            "'CIG 010V005',          'Variable ceiling minimum above maximum (validation rejects); ceiling second site no longer grabs CIG 010'",
+            "'CIG 005V0105',         'Variable ceiling runs into an extra digit (pattern rejects)'",
+            "'CIG 0050',             'Ceiling second site with four digits (pattern rejects)'",
+            // Batch 4: max/min temperature, pressure, weather events, directions, rapid change
+            "10999,                  '6-hour max 99.9 C (validation rejects)'",
+            "1099,                   '6-hour max with two digits (pattern rejects)'",
+            "409990000,              '24-hour max 99.9 C (validation rejects)'",
+            "58999,                  'Pressure tendency change out of range (validation rejects)'",
+            "RAB99,                  'Weather event minute 99 (validation rejects)'",
+            "RAB2575,                'Weather event hour 25 (validation rejects)'",
+            "RAB123,                 'Weather event three-digit time (not a valid event)'",
+            "'XCPT NS',              'Except-direction with invalid point NS (validation rejects)'",
+            "'LTG DSNT NS',          'Lightning with invalid point NS (validation rejects)'",
+            "'TS NS',                'Thunderstorm location with invalid point NS (validation rejects)'",
+            "PRESXR,                 'Pressure rapid change with unknown code (validation rejects)'"
+    })
+    @DisplayName("Should leave a rejected remark group whole in freeText and keep parsing after it (Issue #115)")
+    void testRejectedRemarkSurfacesWhole(String remark, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark + " SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().freeText())
+                .as("Nothing may be silently dropped: %s", scenario)
+                .isEqualTo(remark);
+        assertThat(data.getSeaLevelPressure())
+                .as("Remarks after the rejected group still parse: %s", scenario)
+                .isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Should keep an accepted wind-at-location and stop at a rejected one (Issue #115)")
+    void testWindAtLocation_RejectedEntryStopsLoopAndSurfaces() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK WIND RWY 26 00000KT WIND 1400FT 99910KT SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().windsAtLocation())
+                .as("The valid runway reading is stored")
+                .hasSize(1);
+        assertThat(data.getRemarks().freeText())
+                .as("The rejected altitude reading surfaces whole; the loop does not spin on it")
+                .isEqualTo("WIND 1400FT 99910KT");
+        assertThat(data.getSeaLevelPressure())
+                .as("Remarks after the rejected group still parse")
+                .isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Should still parse every batch-1 remark in a normal report (Issue #115 regression)")
+    void testBatch1_ValidRemarksStillParse() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 " +
+                "RMK AO2 PK WND 28032/1530 WSHFT 1515 FROPA SLP210 T02330139";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().automatedStationType()).isEqualTo(AutomatedStationType.AO2);
+        assertThat(data.getRemarks().peakWind()).isNotNull();
+        assertThat(data.getRemarks().windShift()).isNotNull();
+        assertThat(data.getRemarks().windShift().frontalPassage()).isTrue();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().preciseTemperature()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
     // --- Correct behavior (regression) ---
 
     @ParameterizedTest
@@ -11147,5 +11389,106 @@ class NoaaMetarParserTest {
         assertThat(data.getRecentWeather()).extracting(PresentWeather::rawCode).containsExactly("RA");
         assertThat(data.isNoSignificantChange()).isTrue();
         assertThat(data.getUnparsedMainBody()).isNullOrEmpty();
+    }
+
+    @Test
+    @DisplayName("Known gap: a rejected hail group loses GR to directional weather (follow-up issue)")
+    void knownGap_RejectedHailGroupLosesGrToDirectionalWeather() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().hailSize())
+                .as("HailSize rejects 0 and the hail handler leaves GR 0 in place (#115)")
+                .isNull();
+        assertThat(data.getRemarks().directionalWeather())
+                .as("Known gap: directional weather then claims the bare GR")
+                .isNotNull();
+        assertThat(data.getRemarks().freeText())
+                .as("Known gap: only the size reaches freeText; flip to 'GR 0' when the follow-up lands")
+                .isEqualTo("0");
+    }
+
+    @Test
+    @DisplayName("Known gap (#129): unparseable hail size is left in place, but GR is claimed by directional weather")
+    void knownGap_UnparseableHailSizeLosesGrToDirectionalWeather() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1/0 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // #115: the hail handler takes the null path (1/0 has a zero denominator) and leaves the text in place
+        assertThat(data.getRemarks().hailSize()).isNull();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+
+        // #129: GR is then claimed by directional weather, so only the size reaches freeText.
+        // When #129 is fixed, freeText should be "GR 1/0" and directionalWeather null.
+        assertThat(data.getRemarks().directionalWeather()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isEqualTo("1/0");
+    }
+
+    @Test
+    @DisplayName("Should still parse valid batch-3 remarks together (Issue #115 regression)")
+    void testBatch3_ValidRemarksStillParse() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 " +
+                "RMK AO2 TWR VIS 1 1/2 SFC VIS 1/4 CIG 005V010 P0015 60009 70125 GR 1 3/4 SCT FU 010 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().towerVisibility()).isNotNull();
+        assertThat(data.getRemarks().surfaceVisibility()).isNotNull();
+        assertThat(data.getRemarks().variableCeiling()).isNotNull();
+        assertThat(data.getRemarks().hourlyPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().sixHourPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourPrecipitation()).isNotNull();
+        assertThat(data.getRemarks().hailSize()).isNotNull();
+        assertThat(data.getRemarks().obscurationLayers()).hasSize(1);
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should keep an accepted lightning remark and stop at a rejected one (Issue #115)")
+    void testLightning_RejectedEntryStopsLoopAndSurfaces() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK LTG DSNT N LTG DSNT NS SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
+        assertThat(data.getRemarks().freeText()).isEqualTo("LTG DSNT NS");
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Should still parse valid batch-4 remarks together (Issue #115 regression)")
+    void testBatch4_ValidRemarksStillParse() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 " +
+                "RMK AO2 RAB15E30 PRESRR 10142 20012 400461006 52032 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
+        assertThat(data.getPressureRapidChange()).isNotNull();
+        assertThat(data.getRemarks().sixHourMaxTemperature()).isNotNull();
+        assertThat(data.getRemarks().sixHourMinTemperature()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourMaxTemperature()).isNotNull();
+        assertThat(data.getRemarks().twentyFourHourMinTemperature()).isNotNull();
+        assertThat(data.getRemarks().pressureTendency()).isNotNull();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText()).isNull();
     }
 }

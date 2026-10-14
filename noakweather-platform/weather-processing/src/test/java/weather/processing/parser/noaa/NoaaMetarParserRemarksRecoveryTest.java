@@ -9,10 +9,7 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.*;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
-import weather.model.enums.AutomatedStationType;
-import weather.model.enums.HighCloudType;
-import weather.model.enums.LowCloudType;
-import weather.model.enums.MiddleCloudType;
+import weather.model.enums.*;
 import weather.processing.parser.common.ParseResult;
 
 import java.util.List;
@@ -820,6 +817,72 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .isEqualTo("ALQDS");
                         }),
 
+                arguments("KMCO-SectorVisibilityNowSurfacesWhole",
+                        "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 RMK RAB35 VIS N-NE 2",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Whole VIS N-NE 2, not the fragment -NE 2 (#115)")
+                                    .isEqualTo("VIS N-NE 2");
+                            assertThat(data.getRemarks().variableVisibility()).isNull();
+                        }),
+
+                arguments("CYLK-CanadianSectorVisibilityNowSurfacesWhole",
+                        "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 " +
+                                "RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Whole VIS 1/2 E-SE-SW-W; VIS 1/2 no longer silently consumed (#115)")
+                                    .isEqualTo("VIS 1/2 E-SE-SW-W");
+                            assertThat(data.getRemarks().variableVisibility()).isNull();
+                            assertThat(data.getSeaLevelPressure()).isNotNull();
+                        }),
+
+                arguments("RPLL-RemarksAltimeterWithUnitStillParses",
+                        "METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("A2977 has the unit prefix, so the tightened pattern still takes it (#115)")
+                                    .isNull();
+                            assertThat(data.getRemarks().secondaryAltimeter()).isNotNull();
+                            assertThat(data.getRemarks().secondaryAltimeter().value()).isCloseTo(29.77, within(0.01));
+                            assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
+                        }),
+
+                arguments("KCLT-TightenedRemarkHandlersStillParseRealWorldGroups",
+                        "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
+                                "RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 " +
+                                "PRESRR ICG PAST HR LTG DSNT NE-SE OCNL LTGICCC DSNT E TS DSNT E MOV E CB DSNT E " +
+                                "TCU N-NE AND NW TCU ALQDS XCPT N-NE LAST STFD OBS/NEXT 021200 UTC VIA CYQB " +
+                                "T02780206 DENSITY ALT 900FT $",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("Only the unmodelled F8 is left; no valid group was rejected (#115)")
+                                    .isEqualTo("F8");
+
+                            assertThat(data.getRemarks().peakWind().directionDegrees()).isEqualTo(330);
+                            assertThat(data.getRemarks().peakWind().speedKnots()).isEqualTo(35);
+                            assertThat(data.getRemarks().peakWind().hour()).isEqualTo(11);
+                            assertThat(data.getRemarks().peakWind().minute()).isEqualTo(42);
+
+                            assertThat(data.getRemarks().weatherEvents()).hasSize(4);
+                            assertThat(data.getRemarks().pressureRapidChange()).hasToString("RISING");
+                            assertThat(data.getRemarks().icing().qualifier()).isEqualTo("PAST HR");
+                            assertThat(data.getRemarks().lightningRemarks()).hasSize(2);
+                            assertThat(data.getRemarks().thunderstormLocations()).hasSize(4);
+                            assertThat(data.getRemarks().exceptDirections()).hasSize(1);
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(4);
+
+                            assertThat(data.getRemarks().observationProgramStatus().staffed()).isTrue();
+                            assertThat(data.getRemarks().observationProgramStatus().day()).isEqualTo(2);
+                            assertThat(data.getRemarks().observationProgramStatus().hour()).isEqualTo(12);
+                            assertThat(data.getRemarks().observationProgramStatus().minute()).isZero();
+                            assertThat(data.getRemarks().observationProgramStatus().viaStation()).isEqualTo("CYQB");
+
+                            assertThat(data.getRemarks().densityAltitudeFeet()).isEqualTo(900);
+                            assertThat(data.getRemarks().maintenanceRequired()).isTrue();
+                            assertThat(data.getSeaLevelPressure()).isCloseTo(999.8, within(0.1));
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -854,6 +917,11 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 15:51 KCRP 081551Z 04008KT 10SM FEW028 FEW065 FEW250 30/22 A2995 RMK AO2 SLP142 CB DSNT E SE MOV SW TCU DSNT E SE T03000222",
                 "2026/10/08 17:55 K46D 081755Z AUTO 00000KT 10SM CLR 15/02 A3010 RMK AO2 LTG DSNT S AND SW",
                 "2026/10/08 17:53 KFMY 081753Z 21010G17KT 10SM SCT027 31/24 A2985 RMK AO2 LTG DSNT N AND NE SLP110 T03110244 10317 20244 55013",
+                "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 RMK RAB35 VIS N-NE 2",
+                "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190",
+                "METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977",
+                // Synthetic: tracks #129 (rejected hail group's GR claimed by directional weather)
+                "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210",
         };
 
         for (String raw : raws) {
@@ -874,6 +942,17 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
             LOGGER.info("  automatedStationType: {}", data.getRemarks() != null ? data.getRemarks().automatedStationType() : "n/a");
             LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
+            LOGGER.info("  peakWind: {}", data.getRemarks() != null ? data.getRemarks().peakWind() : "n/a");
+            LOGGER.info("  windShift: {}", data.getRemarks() != null ? data.getRemarks().windShift() : "n/a");
+            LOGGER.info("  windsAtLocation: {}", data.getRemarks() != null ? data.getRemarks().windsAtLocation() : "n/a");
+            LOGGER.info("  variableVisibility: {}", data.getRemarks() != null ? data.getRemarks().variableVisibility() : "n/a");
+            LOGGER.info("  hourlyPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().hourlyPrecipitation() : "n/a");
+            LOGGER.info("  pressureTendency: {}", data.getRemarks() != null ? data.getRemarks().pressureTendency() : "n/a");
+            LOGGER.info("  sixHourMaxTemperature: {}", data.getRemarks() != null ? data.getRemarks().sixHourMaxTemperature() : "n/a");
+            LOGGER.info("  sixHourMinTemperature: {}", data.getRemarks() != null ? data.getRemarks().sixHourMinTemperature() : "n/a");
+            LOGGER.info("  twentyFourHourMaxTemperature: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourMaxTemperature() : "n/a");
+            LOGGER.info("  twentyFourHourMinTemperature: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourMinTemperature() : "n/a");
+            LOGGER.info("  secondaryAltimeter: {}", data.getRemarks() != null ? data.getRemarks().secondaryAltimeter() : "n/a");
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");
@@ -886,6 +965,14 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  lightningRemarks: {}", data.getRemarks() != null ? data.getRemarks().lightningRemarks() : "n/a");
             LOGGER.info("  predominantCloudTypes: {}", data.getRemarks() != null ? data.getRemarks().predominantCloudTypes() : "n/a");
             LOGGER.info("  densityAltitudeFeet: {}", data.getRemarks() != null ? data.getRemarks().densityAltitudeFeet() : "n/a");
+            LOGGER.info("  towerVisibility: {}", data.getRemarks() != null ? data.getRemarks().towerVisibility() : "n/a");
+            LOGGER.info("  surfaceVisibility: {}", data.getRemarks() != null ? data.getRemarks().surfaceVisibility() : "n/a");
+            LOGGER.info("  twentyFourHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourPrecipitation() : "n/a");
+            LOGGER.info("  ppGroupValue: {}", data.getRemarks() != null ? data.getRemarks().ppGroupValue() : "n/a");
+            LOGGER.info("  hailSize: {}", data.getRemarks() != null ? data.getRemarks().hailSize() : "n/a");
+            LOGGER.info("  variableCeiling: {}", data.getRemarks() != null ? data.getRemarks().variableCeiling() : "n/a");
+            LOGGER.info("  ceilingSecondSite: {}", data.getRemarks() != null ? data.getRemarks().ceilingSecondSite() : "n/a");
+            LOGGER.info("  obscurationLayers: {}", data.getRemarks() != null ? data.getRemarks().obscurationLayers() : "n/a");
             LOGGER.info(separator());
             LOGGER.info(" ");
         }

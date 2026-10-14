@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.21.0-SNAPSHOT]
+
+### Fixed
+- Remark handlers no longer silently drop a group they match but reject.
+  Previously a pattern could match, the value object could reject the value
+  (or the handler could fail to store it), and the text was still consumed,
+  so the group disappeared from both the parsed fields and `freeText`. A
+  rejected group is now left in place and surfaces whole in `remarks.freeText`,
+  and parsing continues with the remarks after it. (#115)
+  - Patterns tightened to require their value group and end at a token
+    boundary: variable visibility (`minVmax` only), AUTO, SLP, hourly
+    temperature, peak wind, wind shift, tower/surface visibility, hourly and
+    3/6/24-hour precipitation, hail size, variable ceiling, ceiling at second
+    site, obscuration, 6-hour and 24-hour max/min temperature.
+  - Range limits: peak wind and wind shift hour/minute; observation program
+    status day/hour/minute (`LAST OBS/NEXT 322500` is no longer stored).
+  - 3/6/24-hour precipitation requires exactly four digits or `////`; 6-hour
+    max/min temperature requires three digits.
+  - Remarks secondary altimeter now requires a unit (`A`/`AA`/`Q`/`QNH` prefix
+    or `INS` suffix). A bare 4-digit token (e.g. the time in `WSHFT 2530`) is
+    no longer read as an altimeter. Main-body `ALTIMETER_PATTERN` unchanged.
+  - Peak wind `/mm` is read as the minute per FMH-1 `(hh)mm`.
+  - Remarks visibility with a zero denominator (`TWR VIS 1/0`) is rejected
+    instead of being stored as infinity. Main-body equivalent tracked in #130.
+  - Repeating handlers (weather events, lightning, thunderstorm location,
+    except direction, wind at location, etc.) stop at the first rejected entry
+    instead of skipping it.
+  - Rejected-remark debug logging consolidated into a single
+    `logRejectedRemark` helper (same messages; removes ~30 duplicated guards).
+
+### Not yet modeled
+- Sector visibility and visibility at a second location (`VIS N-NE 2`,
+  `VIS 1/2 E-SE-SW-W`, `VIS 2 RWY11`) now surface whole in `freeText`
+  instead of being partly consumed (KMCO, CYLK). UAT watch pattern
+  `115-vis-sector-or-second-location` added.
+
+### Downstream impact
+- No Bronze JSON shape change.
+- Values change for malformed or out-of-range remark groups: fields that were
+  previously populated with wrong values (e.g. `secondaryAltimeter` from a
+  wind-shift time, infinite tower visibility, impossible observation-program
+  times) are now null, and the original text appears in `remarks.freeText`.
+  `freeText` will be non-null more often for such reports.
+- Peak wind `PK WND dddff/mm` now stores `minute=mm` with no hour, where it
+  previously stored the value as the hour.
+
+### Known gaps
+- #129: a rejected hail group's `GR` is claimed by directional weather
+  (guarded by `knownGap_RejectedHailGroupLosesGrToDirectionalWeather`).
+
+### Tests
+- `NoaaMetarParserTest`: rejected-group-surfaces-whole parameterized test
+  (batches 1, 3 and 4, with an `SLP210` canary after the rejected group);
+  secondary altimeter, observation program, lightning loop and
+  valid-remarks-still-parse tests; #129 known-gap test.
+- Existing tests changed to match the stricter behavior:
+  - `testParsePeakWindHourOnly` → `testParsePeakWindMinuteOnly`;
+    `testParsePeakWindMinimal` → `testParsePeakWindNoTime_SurfacesInFreeText`
+    and `testParsePeakWindPrefixedSpeedWithTime`.
+  - `RegExprConstTest`: variable-ceiling partial-match row →
+    `…DoesNotPartiallyMatchVariableCeiling`; precipitation digit-length →
+    `…FourDigits` and `…RejectsOtherDigitLengths`; trace slash-length →
+    `…RejectsOtherSlashLengths`; mixed slashes →
+    `…DoesNotPartiallyMatchMixedSlashesAndLetters`.
+- `RegExprConstTest`: exact-digit and token-boundary rows for every tightened pattern.
+- `NoaaMetarParserRemarksRecoveryTest`: KMCO, CYLK, RPLL and KCLT rows;
+  KMCO, CYLK, RPLL and a #129 tracker raw added to the diagnostics, with new
+  `LOGGER.info` fields for every remark type touched.
+
 ## [1.20.15-SNAPSHOT]
 
 ### Fixed
@@ -46,7 +115,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and token-boundary cases (K46D, KFMY, KSPG, KTPA).
 - `LightningMatcherTest`: direction assertions moved to `dirchain`; AND-chain and
   virtual-type-group cases; `hasType` boundary-alignment and edge cases.
-- `NoaaMetarParserTest`: K46D, KFMY and KTPA real-world tests; AND-chain segment modelling.
+- `NoaaMetarParserTest`: K46D, KFMY and KTPA real-world tests; AND-chain segment modeling.
 - `NoaaMetarParserRemarksRecoveryTest`: K46D and KFMY rows; diagnostics raws added;
   existing lightning assertions moved to `directionSegments`.
 - `LightningRemarkTest`, `NoaaMetarRemarksTest`: updated for `directionSegments`; new
