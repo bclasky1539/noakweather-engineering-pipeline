@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Repeating handlers (weather events, lightning, thunderstorm location,
     except direction, wind at location, etc.) stop at the first rejected entry
     instead of skipping it.
+  - Rejected-remark debug logging consolidated into a single
+    `logRejectedRemark` helper (same messages; removes ~30 duplicated guards).
 
 ### Not yet modeled
 - Sector visibility and visibility at a second location (`VIS N-NE 2`,

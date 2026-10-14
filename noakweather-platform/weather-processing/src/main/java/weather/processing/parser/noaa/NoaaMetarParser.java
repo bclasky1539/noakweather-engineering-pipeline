@@ -396,6 +396,16 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
+     * Logs a remark group that matched its pattern but was rejected. The caller
+     * leaves the text in place so it surfaces in freeText (#92, #115).
+     */
+    private static void logRejectedRemark(String remarkType, String matchedText, IllegalArgumentException e) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Invalid {}, leaving for freeText: {} ({})", remarkType, matchedText, e.getMessage());
+        }
+    }
+
+    /**
      * Route to appropriate handler method based on handler name from registry.
      * <p>
      * Handlers for shared aviation weather elements (wind, visibility, present weather,
@@ -1092,10 +1102,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid automated station type, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("automated station type", matchedText, e);
             return remarksText;
         }
     }
@@ -1165,10 +1172,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid sea level pressure, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("sea level pressure", matchedText, e);
             return remarksText;
         }
     }
@@ -1233,10 +1237,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid hourly temperature, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("hourly temperature", matchedText, e);
             return remarksText;
         }
     }
@@ -1295,10 +1296,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid peak wind, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("peak wind", matchedText, e);
             return remarksText;
         }
     }
@@ -1355,10 +1353,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid wind shift, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("wind shift", matchedText, e);
             return remarksText;
         }
     }
@@ -1417,10 +1412,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return true;
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid wind-at-location, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("wind-at-location", matchedText, e);
             return false;
         }
     }
@@ -1532,10 +1524,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             }
         } catch (IllegalArgumentException e) {
             // Rejected: leave the weather code (and any directions) for freeText
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid directional weather, leaving for freeText: {} ({})",
-                        weatherCode, e.getMessage());
-            }
+            logRejectedRemark("directional weather", weatherCode, e);
             return remaining;
         }
 
@@ -1593,10 +1582,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid observation program status, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("observation program status", matchedText, e);
             }
         }
 
@@ -1668,10 +1654,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid variable visibility, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("variable visibility", matchedText, e);
             return remarksText;
         }
     }
@@ -1701,9 +1684,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return statuteMiles != null ? Visibility.statuteMiles(statuteMiles) : null;
 
         } catch (NumberFormatException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Failed to parse visibility distance: {}", trimmed);
-            }
+            logRejectedRemark("visibility distance", trimmed, e);
             return null;
         }
     }
@@ -1806,10 +1787,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return true;
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid tower/surface visibility, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("tower/surface visibility", matchedText, e);
             return false;
         }
     }
@@ -1872,10 +1850,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid hourly precipitation, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("hourly precipitation", matchedText, e);
             return remarksText;
         }
     }
@@ -1913,10 +1888,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid predominant cloud type group, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("predominant cloud type group", matchedText, e);
             }
         }
 
@@ -1956,10 +1928,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid PP group value, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("PP group value", matchedText, e);
             }
         }
 
@@ -2013,10 +1982,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid multi-hour precipitation, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("multi-hour precipitation", matchedText, e);
             return remarksText;
         }
     }
@@ -2052,10 +2018,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (NumberFormatException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid density altitude value, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("density altitude value", matchedText, e);
             }
         }
 
@@ -2107,10 +2070,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarksText.substring(matcher.end()).trim();
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid hail size, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("hail size", matchedText, e);
             return remarksText;
         }
     }
@@ -2203,13 +2163,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      *         event or was rejected by validation
      */
     private WeatherEvent tryParseWeatherEvent(Matcher matcher, String fallbackWeatherCode) {
+        String matchedText = matcher.group();
         try {
             return parseWeatherEventFromExistingPattern(matcher, fallbackWeatherCode);
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid weather event, leaving for freeText: {} ({})",
-                        matcher.group(), e.getMessage());
-            }
+            logRejectedRemark("weather event", matchedText, e);
             return null;
         }
     }
@@ -2494,10 +2452,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return location;
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid thunderstorm location, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("thunderstorm location", matchedText, e);
             return null;
         } catch (RuntimeException e) {
             LOGGER.error("Unexpected error parsing thunderstorm location from '{}'. " +
@@ -2652,10 +2607,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return exceptDirection;
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid except-direction, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("except-direction", matchedText, e);
             return null;
         } catch (RuntimeException e) {
             LOGGER.error("Unexpected error parsing except-direction from '{}'. " +
@@ -2713,10 +2665,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 matcher = new LightningMatcher(remaining);
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid lightning remark, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("lightning remark", matchedText, e);
                 break; // rejected: leave for freeText
             }
         }
@@ -2822,10 +2771,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid pressure tendency, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("pressure tendency", matchedText, e);
             }
         }
 
@@ -2885,10 +2831,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid pressure rapid change, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("pressure rapid change", matchedText, e);
             }
         }
 
@@ -2932,10 +2875,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid icing remark, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("icing remark", matchedText, e);
             }
         }
 
@@ -3003,10 +2943,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return true;
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid secondary altimeter, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("secondary altimeter", matchedText, e);
             return false;
         }
     }
@@ -3045,10 +2982,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 matcher = TEMP_6HR_MAX_MIN_PATTERN.matcher(remaining);
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid 6-hour max/min temperature, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("6-hour max/min temperature", matchedText, e);
                 break; // rejected: leave for freeText rather than re-matching it forever
             }
         }
@@ -3144,10 +3078,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid 24-hour max/min temperature, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("24-hour max/min temperature", matchedText, e);
             }
         }
 
@@ -3236,10 +3167,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid variable ceiling, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("variable ceiling", matchedText, e);
             }
         }
 
@@ -3286,10 +3214,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 remaining = remaining.substring(matcher.end()).trim();
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid ceiling second site, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("ceiling second site", matchedText, e);
             }
         }
 
@@ -3335,10 +3260,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 matcher = OBSCURATION_PATTERN.matcher(remaining);
 
             } catch (IllegalArgumentException e) {
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Invalid obscuration layer, leaving for freeText: {} ({})",
-                            matchedText, e.getMessage());
-                }
+                logRejectedRemark("obscuration layer", matchedText, e);
                 break; // rejected: leave for freeText rather than re-matching it forever
             }
         }
@@ -3568,10 +3490,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return true;
 
         } catch (IllegalArgumentException e) {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug("Invalid automated maintenance indicator, leaving for freeText: {} ({})",
-                        matchedText, e.getMessage());
-            }
+            logRejectedRemark("automated maintenance indicator", matchedText, e);
             return false;
         }
     }
