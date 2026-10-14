@@ -11213,6 +11213,8 @@ class NoaaMetarParserTest {
             "'SFC VIS 1/2SM',        'Surface visibility with a unit suffix (pattern rejects)'",
             "'TWR VIS 1/0',          'Zero denominator (previously stored as infinity)'",
             "'VIS 1/0V2',            'Variable visibility with a zero denominator'",
+            "'VIS 1V1/0',            'Variable visibility: maximum has zero denominator'",
+            "'TWR VIS 1 1/0',        'Tower visibility: mixed number with zero denominator'",
             "P00151,                 'Hourly precipitation with a trailing digit (pattern rejects)'",
             "7012345,                '24-hour precipitation with too many digits (pattern rejects)'",
             "600,                    'Too few digits for a 6-hour precipitation group (pattern rejects)'",
@@ -11408,6 +11410,26 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText())
                 .as("Known gap: only the size reaches freeText; flip to 'GR 0' when the follow-up lands")
                 .isEqualTo("0");
+    }
+
+    @Test
+    @DisplayName("Known gap (#129): unparseable hail size is left in place, but GR is claimed by directional weather")
+    void knownGap_UnparseableHailSizeLosesGrToDirectionalWeather() {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1/0 SLP210";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        // #115: the hail handler takes the null path (1/0 has a zero denominator) and leaves the text in place
+        assertThat(data.getRemarks().hailSize()).isNull();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+
+        // #129: GR is then claimed by directional weather, so only the size reaches freeText.
+        // When #129 is fixed, freeText should be "GR 1/0" and directionalWeather null.
+        assertThat(data.getRemarks().directionalWeather()).isNotNull();
+        assertThat(data.getRemarks().freeText()).isEqualTo("1/0");
     }
 
     @Test
