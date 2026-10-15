@@ -16,6 +16,8 @@
  */
 package weather.model.enums;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Depth of runway deposit (e_R e_R), the third and fourth characters of a
  * runway state group ({@code Rdd/ERCReeBB}).
@@ -67,14 +69,20 @@ public enum DepthOfDeposit {
      *
      * @param code "00"-"90", "92"-"99", or "//"
      * @return the corresponding DepthOfDeposit
-     * @throws IllegalArgumentException if code is "91" (not used) or not a recognized value
+     * @throws IllegalArgumentException    if code is null (programming error)
+     * @throws InvalidObservationException if code is "91" (not used) or not a recognized value
      */
     public static DepthOfDeposit fromCode(String code) {
+        if (code == null) {
+            throw new IllegalArgumentException("Runway deposit depth code cannot be null");
+        }
+
         if (NOT_SIGNIFICANT.code.equals(code)) {
             return NOT_SIGNIFICANT;
         }
-        if (code == null || !code.matches("\\d{2}") || UNUSED_CODE.equals(code)) {
-            throw new IllegalArgumentException("Invalid runway deposit depth code: " + code);
+
+        if (!code.matches("\\d{2}") || UNUSED_CODE.equals(code)) {
+            throw new InvalidObservationException("DepthOfDeposit.code", code, "Invalid runway deposit depth code");
         }
         int value = Integer.parseInt(code);
         if (value >= 1 && value <= MAX_MILLIMETRE_CODE) {
@@ -85,7 +93,8 @@ public enum DepthOfDeposit {
                 return depth;
             }
         }
-        throw new IllegalArgumentException("Invalid runway deposit depth code: " + code);
+        // Unreachable while every non-millimetre two-digit code has a constant; kept as a guard.
+        throw new InvalidObservationException("DepthOfDeposit.code", code, "Invalid runway deposit depth code");
     }
 
     /**

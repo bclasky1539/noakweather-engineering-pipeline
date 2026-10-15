@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,8 +55,16 @@ class RunwayStateEnumsTest {
     @DisplayName("RunwayDeposit should reject undefined codes")
     void testRunwayDepositInvalid(String code) {
         assertThatThrownBy(() -> RunwayDeposit.fromCode(code))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid runway deposit code");
+    }
+
+    @Test
+    @DisplayName("RunwayDeposit should reject null as a programming error, not a domain rejection")
+    void testRunwayDepositNull() {
+        assertThatThrownBy(() -> RunwayDeposit.fromCode(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class);
     }
 
     // ========== RunwayContaminationExtent ==========
@@ -73,8 +82,16 @@ class RunwayStateEnumsTest {
     @DisplayName("RunwayContaminationExtent should reject undefined codes")
     void testExtentInvalid(String code) {
         assertThatThrownBy(() -> RunwayContaminationExtent.fromCode(code))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid runway contamination extent code");
+    }
+
+    @Test
+    @DisplayName("RunwayContaminationExtent should reject null as a programming error, not a domain rejection")
+    void testExtentNull() {
+        assertThatThrownBy(() -> RunwayContaminationExtent.fromCode(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class);
     }
 
     // ========== DepthOfDeposit ==========
@@ -117,7 +134,7 @@ class RunwayStateEnumsTest {
     @DisplayName("DepthOfDeposit should reject undefined codes including 91 (not used)")
     void testDepthInvalid(String code) {
         assertThatThrownBy(() -> DepthOfDeposit.fromCode(code))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid runway deposit depth code");
     }
 
@@ -125,7 +142,8 @@ class RunwayStateEnumsTest {
     @DisplayName("DepthOfDeposit should reject null")
     void testDepthNull() {
         assertThatThrownBy(() -> DepthOfDeposit.fromCode(null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class);
     }
 
     @Test
@@ -186,15 +204,16 @@ class RunwayStateEnumsTest {
     @DisplayName("FrictionCoefficient should reject undefined codes")
     void testFrictionInvalid(String code) {
         assertThatThrownBy(() -> FrictionCoefficient.fromCode(code))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid runway friction code");
     }
 
     @Test
-    @DisplayName("FrictionCoefficient should reject null")
+    @DisplayName("FrictionCoefficient should reject null as a programming error, not a domain rejection")
     void testFrictionNull() {
         assertThatThrownBy(() -> FrictionCoefficient.fromCode(null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class);
     }
 
     @ParameterizedTest
