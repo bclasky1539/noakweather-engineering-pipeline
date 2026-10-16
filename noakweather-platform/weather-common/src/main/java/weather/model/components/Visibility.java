@@ -77,7 +77,7 @@ public record Visibility(
     public static final double VFR_MINIMUM_SM = 3.0;
 
     /**
-     * 3.0
+     * IFR threshold in statute miles (IFR is visibility below this value)
      */
     public static final double IFR_MAXIMUM_SM = 3.0;
 
@@ -247,27 +247,33 @@ public record Visibility(
     }
 
     /**
+     * Check whether visibility is below a statute-mile threshold.
+     * <p>
+     * CAVOK and other special conditions have no distance, so they are never below.
+     * A "less than" value (e.g. M1/4SM) is always treated as below, whatever the threshold.
+     *
+     * @param thresholdSm threshold in statute miles
+     * @return true if visibility is below the threshold
+     */
+    private boolean isBelowStatuteMiles(double thresholdSm) {
+        Double sm = toStatuteMiles();
+        if (sm == null) {
+            return false;
+        }
+        if (lessThan) {
+            return true;
+        }
+        return sm < thresholdSm;
+    }
+
+    /**
      * Check if visibility is IFR (Instrument Flight Rules) conditions.
      * IFR is visibility less than 3 statute miles.
      *
      * @return true if visibility is IFR conditions
      */
     public boolean isIFR() {
-        if (isCavok()) {
-            return false;
-        }
-
-        Double sm = toStatuteMiles();
-        if (sm == null) {
-            return false;
-        }
-
-        // If it's "less than" any value <= IFR max, it's IFR
-        if (lessThan) {
-            return true;
-        }
-
-        return sm < IFR_MAXIMUM_SM;
+        return isBelowStatuteMiles(IFR_MAXIMUM_SM);
     }
 
     /**
@@ -276,21 +282,7 @@ public record Visibility(
      * @return true if visibility is low
      */
     public boolean isLowVisibility() {
-        if (isCavok()) {
-            return false;
-        }
-
-        Double sm = toStatuteMiles();
-        if (sm == null) {
-            return false;
-        }
-
-        // If it's "less than" any value, it's definitely low
-        if (lessThan) {
-            return true;
-        }
-
-        return sm < LOW_VISIBILITY_SM;
+        return isBelowStatuteMiles(LOW_VISIBILITY_SM);
     }
 
     // ==================== Conversion Methods ====================
