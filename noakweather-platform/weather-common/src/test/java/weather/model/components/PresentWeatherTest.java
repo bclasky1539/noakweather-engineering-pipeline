@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -43,6 +44,7 @@ class PresentWeatherTest {
             assertThatThrownBy(() ->
                     new PresentWeather(null, null, null, null, null, null)
             ).isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Raw weather code cannot be null or blank");
         }
 
@@ -52,6 +54,7 @@ class PresentWeatherTest {
             assertThatThrownBy(() ->
                     new PresentWeather(null, null, null, null, null, "   ")
             ).isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Raw weather code cannot be null or blank");
         }
 
@@ -402,6 +405,7 @@ class PresentWeatherTest {
         void testOfNull() {
             assertThatThrownBy(() -> PresentWeather.of(null))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Raw code cannot be null or blank");
         }
 
@@ -410,6 +414,7 @@ class PresentWeatherTest {
         void testOfBlank() {
             assertThatThrownBy(() -> PresentWeather.of("   "))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Raw code cannot be null or blank");
         }
     }
@@ -619,6 +624,7 @@ class PresentWeatherTest {
         void testParseNull() {
             assertThatThrownBy(() -> PresentWeather.parse(null))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Weather code cannot be null or blank");
         }
 
@@ -627,6 +633,7 @@ class PresentWeatherTest {
         void testParseBlank() {
             assertThatThrownBy(() -> PresentWeather.parse("   "))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Weather code cannot be null or blank");
         }
 
@@ -690,6 +697,16 @@ class PresentWeatherTest {
             assertThat(weather.descriptor()).isEqualTo("TS");
             assertThat(weather.precipitation()).isEqualTo("RA");
             assertThat(weather.obscuration()).isEqualTo("FG");
+        }
+
+        @Test
+        @DisplayName("Should keep unrecognised text as other instead of rejecting it")
+        void testParseUnrecognisedRemainderKeptAsOther() {
+            PresentWeather weather = PresentWeather.parse("-RAXX");
+
+            assertThat(weather.intensity()).isEqualTo("-");
+            assertThat(weather.precipitation()).isEqualTo("RA");
+            assertThat(weather.other()).isEqualTo("XX");
         }
     }
 }

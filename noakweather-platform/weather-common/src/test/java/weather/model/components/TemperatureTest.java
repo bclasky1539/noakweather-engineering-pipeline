@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025=2026 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -89,14 +90,16 @@ class TemperatureTest {
         @Test
         void testInvalidTemperature_TooHigh() {
             assertThatThrownBy(() -> Temperature.ofCurrent(61.0, 10.0))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Temperature out of reasonable range");
+                    .isInstanceOf(InvalidObservationException.class)
+                    .hasMessageContaining("Temperature out of reasonable range")
+                    .hasFieldOrPropertyWithValue("component", "Temperature.celsius")
+                    .hasFieldOrPropertyWithValue("rejectedValue", "61.0");
         }
 
         @Test
         void testInvalidTemperature_TooLow() {
             assertThatThrownBy(() -> Temperature.ofCurrent(-101.0, 10.0))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Temperature out of reasonable range");
         }
 
@@ -104,7 +107,7 @@ class TemperatureTest {
         @ValueSource(doubles = {-150.0, -101.0, 60.1, 70.0, 100.0})
         void testInvalidTemperatureValues(double invalidTemp) {
             assertThatThrownBy(() -> Temperature.ofCurrent(invalidTemp, null))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Temperature out of reasonable range");
         }
     }
@@ -117,22 +120,22 @@ class TemperatureTest {
         @Test
         void testInvalidDewpoint_TooHigh() {
             assertThatThrownBy(() -> Temperature.ofCurrent(20.0, 61.0))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Dewpoint out of reasonable range");
         }
 
         @Test
         void testInvalidDewpoint_TooLow() {
             assertThatThrownBy(() -> Temperature.ofCurrent(20.0, -101.0))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Dewpoint out of reasonable range");
         }
 
         @Test
         void testInvalidDewpoint_HigherThanTemperature() {
             assertThatThrownBy(() -> Temperature.ofCurrent(20.0, 25.0))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Dewpoint (25.0°C) cannot be higher than temperature (20.0°C)");
+                    .isInstanceOf(InvalidObservationException.class)
+                    .hasMessageContaining("Dewpoint cannot be higher than temperature (20.0°C): 25.0");
         }
 
         @Test
@@ -152,7 +155,7 @@ class TemperatureTest {
         })
         void testInvalidDewpoint_HigherThanTemp_Various(double temp, double dewpoint) {
             assertThatThrownBy(() -> Temperature.ofCurrent(temp, dewpoint))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("cannot be higher than temperature");
         }
     }
@@ -1139,6 +1142,7 @@ class TemperatureTest {
         void testValidateForecastHasTimes_MaxWithoutTime() {
             assertThatThrownBy(() -> Temperature.ofMax(30.0, null))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Forecast max temperature")
                     .hasMessageContaining("must have corresponding occurrence time");
         }
@@ -1147,6 +1151,7 @@ class TemperatureTest {
         void testValidateForecastHasTimes_MinWithoutTime() {
             assertThatThrownBy(() -> Temperature.ofMin(5.0, null))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Forecast min temperature")
                     .hasMessageContaining("must have corresponding occurrence time");
         }
@@ -1176,7 +1181,7 @@ class TemperatureTest {
             java.time.Instant minTime = java.time.Instant.parse("2024-03-15T06:00:00Z");
 
             assertThatThrownBy(() -> Temperature.ofForecast(5.0, maxTime, 30.0, minTime))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Minimum temperature")
                     .hasMessageContaining("cannot be higher than maximum");
         }

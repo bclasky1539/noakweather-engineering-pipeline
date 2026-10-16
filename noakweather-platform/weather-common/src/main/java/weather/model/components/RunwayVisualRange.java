@@ -16,6 +16,7 @@
  */
 package weather.model.components;
 
+import weather.exception.InvalidObservationException;
 import weather.utils.ValidationPatterns;
 
 /**
@@ -103,9 +104,10 @@ public record RunwayVisualRange(
         // Runway format: 01-36 optionally followed by L/C/R
         String trimmed = runway.trim().toUpperCase();
         if (!ValidationPatterns.RUNWAY_IDENTIFIER.matcher(trimmed).matches()) {
-            throw new IllegalArgumentException(
-                    "Invalid runway identifier format: " + runway +
-                            " (expected format: 01-36 optionally followed by L, C, or R)"
+            throw new InvalidObservationException(
+                    "RunwayVisualRange.runway",
+                    runway,
+                    "Invalid runway identifier format (expected format: 01-36 optionally followed by L, C, or R)"
             );
         }
     }
@@ -123,7 +125,8 @@ public record RunwayVisualRange(
 
         // Validate visual range if present
         if (visualRange != null && visualRange < 0) {
-            throw new IllegalArgumentException("Visual range cannot be negative: " + visualRange);
+            throw new InvalidObservationException(
+                    "RunwayVisualRange.visualRangeFeet", String.valueOf(visualRange), "Visual range cannot be negative");
         }
 
         // Validate variable range if present
@@ -143,16 +146,20 @@ public record RunwayVisualRange(
         }
 
         if (varLow < 0) {
-            throw new IllegalArgumentException("Variable low cannot be negative: " + varLow);
+            throw new InvalidObservationException(
+                    "RunwayVisualRange.variableLow", String.valueOf(varLow), "Variable low cannot be negative");
         }
 
         if (varHigh < 0) {
-            throw new IllegalArgumentException("Variable high cannot be negative: " + varHigh);
+            throw new InvalidObservationException(
+                    "RunwayVisualRange.variableHigh", String.valueOf(varHigh), "Variable high cannot be negative");
         }
 
         if (varLow > varHigh) {
-            throw new IllegalArgumentException(
-                    "Variable low (" + varLow + ") must be less than variable high (" + varHigh + ")"
+            throw new InvalidObservationException(
+                    "RunwayVisualRange.variableLow",
+                    String.valueOf(varLow),
+                    "Variable low cannot be greater than variable high (" + varHigh + ")"
             );
         }
     }
@@ -164,8 +171,8 @@ public record RunwayVisualRange(
         if (prefix != null && !prefix.isBlank()) {
             String upper = prefix.trim().toUpperCase();
             if (!upper.equals("P") && !upper.equals("M")) {
-                throw new IllegalArgumentException(
-                        "Invalid prefix: " + prefix + " (valid values: P, M, or null)"
+                throw new InvalidObservationException(
+                        "RunwayVisualRange.prefix", prefix, "Invalid prefix (valid values: P, M)"
                 );
             }
         }
@@ -178,8 +185,8 @@ public record RunwayVisualRange(
         if (trend != null && !trend.isBlank()) {
             String upper = trend.trim().toUpperCase();
             if (!upper.equals("D") && !upper.equals("N") && !upper.equals("U")) {
-                throw new IllegalArgumentException(
-                        "Invalid trend: " + trend + " (valid values: D, N, U, or null)"
+                throw new InvalidObservationException(
+                        "RunwayVisualRange.trend", trend, "Invalid trend (valid values: D, N, U)"
                 );
             }
         }

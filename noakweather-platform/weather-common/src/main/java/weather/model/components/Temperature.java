@@ -16,6 +16,8 @@
  */
 package weather.model.components;
 
+import weather.exception.InvalidObservationException;
+
 import java.time.Instant;
 
 /**
@@ -38,13 +40,12 @@ import java.time.Instant;
  * - METAR "M05/M12" → Temperature(-5.0, -12.0, null, null, null, null)
  * - TAF "TX15/1518Z TN05/1510Z" → Temperature(null, null, 15.0, instant1518Z, 5.0, instant1510Z)
  *
- * @param celsius Temperature in degrees Celsius (current observation)
+ * @param celsius         Temperature in degrees Celsius (current observation)
  * @param dewpointCelsius Dewpoint temperature in degrees Celsius (current observation)
- * @param maxCelsius Maximum forecast temperature in degrees Celsius (TAF)
- * @param maxTime Time when maximum temperature is forecast to occur (TAF)
- * @param minCelsius Minimum forecast temperature in degrees Celsius (TAF)
- * @param minTime Time when minimum temperature is forecast to occur (TAF)
- *
+ * @param maxCelsius      Maximum forecast temperature in degrees Celsius (TAF)
+ * @param maxTime         Time when maximum temperature is forecast to occur (TAF)
+ * @param minCelsius      Minimum forecast temperature in degrees Celsius (TAF)
+ * @param minTime         Time when minimum temperature is forecast to occur (TAF)
  * @author bclasky1539
  *
  */
@@ -59,41 +60,65 @@ public record Temperature(
 
     // ==================== Constants ====================
 
-    /** Minimum reasonable temperature in Celsius (Antarctic record: -89.2°C) */
+    /**
+     * Minimum reasonable temperature in Celsius (Antarctic record: -89.2°C)
+     */
     public static final double MIN_TEMPERATURE_CELSIUS = -100.0;
 
-    /** Maximum reasonable temperature in Celsius (Death Valley record: 56.7°C) */
+    /**
+     * Maximum reasonable temperature in Celsius (Death Valley record: 56.7°C)
+     */
     public static final double MAX_TEMPERATURE_CELSIUS = 60.0;
 
-    /** Minimum reasonable dewpoint in Celsius */
+    /**
+     * Minimum reasonable dewpoint in Celsius
+     */
     public static final double MIN_DEWPOINT_CELSIUS = -100.0;
 
-    /** Maximum reasonable dewpoint in Celsius */
+    /**
+     * Maximum reasonable dewpoint in Celsius
+     */
     public static final double MAX_DEWPOINT_CELSIUS = 60.0;
 
-    /** Fog likely threshold - temperature-dewpoint spread in °C */
+    /**
+     * Fog likely threshold - temperature-dewpoint spread in °C
+     */
     public static final double FOG_THRESHOLD_CELSIUS = 2.0;
 
-    /** Freezing point in Celsius */
+    /**
+     * Freezing point in Celsius
+     */
     public static final double FREEZING_POINT_CELSIUS = 0.0;
 
-    /** Freezing point in Fahrenheit */
+    /**
+     * Freezing point in Fahrenheit
+     */
     public static final double FREEZING_POINT_FAHRENHEIT = 32.0;
 
-    /** Fahrenheit to Celsius conversion factor (5/9) */
+    /**
+     * Fahrenheit to Celsius conversion factor (5/9)
+     */
     public static final double FAHRENHEIT_TO_CELSIUS_FACTOR = 5.0 / 9.0;
 
-    /** Celsius to Fahrenheit conversion factor (9/5) */
+    /**
+     * Celsius to Fahrenheit conversion factor (9/5)
+     */
     public static final double CELSIUS_TO_FAHRENHEIT_FACTOR = 9.0 / 5.0;
 
     // Constants for August-Roche-Magnus approximation (WMO recommended)
-    /** Magnus formula constant a */
+    /**
+     * Magnus formula constant a
+     */
     private static final double MAGNUS_A = 17.67;
 
-    /** Magnus formula constant b in °C */
+    /**
+     * Magnus formula constant b in °C
+     */
     private static final double MAGNUS_B = 243.5;
 
-    /** Base saturation vapor pressure in hPa */
+    /**
+     * Base saturation vapor pressure in hPa
+     */
     private static final double MAGNUS_E0 = 6.112;
 
     /**
@@ -102,13 +127,13 @@ public record Temperature(
      */
     public Temperature {
         // Validate current observation temperatures
-        validateTemperature(celsius, "Temperature");
+        validateTemperature(celsius, "Temperature", "celsius");
         validateDewpoint(dewpointCelsius);
         validateDewpointNotHigherThanTemp(celsius, dewpointCelsius);
 
         // Validate forecast temperatures
-        validateTemperature(maxCelsius, "Max temperature");
-        validateTemperature(minCelsius, "Min temperature");
+        validateTemperature(maxCelsius, "Max temperature", "maxCelsius");
+        validateTemperature(minCelsius, "Min temperature", "minCelsius");
         validateMinNotHigherThanMax(maxCelsius, minCelsius);
 
         // Validate that max/min have corresponding times if present
@@ -120,13 +145,15 @@ public record Temperature(
 
     /**
      * Validate that temperature is within reasonable range.
+     *
+     * @param temp      the temperature to check
+     * @param fieldName display name used in the message (e.g. "Max temperature")
+     * @param fieldId   record field name used as the component (e.g. "maxCelsius")
      */
-    private static void validateTemperature(Double temp, String fieldName) {
+    private static void validateTemperature(Double temp, String fieldName, String fieldId) {
         if (temp != null && (temp < MIN_TEMPERATURE_CELSIUS || temp > MAX_TEMPERATURE_CELSIUS)) {
-            throw new IllegalArgumentException(
-                    fieldName + " out of reasonable range (" + MIN_TEMPERATURE_CELSIUS +
-                            " to " + MAX_TEMPERATURE_CELSIUS + "°C): " + temp
-            );
+            throw new InvalidObservationException("Temperature." + fieldId, String.valueOf(temp),
+                    fieldName + " out of reasonable range (" + MIN_TEMPERATURE_CELSIUS + " to " + MAX_TEMPERATURE_CELSIUS + "°C)");
         }
     }
 
@@ -135,10 +162,9 @@ public record Temperature(
      */
     private static void validateDewpoint(Double dewpoint) {
         if (dewpoint != null && (dewpoint < MIN_DEWPOINT_CELSIUS || dewpoint > MAX_DEWPOINT_CELSIUS)) {
-            throw new IllegalArgumentException(
+            throw new InvalidObservationException("Temperature.dewpointCelsius", String.valueOf(dewpoint),
                     "Dewpoint out of reasonable range (" + MIN_DEWPOINT_CELSIUS +
-                            " to " + MAX_DEWPOINT_CELSIUS + "°C): " + dewpoint
-            );
+                            " to " + MAX_DEWPOINT_CELSIUS + "°C)");
         }
     }
 
@@ -148,9 +174,8 @@ public record Temperature(
      */
     private static void validateDewpointNotHigherThanTemp(Double temp, Double dewpoint) {
         if (temp != null && dewpoint != null && dewpoint > temp) {
-            throw new IllegalArgumentException(
-                    "Dewpoint (" + dewpoint + "°C) cannot be higher than temperature (" + temp + "°C)"
-            );
+            throw new InvalidObservationException("Temperature.dewpointCelsius", String.valueOf(dewpoint),
+                    "Dewpoint cannot be higher than temperature (" + temp + "°C)");
         }
     }
 
@@ -159,9 +184,8 @@ public record Temperature(
      */
     private static void validateMinNotHigherThanMax(Double max, Double min) {
         if (max != null && min != null && min > max) {
-            throw new IllegalArgumentException(
-                    "Minimum temperature (" + min + "°C) cannot be higher than maximum (" + max + "°C)"
-            );
+            throw new InvalidObservationException("Temperature.minCelsius", String.valueOf(min),
+                    "Minimum temperature cannot be higher than maximum (" + max + "°C)");
         }
     }
 
@@ -489,8 +513,8 @@ public record Temperature(
      * Calculate heat index using the Rothfusz regression equation.
      * <p>
      * HI = -42.379 + 2.04901523*T + 10.14333127*RH - 0.22475541*T*RH
-     *      - 0.00683783*T*T - 0.05481717*RH*RH + 0.00122874*T*T*RH
-     *      + 0.00085282*T*RH*RH - 0.00000199*T*T*RH*RH
+     * - 0.00683783*T*T - 0.05481717*RH*RH + 0.00122874*T*T*RH
+     * + 0.00085282*T*RH*RH - 0.00000199*T*T*RH*RH
      *
      * @param tf Temperature in Fahrenheit
      * @param rh Relative humidity in percent
@@ -619,7 +643,7 @@ public record Temperature(
     /**
      * Factory method for current observation (METAR).
      *
-     * @param celsius Temperature in Celsius
+     * @param celsius         Temperature in Celsius
      * @param dewpointCelsius Dewpoint in Celsius
      * @return Temperature instance for current observation
      */
@@ -631,7 +655,7 @@ public record Temperature(
      * Factory method for forecast max temperature (TAF).
      *
      * @param maxCelsius Maximum temperature in Celsius
-     * @param maxTime Time when maximum occurs
+     * @param maxTime    Time when maximum occurs
      * @return Temperature instance for forecast max
      */
     public static Temperature ofMax(double maxCelsius, Instant maxTime) {
@@ -642,7 +666,7 @@ public record Temperature(
      * Factory method for forecast min temperature (TAF).
      *
      * @param minCelsius Minimum temperature in Celsius
-     * @param minTime Time when minimum occurs
+     * @param minTime    Time when minimum occurs
      * @return Temperature instance for forecast min
      */
     public static Temperature ofMin(double minCelsius, Instant minTime) {
@@ -653,9 +677,9 @@ public record Temperature(
      * Factory method for forecast max and min temperatures (TAF).
      *
      * @param maxCelsius Maximum temperature in Celsius
-     * @param maxTime Time when maximum occurs
+     * @param maxTime    Time when maximum occurs
      * @param minCelsius Minimum temperature in Celsius
-     * @param minTime Time when minimum occurs
+     * @param minTime    Time when minimum occurs
      * @return Temperature instance for forecast max/min
      */
     public static Temperature ofForecast(double maxCelsius, Instant maxTime,
@@ -666,7 +690,7 @@ public record Temperature(
     /**
      * Factory method from Fahrenheit values (current observation).
      *
-     * @param fahrenheit Temperature in Fahrenheit
+     * @param fahrenheit         Temperature in Fahrenheit
      * @param dewpointFahrenheit Dewpoint in Fahrenheit, null if not reported
      * @return Temperature instance with values converted to Celsius
      */
@@ -681,7 +705,7 @@ public record Temperature(
     /**
      * Factory method from Kelvin values (current observation).
      *
-     * @param kelvin Temperature in Kelvin
+     * @param kelvin         Temperature in Kelvin
      * @param dewpointKelvin Dewpoint in Kelvin, null if not reported
      * @return Temperature instance with values converted to Celsius
      */
@@ -704,7 +728,7 @@ public record Temperature(
     /**
      * Factory method for temperature and dewpoint - current observation.
      *
-     * @param celsius Temperature in Celsius
+     * @param celsius         Temperature in Celsius
      * @param dewpointCelsius Dewpoint in Celsius
      * @return Temperature instance
      */

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -74,7 +74,8 @@ public record PresentWeather(
      *
      * @param rawCode the weather code to parse
      * @return parsed PresentWeather object
-     * @throws IllegalArgumentException if rawCode is invalid
+     * @throws IllegalArgumentException if rawCode is null or blank (programming error).
+     *                                  Unrecognised text is not rejected: any unparsed remainder is kept as {@code other}.
      */
     public static PresentWeather parse(String rawCode) {
         if (rawCode == null || rawCode.isBlank()) {
