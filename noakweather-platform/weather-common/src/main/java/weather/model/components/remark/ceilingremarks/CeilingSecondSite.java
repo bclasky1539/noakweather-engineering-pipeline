@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,19 @@
  */
 package weather.model.components.remark.ceilingremarks;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Represents ceiling height at a second observation site.
  * Format: CIG height [LOC] where height is in hundreds of feet.
- *
+ * <p>
  * Examples:
  * - CIG 002 RY11 → Ceiling 200 ft at runway 11
  * - CIG 005 RWY06 → Ceiling 500 ft at runway 06
  * - CIG 010 → Ceiling 1000 ft (location unspecified)
  *
  * @param heightFeet ceiling height in feet
- * @param location optional location identifier (e.g., "RY11", "RWY06", "TWR")
- *
+ * @param location   optional location identifier (e.g., "RY11", "RWY06", "TWR")
  * @author bclasky1539
  *
  */
@@ -41,7 +42,8 @@ public record CeilingSecondSite(
      */
     public CeilingSecondSite {
         if (heightFeet < 0) {
-            throw new IllegalArgumentException("Ceiling height cannot be negative");
+            throw new InvalidObservationException(
+                    "CeilingSecondSite.heightFeet", String.valueOf(heightFeet), "Ceiling height cannot be negative");
         }
     }
 
@@ -51,7 +53,7 @@ public record CeilingSecondSite(
      * @param hundreds ceiling in hundreds of feet (e.g., 002 = 200 ft)
      * @param location optional location identifier (can be null)
      * @return CeilingSecondSite instance
-     * @throws IllegalArgumentException if height is negative
+     * @throws InvalidObservationException if height is negative
      */
     public static CeilingSecondSite fromHundreds(int hundreds, String location) {
         int heightFeet = hundreds * 100;

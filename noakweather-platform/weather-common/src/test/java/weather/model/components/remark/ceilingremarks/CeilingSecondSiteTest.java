@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package weather.model.components.remark.ceilingremarks;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -128,8 +129,10 @@ class CeilingSecondSiteTest {
     @DisplayName("Should reject negative height")
     void testRejectNegativeHeight() {
         assertThatThrownBy(() -> new CeilingSecondSite(-100, "RY11"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Ceiling height cannot be negative");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Ceiling height cannot be negative: -100")
+                .hasFieldOrPropertyWithValue("component", "CeilingSecondSite.heightFeet")
+                .hasFieldOrPropertyWithValue("rejectedValue", "-100");
     }
 
     @Test
