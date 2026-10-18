@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,9 +16,11 @@
  */
 package weather.model.components.remark.maintenanceremarks;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Represents an automated maintenance indicator from METAR remarks.
- *
+ * <p>
  * These indicators show equipment or sensor failures at automated weather stations.
  * Examples include:
  * - RVRNO: RVR (Runway Visual Range) missing
@@ -30,9 +32,8 @@ package weather.model.components.remark.maintenanceremarks;
  * - CHINO [LOC]: Cloud height indicator at location not available (e.g., CHINO RWY06)
  * - $: Station requires maintenance check
  *
- * @param type the maintenance indicator type (RVRNO, PWINO, etc., or $)
+ * @param type     the maintenance indicator type (RVRNO, PWINO, etc., or $)
  * @param location optional location specifier (e.g., RWY06) - only for VISNO and CHINO
- *
  * @author bclasky1539
  *
  */
@@ -69,7 +70,7 @@ public record AutomatedMaintenanceIndicator(
      *
      * @param type the type to validate
      * @return normalized type (uppercase, trimmed)
-     * @throws IllegalArgumentException if type is invalid
+     * @throws InvalidObservationException if type is invalid
      */
     private static String validateAndNormalizeType(String type) {
         if (type == null || type.isBlank()) {
@@ -84,7 +85,10 @@ public record AutomatedMaintenanceIndicator(
             }
         }
 
-        throw new IllegalArgumentException("Invalid maintenance indicator type: " + type);
+        throw new InvalidObservationException(
+                "AutomatedMaintenanceIndicator.type",
+                type,
+                "Invalid maintenance indicator type (valid types: " + String.join(", ", VALID_TYPES) + ")");
     }
 
     /**
@@ -238,7 +242,7 @@ public record AutomatedMaintenanceIndicator(
     /**
      * Factory method for maintenance indicator with location.
      *
-     * @param type the indicator type
+     * @param type     the indicator type
      * @param location the location specifier
      * @return new AutomatedMaintenanceIndicator
      */
