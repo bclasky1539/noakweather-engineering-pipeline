@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package weather.model.components.remark.windremarks;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import weather.exception.InvalidObservationException;
 import weather.model.components.Wind;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +61,7 @@ class WindAtLocationTest {
 
         assertThatThrownBy(() -> new WindAtLocation(null, null, wind))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Either heightFeet or runway must be provided");
     }
 
@@ -70,6 +72,7 @@ class WindAtLocationTest {
 
         assertThatThrownBy(() -> new WindAtLocation(null, "   ", wind))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Either heightFeet or runway must be provided");
     }
 
@@ -80,6 +83,7 @@ class WindAtLocationTest {
 
         assertThatThrownBy(() -> new WindAtLocation(1400, "26", wind))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Cannot specify both heightFeet and runway");
     }
 
@@ -88,6 +92,7 @@ class WindAtLocationTest {
     void testConstructor_NullWind_Throws() {
         assertThatThrownBy(() -> new WindAtLocation(1400, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Wind cannot be null");
     }
 

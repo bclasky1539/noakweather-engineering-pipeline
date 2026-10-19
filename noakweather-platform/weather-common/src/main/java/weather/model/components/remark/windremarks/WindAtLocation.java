@@ -1,3 +1,19 @@
+/*
+ * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
+ * Copyright (C) 2025-2026 bclasky1539
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package weather.model.components.remark.windremarks;
 
 import weather.model.components.Wind;
@@ -21,11 +37,7 @@ import weather.model.components.Wind;
  * @author bclasky1539
  *
  */
-public record WindAtLocation(
-        Integer heightFeet,
-        String runway,
-        Wind wind
-) {
+public record WindAtLocation(Integer heightFeet, String runway, Wind wind) {
 
     /**
      * Compact constructor with validation.
@@ -77,7 +89,7 @@ public record WindAtLocation(
      * Factory method for a wind reading at a specific altitude.
      *
      * @param heightFeet altitude in feet
-     * @param wind wind conditions at that altitude
+     * @param wind       wind conditions at that altitude
      * @return WindAtLocation instance representing an altitude-based reading
      */
     public static WindAtLocation atAltitude(int heightFeet, Wind wind) {
@@ -88,7 +100,7 @@ public record WindAtLocation(
      * Factory method for a wind reading at a specific runway.
      *
      * @param runway runway designator (e.g. "26")
-     * @param wind wind conditions at that runway
+     * @param wind   wind conditions at that runway
      * @return WindAtLocation instance representing a runway-based reading
      */
     public static WindAtLocation atRunway(String runway, Wind wind) {
