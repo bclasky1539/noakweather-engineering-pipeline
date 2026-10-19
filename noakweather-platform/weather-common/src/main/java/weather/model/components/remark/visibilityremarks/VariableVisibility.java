@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,16 @@
  */
 package weather.model.components.remark.visibilityremarks;
 
+import weather.exception.InvalidObservationException;
 import weather.model.components.Visibility;
 
 /**
  * Immutable value object representing variable visibility from remarks section.
- *
+ * <p>
  * Variable visibility reports when visibility is fluctuating between two values.
  * This is coded in remarks as "VIS minVmax" where visibility varies between
  * the minimum and maximum values.
- *
+ * <p>
  * Examples:
  * - "VIS 1/2V2" → Visibility varying from 1/2 to 2 statute miles
  * - "VIS NE 2V4" → Northeast visibility varying from 2 to 4 statute miles
@@ -32,9 +33,8 @@ import weather.model.components.Visibility;
  *
  * @param minimumVisibility Minimum visibility value
  * @param maximumVisibility Maximum visibility value
- * @param direction Optional direction sector (N, NE, E, SE, S, SW, W, NW)
- * @param location Optional location qualifier (RWY for runway, or other sector info)
- *
+ * @param direction         Optional direction sector (N, NE, E, SE, S, SW, W, NW)
+ * @param location          Optional location qualifier (RWY for runway, or other sector info)
  * @author bclasky1539
  *
  */
@@ -44,6 +44,9 @@ public record VariableVisibility(
         String direction,
         String location
 ) {
+
+    // Valid directions: N, NE, E, SE, S, SW, W, NW
+    private static final String[] VALID_DIRECTIONS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
 
     /**
      * Compact constructor with validation.
@@ -87,10 +90,10 @@ public record VariableVisibility(
         Double maxSM = maximumVisibility.toStatuteMiles();
 
         if (minSM != null && maxSM != null && minSM > maxSM) {
-            throw new IllegalArgumentException(
-                    String.format("Minimum visibility (%.2f SM) cannot be greater than maximum (%.2f SM)",
-                            minSM, maxSM)
-            );
+            throw new InvalidObservationException(
+                    "VariableVisibility.minimumVisibility",
+                    String.format("%.2f SM", minSM),
+                    String.format("Minimum visibility cannot be greater than maximum (%.2f SM)", maxSM));
         }
     }
 
@@ -102,21 +105,16 @@ public record VariableVisibility(
             return;
         }
 
-        // Valid directions: N, NE, E, SE, S, SW, W, NW
-        String[] validDirections = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
-        boolean valid = false;
-        for (String validDir : validDirections) {
+        for (String validDir : VALID_DIRECTIONS) {
             if (validDir.equals(direction)) {
-                valid = true;
-                break;
+                return;
             }
         }
 
-        if (!valid) {
-            throw new IllegalArgumentException(
-                    "Invalid direction: " + direction + ". Must be N, NE, E, SE, S, SW, W, or NW"
-            );
-        }
+        throw new InvalidObservationException(
+                "VariableVisibility.direction",
+                direction,
+                "Invalid direction (valid directions: " + String.join(", ", VALID_DIRECTIONS) + ")");
     }
 
     // ==================== Query Methods ====================
@@ -277,8 +275,8 @@ public record VariableVisibility(
     /**
      * Create variable visibility with direction.
      *
-     * @param min Minimum visibility
-     * @param max Maximum visibility
+     * @param min       Minimum visibility
+     * @param max       Maximum visibility
      * @param direction Direction sector (N, NE, E, etc.)
      * @return VariableVisibility instance
      */
@@ -289,8 +287,8 @@ public record VariableVisibility(
     /**
      * Create variable visibility with location.
      *
-     * @param min Minimum visibility
-     * @param max Maximum visibility
+     * @param min      Minimum visibility
+     * @param max      Maximum visibility
      * @param location Location qualifier (e.g., "RWY")
      * @return VariableVisibility instance
      */
