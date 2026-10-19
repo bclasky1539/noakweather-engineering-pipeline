@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,16 +16,17 @@
  */
 package weather.model.components.remark.pressureremarks;
 
+import weather.exception.InvalidObservationException;
 import weather.model.components.Pressure;
 
 /**
  * Immutable value object representing 3-hour pressure tendency from METAR remarks.
- *
+ * <p>
  * Format: 5TCCC where:
  * - 5 = Indicator (always 5)
  * - T = Tendency code (0-8, WMO Code 0200)
  * - CCC = Pressure change in tenths of hPa (3 digits)
- *
+ * <p>
  * WMO Code 0200 - Pressure Tendency Characteristic:
  * - 0 = Increasing, then decreasing
  * - 1 = Increasing, then steady; or increasing more slowly
@@ -36,15 +37,14 @@ import weather.model.components.Pressure;
  * - 6 = Decreasing, then steady; or decreasing more slowly
  * - 7 = Decreasing (steadily or unsteadily)
  * - 8 = Steady or increasing, then decreasing; or decreasing more rapidly
- *
+ * <p>
  * Examples:
  * - "52032" → Increasing then steady, +3.2 hPa
  * - "57045" → Decreasing steadily, -4.5 hPa
  * - "54000" → Steady, 0.0 hPa change
  *
- * @param tendencyCode WMO tendency code (0-8)
+ * @param tendencyCode       WMO tendency code (0-8)
  * @param changeHectopascals Pressure change in hectopascals (can be 0.0)
- *
  * @author bclasky1539
  *
  */
@@ -55,10 +55,14 @@ public record PressureTendency(
 
     // ==================== Constants ====================
 
-    /** Threshold for significant pressure change (3.0 hPa) */
+    /**
+     * Threshold for significant pressure change (3.0 hPa)
+     */
     public static final double SIGNIFICANT_CHANGE_HPA = 3.0;
 
-    /** Threshold for rapid pressure change (6.0 hPa) */
+    /**
+     * Threshold for rapid pressure change (6.0 hPa)
+     */
     public static final double RAPID_CHANGE_HPA = 6.0;
 
     // ==================== Compact Constructor ====================
@@ -82,9 +86,8 @@ public record PressureTendency(
         }
 
         if (code < 0 || code > 8) {
-            throw new IllegalArgumentException(
-                    String.format("Tendency code must be 0-8, got: %d", code)
-            );
+            throw new InvalidObservationException(
+                    "PressureTendency.tendencyCode", String.valueOf(code), "Tendency code must be 0-8");
         }
     }
 
@@ -97,16 +100,14 @@ public record PressureTendency(
         }
 
         if (change < 0.0) {
-            throw new IllegalArgumentException(
-                    String.format("Pressure change cannot be negative, got: %.1f", change)
-            );
+            throw new InvalidObservationException(
+                    "PressureTendency.changeHectopascals", String.valueOf(change), "Pressure change cannot be negative");
         }
 
         // Sanity check: pressure change > 50 hPa in 3 hours is unrealistic
         if (change > 50.0) {
-            throw new IllegalArgumentException(
-                    String.format("Pressure change too large (> 50 hPa), got: %.1f", change)
-            );
+            throw new InvalidObservationException(
+                    "PressureTendency.changeHectopascals", String.valueOf(change), "Pressure change too large (> 50 hPa)");
         }
     }
 
@@ -116,14 +117,17 @@ public record PressureTendency(
      * Factory method to create from METAR remark code.
      *
      * @param tendencyCode WMO tendency code (0-8)
-     * @param changeCode 3-digit code representing tenths of hPa (e.g., "032" = 3.2 hPa)
+     * @param changeCode   3-digit code representing tenths of hPa (e.g., "032" = 3.2 hPa)
      * @return PressureTendency instance
      */
     public static PressureTendency fromMetar(int tendencyCode, String changeCode) {
-        if (changeCode == null || !changeCode.matches("\\d{3}")) {
-            throw new IllegalArgumentException(
-                    "Change code must be 3 digits, got: " + changeCode
-            );
+        if (changeCode == null) {
+            throw new IllegalArgumentException("Change code cannot be null");
+        }
+
+        if (!changeCode.matches("\\d{3}")) {
+            throw new InvalidObservationException(
+                    "PressureTendency.changeCode", changeCode, "Change code must be 3 digits");
         }
 
         double change = Integer.parseInt(changeCode) / 10.0;
@@ -134,7 +138,7 @@ public record PressureTendency(
      * Factory method with explicit values.
      *
      * @param tendencyCode WMO tendency code (0-8)
-     * @param changeHpa Pressure change in hectopascals
+     * @param changeHpa    Pressure change in hectopascals
      * @return PressureTendency instance
      */
     public static PressureTendency of(int tendencyCode, double changeHpa) {
