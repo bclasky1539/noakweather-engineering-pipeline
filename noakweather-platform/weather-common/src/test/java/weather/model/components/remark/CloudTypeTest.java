@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,6 +70,7 @@ class CloudTypeTest {
     void testCloudTypeRequired(String invalidCloudType) {
         assertThatThrownBy(() -> new CloudType(invalidCloudType, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Cloud type cannot be null or blank");
     }
 
@@ -76,8 +78,11 @@ class CloudTypeTest {
     @ValueSource(strings = {"XX", "FOG", "ABC", "C", "CUCU", "12"})
     void testInvalidCloudType(String invalidCloudType) {
         assertThatThrownBy(() -> new CloudType(invalidCloudType, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid cloud type");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Invalid cloud type (valid types: CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL): "
+                        + invalidCloudType)
+                .hasFieldOrPropertyWithValue("component", "CloudType.cloudType")
+                .hasFieldOrPropertyWithValue("rejectedValue", invalidCloudType);
     }
 
     @ParameterizedTest
@@ -92,8 +97,8 @@ class CloudTypeTest {
     @ValueSource(ints = {-5, -1, 9, 10, 100})
     void testInvalidOktas(int invalidOktas) {
         assertThatThrownBy(() -> new CloudType("SC", invalidOktas, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Oktas must be between 1 and 8");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Oktas must be between 0 and 8");
     }
 
     @Test
@@ -124,7 +129,7 @@ class CloudTypeTest {
     @ValueSource(strings = {"LIGHT", "HEAVY", "XXX", "MODERATE"})
     void testInvalidIntensity(String invalidIntensity) {
         assertThatThrownBy(() -> new CloudType("CU", null, invalidIntensity, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid intensity");
     }
 
@@ -159,7 +164,7 @@ class CloudTypeTest {
     @ValueSource(strings = {"DSNT", "VC", "XXX", "OVERHEAD"})
     void testInvalidLocation(String invalidLocation) {
         assertThatThrownBy(() -> new CloudType("AC", null, null, invalidLocation, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid location");
     }
 
@@ -194,7 +199,7 @@ class CloudTypeTest {
     @ValueSource(strings = {"NORTH", "NORTHEAST", "XXX", "NNE", "SSW"})
     void testInvalidMovementDirection(String invalidDirection) {
         assertThatThrownBy(() -> new CloudType("CI", null, null, null, invalidDirection))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid movement direction");
     }
 

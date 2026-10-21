@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,42 +16,48 @@
  */
 package weather.model.components.remark;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Immutable value object representing hail size from METAR remarks.
- *
+ * <p>
  * Hail size in METAR remarks is reported in inches following the GR indicator.
- *
+ * <p>
  * Examples:
  * - GR 1/2 → 0.5 inches (marble-sized)
  * - GR 1 3/4 → 1.75 inches (golf ball-sized)
  * - GR 2 → 2.0 inches (tennis ball-sized, significantly severe)
- *
+ * <p>
  * Severe weather criteria:
  * - >= 1.0 inch: Severe hail
  * - >= 2.0 inches: Significantly severe hail
  *
  * @param inches Hail size in inches (must be positive and <= 10)
- *
  * @author bclasky1539
  *
  */
 public record HailSize(double inches) {
 
     /**
+     * Upper sanity limit in inches (softball is ~3.5", grapefruit ~4-5").
+     */
+    private static final double MAX_REASONABLE_INCHES = 10.0;
+
+    /**
      * Compact constructor with validation.
+     *
+     * @throws InvalidObservationException Hail size mst be positive or less than 10 inches
      */
     public HailSize {
         if (inches <= 0) {
-            throw new IllegalArgumentException(
-                    "Hail size must be positive, got: " + inches
-            );
+            throw new InvalidObservationException(
+                    "HailSize.inches", String.valueOf(inches), "Hail size must be positive");
         }
 
-        // Reasonable upper limit (softball is ~3.5", grapefruit is ~4-5")
-        if (inches > 10) {
-            throw new IllegalArgumentException(
-                    "Hail size unreasonably large, got: " + inches
-            );
+        if (inches > MAX_REASONABLE_INCHES) {
+            throw new InvalidObservationException(
+                    "HailSize.inches", String.valueOf(inches),
+                    "Hail size unreasonably large (> " + MAX_REASONABLE_INCHES + " inches)");
         }
     }
 
@@ -79,7 +85,7 @@ public record HailSize(double inches) {
 
     /**
      * Get descriptive size category based on common objects.
-     *
+     * <p>
      * Categories based on National Weather Service guidelines:
      * - Pea: < 0.25 inch
      * - Marble: 0.25 - 0.49 inch
@@ -120,7 +126,7 @@ public record HailSize(double inches) {
 
     /**
      * Check if hail meets severe weather criteria (>= 1.0 inch).
-     *
+     * <p>
      * The National Weather Service defines severe hail as 1 inch diameter or larger,
      * approximately the size of a quarter.
      *
@@ -132,7 +138,7 @@ public record HailSize(double inches) {
 
     /**
      * Check if hail meets significantly severe criteria (>= 2.0 inches).
-     *
+     * <p>
      * Hail 2 inches or larger (tennis ball size) is considered significantly severe
      * and can cause major damage to property and vehicles.
      *
@@ -176,7 +182,7 @@ public record HailSize(double inches) {
      *
      * @param inches size in inches
      * @return HailSize instance
-     * @throws IllegalArgumentException if inches is invalid
+     * @throws InvalidObservationException if inches is invalid
      */
     public static HailSize inches(double inches) {
         return new HailSize(inches);
@@ -187,7 +193,7 @@ public record HailSize(double inches) {
      *
      * @param cm size in centimeters
      * @return HailSize instance
-     * @throws IllegalArgumentException if converted size is invalid
+     * @throws InvalidObservationException if converted size is invalid
      */
     public static HailSize centimeters(double cm) {
         return new HailSize(cm / 2.54);
@@ -198,7 +204,7 @@ public record HailSize(double inches) {
      *
      * @param mm size in millimeters
      * @return HailSize instance
-     * @throws IllegalArgumentException if converted size is invalid
+     * @throws InvalidObservationException if converted size is invalid
      */
     public static HailSize millimeters(double mm) {
         return new HailSize(mm / 25.4);

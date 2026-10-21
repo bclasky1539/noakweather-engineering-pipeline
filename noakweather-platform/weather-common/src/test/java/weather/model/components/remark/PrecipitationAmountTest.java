@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -56,15 +57,15 @@ class PrecipitationAmountTest {
     @Test
     @DisplayName("Should throw exception for invalid period hours")
     void testInvalidPeriodHours() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> new PrecipitationAmount(0.15, 5, false),
                 "Should reject period of 5 hours");
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> new PrecipitationAmount(0.15, 0, false),
                 "Should reject period of 0 hours");
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> new PrecipitationAmount(0.15, -1, false),
                 "Should reject negative period");
     }
@@ -72,7 +73,7 @@ class PrecipitationAmountTest {
     @Test
     @DisplayName("Should throw exception for negative precipitation amount")
     void testNegativeAmount() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> new PrecipitationAmount(-0.5, 1, false),
                 "Should reject negative precipitation");
     }
@@ -80,7 +81,7 @@ class PrecipitationAmountTest {
     @Test
     @DisplayName("Should throw exception for trace with measurable amount")
     void testTraceWithMeasurableAmount() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> new PrecipitationAmount(0.15, 1, true),
                 "Trace should not have measurable amount >= 0.01");
     }
@@ -134,24 +135,29 @@ class PrecipitationAmountTest {
     @Test
     @DisplayName("Should throw exception for blank encoded value")
     void testFromEncodedBlank() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> PrecipitationAmount.fromEncoded("", 1));
 
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> PrecipitationAmount.fromEncoded("   ", 1));
     }
 
     @Test
     @DisplayName("Should throw exception for non-numeric encoded value")
     void testFromEncodedNonNumeric() {
-        assertThrows(IllegalArgumentException.class,
+        InvalidObservationException e = assertThrows(InvalidObservationException.class,
                 () -> PrecipitationAmount.fromEncoded("ABCD", 1));
+
+        assertEquals("PrecipitationAmount.encodedValue", e.getComponent());
+        assertEquals("ABCD", e.getRejectedValue());
+        assertEquals("Invalid encoded value: ABCD", e.getMessage());
+        assertInstanceOf(NumberFormatException.class, e.getCause());
     }
 
     @Test
     @DisplayName("Should throw exception for invalid period in fromEncoded")
     void testFromEncodedInvalidPeriod() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrowsExactly(IllegalArgumentException.class,
                 () -> PrecipitationAmount.fromEncoded("0015", 5));
     }
 

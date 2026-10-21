@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,27 +16,24 @@
  */
 package weather.model.components.remark;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Represents an obscuration layer in the atmosphere.
  * Format: [Coverage] [Phenomenon] [Height] where height is in hundreds of feet.
- *
+ * <p>
  * Examples:
  * - FEW FG 000 → Few fog at ground level (0 feet)
  * - SCT FU 010 → Scattered smoke at 1000 feet
  * - BKN BR 005 → Broken mist at 500 feet
  *
- * @param coverage sky coverage (FEW, SCT, BKN, OVC)
+ * @param coverage   sky coverage (FEW, SCT, BKN, OVC)
  * @param phenomenon obscuration type (FG, BR, FU, HZ, etc.)
  * @param heightFeet height of obscuration base in feet
- *
  * @author bclasky1539
  *
  */
-public record ObscurationLayer(
-        String coverage,
-        String phenomenon,
-        int heightFeet
-) {
+public record ObscurationLayer(String coverage, String phenomenon, int heightFeet) {
 
     /**
      * Compact constructor with validation.
@@ -49,18 +46,18 @@ public record ObscurationLayer(
             throw new IllegalArgumentException("Phenomenon cannot be null or blank");
         }
         if (heightFeet < 0) {
-            throw new IllegalArgumentException("Height cannot be negative");
+            throw new InvalidObservationException("ObscurationLayer.heightFeet", String.valueOf(heightFeet), "Height cannot be negative");
         }
     }
 
     /**
      * Create an ObscurationLayer from encoded values.
      *
-     * @param coverage sky coverage code (FEW, SCT, BKN, OVC)
+     * @param coverage   sky coverage code (FEW, SCT, BKN, OVC)
      * @param phenomenon obscuration phenomenon code (FG, BR, FU, HZ, etc.)
-     * @param hundreds height in hundreds of feet (e.g., 000 = 0 ft, 010 = 1000 ft)
+     * @param hundreds   height in hundreds of feet (e.g., 000 = 0 ft, 010 = 1000 ft)
      * @return ObscurationLayer instance
-     * @throws IllegalArgumentException if validation fails
+     * @throws InvalidObservationException if validation fails
      */
     public static ObscurationLayer fromHundreds(String coverage, String phenomenon, int hundreds) {
         int heightFeet = hundreds * 100;

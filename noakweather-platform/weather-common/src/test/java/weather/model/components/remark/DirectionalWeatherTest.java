@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package weather.model.components.remark;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import weather.exception.InvalidObservationException;
 import weather.model.components.PresentWeather;
 
 import java.util.ArrayList;
@@ -74,6 +75,7 @@ class DirectionalWeatherTest {
 
         assertThatThrownBy(() -> new DirectionalWeather(null, directions))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Present weather cannot be null");
     }
 
@@ -204,6 +206,7 @@ class DirectionalWeatherTest {
 
         assertThatThrownBy(() -> new DirectionalWeather(weather, directions, true))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("mutually exclusive");
     }
 
