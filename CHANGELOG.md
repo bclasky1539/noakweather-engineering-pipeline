@@ -7,6 +7,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.22.0-SNAPSHOT]
+
+### Added
+- `InvalidObservationException` (`weather.exception`), a subclass of
+  `IllegalArgumentException` that marks rejected observation data, as opposed
+  to a programming error. It carries the rejected `component` (e.g.
+  `RunwayVisualRange.variableLow`), the `rejectedValue` and the `reason`, with
+  an optional cause; the message is `reason: rejectedValue`. Existing
+  `catch (IllegalArgumentException ...)` blocks keep working. (#134, part of #133)
+
+### Changed
+- Enums, main-body components and all remark value objects in
+  `weather-common` now throw `InvalidObservationException` for invalid report
+  codes and physically impossible values. Null, blank and structural checks
+  (fields the caller assembles) remain plain `IllegalArgumentException`. (#134)
+  - Enums: `SkyCoverage`, `FrictionCoefficient`, `DepthOfDeposit`,
+    `RunwayDeposit`, `RunwayContaminationExtent`, `AutomatedStationType`
+    (non-numeric digit text now rejected with the `NumberFormatException` as
+    cause) and the cloud-type code enums.
+  - Components: `Wind`, `Visibility`, `Temperature`, `Pressure`,
+    `SkyCondition`, `RunwayVisualRange`, `RunwayState` (runway identifier only;
+    derived-field consistency stays `IllegalArgumentException`).
+    `PresentWeather` is unchanged: unrecognized text is still kept as `other`.
+  - Remarks: ceiling, maintenance, visibility, pressure and wind remark
+    packages, plus `LightningFrequency`, `HailSize`, `ObscurationLayer`,
+    `DirectionSegment`, `PrecipitationAmount` (non-numeric encoded value keeps
+    the `NumberFormatException` as cause), `WeatherEvent` and `CloudType`.
+  - Null checks split out of bundled format checks, so null is a programming
+    error and malformed text a domain rejection: `Pressure.fromMetarAltimeter`,
+    `Pressure.fromMetarQNH`, `PressureTendency.fromMetar`, and the enum
+    `fromCode` methods.
+  - `VariableCeiling` reports negative minimum and maximum heights separately.
+  - `WeatherEvent` hour/minute rejections name the field (`beginHour`,
+    `endMinute`, ...).
+  - Where a set of valid values exists, the rejection message lists it, built
+    from the class's own constants so it cannot drift from the check.
+- `Visibility.isIFR` and `isLowVisibility` now share `isBelowStatuteMiles`
+  (no behavior change).
+
+### Fixed
+- `RunwayVisualRange` low/high message said "must be less than" while equal
+  values were allowed; it now reads "cannot be greater than".
+- `SkyCondition` cloud-type message listed 11 types; it now lists all 15.
+- `CloudType` oktas message and Javadoc said 1-8 while the check (and
+  `CLOUD_OKTA_PATTERN`) allow 0 (`CI0`); both now say 0-8, and the valid-oktas
+  test includes 0.
+- Missing license headers added to `WindAtLocation`, `DirectionalWeather`,
+  `LightningFrequency` and `DirectionSegment`.
+
+### Downstream impact
+- No Bronze JSON shape change, and no change to which values are parsed or
+  rejected.
+- Rejection messages change shape to `reason: rejectedValue`, so WARN/debug
+  log lines for rejected groups read differently (e.g.
+  `Invalid prefix (valid values: P, M): X` instead of
+  `Invalid prefix: X (valid values: P, M, or null)`).
+
+### Known gaps
+- `SkyCondition` rejects main-body cloud types CF, SF, ACC and ACSL because its
+  regex predates `CloudType`'s list (issue #140).
+- Compass direction codes are duplicated across six classes (issue #141).
+- `VV///` (vertical visibility, height not measurable) is rejected; the rule
+  is duplicated in `NoaaAviationWeatherParser.parseHeight` and `SkyCondition`.
+- TAF value objects (`ValidityPeriod`, `ForecastPeriod`, `Temperature`
+  forecast times) are unchanged until the TAF work.
+- `PrecipitationAmount.fromEncoded(null)` still throws `NullPointerException`
+  (sub-issue 3 of #133).
+
+### Tests
+- `InvalidObservationExceptionTest` for the new exception.
+- Domain-rejection tests assert `InvalidObservationException`; one test per
+  class pins `component`, `rejectedValue` and the exact message.
+- Programming-error tests assert a plain `IllegalArgumentException` that is
+  not `InvalidObservationException` (`isNotInstanceOf` /
+  `assertThrowsExactly`), so a future reclassification fails a test.
+- New: `RunwayState` null/blank vs bad-format runway split,
+  `PresentWeather` unparsed-remainder-kept-as-other,
+  `PressureTendency` null change code, `WeatherEvent` end-minute rejection.
+- `PressureRapidChangeTest` moved from `assertThatIllegalArgumentException`
+  (accepts subclasses) to `assertThatThrownBy`.
+
 ## [1.21.0-SNAPSHOT]
 
 ### Fixed
