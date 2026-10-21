@@ -80,8 +80,8 @@ class InvalidObservationExceptionTest {
         InvalidObservationException e = new InvalidObservationException(
                 "PrecipitationAmount.encodedValue", "00X5", "Invalid encoded value", cause);
 
-        assertThat(e).hasCause(cause);
-        assertThat(e).hasMessage("Invalid encoded value: 00X5");
+        assertThat(e).hasCause(cause)
+                     .hasMessage("Invalid encoded value: 00X5");
     }
 
     @Test
