@@ -16,9 +16,11 @@
  */
 package weather.model.enums;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -57,14 +59,24 @@ class SkyCoverageTest {
         assertThat(SkyCoverage.fromCode("OVC")).isEqualTo(SkyCoverage.OVERCAST);
         assertThat(SkyCoverage.fromCode("VV")).isEqualTo(SkyCoverage.VERTICAL_VISIBILITY);
     }
-    
+
     @Test
+    @DisplayName("Should throw InvalidObservationException for an unknown code")
     void testFromCode_InvalidCode() {
         assertThatThrownBy(() -> SkyCoverage.fromCode("INVALID"))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Unknown sky coverage code: INVALID");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Unknown sky coverage code: INVALID");
     }
-    
+
+    @Test
+    @DisplayName("Should throw a plain IllegalArgumentException (programming error) for a null code (Issue #<sub-issue 1>)")
+    void testFromCode_NullThrowsPlainIllegalArgumentException() {
+        assertThatThrownBy(() -> SkyCoverage.fromCode(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
+                .hasMessage("Sky coverage code cannot be null");
+    }
+
     @Test
     void testGetCode() {
         assertThat(SkyCoverage.FEW.getCode()).isEqualTo("FEW");

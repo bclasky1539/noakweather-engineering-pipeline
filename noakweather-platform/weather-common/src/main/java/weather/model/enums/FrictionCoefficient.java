@@ -16,6 +16,8 @@
  */
 package weather.model.enums;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Friction coefficient or braking action (B_R B_R), the last two characters of
  * a runway state group ({@code Rdd/ERCReeBB}).
@@ -66,14 +68,18 @@ public enum FrictionCoefficient {
      *
      * @param code "01"-"95", "99", or "//"
      * @return the corresponding FrictionCoefficient
-     * @throws IllegalArgumentException if code is not a recognized value
+     * @throws IllegalArgumentException    if code is null (programming error)
+     * @throws InvalidObservationException if code is not a recognized value
      */
     public static FrictionCoefficient fromCode(String code) {
+        if (code == null) {
+            throw new IllegalArgumentException("Runway friction code cannot be null");
+        }
         if (NOT_REPORTED.code.equals(code)) {
             return NOT_REPORTED;
         }
-        if (code == null || !code.matches("\\d{2}")) {
-            throw new IllegalArgumentException("Invalid runway friction code: " + code);
+        if (!code.matches("\\d{2}")) {
+            throw new InvalidObservationException("FrictionCoefficient.code", code, "Invalid runway friction code");
         }
         int value = Integer.parseInt(code);
         if (value >= 1 && value <= MAX_MEASURED_CODE) {
@@ -84,7 +90,7 @@ public enum FrictionCoefficient {
                 return friction;
             }
         }
-        throw new IllegalArgumentException("Invalid runway friction code: " + code);
+        throw new InvalidObservationException("FrictionCoefficient.code", code, "Invalid runway friction code");
     }
 
     /**

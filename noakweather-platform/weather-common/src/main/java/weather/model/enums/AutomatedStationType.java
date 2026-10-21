@@ -16,6 +16,8 @@
  */
 package weather.model.enums;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Type of automated weather station as indicated in METAR remarks section.
  * <p>
@@ -128,14 +130,14 @@ public enum AutomatedStationType {
      *
      * @param typeDigit the digit from the METAR (1 or 2)
      * @return the corresponding base AutomatedStationType (AO1 or AO2), never augmented
-     * @throws IllegalArgumentException if digit is not 1 or 2
+     * @throws InvalidObservationException if digit is not 1 or 2
      */
     public static AutomatedStationType fromDigit(int typeDigit) {
         return switch (typeDigit) {
             case 1 -> AO1;
             case 2 -> AO2;
-            default -> throw new IllegalArgumentException(
-                    "Invalid automated station type: " + typeDigit + ". Must be 1 or 2.");
+            default -> throw new InvalidObservationException("AutomatedStationType.digit", String.valueOf(typeDigit),
+                    "Invalid automated station type (must be 1 or 2)");
         };
     }
 
@@ -145,14 +147,22 @@ public enum AutomatedStationType {
      *
      * @param typeDigit the digit string from the METAR ("1" or "2")
      * @return the corresponding base AutomatedStationType (AO1 or AO2), never augmented
-     * @throws IllegalArgumentException if string is not "1" or "2"
-     * @throws NumberFormatException    if string is not a valid number
+     * @throws IllegalArgumentException    if typeDigit is null or blank (programming error)
+     * @throws InvalidObservationException if typeDigit is not 1 or 2, including non-numeric text
      */
     public static AutomatedStationType fromDigit(String typeDigit) {
         if (typeDigit == null || typeDigit.isBlank()) {
             throw new IllegalArgumentException("Automated station type digit cannot be null or blank");
         }
-        return fromDigit(Integer.parseInt(typeDigit.trim()));
+        String trimmed = typeDigit.trim();
+        int digit;
+        try {
+            digit = Integer.parseInt(trimmed);
+        } catch (NumberFormatException e) {
+            throw new InvalidObservationException("AutomatedStationType.digit", trimmed,
+                    "Invalid automated station type (must be 1 or 2)", e);
+        }
+        return fromDigit(digit);
     }
 
     /**
@@ -163,7 +173,7 @@ public enum AutomatedStationType {
      * @param typeDigit the digit from the METAR (1 or 2)
      * @param augmented whether a trailing "A" augmentation suffix was present
      * @return the corresponding AutomatedStationType
-     * @throws IllegalArgumentException if digit is not 1 or 2
+     * @throws InvalidObservationException if digit is not 1 or 2
      */
     public static AutomatedStationType fromDigitAndAugmentation(int typeDigit, boolean augmented) {
         AutomatedStationType base = fromDigit(typeDigit);
@@ -179,11 +189,12 @@ public enum AutomatedStationType {
      *
      * @param code the METAR code (AO1, AO2, AO1A, AO2A, A01, A02, A01A, or A02A)
      * @return the corresponding AutomatedStationType
-     * @throws IllegalArgumentException if code is invalid
+     * @throws IllegalArgumentException    if string is null or blank
+     * @throws InvalidObservationException if code is invalid
      */
     public static AutomatedStationType fromCode(String code) {
         if (code == null || code.isBlank()) {
-            throw new IllegalArgumentException("Automated station type code cannot be null or blank");
+            throw new IllegalArgumentException("Automated station type digit cannot be null or blank");
         }
 
         String normalized = code.trim().toUpperCase();
@@ -194,9 +205,8 @@ public enum AutomatedStationType {
             case "AO2", "A02" -> AO2;
             case "AO1A", "A01A" -> AO1A;
             case "AO2A", "A02A" -> AO2A;
-            default -> throw new IllegalArgumentException(
-                    "Invalid automated station type code: " + code
-                            + ". Must be AO1, AO2, AO1A, AO2A, A01, A02, A01A, or A02A.");
+            default -> throw new InvalidObservationException("AutomatedStationType.code", code,
+                    "Invalid automated station type code (must be AO1, AO2, AO1A, AO2A, A01, A02, A01A, or A02A)");
         };
     }
 

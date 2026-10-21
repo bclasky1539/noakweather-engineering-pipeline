@@ -17,6 +17,7 @@
 package weather.model.components;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import weather.exception.InvalidObservationException;
 import weather.model.enums.DepthOfDeposit;
 import weather.model.enums.FrictionCoefficient;
 import weather.model.enums.RunwayContaminationExtent;
@@ -174,9 +175,10 @@ public record RunwayState(
         }
         String trimmed = runway.trim().toUpperCase();
         if (!ValidationPatterns.RUNWAY_IDENTIFIER.matcher(trimmed).matches()) {
-            throw new IllegalArgumentException(
-                    "Invalid runway identifier format: " + runway +
-                            " (expected format: 01-36 optionally followed by L, C, or R)"
+            throw new InvalidObservationException(
+                    "RunwayState.runway",
+                    runway,
+                    "Invalid runway identifier format (expected format: 01-36 optionally followed by L, C, or R)"
             );
         }
     }

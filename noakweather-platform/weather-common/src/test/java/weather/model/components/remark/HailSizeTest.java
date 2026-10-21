@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -45,7 +46,7 @@ class HailSizeTest {
     @Test
     @DisplayName("Should throw exception for zero size")
     void testZeroSize() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> new HailSize(0.0),
                 "Should reject zero size");
     }
@@ -53,7 +54,7 @@ class HailSizeTest {
     @Test
     @DisplayName("Should throw exception for negative size")
     void testNegativeSize() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> new HailSize(-0.5),
                 "Should reject negative size");
     }
@@ -61,9 +62,13 @@ class HailSizeTest {
     @Test
     @DisplayName("Should throw exception for unreasonably large size")
     void testUnreasonablyLargeSize() {
-        assertThrows(IllegalArgumentException.class,
+        InvalidObservationException e = assertThrows(InvalidObservationException.class,
                 () -> new HailSize(10.1),
                 "Should reject size > 10 inches");
+
+        assertEquals("HailSize.inches", e.getComponent());
+        assertEquals("10.1", e.getRejectedValue());
+        assertEquals("Hail size unreasonably large (> 10.0 inches): 10.1", e.getMessage());
     }
 
     @Test
@@ -329,21 +334,21 @@ class HailSizeTest {
     @Test
     @DisplayName("Should throw exception for invalid inches in factory")
     void testInchesFactoryInvalid() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> HailSize.inches(-1.0));
     }
 
     @Test
     @DisplayName("Should throw exception for invalid centimeters in factory")
     void testCentimetersFactoryInvalid() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> HailSize.centimeters(-2.54));
     }
 
     @Test
     @DisplayName("Should throw exception for invalid millimeters in factory")
     void testMillimetersFactoryInvalid() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> HailSize.millimeters(-25.4));
     }
 

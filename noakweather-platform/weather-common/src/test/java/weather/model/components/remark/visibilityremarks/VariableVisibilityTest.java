@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import weather.exception.InvalidObservationException;
 import weather.model.components.Visibility;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for VariableVisibility record class.
- *
+ * <p>
  * Tests validation, query methods, helper methods, and factory methods.
  *
  * @author bclasky1539
@@ -80,9 +81,8 @@ class VariableVisibilityTest {
     void testNullMinimum() {
         Visibility max = Visibility.statuteMiles(2.0);
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            new VariableVisibility(null, max, null, null);
-        });
+        assertThrowsExactly(IllegalArgumentException.class, () ->
+                new VariableVisibility(null, max, null, null));
     }
 
     @Test
@@ -90,9 +90,8 @@ class VariableVisibilityTest {
     void testNullMaximum() {
         Visibility min = Visibility.statuteMiles(0.5);
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            new VariableVisibility(min, null, null, null);
-        });
+        assertThrowsExactly(IllegalArgumentException.class, () ->
+                new VariableVisibility(min, null, null, null));
     }
 
     @Test
@@ -101,11 +100,12 @@ class VariableVisibilityTest {
         Visibility min = Visibility.statuteMiles(5.0);
         Visibility max = Visibility.statuteMiles(2.0);
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            new VariableVisibility(min, max, null, null);
-        });
+        InvalidObservationException exception = assertThrows(InvalidObservationException.class, () ->
+                new VariableVisibility(min, max, null, null));
 
-        assertTrue(exception.getMessage().contains("cannot be greater than maximum"));
+        assertEquals("VariableVisibility.minimumVisibility", exception.getComponent());
+        assertEquals("5.00 SM", exception.getRejectedValue());
+        assertEquals("Minimum visibility cannot be greater than maximum (2.00 SM): 5.00 SM", exception.getMessage());
     }
 
     @ParameterizedTest
@@ -144,9 +144,8 @@ class VariableVisibilityTest {
         Visibility min = Visibility.statuteMiles(1.0);
         Visibility max = Visibility.statuteMiles(3.0);
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            new VariableVisibility(min, max, direction, null);
-        });
+        assertThrows(InvalidObservationException.class, () ->
+                new VariableVisibility(min, max, direction, null));
     }
 
     // ==================== Query Methods Tests ====================

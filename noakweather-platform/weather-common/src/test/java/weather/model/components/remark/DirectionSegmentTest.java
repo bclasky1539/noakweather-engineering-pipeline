@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import java.util.List;
 
@@ -82,6 +83,7 @@ class DirectionSegmentTest {
     void testConstructor_NullPointsList() {
         assertThatThrownBy(() -> new DirectionSegment(null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("at least one point");
     }
 
@@ -92,6 +94,7 @@ class DirectionSegmentTest {
 
         assertThatThrownBy(() -> new DirectionSegment(emptyPoints))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("at least one point");
     }
 
@@ -104,6 +107,7 @@ class DirectionSegmentTest {
 
         assertThatThrownBy(() -> new DirectionSegment(withNull))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("cannot be null or blank");
     }
 
@@ -114,6 +118,7 @@ class DirectionSegmentTest {
 
         assertThatThrownBy(() -> new DirectionSegment(blankPoint))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("cannot be null or blank");
     }
 
@@ -124,7 +129,7 @@ class DirectionSegmentTest {
         List<String> singlePoint = List.of(invalidPoint);
 
         assertThatThrownBy(() -> new DirectionSegment(singlePoint))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid compass point");
     }
 
@@ -134,8 +139,10 @@ class DirectionSegmentTest {
         List<String> mixedPoints = List.of("N", "ESE", "S");
 
         assertThatThrownBy(() -> new DirectionSegment(mixedPoints))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid compass point");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Invalid compass point (valid points: N, NE, E, SE, S, SW, W, NW): ESE")
+                .hasFieldOrPropertyWithValue("component", "DirectionSegment.points")
+                .hasFieldOrPropertyWithValue("rejectedValue", "ESE");
     }
 
     // ==================== isRange() Tests ====================

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,23 +16,25 @@
  */
 package weather.model.components.remark;
 
+import weather.exception.InvalidObservationException;
+
 import java.time.LocalTime;
 
 /**
  * Immutable value object representing a weather phenomenon's begin/end time from METAR remarks.
- *
+ * <p>
  * Weather phenomena can be reported with their start and/or end times in the remarks section.
  * This provides more granular information about when specific weather conditions occurred.
- *
+ * <p>
  * Examples from METAR remarks:
  * - "RAB05" → WeatherEvent("RA", null, null, 5, null, null)
  * - "FZRAB1159E1240" → WeatherEvent("FZRA", null, 11, 59, 12, 40)
  * - "TSB0159E0240" → WeatherEvent("TS", null, 1, 59, 2, 40)
  * - "-RAB05" → WeatherEvent("RA", "-", null, 5, null, null)
  * - "+TSRAB20E45" → WeatherEvent("TSRA", "+", null, 20, null, 45)
- *
+ * <p>
  * Format: [Intensity][Descriptor][Phenomenon]Bhhmm or Bmm and/or Ehhmm or Emm
- *
+ * <p>
  * Where:
  * - Intensity: - (light), + (heavy), or absent (moderate)
  * - Descriptor: MI, PR, BC, DR, BL, SH, TS, FZ
@@ -42,12 +44,11 @@ import java.time.LocalTime;
  * - hhmm or mm: Time in hours/minutes (UTC)
  *
  * @param weatherCode The complete weather code (e.g., "RA", "FZRA", "TS")
- * @param intensity Optional intensity indicator ('-', '+', or null for moderate)
- * @param beginHour Hour when phenomenon began (0-23), null if only minutes provided
+ * @param intensity   Optional intensity indicator ('-', '+', or null for moderate)
+ * @param beginHour   Hour when phenomenon began (0-23), null if only minutes provided
  * @param beginMinute Minute when phenomenon began (0-59), null if no begin time
- * @param endHour Hour when phenomenon ended (0-23), null if only minutes provided
- * @param endMinute Minute when phenomenon ended (0-59), null if no end time
- *
+ * @param endHour     Hour when phenomenon ended (0-23), null if only minutes provided
+ * @param endMinute   Minute when phenomenon ended (0-59), null if no end time
  * @author bclasky1539
  *
  */
@@ -96,71 +97,70 @@ public record WeatherEvent(
      */
     private static void validateIntensity(String intensity) {
         if (intensity != null && !intensity.matches("[-+]")) {
-            throw new IllegalArgumentException(
-                    "Intensity must be '-' (light) or '+' (heavy): " + intensity
-            );
+            throw new InvalidObservationException(
+                    "WeatherEvent.intensity", intensity, "Intensity must be '-' (light) or '+' (heavy)");
         }
     }
 
     /**
      * Validate begin time components are within valid ranges.
      *
-     * @param beginHour the begin hour to validate (0-23 or null)
-     * @param beginMinute the begin minute to validate (0-59 or null)
-     * @throws IllegalArgumentException if begin time components are out of range
+     * @param beginHour   the 'begin' hour to validate (0-23 or null)
+     * @param beginMinute the 'begin' minute to validate (0-59 or null)
+     * @throws InvalidObservationException if begin time components are out of range
      */
     private static void validateBeginTime(Integer beginHour, Integer beginMinute) {
-        validateHour(beginHour, "Begin");
-        validateMinute(beginMinute, "Begin");
+        validateHour(beginHour, "Begin", "WeatherEvent.beginHour");
+        validateMinute(beginMinute, "Begin", "WeatherEvent.beginMinute");
     }
 
     /**
      * Validate end time components are within valid ranges.
      *
-     * @param endHour the end hour to validate (0-23 or null)
+     * @param endHour   the end hour to validate (0-23 or null)
      * @param endMinute the end minute to validate (0-59 or null)
-     * @throws IllegalArgumentException if end time components are out of range
+     * @throws InvalidObservationException if end time components are out of range
      */
     private static void validateEndTime(Integer endHour, Integer endMinute) {
-        validateHour(endHour, "End");
-        validateMinute(endMinute, "End");
+        validateHour(endHour, "End", "WeatherEvent.endHour");
+        validateMinute(endMinute, "End", "WeatherEvent.endMinute");
     }
 
     /**
      * Validate hour is within valid range (0-23) or null.
      *
-     * @param hour the hour to validate
-     * @param timeType the type of time (Begin or End) for error messages
-     * @throws IllegalArgumentException if hour is out of range
+     * @param hour      the hour to validate
+     * @param timeType  the type of time (Begin or End) for error messages
+     * @param component the component name reported on rejection
+     * @throws InvalidObservationException if hour is out of range
      */
-    private static void validateHour(Integer hour, String timeType) {
+    private static void validateHour(Integer hour, String timeType, String component) {
         if (hour != null && (hour < 0 || hour > 23)) {
-            throw new IllegalArgumentException(
-                    timeType + " hour must be between 0 and 23: " + hour
-            );
+            throw new InvalidObservationException(
+                    component, String.valueOf(hour), timeType + " hour must be between 0 and 23");
         }
     }
 
     /**
      * Validate minute is within valid range (0-59) or null.
      *
-     * @param minute the minute to validate
-     * @param timeType the type of time (Begin or End) for error messages
-     * @throws IllegalArgumentException if minute is out of range
+     * @param minute    the minute to validate
+     * @param timeType  the type of time (Begin or End) for error messages
+     * @param component the component name reported on rejection
+     * @throws InvalidObservationException if minute is out of range
      */
-    private static void validateMinute(Integer minute, String timeType) {
+    private static void validateMinute(Integer minute, String timeType, String component) {
         if (minute != null && (minute < 0 || minute > 59)) {
-            throw new IllegalArgumentException(
-                    timeType + " minute must be between 0 and 59: " + minute
-            );
+            throw new InvalidObservationException(
+                    component, String.valueOf(minute), timeType + " minute must be between 0 and 59");
         }
     }
 
     /**
      * Validate that at least one time (begin or end minute) is present.
      *
-     * @param beginMinute the begin minute
-     * @param endMinute the end minute
+     * @param beginMinute the 'begin' minute
+     * @param endMinute   the end minute
      * @throws IllegalArgumentException if both are null
      */
     private static void validateAtLeastOneTime(Integer beginMinute, Integer endMinute) {
@@ -174,7 +174,7 @@ public record WeatherEvent(
     // ==================== Time Conversion Methods ====================
 
     /**
-     * Get the begin time as LocalTime if both hour and minute are present.
+     * Get the 'begin' time as LocalTime if both hour and minute are present.
      *
      * @return LocalTime of begin event, or null if no begin time or hour not specified
      */
@@ -218,7 +218,7 @@ public record WeatherEvent(
     }
 
     /**
-     * Check if the begin time includes hours.
+     * Check if the 'begin' time includes hours.
      *
      * @return true if begin hour is specified
      */
@@ -238,7 +238,7 @@ public record WeatherEvent(
     // ==================== Formatting Methods ====================
 
     /**
-     * Get a formatted string representation of the begin time.
+     * Get a formatted string representation of the 'begin' time.
      *
      * @return formatted begin time (e.g., "11:59", ":05", or "N/A")
      */

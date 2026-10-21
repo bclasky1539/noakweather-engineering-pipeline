@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package weather.model.components.remark.ceilingremarks;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -109,24 +110,26 @@ class VariableCeilingTest {
     @DisplayName("Should reject negative minimum height")
     void testRejectNegativeMinimum() {
         assertThatThrownBy(() -> new VariableCeiling(-100, 1000))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Ceiling heights cannot be negative");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Minimum ceiling height cannot be negative");
     }
 
     @Test
     @DisplayName("Should reject negative maximum height")
     void testRejectNegativeMaximum() {
         assertThatThrownBy(() -> new VariableCeiling(500, -100))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Ceiling heights cannot be negative");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Maximum ceiling height cannot be negative");
     }
 
     @Test
     @DisplayName("Should reject minimum greater than maximum")
     void testRejectMinGreaterThanMax() {
         assertThatThrownBy(() -> new VariableCeiling(1500, 1000))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Minimum ceiling (1500 ft) cannot exceed maximum (1000 ft)");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Minimum ceiling cannot exceed maximum (1000 ft): 1500")
+                .hasFieldOrPropertyWithValue("component", "VariableCeiling.minimumHeightFeet")
+                .hasFieldOrPropertyWithValue("rejectedValue", "1500");
     }
 
     @Test

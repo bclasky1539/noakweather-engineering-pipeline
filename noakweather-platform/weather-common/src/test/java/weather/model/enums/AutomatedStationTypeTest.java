@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -100,8 +101,8 @@ class AutomatedStationTypeTest {
     @ParameterizedTest
     @ValueSource(ints = {0, 3, 4, 5, -1, 10, 99})
     void testFromDigitIntInvalid(int digit) {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        InvalidObservationException exception = assertThrows(
+                InvalidObservationException.class,
                 () -> AutomatedStationType.fromDigit(digit)
         );
         assertTrue(exception.getMessage().contains("Invalid automated station type"));
@@ -122,13 +123,13 @@ class AutomatedStationTypeTest {
     @ParameterizedTest
     @ValueSource(strings = {"0", "3", "9", "-1", "10"})
     void testFromDigitStringInvalid(String digit) {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> AutomatedStationType.fromDigit(digit));
     }
 
     @Test
     void testFromDigitStringNull() {
-        IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException exception = assertThrowsExactly(
                 IllegalArgumentException.class,
                 () -> AutomatedStationType.fromDigit((String) null)
         );
@@ -137,7 +138,7 @@ class AutomatedStationTypeTest {
 
     @Test
     void testFromDigitStringBlank() {
-        IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException exception = assertThrowsExactly(
                 IllegalArgumentException.class,
                 () -> AutomatedStationType.fromDigit("   ")
         );
@@ -146,8 +147,9 @@ class AutomatedStationTypeTest {
 
     @Test
     void testFromDigitStringNotANumber() {
-        assertThrows(NumberFormatException.class,
+        InvalidObservationException e = assertThrows(InvalidObservationException.class,
                 () -> AutomatedStationType.fromDigit("ABC"));
+        assertInstanceOf(NumberFormatException.class, e.getCause());
     }
 
     @ParameterizedTest
@@ -164,9 +166,9 @@ class AutomatedStationTypeTest {
     @ParameterizedTest
     @ValueSource(ints = {0, 3, 4, 5, -1, 10, 99})
     void testFromDigitAndAugmentationInvalidDigit(int digit) {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> AutomatedStationType.fromDigitAndAugmentation(digit, false));
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidObservationException.class,
                 () -> AutomatedStationType.fromDigitAndAugmentation(digit, true));
     }
 
@@ -200,8 +202,8 @@ class AutomatedStationTypeTest {
     @ParameterizedTest
     @ValueSource(strings = {"AO3", "AO0", "A03", "A00", "XO1", "BO2", "AO", "123", "AO1B", "AO2X", "AO1AA"})
     void testFromCodeInvalid(String code) {
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        InvalidObservationException exception = assertThrows(
+                InvalidObservationException.class,
                 () -> AutomatedStationType.fromCode(code)
         );
         assertTrue(exception.getMessage().contains("Invalid automated station type code"));
@@ -210,7 +212,7 @@ class AutomatedStationTypeTest {
 
     @Test
     void testFromCodeNull() {
-        IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException exception = assertThrowsExactly(
                 IllegalArgumentException.class,
                 () -> AutomatedStationType.fromCode(null)
         );
@@ -219,7 +221,7 @@ class AutomatedStationTypeTest {
 
     @Test
     void testFromCodeBlank() {
-        IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException exception = assertThrowsExactly(
                 IllegalArgumentException.class,
                 () -> AutomatedStationType.fromCode("   ")
         );

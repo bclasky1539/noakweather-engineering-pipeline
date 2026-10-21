@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 import org.junit.jupiter.api.DisplayName;
+import weather.exception.InvalidObservationException;
 
 /**
  * Tests for RunwayVisualRange record.
@@ -103,7 +104,7 @@ class RunwayVisualRangeTest {
     @ValueSource(strings = {"00", "37", "99", "4L", "041", "04X", "AA", "L04"})
     void testInvalidRunway_BadFormat(String runway) {
         assertThatThrownBy(() -> new RunwayVisualRange(runway, 2200, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid runway identifier format");
     }
 
@@ -123,7 +124,7 @@ class RunwayVisualRangeTest {
     @Test
     void testInvalidVisualRange_NegativeValue() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", -100, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Visual range cannot be negative");
     }
 
@@ -131,6 +132,7 @@ class RunwayVisualRangeTest {
     void testInvalidVisualRange_NoValues() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Must have either visualRangeFeet or both variableLow and variableHigh");
     }
 
@@ -138,6 +140,7 @@ class RunwayVisualRangeTest {
     void testInvalidVisualRange_OnlyVariableLow() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", null, 1800, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Must have either visualRangeFeet or both variableLow and variableHigh");
     }
 
@@ -147,6 +150,7 @@ class RunwayVisualRangeTest {
         // Even though it throws an exception, isVariable() gets called during validation
         assertThatThrownBy(() -> new RunwayVisualRange("04L", 2000, 1800, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Both variableLow and variableHigh must be provided together");
     }
 
@@ -154,6 +158,7 @@ class RunwayVisualRangeTest {
     void testInvalidVisualRange_OnlyVariableHigh() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", null, null, 2400, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Must have either visualRangeFeet or both variableLow and variableHigh");
     }
 
@@ -163,28 +168,31 @@ class RunwayVisualRangeTest {
         // Even though it throws an exception, this helps with branch coverage
         assertThatThrownBy(() -> new RunwayVisualRange("04L", 2000, null, 2400, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Both variableLow and variableHigh must be provided together");
     }
 
     @Test
     void testInvalidVisualRange_NegativeVariableLow() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", null, -100, 2400, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Variable low cannot be negative");
     }
 
     @Test
     void testInvalidVisualRange_NegativeVariableHigh() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", null, 1800, -100, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Variable high cannot be negative");
     }
 
     @Test
     void testInvalidVisualRange_LowGreaterThanHigh() {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", null, 2400, 1800, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Variable low (2400) must be less than variable high (1800)");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Variable low cannot be greater than variable high (1800): 2400")
+                .hasFieldOrPropertyWithValue("component", "RunwayVisualRange.variableLow")
+                .hasFieldOrPropertyWithValue("rejectedValue", "2400");
     }
 
     @Test
@@ -212,7 +220,7 @@ class RunwayVisualRangeTest {
     @ValueSource(strings = {"X", "A", "PP", "MM", "1"})
     void testInvalidPrefix(String prefix) {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", 6000, null, null, prefix, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid prefix");
     }
 
@@ -229,7 +237,7 @@ class RunwayVisualRangeTest {
     @ValueSource(strings = {"X", "A", "DD", "NN", "1"})
     void testInvalidTrend(String trend) {
         assertThatThrownBy(() -> new RunwayVisualRange("04L", 2200, null, null, null, trend))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid trend");
     }
 

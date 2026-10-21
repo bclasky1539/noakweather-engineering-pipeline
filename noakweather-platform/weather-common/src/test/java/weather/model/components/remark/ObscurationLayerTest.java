@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package weather.model.components.remark;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -130,6 +131,7 @@ class ObscurationLayerTest {
     void testRejectNullCoverage() {
         assertThatThrownBy(() -> new ObscurationLayer(null, "FG", 0))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Coverage cannot be null or blank");
     }
 
@@ -138,6 +140,7 @@ class ObscurationLayerTest {
     void testRejectBlankCoverage() {
         assertThatThrownBy(() -> new ObscurationLayer("", "FG", 0))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Coverage cannot be null or blank");
     }
 
@@ -146,6 +149,7 @@ class ObscurationLayerTest {
     void testRejectNullPhenomenon() {
         assertThatThrownBy(() -> new ObscurationLayer("FEW", null, 0))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Phenomenon cannot be null or blank");
     }
 
@@ -154,6 +158,7 @@ class ObscurationLayerTest {
     void testRejectBlankPhenomenon() {
         assertThatThrownBy(() -> new ObscurationLayer("FEW", "  ", 0))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Phenomenon cannot be null or blank");
     }
 
@@ -161,8 +166,10 @@ class ObscurationLayerTest {
     @DisplayName("Should reject negative height")
     void testRejectNegativeHeight() {
         assertThatThrownBy(() -> new ObscurationLayer("FEW", "FG", -100))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Height cannot be negative");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Height cannot be negative: -100")
+                .hasFieldOrPropertyWithValue("component", "ObscurationLayer.heightFeet")
+                .hasFieldOrPropertyWithValue("rejectedValue", "-100");
     }
 
     @Test

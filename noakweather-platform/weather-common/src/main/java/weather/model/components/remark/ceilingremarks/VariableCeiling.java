@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
  */
 package weather.model.components.remark.ceilingremarks;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Represents a variable ceiling height observation.
  * Format: CIG minVmax where values are in hundreds of feet.
- *
+ * <p>
  * Examples:
  * - CIG 005V010 → Ceiling varies between 500 and 1000 feet
  * - CIG 020V035 → Ceiling varies between 2000 and 3500 feet
@@ -27,7 +29,6 @@ package weather.model.components.remark.ceilingremarks;
  *
  * @param minimumHeightFeet minimum ceiling height in feet
  * @param maximumHeightFeet maximum ceiling height in feet
- *
  * @author bclasky1539
  *
  */
@@ -40,14 +41,20 @@ public record VariableCeiling(
      * Compact constructor with validation.
      */
     public VariableCeiling {
-        if (minimumHeightFeet < 0 || maximumHeightFeet < 0) {
-            throw new IllegalArgumentException("Ceiling heights cannot be negative");
+        if (minimumHeightFeet < 0) {
+            throw new InvalidObservationException("VariableCeiling.minimumHeightFeet",
+                    String.valueOf(minimumHeightFeet), "Minimum ceiling height cannot be negative");
+        }
+
+        if (maximumHeightFeet < 0) {
+            throw new InvalidObservationException("VariableCeiling.maximumHeightFeet",
+                    String.valueOf(maximumHeightFeet), "Maximum ceiling height cannot be negative");
         }
 
         if (minimumHeightFeet > maximumHeightFeet) {
-            throw new IllegalArgumentException(
-                    String.format("Minimum ceiling (%d ft) cannot exceed maximum (%d ft)",
-                            minimumHeightFeet, maximumHeightFeet));
+            throw new InvalidObservationException("VariableCeiling.minimumHeightFeet",
+                    String.valueOf(minimumHeightFeet),
+                    "Minimum ceiling cannot exceed maximum (" + maximumHeightFeet + " ft)");
         }
     }
 
@@ -57,7 +64,7 @@ public record VariableCeiling(
      * @param minHundreds minimum ceiling in hundreds of feet (e.g., 005 = 500 ft)
      * @param maxHundreds maximum ceiling in hundreds of feet (e.g., 010 = 1000 ft)
      * @return VariableCeiling instance
-     * @throws IllegalArgumentException if min > max or values are negative
+     * @throws InvalidObservationException if min > max or values are negative
      */
     public static VariableCeiling fromHundreds(int minHundreds, int maxHundreds) {
         int minFeet = minHundreds * 100;

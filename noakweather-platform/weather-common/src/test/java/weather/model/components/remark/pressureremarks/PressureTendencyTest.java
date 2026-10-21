@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -76,6 +77,7 @@ class PressureTendencyTest {
     void testValidation_NullTendencyCode() {
         assertThatThrownBy(() -> new PressureTendency(null, 3.2))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Tendency code cannot be null");
     }
 
@@ -84,6 +86,7 @@ class PressureTendencyTest {
     void testValidation_NullChange() {
         assertThatThrownBy(() -> new PressureTendency(2, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Pressure change cannot be null");
     }
 
@@ -114,19 +117,27 @@ class PressureTendencyTest {
 
     @Test
     @DisplayName("Should reject invalid METAR change code format")
-    @SuppressWarnings("DataFlowIssue")  // Intentionally testing null handling
     void testValidation_InvalidMetarFormat() {
         assertThatThrownBy(() -> PressureTendency.fromMetar(2, "12"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Change code must be 3 digits");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Change code must be 3 digits: 12")
+                .hasFieldOrPropertyWithValue("component", "PressureTendency.changeCode")
+                .hasFieldOrPropertyWithValue("rejectedValue", "12");
 
         assertThatThrownBy(() -> PressureTendency.fromMetar(2, "ABCD"))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Change code must be 3 digits");
+    }
 
+    @Test
+    @DisplayName("Should reject null METAR change code")
+    @SuppressWarnings("DataFlowIssue")
+        // Intentionally testing null handling
+    void testValidation_NullMetarChangeCode() {
         assertThatThrownBy(() -> PressureTendency.fromMetar(2, null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Change code must be 3 digits");
+                .isNotInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Change code cannot be null");
     }
 
     // ==================== Tendency Code Tests ====================

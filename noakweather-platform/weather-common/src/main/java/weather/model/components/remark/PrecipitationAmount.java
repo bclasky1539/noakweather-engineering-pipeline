@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,24 +16,25 @@
  */
 package weather.model.components.remark;
 
+import weather.exception.InvalidObservationException;
+
 import java.util.Objects;
 
 /**
  * Immutable value object representing precipitation amount from METAR remarks.
- *
+ * <p>
  * Precipitation amounts in METAR remarks are reported in hundredths of inches
  * over specific time periods (1, 3, 6, or 24 hours).
- *
+ * <p>
  * Examples:
  * - P0015 → 0.15 inches in last hour
  * - 60009 → 0.09 inches in last 6 hours
  * - 70125 → 1.25 inches in last 24 hours
  * - P//// → Trace precipitation (< 0.01 inches)
  *
- * @param inches Precipitation amount in inches, null for trace/missing
+ * @param inches      Precipitation amount in inches, null for trace/missing
  * @param periodHours Time period (1, 3, 6, or 24 hours)
- * @param isTrace True if trace precipitation (< 0.01 inches)
- *
+ * @param isTrace     True if trace precipitation (< 0.01 inches)
  * @author bclasky1539
  *
  */
@@ -63,9 +64,8 @@ public record PrecipitationAmount(
 
     private static void validateInchesAndTrace(Double inches, boolean isTrace) {
         if (inches != null && inches < 0) {
-            throw new IllegalArgumentException(
-                    "Precipitation amount cannot be negative: " + inches
-            );
+            throw new InvalidObservationException(
+                    "PrecipitationAmount.inches", String.valueOf(inches), "Precipitation amount cannot be negative");
         }
 
         // If trace, inches should be null or very small
@@ -149,7 +149,7 @@ public record PrecipitationAmount(
      * Create precipitation amount from encoded value.
      *
      * @param encodedValue 4-5 digit value (e.g., "0015" = 0.15 inches)
-     * @param periodHours Time period (1, 3, 6, or 24)
+     * @param periodHours  Time period (1, 3, 6, or 24)
      * @return PrecipitationAmount instance
      * @throws IllegalArgumentException if encodedValue is invalid
      */
@@ -171,7 +171,8 @@ public record PrecipitationAmount(
             double inches = hundredths / 100.0;
             return new PrecipitationAmount(inches, periodHours, false);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid encoded value: " + encodedValue, e);
+            throw new InvalidObservationException(
+                    "PrecipitationAmount.encodedValue", encodedValue, "Invalid encoded value", e);
         }
     }
 
@@ -188,7 +189,7 @@ public record PrecipitationAmount(
     /**
      * Create precipitation amount in inches.
      *
-     * @param inches Amount in inches
+     * @param inches      Amount in inches
      * @param periodHours Time period (1, 3, 6, or 24)
      * @return PrecipitationAmount instance
      */

@@ -16,6 +16,8 @@
  */
 package weather.model.enums;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Shared digit-to-constant parsing logic for the three WMO predominant
  * cloud type enums ({@link LowCloudType}, {@link MiddleCloudType},
@@ -47,7 +49,8 @@ final class CloudTypeCodeParser {
      * @param label         a human-readable label for this enum, used in error messages
      * @param <T>           the enum type
      * @return the corresponding enum constant
-     * @throws IllegalArgumentException if code is not a recognized value
+     * @throws IllegalArgumentException    if code is null
+     * @throws InvalidObservationException if code is not a recognized value
      */
     static <T extends Enum<T>> T fromCode(String code, Class<T> enumType, T obscuredValue, String label) {
         if (code == null) {
@@ -63,6 +66,6 @@ final class CloudTypeCodeParser {
                 return values[digit];
             }
         }
-        throw new IllegalArgumentException("Invalid " + label + " code: " + code);
+        throw new InvalidObservationException(label + ".code", code, "Invalid " + label + " code");
     }
 }

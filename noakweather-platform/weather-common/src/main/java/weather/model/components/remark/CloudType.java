@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 package weather.model.components.remark;
+
+import weather.exception.InvalidObservationException;
 
 /**
  * Immutable value object representing a cloud type observation in METAR remarks.
@@ -116,7 +118,8 @@ public record CloudType(
      *
      * @param cloudType the cloud type to validate
      * @return normalized cloud type (uppercase, trimmed)
-     * @throws IllegalArgumentException if cloud type is invalid
+     * @throws IllegalArgumentException    if cloud type is null or blank
+     * @throws InvalidObservationException if cloud type is invalid
      */
     private static String validateAndNormalizeCloudType(String cloudType) {
         if (cloudType == null || cloudType.isBlank()) {
@@ -131,18 +134,21 @@ public record CloudType(
             }
         }
 
-        throw new IllegalArgumentException("Invalid cloud type: " + cloudType);
+        throw new InvalidObservationException(
+                "CloudType.cloudType", cloudType,
+                "Invalid cloud type (valid types: " + String.join(", ", VALID_CLOUD_TYPES) + ")");
     }
 
     /**
      * Validate oktas value.
      *
      * @param oktas the oktas value to validate
-     * @throws IllegalArgumentException if oktas is out of range
+     * @throws InvalidObservationException if oktas is out of range
      */
     private static void validateOktas(Integer oktas) {
         if (oktas != null && (oktas < 0 || oktas > 8)) {
-            throw new IllegalArgumentException("Oktas must be between 1 and 8: " + oktas);
+            throw new InvalidObservationException(
+                    "CloudType.oktas", String.valueOf(oktas), "Oktas must be between 0 and 8");
         }
     }
 
@@ -151,7 +157,7 @@ public record CloudType(
      *
      * @param intensity the intensity to validate
      * @return normalized intensity (uppercase, trimmed), or null if blank
-     * @throws IllegalArgumentException if intensity is invalid
+     * @throws InvalidObservationException if intensity is invalid
      */
     private static String validateAndNormalizeIntensity(String intensity) {
         if (intensity == null || intensity.isBlank()) {
@@ -166,7 +172,9 @@ public record CloudType(
             }
         }
 
-        throw new IllegalArgumentException("Invalid intensity: " + intensity);
+        throw new InvalidObservationException(
+                "CloudType.intensity", intensity,
+                "Invalid intensity (valid values: " + String.join(", ", VALID_INTENSITIES) + ")");
     }
 
     /**
@@ -174,7 +182,7 @@ public record CloudType(
      *
      * @param location the location to validate
      * @return normalized location (uppercase, trimmed), or null if blank
-     * @throws IllegalArgumentException if location is invalid
+     * @throws InvalidObservationException if location is invalid
      */
     private static String validateAndNormalizeLocation(String location) {
         if (location == null || location.isBlank()) {
@@ -189,7 +197,9 @@ public record CloudType(
             }
         }
 
-        throw new IllegalArgumentException("Invalid location: " + location);
+        throw new InvalidObservationException(
+                "CloudType.location", location,
+                "Invalid location (valid locations: " + String.join(", ", VALID_LOCATIONS) + ")");
     }
 
     /**
@@ -197,7 +207,7 @@ public record CloudType(
      *
      * @param movementDirection the movement direction to validate
      * @return normalized direction (uppercase, trimmed), or null if blank
-     * @throws IllegalArgumentException if direction is invalid
+     * @throws InvalidObservationException if direction is invalid
      */
     private static String validateAndNormalizeMovementDirection(String movementDirection) {
         if (movementDirection == null || movementDirection.isBlank()) {
@@ -212,7 +222,9 @@ public record CloudType(
             }
         }
 
-        throw new IllegalArgumentException("Invalid movement direction: " + movementDirection);
+        throw new InvalidObservationException(
+                "CloudType.movementDirection", movementDirection,
+                "Invalid movement direction (valid directions: " + String.join(", ", VALID_DIRECTIONS) + ")");
     }
 
     // ==================== Query Methods ====================

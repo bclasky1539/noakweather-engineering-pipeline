@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import java.time.LocalTime;
 
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Unit tests for WeatherEvent record.
- *
+ * <p>
  * Tests validation, time conversion, formatting, and real-world examples.
  *
  * @author bclasky1539
@@ -98,6 +99,7 @@ class WeatherEventTest {
     void shouldThrowWhenWeatherCodeIsNull() {
         assertThatThrownBy(() -> new WeatherEvent(null, null, null, 5, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Weather code cannot be null");
     }
 
@@ -106,6 +108,7 @@ class WeatherEventTest {
     void shouldThrowWhenWeatherCodeIsBlank() {
         assertThatThrownBy(() -> new WeatherEvent("", null, null, 5, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Weather code cannot be blank");
     }
 
@@ -123,6 +126,7 @@ class WeatherEventTest {
     void shouldThrowWhenNoTimeProvided() {
         assertThatThrownBy(() -> new WeatherEvent("RA", null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("must have at least a begin or end time");
     }
 
@@ -131,8 +135,10 @@ class WeatherEventTest {
     @DisplayName("Should throw exception for invalid begin hour")
     void shouldThrowForInvalidBeginHour(int invalidHour) {
         assertThatThrownBy(() -> new WeatherEvent("RA", null, invalidHour, 30, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Begin hour must be between 0 and 23");
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Begin hour must be between 0 and 23")
+                .hasFieldOrPropertyWithValue("component", "WeatherEvent.beginHour")
+                .hasFieldOrPropertyWithValue("rejectedValue", String.valueOf(invalidHour));
     }
 
     @ParameterizedTest
@@ -142,6 +148,16 @@ class WeatherEventTest {
         assertThatThrownBy(() -> new WeatherEvent("RA", null, null, invalidMinute, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Begin minute must be between 0 and 59");
+    }
+
+    @Test
+    @DisplayName("Should name the end component when the end minute is invalid")
+    void shouldThrowForInvalidEndMinute() {
+        assertThatThrownBy(() -> new WeatherEvent("RA", null, null, 5, null, 60))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("End minute must be between 0 and 59: 60")
+                .hasFieldOrPropertyWithValue("component", "WeatherEvent.endMinute")
+                .hasFieldOrPropertyWithValue("rejectedValue", "60");
     }
 
     // ==================== Time Conversion Tests ====================
@@ -489,7 +505,7 @@ class WeatherEventTest {
         WeatherEvent event = new WeatherEvent("RA", null, null, 5, null, null);
 
         assertThat(event.hasBeginHour()).isFalse();
-        assertThat(event.hasBeginTime()).isTrue(); // Still has begin time (minute only)
+        assertThat(event.hasBeginTime()).isTrue(); // Still has 'begin' time (minute only)
     }
 
     @Test
@@ -513,14 +529,6 @@ class WeatherEventTest {
         assertThat(event.beginMinute()).isEqualTo(59);
         assertThat(event.getBeginTime()).isEqualTo(LocalTime.of(11, 59));
     }
-
-    /**
-     * ADD THESE TESTS TO WeatherEventTest.java
-     * =========================================
-     *
-     * These tests will bring getEndTime() coverage from 87%/50% to 100%/100%
-     * Using AssertJ assertions consistently.
-     */
 
 // ========== getEndTime() Coverage Tests ==========
 
@@ -635,7 +643,7 @@ class WeatherEventTest {
         LocalTime beginTime = event.getBeginTime();
 
         assertThat(beginTime).isNull();
-        assertThat(event.hasBeginTime()).isTrue();  // Has begin time (minute)
+        assertThat(event.hasBeginTime()).isTrue();  // Has 'begin' time (minute)
         assertThat(event.hasBeginHour()).isFalse(); // But no hour
     }
 

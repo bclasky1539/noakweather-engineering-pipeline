@@ -16,6 +16,8 @@
  */
 package weather.model.enums;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Extent of runway contamination (C_R), the second character of a runway
  * state group ({@code Rdd/ERCReeBB}).
@@ -46,15 +48,19 @@ public enum RunwayContaminationExtent {
      *
      * @param code one of "1", "2", "5", "9", or "/" for not reported
      * @return the corresponding RunwayContaminationExtent
-     * @throws IllegalArgumentException if code is not a recognized value
+     * @throws IllegalArgumentException    if code is null (programming error)
+     * @throws InvalidObservationException if code is not a recognized runway contamination extent code
      */
     public static RunwayContaminationExtent fromCode(String code) {
+        if (code == null) {
+            throw new IllegalArgumentException("Runway contamination extent code cannot be null");
+        }
         for (RunwayContaminationExtent extent : values()) {
             if (extent.code.equals(code)) {
                 return extent;
             }
         }
-        throw new IllegalArgumentException("Invalid runway contamination extent code: " + code);
+        throw new InvalidObservationException("RunwayContaminationExtent.code", code, "Invalid runway contamination extent code");
     }
 
     /**

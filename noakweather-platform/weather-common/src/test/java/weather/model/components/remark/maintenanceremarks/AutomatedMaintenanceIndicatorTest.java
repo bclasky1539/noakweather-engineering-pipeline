@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -81,22 +82,27 @@ class AutomatedMaintenanceIndicatorTest {
     @Test
     @DisplayName("Should throw exception for null type")
     void testNullType() {
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrowsExactly(IllegalArgumentException.class, () ->
                 AutomatedMaintenanceIndicator.of(null));
     }
 
     @Test
     @DisplayName("Should throw exception for blank type")
     void testBlankType() {
-        assertThrows(IllegalArgumentException.class, () ->
+        assertThrowsExactly(IllegalArgumentException.class, () ->
                 AutomatedMaintenanceIndicator.of("   "));
     }
 
     @Test
     @DisplayName("Should throw exception for invalid type")
     void testInvalidType() {
-        assertThrows(IllegalArgumentException.class, () ->
+        InvalidObservationException e = assertThrows(InvalidObservationException.class, () ->
                 AutomatedMaintenanceIndicator.of("INVALID"));
+
+        assertEquals("AutomatedMaintenanceIndicator.type", e.getComponent());
+        assertEquals("INVALID", e.getRejectedValue());
+        assertEquals("Invalid maintenance indicator type (valid types: RVRNO, PWINO, PNO, FZRANO, TSNO, VISNO, CHINO, $): INVALID",
+                e.getMessage());
     }
 
     @ParameterizedTest

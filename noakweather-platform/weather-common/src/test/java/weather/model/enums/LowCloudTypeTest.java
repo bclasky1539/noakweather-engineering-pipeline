@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,6 +55,7 @@ class LowCloudTypeTest {
         void shouldThrowOnNullCode() {
             assertThatThrownBy(() -> LowCloudType.fromCode(null))
                     .isInstanceOf(IllegalArgumentException.class)
+                    .isNotInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("cannot be null");
         }
 
@@ -61,7 +63,7 @@ class LowCloudTypeTest {
         @CsvSource({"X", "10", "-1", "''", "A9"})
         void shouldThrowOnInvalidCode(String code) {
             assertThatThrownBy(() -> LowCloudType.fromCode(code))
-                    .isInstanceOf(IllegalArgumentException.class)
+                    .isInstanceOf(InvalidObservationException.class)
                     .hasMessageContaining("Invalid low cloud type code");
         }
     }

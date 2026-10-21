@@ -16,6 +16,8 @@
  */
 package weather.model.enums;
 
+import weather.exception.InvalidObservationException;
+
 /**
  * Type of runway deposit (E_R), the first character of a runway state group
  * ({@code Rdd/ERCReeBB}).
@@ -51,15 +53,19 @@ public enum RunwayDeposit {
      *
      * @param code a single digit "0"-"9", or "/" for not reported
      * @return the corresponding RunwayDeposit
-     * @throws IllegalArgumentException if code is not a recognized value
+     * @throws IllegalArgumentException    if code is null (programming error)
+     * @throws InvalidObservationException if code is not a recognized runway deposit code
      */
     public static RunwayDeposit fromCode(String code) {
+        if (code == null) {
+            throw new IllegalArgumentException("Runway deposit code cannot be null");
+        }
         for (RunwayDeposit deposit : values()) {
             if (deposit.code.equals(code)) {
                 return deposit;
             }
         }
-        throw new IllegalArgumentException("Invalid runway deposit code: " + code);
+        throw new InvalidObservationException("RunwayDeposit.code", code, "Invalid runway deposit code");
     }
 
     /**

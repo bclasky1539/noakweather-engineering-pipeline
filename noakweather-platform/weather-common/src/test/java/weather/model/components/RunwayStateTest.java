@@ -20,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import weather.exception.InvalidObservationException;
 import weather.model.enums.DepthOfDeposit;
 import weather.model.enums.FrictionCoefficient;
 import weather.model.enums.RunwayContaminationExtent;
@@ -106,7 +107,7 @@ class RunwayStateTest {
     void testFromCodesRejectsUndefinedCodes(String label, String depositCode, String extentCode,
                                             String depthCode, String frictionCode) {
         assertThatThrownBy(() -> RunwayState.fromCodes("10", depositCode, extentCode, depthCode, frictionCode))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidObservationException.class);
     }
 
     // ========== CLEARED (CLRD) ==========
@@ -209,11 +210,24 @@ class RunwayStateTest {
     // ========== VALIDATION ==========
 
     @ParameterizedTest
-    @CsvSource(value = {"NULL", "''", "'  '", "23X", "R23", "123"}, nullValues = "NULL")
-    @DisplayName("Should reject invalid runway identifiers")
-    void testInvalidRunway(String runway) {
+    @CsvSource(value = {"NULL", "''", "'  '"}, nullValues = "NULL")
+    @DisplayName("Should reject null or blank runway identifiers")
+    void testNullOrBlankRunway(String runway) {
         assertThatThrownBy(() -> RunwayState.fromCodes(runway, "1", "9", "00", "60"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Runway identifier cannot be null or blank");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"23X", "R23", "123"})
+    @DisplayName("Should reject badly formatted runway identifiers")
+    void testInvalidRunwayFormat(String runway) {
+        assertThatThrownBy(() -> RunwayState.fromCodes(runway, "1", "9", "00", "60"))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Invalid runway identifier format")
+                .hasFieldOrPropertyWithValue("component", "RunwayState.runway")
+                .hasFieldOrPropertyWithValue("rejectedValue", runway);
     }
 
     @Test
@@ -221,6 +235,7 @@ class RunwayStateTest {
     void testClearedAndNotUpdated() {
         assertThatThrownBy(() -> new RunwayState("10", null, null, null, null, null, null, true, true))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("both cleared and not updated");
     }
 
@@ -230,6 +245,7 @@ class RunwayStateTest {
         assertThatThrownBy(() -> new RunwayState("10", RunwayDeposit.DAMP, null, null, null,
                 null, null, false, true))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("cannot have any values");
     }
 
@@ -239,6 +255,7 @@ class RunwayStateTest {
         assertThatThrownBy(() -> new RunwayState("10", RunwayDeposit.DAMP, null, null, null,
                 FrictionCoefficient.NOT_REPORTED, null, true, false))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Cleared runway state");
     }
 
@@ -247,6 +264,7 @@ class RunwayStateTest {
     void testClearedWithoutFriction() {
         assertThatThrownBy(() -> new RunwayState("10", null, null, null, null, null, null, true, false))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Friction is required");
     }
 
@@ -256,6 +274,7 @@ class RunwayStateTest {
         assertThatThrownBy(() -> new RunwayState("10", null, RunwayContaminationExtent.NOT_REPORTED,
                 DepthOfDeposit.NOT_SIGNIFICANT, null, FrictionCoefficient.NOT_REPORTED, null, false, false))
                 .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("requires deposit, extent, depth and friction");
     }
 
@@ -275,7 +294,8 @@ class RunwayStateTest {
         assertThatThrownBy(() -> new RunwayState("10", RunwayDeposit.WET_SNOW,
                 RunwayContaminationExtent.PERCENT_51_TO_100, depth, depthMm,
                 FrictionCoefficient.NOT_REPORTED, null, false, false))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class);
     }
 
     @ParameterizedTest(name = "{0} with value {1}")
@@ -292,7 +312,8 @@ class RunwayStateTest {
         assertThatThrownBy(() -> new RunwayState("10", RunwayDeposit.WET_SNOW,
                 RunwayContaminationExtent.PERCENT_51_TO_100, DepthOfDeposit.MILLIMETRES, 5,
                 friction, frictionValue, false, false))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class);
     }
 
     @Test
