@@ -88,7 +88,7 @@ class InvalidObservationExceptionTest {
     @DisplayName("Cause is null when not provided")
     void testCauseIsNullByDefault() {
         InvalidObservationException e =
-                new InvalidObservationException("CloudType.oktas", "9", "Oktas must be between 1 and 8");
+                new InvalidObservationException("CloudType.oktas", "9", "Oktas must be between 0 and 8");
 
         assertThat(e.getCause()).isNull();
     }
