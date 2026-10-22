@@ -8465,23 +8465,27 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should leave a rejected bare cloud type in freeText and still parse what follows (#92)")
+    @DisplayName("Should leave a rejected bare cloud type in freeText and still parse what follows")
     void testParseCloudType_RejectedBareCode_PreservedInFreeText() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SC AC2";
 
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        try (LogCapture logs = LogCapture.of(RemarkHandlerChain.class)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
-        assertThat(result.isSuccess()).isTrue();
-        NoaaMetarData data = extractMetarData(result);
+            assertThat(result.isSuccess()).isTrue();
+            NoaaMetarData data = extractMetarData(result);
 
-        assertThat(data.getRemarks().freeText()).isEqualTo("SC");
-        assertThat(data.getRemarks().cloudTypes()).hasSize(1);
-        assertThat(data.getRemarks().cloudTypes().get(0).cloudType()).isEqualTo("AC");
-        assertThat(data.getRemarks().cloudTypes().get(0).oktas()).isEqualTo(2);
+            assertThat(data.getRemarks().freeText()).isEqualTo("SC");
+            assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+            assertThat(data.getRemarks().cloudTypes().get(0).cloudType()).isEqualTo("AC");
+            assertThat(data.getRemarks().cloudTypes().get(0).oktas()).isEqualTo(2);
+            // Rejected data must not trip the cloud type breaker
+            assertThat(logs.events()).isEmpty();
+        }
     }
 
     @Test
-    @DisplayName("Should keep a bare CB for the thunderstorm-location handler instead of discarding it (#92)")
+    @DisplayName("Should keep a bare CB for the thunderstorm-location handler instead of discarding it")
     void testParseCloudType_BareCbExposedMidPass_NotDiscarded() {
         // XCPT N sits between CB and its location; once XCPT N is stripped, a bare
         // CB would previously be eaten by the cloud-type handler. A CB followed
@@ -11162,11 +11166,18 @@ class NoaaMetarParserTest {
             }
         };
 
-        ParseResult<NoaaWeatherData> result =
-                failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+            ParseResult<NoaaWeatherData> result =
+                    failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getErrorMessage()).isEqualTo("Unexpected parsing error: boom");
+            assertThat(result.isFailure()).isTrue();
+            assertThat(result.getErrorMessage()).isEqualTo("Unexpected parsing error: boom");
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getMessage().getFormattedMessage()).isEqualTo("Unexpected error parsing METAR data");
+                assertThat(event.getThrown()).isInstanceOf(UnsupportedOperationException.class);
+            });
+        }
     }
 
     @Test
@@ -11174,65 +11185,82 @@ class NoaaMetarParserTest {
     void testParse_NoStation_WithFullBody() {
         String metar = "METAR 251651Z AUTO 19005KT 10SM -RA FEW015 22/12 A3015 NOSIG RMK AO2 SLP210";
 
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getErrorMessage()).isNotBlank();
+            assertThat(result.isFailure()).isTrue();
+            assertThat(result.getErrorMessage()).isNotBlank();
+            // Currently fails via an NPE in handleRemarks (no weatherData yet), logged as unexpected.
+            // When handleRemarks guards null, this becomes the clean "Could not extract station ID" failure.
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getThrown()).isInstanceOf(NullPointerException.class);
+            });
+        }
     }
 
     @Test
     @DisplayName("Should keep parsing when a pattern handler throws")
     void testParse_HandlerThrows_IsCaughtAndParsingContinues() {
+        IllegalStateException failure = new IllegalStateException("boom");
         NoaaMetarParser failing = new NoaaMetarParser() {
             @Override
             protected void handleWind(Matcher matcher) {
-                throw new IllegalStateException("boom");
+                throw failure;
             }
         };
 
-        ParseResult<NoaaWeatherData> result =
-                failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+            ParseResult<NoaaWeatherData> result =
+                    failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
-        assertThat(result.isSuccess()).isTrue();
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getMessage().getFormattedMessage()).isEqualTo("Error in handler 'wind': boom");
+                assertThat(event.getThrown()).isSameAs(failure);
+            });
+        }
     }
 
     @ParameterizedTest(name = "{1}")
     @CsvSource({
             // Batch 1: automated station type, SLP, hourly temperature, peak wind, wind-at-location
-            "AO3,                    'Automated station type out of range (pattern rejects)'",
-            "SLP,                    'SLP with no value (pattern rejects)'",
-            "SLP12,                  'SLP with two digits (pattern rejects)'",
-            "T02331,                 'Hourly temperature with a trailing digit (pattern rejects)'",
-            "T00500100,              'Dewpoint higher than temperature (validation rejects)'",
-            "T09990000,              'Temperature 99.9 C (validation rejects)'",
-            "'PK WND 99932/1530',    'Peak wind direction 999 (validation rejects)'",
-            "'PK WND 28032/2530',    'Peak wind hour 25 (pattern rejects; previously stored minute=25)'",
-            "'WIND 1400FT 99910KT',  'Wind-at-location direction 999 (validation rejects)'",
+            "AO3,                     'Automated station type out of range (pattern rejects)'",
+            "SLP,                     'SLP with no value (pattern rejects)'",
+            "SLP12,                   'SLP with two digits (pattern rejects)'",
+            "T02331,                  'Hourly temperature with a trailing digit (pattern rejects)'",
+            "T00500100,               'Dewpoint higher than temperature (validation rejects)'",
+            "T09990000,               'Temperature 99.9 C (validation rejects)'",
+            "'PK WND 99932/1530',     'Peak wind direction 999 (validation rejects)'",
+            "'PK WND 28032/2530',     'Peak wind hour 25 (pattern rejects; previously stored minute=25)'",
+            "'WIND 1400FT 99910KT',   'Wind-at-location direction 999 (validation rejects)'",
             // Batch 3: tower/surface visibility, precipitation, variable ceiling, ceiling second site
-            "'TWR VIS 123',          'Tower visibility runs into an extra digit (pattern rejects)'",
-            "'SFC VIS 1/2SM',        'Surface visibility with a unit suffix (pattern rejects)'",
-            "'TWR VIS 1/0',          'Zero denominator (previously stored as infinity)'",
-            "'VIS 1/0V2',            'Variable visibility with a zero denominator'",
-            "'VIS 1V1/0',            'Variable visibility: maximum has zero denominator'",
-            "'TWR VIS 1 1/0',        'Tower visibility: mixed number with zero denominator'",
-            "P00151,                 'Hourly precipitation with a trailing digit (pattern rejects)'",
-            "7012345,                '24-hour precipitation with too many digits (pattern rejects)'",
-            "600,                    'Too few digits for a 6-hour precipitation group (pattern rejects)'",
-            "'CIG 010V005',          'Variable ceiling minimum above maximum (validation rejects); ceiling second site no longer grabs CIG 010'",
-            "'CIG 005V0105',         'Variable ceiling runs into an extra digit (pattern rejects)'",
-            "'CIG 0050',             'Ceiling second site with four digits (pattern rejects)'",
+            "'TWR VIS 123',           'Tower visibility runs into an extra digit (pattern rejects)'",
+            "'SFC VIS 1/2SM',         'Surface visibility with a unit suffix (pattern rejects)'",
+            "'TWR VIS 1/0',           'Zero denominator (previously stored as infinity)'",
+            "'VIS 1/0V2',             'Variable visibility with a zero denominator'",
+            "'VIS 1V1/0',             'Variable visibility: maximum has zero denominator'",
+            "'TWR VIS 1 1/0',         'Tower visibility: mixed number with zero denominator'",
+            "P00151,                  'Hourly precipitation with a trailing digit (pattern rejects)'",
+            "7012345,                 '24-hour precipitation with too many digits (pattern rejects)'",
+            "600,                     'Too few digits for a 6-hour precipitation group (pattern rejects)'",
+            "'CIG 010V005',           'Variable ceiling minimum above maximum (validation rejects); ceiling second site no longer grabs CIG 010'",
+            "'CIG 005V0105',          'Variable ceiling runs into an extra digit (pattern rejects)'",
+            "'CIG 0050',              'Ceiling second site with four digits (pattern rejects)'",
             // Batch 4: max/min temperature, pressure, weather events, directions, rapid change
-            "10999,                  '6-hour max 99.9 C (validation rejects)'",
-            "1099,                   '6-hour max with two digits (pattern rejects)'",
-            "409990000,              '24-hour max 99.9 C (validation rejects)'",
-            "58999,                  'Pressure tendency change out of range (validation rejects)'",
-            "RAB99,                  'Weather event minute 99 (validation rejects)'",
-            "RAB2575,                'Weather event hour 25 (validation rejects)'",
-            "RAB123,                 'Weather event three-digit time (not a valid event)'",
-            "'XCPT NS',              'Except-direction with invalid point NS (validation rejects)'",
-            "'LTG DSNT NS',          'Lightning with invalid point NS (validation rejects)'",
-            "'TS NS',                'Thunderstorm location with invalid point NS (validation rejects)'",
-            "PRESXR,                 'Pressure rapid change with unknown code (validation rejects)'"
+            "10999,                   '6-hour max 99.9 C (validation rejects)'",
+            "1099,                    '6-hour max with two digits (pattern rejects)'",
+            "409990000,               '24-hour max 99.9 C (validation rejects)'",
+            "58999,                   'Pressure tendency change out of range (validation rejects)'",
+            "RAB99,                   'Weather event minute 99 (validation rejects)'",
+            "RAB2575,                 'Weather event hour 25 (validation rejects)'",
+            "RAB123,                  'Weather event three-digit time (not a valid event)'",
+            "'XCPT NS',               'Except-direction with invalid point NS (validation rejects)'",
+            "'LTG DSNT NS',           'Lightning with invalid point NS (validation rejects)'",
+            "'TS NS',                 'Thunderstorm location with invalid point NS (validation rejects)'",
+            "PRESXR,                  'Pressure rapid change with unknown code (validation rejects)'",
+            "'LAST OBS/NEXT 322500Z', 'Observation program status day 32 (validation rejects)'"
     })
     @DisplayName("Should leave a rejected remark group whole in freeText and keep parsing after it (Issue #115)")
     void testRejectedRemarkSurfacesWhole(String remark, String scenario) {
