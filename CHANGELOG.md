@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.0-SNAPSHOT]
+
+### Added
+- Per-handler circuit breaker for METAR remark handlers. The 31 sequential
+  remark handlers now run as a `RemarkHandler` list through a
+  `RemarkHandlerChain` created once per report. A handler that throws
+  anything other than a rejected-data exception is logged once at WARN with
+  its stack trace and skipped for the rest of that report; the other handlers,
+  the main body and the report itself are unaffected. (#135, part of #133)
+  - Rejected data is not a failure: handlers still catch
+    `InvalidObservationException` themselves and leave the group for freeText.
+  - Breakers reset with each report, so one unusual METAR cannot disable a
+    handler for the rest of a batch.
+  - A handler that returns null also trips its breaker.
+
+### Changed
+- Remark handler catches narrowed from `IllegalArgumentException` to
+  `InvalidObservationException` (plus `NumberFormatException` where the
+  handler parses digits from the report text). A plain
+  `IllegalArgumentException` is now treated as a bug and trips the breaker
+  instead of being silently filed as freeText. (#135)
+  - The ad-hoc `RuntimeException` catches in the thunderstorm-location and
+    except-direction handlers were removed; the breaker covers them.
+  - Main-body catches (`handlePattern` and the base-class handlers) are
+    unchanged and belong to sub-issue 3 of #133.
+
+### Fixed
+- A bare cloud type with no qualifier (e.g. `SC` in `SC AC2`) threw a plain
+  `IllegalArgumentException`. It now throws `InvalidObservationException`, so
+  it stays a rejected group and the following `AC2` still parses. Found by the
+  narrowed catches. (#135)
+- `ObservationProgramStatus` accepted impossible next-observation times:
+  `LAST OBS/NEXT 322500Z` was stored as day 32 at 25:00, contrary to the
+  1.21.0 entry. Day (1-31), hour (0-23) and minute (0-59) are now validated
+  and rejected with `InvalidObservationException`. (#135)
+
+### Downstream impact
+- No Bronze JSON shape change.
+- `LAST OBS/NEXT` groups with an out-of-range day, hour or minute are no
+  longer stored in `observationProgramStatus`; they surface whole in remarks
+  freeText.
+- A remark handler bug no longer fails the whole METAR. Previously any
+  unexpected exception reached `parse()` and returned `ParseResult.failure`;
+  now only that handler's remarks for that report fall through to freeText.
+- New WARN log line on a breaker trip:
+  `Remark handler '<name>' failed on '<text>' and is disabled for the rest of this report`.
+
+### Known gaps
+- Thirteen remark catch blocks cannot be reached because their patterns only
+  match values the value objects accept. They are automated station type, sea level
+  pressure, wind shift, directional weather, tower/surface visibility, hourly
+  and multi-hour precipitation, predominant cloud type, PP group, icing,
+  ceiling second site, obscuration, automated maintenance. They stay as
+  defensive guards.
+- A METAR with remarks but no station fails through a `NullPointerException`
+  in `handleRemarks`, logged as an unexpected error, instead of the clean
+  "Could not extract station ID" failure (follow-up issue).
+
+### Tests
+- `RemarkHandlerChainTest`: multi-pass progress, trip on any
+  `RuntimeException` (including a plain `IllegalArgumentException`), skip
+  after trip, log once per trip, null result trips, fresh chain per report,
+  and constructor validation.
+- `LogCapture` test helper captures one class's WARN and ERROR events in
+  memory. Expected-failure tests assert the log instead of printing stack
+  traces into the build output.
+- `NoaaMetarParserTest`: the three expected-failure tests now assert their
+  log events; the bare cloud type test asserts no breaker trip; new
+  `LAST OBS/NEXT 322500Z` row in `testRejectedRemarkSurfacesWhole`.
+- `ObservationProgramStatusTest`: out-of-range and boundary times, plus one
+  test pinning component, rejected value and message.
+
 ## [1.22.0-SNAPSHOT]
 
 ### Added
