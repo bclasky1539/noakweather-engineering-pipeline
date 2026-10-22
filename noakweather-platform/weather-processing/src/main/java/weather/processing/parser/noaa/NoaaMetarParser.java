@@ -98,12 +98,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     // Pattern registry for METAR parsing
     private final NoaaAviationWeatherPatternRegistry patternRegistry;
+    // Sequential remark handlers, run per report through a RemarkHandlerChain
+    private final List<RemarkHandler> sequentialRemarkHandlers;
 
     // METAR-specific state
     private String reportType;
 
     public NoaaMetarParser() {
         this.patternRegistry = new NoaaAviationWeatherPatternRegistry();
+        this.sequentialRemarkHandlers = createRemarkHandlers();
     }
 
     @Override
@@ -905,10 +908,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         NoaaMetarRemarks.Builder remarksBuilder = NoaaMetarRemarks.builder();
         String remaining = remarksText.trim();
         List<String> unparsedTokens = new ArrayList<>();
-
+        RemarkHandlerChain chain = new RemarkHandlerChain(sequentialRemarkHandlers);
 
         while (!remaining.isBlank()) {
-            remaining = runRemarkHandlerPasses(remaining, remarksBuilder);
+            remaining = chain.runPasses(remaining, remarksBuilder);
 
             if (remaining.isBlank()) {
                 break;
@@ -938,57 +941,44 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Run all remark handlers repeatedly against {@code remaining} until a full
-     * pass makes no further progress. Lets handlers fire in any order — a
-     * handler that only matches after an earlier one has consumed its token
-     * still gets a chance on a later pass within this segment.
+     * Build the ordered list of remark handlers run by {@link RemarkHandlerChain}.
+     * The order is the order handlers run within each pass; names appear in breaker logs.
      *
-     * @param remaining      the remarks text to process
-     * @param remarksBuilder the remarks builder to populate
-     * @return the remaining text once no handler can make further progress
+     * @return the remark handlers, in run order
      */
-    private String runRemarkHandlerPasses(String remaining, NoaaMetarRemarks.Builder remarksBuilder) {
-        String previous;
-
-        do {
-            previous = remaining;
-
-            remaining = handleAutomatedStationType(remaining, remarksBuilder);
-            remaining = handleSeaLevelPressureSequential(remaining, remarksBuilder);
-            remaining = handleHourlyTemperatureSequential(remaining, remarksBuilder);
-            remaining = handlePeakWindSequential(remaining, remarksBuilder);
-            remaining = handleWindShiftSequential(remaining, remarksBuilder);
-            remaining = handleWindAtLocationSequential(remaining, remarksBuilder);
-            remaining = handleVariableVisibilitySequential(remaining, remarksBuilder);
-            remaining = handleVariableCeilingSequential(remaining, remarksBuilder);
-            remaining = handleCeilingSecondSiteSequential(remaining, remarksBuilder);
-            remaining = handleObscurationSequential(remaining, remarksBuilder);
-            remaining = handleLightningSequential(remaining, remarksBuilder);
-            remaining = handleThunderstormLocationSequential(remaining, remarksBuilder);
-            remaining = handleCloudTypeSequential(remaining, remarksBuilder);
-            remaining = handleTowerSurfaceVisibilitySequential(remaining, remarksBuilder);
-            remaining = handleHourlyPrecipitationSequential(remaining, remarksBuilder);
-            remaining = handlePpGroupSequential(remaining, remarksBuilder);
-            remaining = handlePredominantCloudTypeSequential(remaining, remarksBuilder);
-            remaining = handleMultiHourPrecipitationSequential(remaining, remarksBuilder);
-            remaining = handleHailSizeSequential(remaining, remarksBuilder);
-            remaining = handleWeatherEventsSequential(remaining, remarksBuilder);
-            remaining = handlePressureTendencySequential(remaining, remarksBuilder);
-            remaining = handlePressureRapidChangeSequential(remaining, remarksBuilder);
-            remaining = handleIcingSequential(remaining, remarksBuilder);
-            remaining = handle6HourMaxMinTemperatureSequential(remaining, remarksBuilder);
-            remaining = handle24HourMaxMinTemperatureSequential(remaining, remarksBuilder);
-            remaining = handleDensityAltitudeSequential(remaining, remarksBuilder);
-            remaining = handleAutomatedMaintenanceSequential(remaining, remarksBuilder);
-            remaining = handleSecondaryAltimeterSequential(remaining, remarksBuilder);
-            remaining = handleDirectionalWeatherSequential(remaining, remarksBuilder);
-            remaining = handleObservationProgramStatusSequential(remaining, remarksBuilder);
-            remaining = handleExceptDirectionSequential(remaining, remarksBuilder);
-
-            // Continue while we are making progress
-        } while (!Objects.equals(remaining, previous));
-
-        return remaining;
+    private List<RemarkHandler> createRemarkHandlers() {
+        return List.of(
+                new RemarkHandler("automated station type", this::handleAutomatedStationType),
+                new RemarkHandler("sea level pressure", this::handleSeaLevelPressureSequential),
+                new RemarkHandler("hourly temperature", this::handleHourlyTemperatureSequential),
+                new RemarkHandler("peak wind", this::handlePeakWindSequential),
+                new RemarkHandler("wind shift", this::handleWindShiftSequential),
+                new RemarkHandler("wind-at-location", this::handleWindAtLocationSequential),
+                new RemarkHandler("variable visibility", this::handleVariableVisibilitySequential),
+                new RemarkHandler("variable ceiling", this::handleVariableCeilingSequential),
+                new RemarkHandler("ceiling second site", this::handleCeilingSecondSiteSequential),
+                new RemarkHandler("obscuration", this::handleObscurationSequential),
+                new RemarkHandler("lightning", this::handleLightningSequential),
+                new RemarkHandler("thunderstorm location", this::handleThunderstormLocationSequential),
+                new RemarkHandler("cloud type", this::handleCloudTypeSequential),
+                new RemarkHandler("tower/surface visibility", this::handleTowerSurfaceVisibilitySequential),
+                new RemarkHandler("hourly precipitation", this::handleHourlyPrecipitationSequential),
+                new RemarkHandler("PP group", this::handlePpGroupSequential),
+                new RemarkHandler("predominant cloud type", this::handlePredominantCloudTypeSequential),
+                new RemarkHandler("multi-hour precipitation", this::handleMultiHourPrecipitationSequential),
+                new RemarkHandler("hail size", this::handleHailSizeSequential),
+                new RemarkHandler("weather events", this::handleWeatherEventsSequential),
+                new RemarkHandler("pressure tendency", this::handlePressureTendencySequential),
+                new RemarkHandler("pressure rapid change", this::handlePressureRapidChangeSequential),
+                new RemarkHandler("icing", this::handleIcingSequential),
+                new RemarkHandler("6-hour max/min temperature", this::handle6HourMaxMinTemperatureSequential),
+                new RemarkHandler("24-hour max/min temperature", this::handle24HourMaxMinTemperatureSequential),
+                new RemarkHandler("density altitude", this::handleDensityAltitudeSequential),
+                new RemarkHandler("automated maintenance", this::handleAutomatedMaintenanceSequential),
+                new RemarkHandler("secondary altimeter", this::handleSecondaryAltimeterSequential),
+                new RemarkHandler("directional weather", this::handleDirectionalWeatherSequential),
+                new RemarkHandler("observation program status", this::handleObservationProgramStatusSequential),
+                new RemarkHandler("except-direction", this::handleExceptDirectionSequential));
     }
 
     /**
