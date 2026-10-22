@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.23.1-SNAPSHOT]
+
+### Fixed
+- Fixed a SonarCloud issue (java:S9435) in `WeatherConditions`. Inverted
+  negated ternary in WeatherConditions.getSummary. There is No behaviour change.
+- Includes IDE reformatting of the Javadoc @param alignment.
+
 ## [1.23.0-SNAPSHOT]
 
 ### Added

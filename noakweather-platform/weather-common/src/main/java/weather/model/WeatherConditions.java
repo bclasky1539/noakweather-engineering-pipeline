@@ -54,13 +54,12 @@ import static weather.model.enums.SkyCoverage.*;
  * Analogy: If WeatherData is the "envelope" (who, what, when, where),
  * then WeatherConditions is the "letter" (the actual weather content).
  *
- * @param wind Wind conditions (direction, speed, gusts, variability)
- * @param visibility Prevailing visibility
+ * @param wind           Wind conditions (direction, speed, gusts, variability)
+ * @param visibility     Prevailing visibility
  * @param presentWeather List of weather phenomena (rain, snow, fog, etc.)
- * @param skyConditions List of cloud layers (SKC, FEW, SCT, BKN, OVC)
- * @param temperature Temperature information (current or forecast max/min)
- * @param pressure Atmospheric pressure information
- *
+ * @param skyConditions  List of cloud layers (SKC, FEW, SCT, BKN, OVC)
+ * @param temperature    Temperature information (current or forecast max/min)
+ * @param pressure       Atmospheric pressure information
  * @author bclasky1539
  *
  */
@@ -255,7 +254,7 @@ public record WeatherConditions(
             summary.setLength(summary.length() - 2);
         }
 
-        return !summary.isEmpty() ? summary.toString() : "No conditions reported";
+        return summary.isEmpty() ? "No conditions reported" : summary.toString();
     }
 
     // ==================== Factory Methods ====================
@@ -273,7 +272,7 @@ public record WeatherConditions(
     /**
      * Create conditions with only wind and visibility (common minimal set).
      *
-     * @param wind Wind conditions
+     * @param wind       Wind conditions
      * @param visibility Visibility
      * @return WeatherConditions with wind and visibility
      */
@@ -284,12 +283,12 @@ public record WeatherConditions(
     /**
      * Create conditions from individual components (full set).
      *
-     * @param wind Wind conditions
-     * @param visibility Visibility
+     * @param wind           Wind conditions
+     * @param visibility     Visibility
      * @param presentWeather List of weather phenomena
-     * @param skyConditions List of cloud layers
-     * @param temperature Temperature information
-     * @param pressure Pressure information
+     * @param skyConditions  List of cloud layers
+     * @param temperature    Temperature information
+     * @param pressure       Pressure information
      * @return WeatherConditions with all specified components
      */
     public static WeatherConditions of(
