@@ -11162,11 +11162,18 @@ class NoaaMetarParserTest {
             }
         };
 
-        ParseResult<NoaaWeatherData> result =
-                failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+            ParseResult<NoaaWeatherData> result =
+                    failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getErrorMessage()).isEqualTo("Unexpected parsing error: boom");
+            assertThat(result.isFailure()).isTrue();
+            assertThat(result.getErrorMessage()).isEqualTo("Unexpected parsing error: boom");
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getMessage().getFormattedMessage()).isEqualTo("Unexpected error parsing METAR data");
+                assertThat(event.getThrown()).isInstanceOf(UnsupportedOperationException.class);
+            });
+        }
     }
 
     @Test
@@ -11174,26 +11181,42 @@ class NoaaMetarParserTest {
     void testParse_NoStation_WithFullBody() {
         String metar = "METAR 251651Z AUTO 19005KT 10SM -RA FEW015 22/12 A3015 NOSIG RMK AO2 SLP210";
 
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
-        assertThat(result.isFailure()).isTrue();
-        assertThat(result.getErrorMessage()).isNotBlank();
+            assertThat(result.isFailure()).isTrue();
+            assertThat(result.getErrorMessage()).isNotBlank();
+            // Currently fails via an NPE in handleRemarks (no weatherData yet), logged as unexpected.
+            // When handleRemarks guards null, this becomes the clean "Could not extract station ID" failure.
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getThrown()).isInstanceOf(NullPointerException.class);
+            });
+        }
     }
 
     @Test
     @DisplayName("Should keep parsing when a pattern handler throws")
     void testParse_HandlerThrows_IsCaughtAndParsingContinues() {
+        IllegalStateException failure = new IllegalStateException("boom");
         NoaaMetarParser failing = new NoaaMetarParser() {
             @Override
             protected void handleWind(Matcher matcher) {
-                throw new IllegalStateException("boom");
+                throw failure;
             }
         };
 
-        ParseResult<NoaaWeatherData> result =
-                failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+            ParseResult<NoaaWeatherData> result =
+                    failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
-        assertThat(result.isSuccess()).isTrue();
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                assertThat(event.getMessage().getFormattedMessage()).isEqualTo("Error in handler 'wind': boom");
+                assertThat(event.getThrown()).isSameAs(failure);
+            });
+        }
     }
 
     @ParameterizedTest(name = "{1}")
