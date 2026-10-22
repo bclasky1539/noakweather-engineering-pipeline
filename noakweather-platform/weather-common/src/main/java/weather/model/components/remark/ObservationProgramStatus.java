@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 package weather.model.components.remark;
+
+import weather.exception.InvalidObservationException;
 
 /**
  * Canadian MANOBS observation-program status remark ({@code LAST STFD
@@ -42,6 +44,28 @@ public record ObservationProgramStatus(
         String viaStation
 ) {
 
+    private static final int MIN_DAY = 1;
+    private static final int MAX_DAY = 31;
+    private static final int MAX_HOUR = 23;
+    private static final int MAX_MINUTE = 59;
+
+    /**
+     * @throws InvalidObservationException if the day is outside 1-31, the hour
+     *                                     outside 0-23, or the minute outside 0-59
+     */
+    public ObservationProgramStatus {
+        validateRange("ObservationProgramStatus.day", "Day", day, MIN_DAY, MAX_DAY);
+        validateRange("ObservationProgramStatus.hour", "Hour", hour, 0, MAX_HOUR);
+        validateRange("ObservationProgramStatus.minute", "Minute", minute, 0, MAX_MINUTE);
+    }
+
+    private static void validateRange(String component, String label, int value, int min, int max) {
+        if (value < min || value > max) {
+            throw new InvalidObservationException(component, String.valueOf(value),
+                    label + " must be between " + min + " and " + max);
+        }
+    }
+
     /**
      * Factory method matching the {@code of(...)} convention used
      * elsewhere in the remarks model (e.g. {@code Icing.of},
@@ -67,7 +91,7 @@ public record ObservationProgramStatus(
 
     /**
      * @return a human-readable summary, e.g. "Staffed, next observation day 26 at 12:00 UTC"
-     *         or "Staffed, next observation day 02 at 12:00 UTC via CYQB" when a via station is present
+     * or "Staffed, next observation day 02 at 12:00 UTC via CYQB" when a via station is present
      */
     public String getSummary() {
         String staffedPart = staffed ? "Staffed" : "Not staffed";

@@ -20,8 +20,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests for ObservationProgramStatus value object.
@@ -190,5 +192,30 @@ class ObservationProgramStatusTest {
         ObservationProgramStatus status2 = ObservationProgramStatus.of(true, 2, 12, 0, "CYYZ");
 
         assertThat(status1).isNotEqualTo(status2);
+    }
+
+    // ==================== Additional Tests ====================
+
+    @ParameterizedTest(name = "day={0} hour={1} minute={2}")
+    @CsvSource({"0, 12, 0", "32, 12, 0", "15, 24, 0", "15, -1, 0", "15, 12, 60", "15, 12, -1"})
+    void testOutOfRangeTimeRejected(int day, int hour, int minute) {
+        assertThatThrownBy(() -> ObservationProgramStatus.of(true, day, hour, minute, null))
+                .isInstanceOf(InvalidObservationException.class);
+    }
+
+    @ParameterizedTest(name = "day={0} hour={1} minute={2}")
+    @CsvSource({"1, 0, 0", "31, 23, 59"})
+    void testBoundaryTimesAccepted(int day, int hour, int minute) {
+        assertThat(ObservationProgramStatus.of(false, day, hour, minute, null).day()).isEqualTo(day);
+    }
+
+    @Test
+    void testInvalidDayPinsComponentValueAndMessage() {
+        assertThatThrownBy(() -> ObservationProgramStatus.of(true, 32, 25, 0, null))
+                .isInstanceOfSatisfying(InvalidObservationException.class, e -> {
+                    assertThat(e.getComponent()).isEqualTo("ObservationProgramStatus.day");
+                    assertThat(e.getRejectedValue()).isEqualTo("32");
+                    assertThat(e.getMessage()).isEqualTo("Day must be between 1 and 31: 32");
+                });
     }
 }
