@@ -11325,7 +11325,9 @@ class NoaaMetarParserTest {
             "A9999,     altimeter,      'Altimeter 99.99 inHg out of range'",
             "5U,        visibility,     'Visibility unit U is not SM, M or KM'",
             "VV///,     sky condition,  'Vertical visibility with no height'",
-            "BKN020XX,  sky condition,  'Unknown cloud type XX'"
+            "BKN020XX,  sky condition,  'Unknown cloud type XX'",
+            "R04/1200V0800FT,  RVR,                   'RVR variable low above high'",
+            "10/15,            temperature/dewpoint,  'Dewpoint above temperature'"
     })
     @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN (#136)")
     void testRejectedMainBodyGroupLoggedAtDebugNotWarn(String group, String groupType, String scenario) {
