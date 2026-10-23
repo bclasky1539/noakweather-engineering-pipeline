@@ -65,13 +65,6 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NoaaAviationWeatherParser.class);
 
-    /**
-     * Single log category for every report group the parsers reject as invalid data
-     * (main body and remarks alike). Enable DEBUG for this category alone to see
-     * each rejected group with its component and value (#136).
-     */
-    private static final Logger REJECTED = LoggerFactory.getLogger("weather.processing.parser.noaa.Rejected");
-
     // Header record date and time
     protected Instant issueTime;
     protected LocalDateTime issueDateTime;
@@ -870,14 +863,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      *                  {@link InvalidObservationException}
      */
     protected static void logRejected(String groupType, String text, IllegalArgumentException e) {
-        if (!REJECTED.isDebugEnabled()) {
-            return;
-        }
-        if (e instanceof InvalidObservationException ioe) {
-            REJECTED.debug("Rejected {} '{}' [{}]: {}", groupType, text, ioe.getComponent(), e.getMessage());
-        } else {
-            REJECTED.debug("Rejected {} '{}': {}", groupType, text, e.getMessage());
-        }
+        RejectedGroupLog.log(groupType, text, e);
     }
 
     /**
