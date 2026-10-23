@@ -11216,8 +11216,9 @@ class NoaaMetarParserTest {
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(logs.events()).singleElement().satisfies(event -> {
-                assertThat(event.getLevel()).isEqualTo(Level.WARN);
-                assertThat(event.getMessage().getFormattedMessage()).isEqualTo("Error in handler 'wind': boom");
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getMessage().getFormattedMessage())
+                        .isEqualTo("Unexpected error in handler 'wind' on '28016KT'");
                 assertThat(event.getThrown()).isSameAs(failure);
             });
         }
@@ -11327,7 +11328,8 @@ class NoaaMetarParserTest {
             "VV///,     sky condition,  'Vertical visibility with no height'",
             "BKN020XX,  sky condition,  'Unknown cloud type XX'",
             "R04/1200V0800FT,  RVR,                   'RVR variable low above high'",
-            "10/15,            temperature/dewpoint,  'Dewpoint above temperature'"
+            "10/15,            temperature/dewpoint,  'Dewpoint above temperature'",
+            "40016KT,          wind,                  'Wind direction 400 out of range'"
     })
     @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN (#136)")
     void testRejectedMainBodyGroupLoggedAtDebugNotWarn(String group, String groupType, String scenario) {

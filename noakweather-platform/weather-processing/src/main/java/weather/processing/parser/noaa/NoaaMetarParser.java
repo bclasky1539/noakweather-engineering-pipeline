@@ -413,6 +413,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * <p>
      * Handlers for shared aviation weather elements (wind, visibility, present weather,
      * sky conditions) are inherited from NoaaAviationWeatherParser.
+     * <p>
+     * Main-body boundary: rejected data that reaches here is logged at DEBUG
+     * on the shared Rejected category and parsing continues; any other exception is
+     * a bug, logged at ERROR with its stack trace, and parsing still continues.
      *
      * @param handlerName The name of the handler from NoaaAviationWeatherPatternRegistry
      * @param matcher     The regex matcher with captured groups
@@ -449,8 +453,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
                 default -> LOGGER.debug("No handler implemented for: {}", handlerName);
             }
-        } catch (Exception e) {
-            LOGGER.warn("Error in handler '{}': {}", handlerName, e.getMessage(), e);
+        } catch (InvalidObservationException e) {
+            // Rejected data a handler did not catch itself (e.g. Wind direction 400)
+            logRejected(handlerName, matcher.group(0).trim(), e);
+        } catch (RuntimeException e) {
+            LOGGER.error("Unexpected error in handler '{}' on '{}'", handlerName, matcher.group(0).trim(), e);
         }
     }
 
