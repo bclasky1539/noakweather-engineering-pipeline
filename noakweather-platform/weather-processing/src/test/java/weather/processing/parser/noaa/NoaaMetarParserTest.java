@@ -11351,6 +11351,23 @@ class NoaaMetarParserTest {
         }
     }
 
+    @Test
+    @DisplayName("Should log a rejected report at INFO with its reason, not silently (#136)")
+    void testParse_RejectedReportLoggedAtInfo() {
+        String metar = "METAR 121853Z 28016KT 10SM A3015";
+
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class.getName(), Level.INFO)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+            assertThat(result.isFailure()).isTrue();
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.INFO);
+                assertThat(event.getMessage().getFormattedMessage())
+                        .isEqualTo("METAR rejected: Could not extract station ID from METAR [" + metar + "]");
+            });
+        }
+    }
+
     // --- Correct behavior (regression) ---
 
     @ParameterizedTest

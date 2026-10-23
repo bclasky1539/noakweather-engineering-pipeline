@@ -146,7 +146,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             return ParseResult.success(weatherData);
 
-        } catch (IllegalStateException | IllegalArgumentException e) {
+        } catch (InvalidObservationException | IllegalStateException e) {
+            // The report as a whole is unusable (e.g. no station): expected bad data, not a bug
+            LOGGER.info("METAR rejected: {} [{}]", e.getMessage(), rawData.trim());
             return ParseResult.failure(
                     "Failed to parse METAR data: " + e.getMessage(), e
             );
