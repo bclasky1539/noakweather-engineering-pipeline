@@ -11216,8 +11216,9 @@ class NoaaMetarParserTest {
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(logs.events()).singleElement().satisfies(event -> {
-                assertThat(event.getLevel()).isEqualTo(Level.WARN);
-                assertThat(event.getMessage().getFormattedMessage()).isEqualTo("Error in handler 'wind': boom");
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getMessage().getFormattedMessage())
+                        .isEqualTo("Unexpected error in handler 'wind' on '28016KT'");
                 assertThat(event.getThrown()).isSameAs(failure);
             });
         }
@@ -11318,6 +11319,53 @@ class NoaaMetarParserTest {
         assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "A9999,     altimeter,      'Altimeter 99.99 inHg out of range'",
+            "5U,        visibility,     'Visibility unit U is not SM, M or KM'",
+            "VV///,     sky condition,  'Vertical visibility with no height'",
+            "BKN020XX,  sky condition,  'Unknown cloud type XX'",
+            "R04/1200V0800FT,  RVR,                   'RVR variable low above high'",
+            "10/15,            temperature/dewpoint,  'Dewpoint above temperature'",
+            "40016KT,          wind,                  'Wind direction 400 out of range'"
+    })
+    @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN (#136)")
+    void testRejectedMainBodyGroupLoggedAtDebugNotWarn(String group, String groupType, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM " + group + " 16/03 A3015";
+
+        try (LogCapture rejected = LogCapture.of("weather.processing.parser.noaa.Rejected", Level.DEBUG);
+             LogCapture baseWarnings = LogCapture.of(NoaaAviationWeatherParser.class);
+             LogCapture metarWarnings = LogCapture.of(NoaaMetarParser.class)) {
+
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+            assertThat(result.isSuccess()).as(scenario).isTrue();
+            assertThat(rejected.events()).as(scenario).singleElement()
+                    .extracting(event -> event.getMessage().getFormattedMessage())
+                    .asString()
+                    .startsWith("Rejected " + groupType + " '" + group + "'");
+            assertThat(baseWarnings.events()).as(scenario).isEmpty();
+            assertThat(metarWarnings.events()).as(scenario).isEmpty();
+        }
+    }
+
+    @Test
+    @DisplayName("Should log a rejected report at INFO with its reason, not silently (#136)")
+    void testParse_RejectedReportLoggedAtInfo() {
+        String metar = "METAR 121853Z 28016KT 10SM A3015";
+
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class.getName(), Level.INFO)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+            assertThat(result.isFailure()).isTrue();
+            assertThat(logs.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.INFO);
+                assertThat(event.getMessage().getFormattedMessage())
+                        .isEqualTo("METAR rejected: Could not extract station ID from METAR [" + metar + "]");
+            });
+        }
     }
 
     // --- Correct behavior (regression) ---

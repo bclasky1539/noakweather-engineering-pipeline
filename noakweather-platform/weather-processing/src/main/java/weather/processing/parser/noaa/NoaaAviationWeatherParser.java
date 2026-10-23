@@ -16,6 +16,7 @@
  */
 package weather.processing.parser.noaa;
 
+import weather.exception.InvalidObservationException;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherConditions;
 import weather.model.components.*;
@@ -388,8 +389,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             LOGGER.debug("Visibility: {} meters (lessThan={}, greaterThan={})",
                     distance, lessThan, greaterThan);
             return true;
-        } catch (NumberFormatException e) {
-            logVisibilityParseError(distStr, e);
+        } catch (InvalidObservationException | NumberFormatException e) {
+            logRejected("visibility", distStr, e);
             return false;
         }
     }
@@ -420,19 +421,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
             LOGGER.debug("Visibility: {} {} (lessThan={}, greaterThan={})",
                     distance, unit, lessThan, greaterThan);
-        } catch (NumberFormatException e) {
-            logVisibilityParseError(distU, e);
+        } catch (InvalidObservationException | NumberFormatException e) {
+            logRejected("visibility", distU + unit, e);
         }
-    }
-
-    /**
-     * Log visibility parsing error with consistent message format.
-     *
-     * @param distanceStr The distance string that failed to parse
-     * @param e           The NumberFormatException that occurred
-     */
-    private void logVisibilityParseError(String distanceStr, NumberFormatException e) {
-        LOGGER.warn("Failed to parse visibility distance: '{}' - {}", distanceStr, e.getMessage());
     }
 
     /**
@@ -496,20 +487,18 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return;
         }
 
-        try {
-            PresentWeather presentWeather = PresentWeather.parse(weatherString);
-            presentWeatherList.add(presentWeather);
+        // PresentWeather.parse never rejects data (unrecognised text is kept as "other"),
+        // so there is nothing to catch here; anything it throws is a bug for handlePattern.
+        PresentWeather presentWeather = PresentWeather.parse(weatherString);
+        presentWeatherList.add(presentWeather);
 
-            String phenomenon = getPrimaryPhenomenon(presentWeather);
+        String phenomenon = getPrimaryPhenomenon(presentWeather);
 
-            LOGGER.debug("Present Weather: {} (Intensity: {}, Descriptor: {}, Phenomena: {})",
-                    weatherString,
-                    presentWeather.intensity(),
-                    presentWeather.descriptor(),
-                    phenomenon);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse present weather '{}': {}", weatherString, e.getMessage());
-        }
+        LOGGER.debug("Present Weather: {} (Intensity: {}, Descriptor: {}, Phenomena: {})",
+                weatherString,
+                presentWeather.intensity(),
+                presentWeather.descriptor(),
+                phenomenon);
     }
 
     /**
@@ -543,13 +532,10 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return;
         }
 
-        try {
-            PresentWeather recent = PresentWeather.parse(code);
-            weatherData.addRecentWeather(recent);
-            LOGGER.debug("Recent weather: {} ({})", code, recent.getDescription());
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse recent weather '{}': {}", code, e.getMessage());
-        }
+        // As for present weather, PresentWeather.parse never rejects data.
+        PresentWeather recent = PresentWeather.parse(code);
+        weatherData.addRecentWeather(recent);
+        LOGGER.debug("Recent weather: {} ({})", code, recent.getDescription());
     }
 
     /**
@@ -600,8 +586,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
                     heightFeet != null ? heightFeet : "N/A",
                     cloudType != null ? " (" + cloudType + ")" : "");
 
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse sky condition '{}': {}", matcher.group(0).trim(), e.getMessage());
+        } catch (InvalidObservationException e) {
+            logRejected("sky condition", matcher.group(0).trim(), e);
         }
     }
 
@@ -611,7 +597,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      *
      * @param coverageStr the coverage string from METAR/TAF
      * @return SkyCoverage enum
-     * @throws IllegalArgumentException if coverage is invalid
+     * @throws IllegalArgumentException    if coverage is null or blank
+     * @throws InvalidObservationException if coverage is not a known code
      */
     protected SkyCoverage parseCoverage(String coverageStr) {
         if (coverageStr == null || coverageStr.isBlank()) {
@@ -634,7 +621,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             case "BKN" -> SkyCoverage.BROKEN;        // Broken (5/8 to 7/8)
             case "OVC" -> SkyCoverage.OVERCAST;      // Overcast (8/8)
             case "VV" -> SkyCoverage.VERTICAL_VISIBILITY;  // Vertical Visibility
-            default -> throw new IllegalArgumentException("Unknown sky coverage: " + coverageStr);
+            default ->
+                    throw new InvalidObservationException("SkyCondition.coverage", coverageStr, "Unknown sky coverage");
         };
     }
 
@@ -645,6 +633,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * @param heightStr the height string from METAR/TAF (could be null)
      * @param coverage  the sky coverage (used for validation)
      * @return height in feet, or null if not applicable
+     * @throws InvalidObservationException if vertical visibility has no height, or the height is not numeric
      */
     protected Integer parseHeight(String heightStr, SkyCoverage coverage) {
         // Clear sky conditions should not have height
@@ -656,7 +645,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         if (heightStr == null || heightStr.isBlank() || "///".equals(heightStr)) {
             // Vertical visibility requires height
             if (coverage == SkyCoverage.VERTICAL_VISIBILITY) {
-                throw new IllegalArgumentException("Vertical visibility must have height specified");
+                throw new InvalidObservationException("SkyCondition.heightFeet", heightStr,
+                        "Vertical visibility must have height specified");
             }
             return null;
         }
@@ -672,7 +662,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return heightCode * 100;
 
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid cloud height format: " + heightStr);
+            throw new InvalidObservationException("SkyCondition.heightFeet", heightStr,
+                    "Invalid cloud height format", e);
         }
     }
 
@@ -727,9 +718,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
                 LOGGER.debug("Altimeter: {}", pressure.getSummary());
             }
 
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse altimeter '{}': {}",
-                    matcher.group(0).trim(), e.getMessage());
+        } catch (InvalidObservationException e) {
+            logRejected("altimeter", matcher.group(0).trim(), e);
         }
     }
 
@@ -774,7 +764,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return parsePressureByValue(pressureValue);
 
         } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid pressure format: {}", pressureStr);
+            logRejected("pressure", pressureStr, e);
             return null;
         }
     }
@@ -791,7 +781,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             case "A", "AA" -> parseInchesHg(value);
             case "Q", "QNH" -> parseHectopascals(value);
             default -> {
-                LOGGER.warn("Unknown pressure unit prefix: {}", prefix);
+                LOGGER.debug("Unknown pressure unit prefix {}, inferring unit from value", prefix);
                 yield parsePressureByValue(value);
             }
         };
@@ -861,6 +851,20 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     }
 
     // ==================== UTILITY METHODS ====================
+
+    /**
+     * Log a report group that was rejected as invalid data. The group is dropped
+     * (main body) or left for freeText (remarks); parsing continues. Expected bad
+     * data is logged at DEBUG on the shared "Rejected" category, never WARN (#136).
+     *
+     * @param groupType human-readable group name, e.g. "sky condition"
+     * @param text      the rejected text from the report
+     * @param e         the rejection; its component is included when it is an
+     *                  {@link InvalidObservationException}
+     */
+    protected static void logRejected(String groupType, String text, IllegalArgumentException e) {
+        RejectedGroupLog.log(groupType, text, e);
+    }
 
     /**
      * Build WeatherConditions from accumulated data.

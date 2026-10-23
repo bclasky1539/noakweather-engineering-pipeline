@@ -146,7 +146,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             return ParseResult.success(weatherData);
 
-        } catch (IllegalStateException | IllegalArgumentException e) {
+        } catch (InvalidObservationException | IllegalStateException e) {
+            // The report as a whole is unusable (e.g. no station): expected bad data, not a bug
+            LOGGER.info("METAR rejected: {} [{}]", e.getMessage(), rawData.trim());
             return ParseResult.failure(
                     "Failed to parse METAR data: " + e.getMessage(), e
             );
@@ -401,12 +403,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Logs a remark group that matched its pattern but was rejected. The caller
-     * leaves the text in place so it surfaces in freeText (#92, #115).
+     * leaves the text in place so it surfaces in freeText (#92, #115). Delegates to
+     * the shared {@link #logRejected} so remarks and main body use one category (#136).
      */
     private static void logRejectedRemark(String remarkType, String matchedText, IllegalArgumentException e) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Invalid {}, leaving for freeText: {} ({})", remarkType, matchedText, e.getMessage());
-        }
+        logRejected(remarkType, matchedText, e);
     }
 
     /**
@@ -414,6 +415,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * <p>
      * Handlers for shared aviation weather elements (wind, visibility, present weather,
      * sky conditions) are inherited from NoaaAviationWeatherParser.
+     * <p>
+     * Main-body boundary: rejected data that reaches here is logged at DEBUG
+     * on the shared Rejected category and parsing continues; any other exception is
+     * a bug, logged at ERROR with its stack trace, and parsing still continues.
      *
      * @param handlerName The name of the handler from NoaaAviationWeatherPatternRegistry
      * @param matcher     The regex matcher with captured groups
@@ -450,8 +455,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
                 default -> LOGGER.debug("No handler implemented for: {}", handlerName);
             }
-        } catch (Exception e) {
-            LOGGER.warn("Error in handler '{}': {}", handlerName, e.getMessage(), e);
+        } catch (InvalidObservationException e) {
+            // Rejected data a handler did not catch itself (e.g. Wind direction 400)
+            logRejected(handlerName, matcher.group(0).trim(), e);
+        } catch (RuntimeException e) {
+            LOGGER.error("Unexpected error in handler '{}' on '{}'", handlerName, matcher.group(0).trim(), e);
         }
     }
 
@@ -581,11 +589,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return;
         }
 
-        // Parse low value
-        Integer visualRange = parseRvrValue(lowValue, runwayName);
-        if (visualRange == null) {
-            return;
-        }
+        // Parse low value (the pattern guarantees 1-4 digits)
+        Integer visualRange = Integer.parseInt(lowValue);
 
         // Determine prefix
         String prefix = extractRvrPrefix(matcher.group("low"));
@@ -597,24 +602,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String trend = extractRvrTrend(matcher.group("trend"), matcher.group("unit"), runwayName);
 
         // Create and add RVR
-        createAndAddRvr(runwayName, range, prefix, trend);
-    }
-
-    /**
-     * Parse RVR numeric value.
-     *
-     * @param value      The string value to parse
-     * @param runwayName The runway identifier (for logging)
-     * @return Parsed integer or null if parsing fails
-     */
-    private Integer parseRvrValue(String value, String runwayName) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to parse RVR value '{}' for runway {}: {}",
-                    value, runwayName, e.getMessage());
-            return null;
-        }
+        createAndAddRvr(runwayName, range, prefix, trend, matcher.group(0).trim());
     }
 
     /**
@@ -653,15 +641,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return new RvrRange(lowValue, null, null);
         }
 
-        // Variable range: parse high value
+        // Variable range: parse high value (the pattern guarantees 4 digits)
         String highNumStr = highStr.replaceFirst("^[MP]", "");
-        try {
-            Integer highValue = Integer.parseInt(highNumStr);
-            return new RvrRange(null, lowValue, highValue);
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to parse RVR high value '{}': {}", highStr, e.getMessage());
-            return new RvrRange(lowValue, null, null); // Fallback to single value
-        }
+        Integer highValue = Integer.parseInt(highNumStr);
+        return new RvrRange(null, lowValue, highValue);
     }
 
     /**
@@ -701,8 +684,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @param range      The RVR range values
      * @param prefix     The M/P prefix
      * @param trend      The trend indicator
+     * @param rawGroup   The RVR group as reported, for the rejection log
      */
-    private void createAndAddRvr(String runwayName, RvrRange range, String prefix, String trend) {
+    private void createAndAddRvr(String runwayName, RvrRange range, String prefix, String trend, String rawGroup) {
         try {
             RunwayVisualRange rvr = new RunwayVisualRange(
                     runwayName,
@@ -718,8 +702,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
                     runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
 
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to create RVR for runway {}: {}", runwayName, e.getMessage());
+        } catch (InvalidObservationException e) {
+            logRejected("RVR", rawGroup, e);
         }
     }
 
@@ -744,8 +728,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                     matcher.group("depth"), matcher.group("friction"));
             weatherData.addRunwayState(state);
             LOGGER.debug("Runway state: {}", state);
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to create runway state for runway {}: {}", runwayName, e.getMessage());
+        } catch (InvalidObservationException e) {
+            logRejected("runway state", matcher.group(0).trim(), e);
         }
     }
 
@@ -787,9 +771,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 LOGGER.debug("Temperature: Missing/Unknown");
             }
 
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Failed to parse temperature/dewpoint '{}': {}",
-                    matcher.group(0).trim(), e.getMessage());
+        } catch (InvalidObservationException e) {
+            logRejected("temperature/dewpoint", matcher.group(0).trim(), e);
         }
     }
 
@@ -813,20 +796,15 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return null;
         }
 
-        try {
-            double value = Double.parseDouble(digits);
+        // The pattern guarantees digits here
+        double value = Double.parseDouble(digits);
 
-            // Apply negative sign if present
-            if ("M".equals(sign) || "-".equals(sign)) {
-                value = -value;
-            }
-
-            return value;
-
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Invalid temperature format: {}", digits);
-            return null;
+        // Apply negative sign if present
+        if ("M".equals(sign) || "-".equals(sign)) {
+            value = -value;
         }
+
+        return value;
     }
 
 
@@ -876,16 +854,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return;
         }
 
-        try {
-            String typeDigit = matcher.group("type");
-            AutomatedStationType stationType = AutomatedStationType.fromDigit(typeDigit);
+        // AUTO_PATTERN only matches type 1 or 2, so fromDigit cannot reject it here
+        String typeDigit = matcher.group("type");
+        AutomatedStationType stationType = AutomatedStationType.fromDigit(typeDigit);
 
-            // For now, just log it - full integration will store in remarks
-            logAutomatedStationType(stationType);
-
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Invalid automated station type: {}", matcher.group(0), e);
-        }
+        // For now, just log it - full integration will store in remarks
+        logAutomatedStationType(stationType);
     }
 
     // ==================== REMARKS HANDLERS ====================
@@ -2304,25 +2278,20 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return new TimeComponents(null, null);
         }
 
-        try {
-            if (timeStr.length() == 2) {
-                // 2 digits: minute only (e.g., "05" = :05)
-                int minute = Integer.parseInt(timeStr);
-                return new TimeComponents(null, minute);
+        // The pattern guarantees 2-4 digits; only the length can be wrong
+        if (timeStr.length() == 2) {
+            // 2 digits: minute only (e.g., "05" = :05)
+            int minute = Integer.parseInt(timeStr);
+            return new TimeComponents(null, minute);
 
-            } else if (timeStr.length() == 4) {
-                // 4 digits: hour and minute (e.g., "1159" = 11:59)
-                int hour = Integer.parseInt(timeStr.substring(0, 2));
-                int minute = Integer.parseInt(timeStr.substring(2, 4));
-                return new TimeComponents(hour, minute);
+        } else if (timeStr.length() == 4) {
+            // 4 digits: hour and minute (e.g., "1159" = 11:59)
+            int hour = Integer.parseInt(timeStr.substring(0, 2));
+            int minute = Integer.parseInt(timeStr.substring(2, 4));
+            return new TimeComponents(hour, minute);
 
-            } else {
-                LOGGER.warn("Invalid time digit length: {}", timeStr);
-                return new TimeComponents(null, null);
-            }
-
-        } catch (NumberFormatException e) {
-            LOGGER.warn("Failed to parse time digits '{}': {}", timeStr, e.getMessage());
+        } else {
+            LOGGER.debug("Invalid time digit length: {}", timeStr);
             return new TimeComponents(null, null);
         }
     }

@@ -7,6 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.0-SNAPSHOT]
+
+### Changed
+- Parser log levels follow the exception-handling policy: expected bad data
+  no longer logs at WARN, and ERROR is reserved for unexpected failures.
+  (#136, part of #133)
+  - Rejected report groups (main body and remarks) are logged at DEBUG on a
+    single category, `weather.processing.parser.noaa.Rejected`, with the
+    group type, the reported text and, for `InvalidObservationException`,
+    the component, e.g.
+    `Rejected altimeter 'A9999' [Pressure.value]: Pressure out of reasonable range ...: 99.99`.
+    Enable DEBUG for that category alone to audit rejections.
+  - `handlePattern` no longer catches `Exception`: rejected data that reaches
+    it is logged on the Rejected category at DEBUG, and any other
+    `RuntimeException` is a bug logged at ERROR with its stack trace and the
+    matched text. Parsing continues in both cases.
+  - `parse()` logs a rejected report at INFO
+    (`METAR rejected: <reason> [<raw report>]`), so failed reports are no
+    longer silent. A plain `IllegalArgumentException` reaching `parse()` is
+    now treated as a bug: ERROR log and "Unexpected parsing error".
+  - Main-body handler catches narrowed to `InvalidObservationException`
+    (visibility, sky condition, altimeter, RVR, runway state,
+    temperature/dewpoint), mirroring the remark handlers in 1.23.0.
+- Sky condition helpers `parseCoverage` and `parseHeight` throw
+  `InvalidObservationException` for unknown coverage, vertical visibility
+  without a height, and a non-numeric height. Null or blank coverage remains
+  `IllegalArgumentException`.
+- Catches that the patterns make unreachable were removed instead of being
+  re-levelled: RVR low/high value parsing, temperature value parsing,
+  `handleAutoType`, `parseTimeDigits`, and the present/recent weather
+  handlers (`PresentWeather.parse` never rejects data). `handlePattern` is the
+  safety net if one ever fires.
+
+### Fixed
+- `handleAutoType` logged a WARN with a full stack trace; it no longer
+  catches at all (the pattern only matches `AO1`/`AO2`). (#136)
+- A visibility group with unit `U` (e.g. `5U`) and a wind direction over 360
+  (e.g. `40016KT`) escaped to `handlePattern` and logged a WARN with a stack
+  trace. Both are now DEBUG rejections. (#136)
+
+### Downstream impact
+- No Bronze JSON shape change; the same values are parsed or rejected.
+- Log output: WARN lines for bad report data are gone. Rejection messages
+  move from the `NoaaMetarParser` / `NoaaAviationWeatherParser` categories to
+  `weather.processing.parser.noaa.Rejected` and change format. New INFO line
+  per rejected report.
+
+### Known gaps
+- Unreachable by pattern, kept as defensive guards: the international
+  visibility catch, the `parsePressure` `NumberFormatException` catch, the
+  unknown pressure prefix fallback, and the runway state catch.
+- The two RVR "missing runway identifier / low value" checks still log WARN;
+  the pattern rules both states out, so a WARN would signal a real problem.
+- Out of scope (separate issues): the duplicate registry pass for remarks,
+  the main-body equivalent of #92, and recording parse issues in the result.
+
+### Tests
+- `LogCapture` gains `of(loggerName, level)` for capturing a named category
+  below WARN.
+- `NoaaAviationWeatherParserTest.RejectedLoggingTests`: component included
+  for `InvalidObservationException`, omitted for `NumberFormatException`,
+  nothing logged when DEBUG is off.
+- `NoaaMetarParserTest.testRejectedMainBodyGroupLoggedAtDebugNotWarn`: seven
+  rows of expected bad main-body data (`A9999`, `5U`, `VV///`, `BKN020XX`,
+  `R04/1200V0800FT`, `10/15`, `40016KT`), each one DEBUG rejection and no
+  WARN.
+- `testParse_RejectedReportLoggedAtInfo` (new); the handler-bug test now
+  expects ERROR.
+
 ## [1.23.1-SNAPSHOT]
 
 ### Fixed

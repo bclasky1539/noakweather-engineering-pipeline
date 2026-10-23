@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
+import weather.exception.InvalidObservationException;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherConditions;
 import weather.model.components.*;
@@ -34,6 +35,8 @@ import weather.processing.parser.common.ParseResult;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.regex.Matcher;
+
+import org.apache.logging.log4j.Level;
 
 import static org.assertj.core.api.Assertions.*;
 import static weather.processing.parser.noaa.RegExprConst.*;
@@ -873,6 +876,50 @@ class NoaaAviationWeatherParserTest {
 
             assertThat(conditions.presentWeather()).isEmpty();
             assertThat(conditions.skyConditions()).isEmpty();
+        }
+    }
+
+    // ==================== LOG CAPTURE TESTS ====================
+
+    @Nested
+    class RejectedLoggingTests {
+
+        private static final String REJECTED = "weather.processing.parser.noaa.Rejected";
+
+        @Test
+        void testDomainRejectionLoggedAtDebugWithComponent() {
+            try (LogCapture logs = LogCapture.of(REJECTED, Level.DEBUG)) {
+                NoaaAviationWeatherParser.logRejected("altimeter", "A9999",
+                        new InvalidObservationException("Pressure.value", "99.99", "Pressure out of range"));
+
+                assertThat(logs.events()).singleElement().satisfies(event -> {
+                    assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
+                    assertThat(event.getMessage().getFormattedMessage())
+                            .isEqualTo("Rejected altimeter 'A9999' [Pressure.value]: Pressure out of range: 99.99");
+                });
+            }
+        }
+
+        @Test
+        void testNumberFormatRejectionLoggedWithoutComponent() {
+            try (LogCapture logs = LogCapture.of(REJECTED, Level.DEBUG)) {
+                NoaaAviationWeatherParser.logRejected("pressure", "29X2",
+                        new NumberFormatException("For input string: \"29X2\""));
+
+                assertThat(logs.events()).singleElement()
+                        .extracting(event -> event.getMessage().getFormattedMessage())
+                        .isEqualTo("Rejected pressure '29X2': For input string: \"29X2\"");
+            }
+        }
+
+        @Test
+        void testNothingLoggedWhenDebugDisabled() {
+            try (LogCapture logs = LogCapture.of(REJECTED, Level.INFO)) {
+                NoaaAviationWeatherParser.logRejected("altimeter", "A9999",
+                        new InvalidObservationException("Pressure.value", "99.99", "Pressure out of range"));
+
+                assertThat(logs.events()).isEmpty();
+            }
         }
     }
 

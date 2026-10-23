@@ -29,32 +29,46 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Test helper that captures one class's WARN and ERROR log events in memory instead of the console.
+ * Test helper that captures one logger's events in memory instead of the console.
  * <p>
- * While open, the class's logger writes only to this capture (additivity off), so
- * tests that trigger expected failures can assert on the log without printing stack
- * traces into the build output. Close it to restore the normal configuration.
+ * While open, the logger writes only to this capture (additivity off), at the
+ * level given (WARN by default), so tests that trigger expected failures can
+ * assert on the log without printing stack traces into the build output.
+ * Close it to restore the normal configuration.
  */
 final class LogCapture extends AbstractAppender implements AutoCloseable {
 
     private final List<LogEvent> events = new CopyOnWriteArrayList<>();
     private final String loggerName;
+    private final Level level;
     private final LoggerContext context;
 
-    private LogCapture(String loggerName) {
+    private LogCapture(String loggerName, Level level) {
         super("LogCapture-" + loggerName, null, null, true, Property.EMPTY_ARRAY);
         this.loggerName = loggerName;
+        this.level = level;
         this.context = (LoggerContext) LogManager.getContext(false);
     }
 
     /**
-     * Start capturing the log events of {@code type}'s logger.
+     * Start capturing the WARN and ERROR events of {@code type}'s logger.
      *
      * @param type the class whose logger to capture
      * @return an open capture; close it after the test
      */
     static LogCapture of(Class<?> type) {
-        LogCapture capture = new LogCapture(type.getName());
+        return of(type.getName(), Level.WARN);
+    }
+
+    /**
+     * Start capturing a named logger's events at {@code level} and above.
+     *
+     * @param loggerName the logger (category) name to capture
+     * @param level      the lowest level to capture
+     * @return an open capture; close it after the test
+     */
+    static LogCapture of(String loggerName, Level level) {
+        LogCapture capture = new LogCapture(loggerName, level);
         capture.attach();
         return capture;
     }
@@ -62,7 +76,7 @@ final class LogCapture extends AbstractAppender implements AutoCloseable {
     private void attach() {
         start();
         Configuration config = context.getConfiguration();
-        LoggerConfig loggerConfig = new LoggerConfig(loggerName, Level.WARN, false);
+        LoggerConfig loggerConfig = new LoggerConfig(loggerName, level, false);
         loggerConfig.addAppender(this, null, null);
         config.addLogger(loggerName, loggerConfig);
         context.updateLoggers();
