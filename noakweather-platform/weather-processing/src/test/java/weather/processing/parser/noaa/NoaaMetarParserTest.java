@@ -11320,6 +11320,33 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "A9999,     altimeter,      'Altimeter 99.99 inHg out of range'",
+            "5U,        visibility,     'Visibility unit U is not SM, M or KM'",
+            "VV///,     sky condition,  'Vertical visibility with no height'",
+            "BKN020XX,  sky condition,  'Unknown cloud type XX'"
+    })
+    @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN (#136)")
+    void testRejectedMainBodyGroupLoggedAtDebugNotWarn(String group, String groupType, String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM " + group + " 16/03 A3015";
+
+        try (LogCapture rejected = LogCapture.of("weather.processing.parser.noaa.Rejected", Level.DEBUG);
+             LogCapture baseWarnings = LogCapture.of(NoaaAviationWeatherParser.class);
+             LogCapture metarWarnings = LogCapture.of(NoaaMetarParser.class)) {
+
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+            assertThat(result.isSuccess()).as(scenario).isTrue();
+            assertThat(rejected.events()).as(scenario).singleElement()
+                    .extracting(event -> event.getMessage().getFormattedMessage())
+                    .asString()
+                    .startsWith("Rejected " + groupType + " '" + group + "'");
+            assertThat(baseWarnings.events()).as(scenario).isEmpty();
+            assertThat(metarWarnings.events()).as(scenario).isEmpty();
+        }
+    }
+
     // --- Correct behavior (regression) ---
 
     @ParameterizedTest
