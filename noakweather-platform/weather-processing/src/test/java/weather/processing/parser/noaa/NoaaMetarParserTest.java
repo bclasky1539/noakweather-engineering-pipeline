@@ -11185,16 +11185,17 @@ class NoaaMetarParserTest {
     void testParse_NoStation_WithFullBody() {
         String metar = "METAR 251651Z AUTO 19005KT 10SM -RA FEW015 22/12 A3015 NOSIG RMK AO2 SLP210";
 
-        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class.getName(), Level.INFO)) {
             ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
             assertThat(result.isFailure()).isTrue();
-            assertThat(result.getErrorMessage()).isNotBlank();
-            // Currently fails via an NPE in handleRemarks (no weatherData yet), logged as unexpected.
-            // When handleRemarks guards null, this becomes the clean "Could not extract station ID" failure.
+            assertThat(result.getErrorMessage())
+                    .isEqualTo("Failed to parse METAR data: Could not extract station ID from METAR");
+            // Rejected cleanly at INFO; no ERROR from an NPE in handleRemarks (#146)
             assertThat(logs.events()).singleElement().satisfies(event -> {
-                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
-                assertThat(event.getThrown()).isInstanceOf(NullPointerException.class);
+                assertThat(event.getLevel()).isEqualTo(Level.INFO);
+                assertThat(event.getMessage().getFormattedMessage())
+                        .startsWith("METAR rejected: Could not extract station ID from METAR");
             });
         }
     }

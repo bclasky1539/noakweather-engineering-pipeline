@@ -205,7 +205,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @return remaining unparsed tokens
      */
     private String parseRemarks(String remarks) {
-        if (remarks.isEmpty()) {
+        // No station means no weatherData; there is nothing to attach remarks to, and
+        // validateParsedData() rejects the report with "Could not extract station ID"
+        if (remarks.isEmpty() || weatherData == null) {
             return remarks;
         }
 
