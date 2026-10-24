@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.1-SNAPSHOT]
+
+### Fixed
+- A METAR with remarks but no station failed through a `NullPointerException`
+  in `handleRemarks`, logged at ERROR as an unexpected parsing error. Remark
+  parsing is now skipped when no station was found, so the report fails
+  cleanly with `Could not extract station ID from METAR` and is logged at
+  INFO like other rejected reports. (#146)
+
 ## [1.24.0-SNAPSHOT]
 
 ### Changed
