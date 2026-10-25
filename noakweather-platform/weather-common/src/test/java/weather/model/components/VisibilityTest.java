@@ -19,6 +19,7 @@ package weather.model.components;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import weather.exception.InvalidObservationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -143,6 +144,17 @@ class VisibilityTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Visibility cannot be both less than and greater than");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NaN})
+    void testNonFiniteDistanceRejected(double distance) {
+        assertThatThrownBy(() -> Visibility.statuteMiles(distance))
+                .isInstanceOfSatisfying(InvalidObservationException.class, e -> {
+                    assertThat(e.getComponent()).isEqualTo("Visibility.distanceValue");
+                    assertThat(e.getRejectedValue()).isEqualTo(String.valueOf(distance));
+                    assertThat(e.getMessage()).isEqualTo("Visibility distance must be a finite number: " + distance);
+                });
     }
 
     // ==================== Conversion Tests ====================

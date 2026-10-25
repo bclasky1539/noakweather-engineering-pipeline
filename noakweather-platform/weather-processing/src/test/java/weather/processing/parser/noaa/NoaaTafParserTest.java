@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Nested;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import weather.model.NoaaTafData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.*;
@@ -38,7 +39,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Comprehensive test suite for NoaaTafParser.
- *
+ * <p>
  * Tests TAF-specific parsing functionality including:
  * - TAF header parsing (type, modifier, station, issue time, validity)
  * - Base forecast parsing
@@ -203,8 +204,8 @@ class NoaaTafParserTest {
         void testParseInvalidInputs(String input, String expectedErrorFragment, String description) {
             ParseResult<NoaaWeatherData> result = parser.parse(input);
 
-            assertThat(result.isSuccess()).isFalse();
-            assertThat(result.getErrorMessage()).contains(expectedErrorFragment);
+            assertThat(result.isSuccess()).as(description).isFalse();
+            assertThat(result.getErrorMessage()).as(description).contains(expectedErrorFragment);
         }
 
         @Test
@@ -1202,6 +1203,24 @@ class NoaaTafParserTest {
 
             ForecastPeriod base = data.getForecastPeriods().get(0);
             assertThat(base.conditions().visibility().toStatuteMiles()).isEqualTo(1.5);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"1/0SM", "1 1/0SM", "0/0SM"})
+        @DisplayName("Should not store a zero-denominator visibility, and keep parsing the forecast (#130)")
+        void testZeroDenominatorVisibilityNotStored(String vis) {
+            String taf = "TAF KJFK 151800Z 1518/1624 18010KT " + vis + " BR BKN010";
+
+            ParseResult<NoaaWeatherData> result = parser.parse(taf);
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.getData()).isPresent();
+            NoaaTafData data = (NoaaTafData) result.getData().get();
+
+            ForecastPeriod base = data.getForecastPeriods().get(0);
+            assertThat(base.conditions().visibility()).isNull();
+            assertThat(base.conditions().presentWeather()).hasSize(1);
+            assertThat(base.conditions().skyConditions()).hasSize(1);
         }
 
         @Test
