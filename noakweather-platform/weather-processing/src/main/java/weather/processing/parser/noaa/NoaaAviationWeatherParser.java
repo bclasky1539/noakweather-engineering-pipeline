@@ -460,6 +460,10 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         String[] parts = fraction.split("/");
         double numerator = Double.parseDouble(parts[0]);
         double denominator = Double.parseDouble(parts[1]);
+        if (denominator == 0) {
+            throw new InvalidObservationException("Visibility.distanceValue", fraction,
+                    "Fraction denominator cannot be zero");
+        }
         return numerator / denominator;
     }
 

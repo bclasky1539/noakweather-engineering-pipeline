@@ -319,6 +319,16 @@ class NoaaAviationWeatherParserTest {
             double result = parser.parseFraction("3/4");
             assertThat(result).isEqualTo(0.75);
         }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"1/0", "0/0", "1 1/0", "3/00"})
+        void testZeroDenominatorRejected(String distance) {
+            assertThatThrownBy(() -> parser.parseFractionalDistance(distance))
+                    .isInstanceOfSatisfying(InvalidObservationException.class, e -> {
+                        assertThat(e.getComponent()).isEqualTo("Visibility.distanceValue");
+                        assertThat(e.getMessage()).startsWith("Fraction denominator cannot be zero: ");
+                    });
+        }
     }
 
     // ==================== PRESENT WEATHER TESTS ====================

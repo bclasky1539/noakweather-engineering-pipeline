@@ -620,6 +620,18 @@ class NoaaMetarParserTest {
         assertNull(data.getVisibility(), "NDV should result in null visibility");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"1/0SM", "1 1/0SM", "0/0SM"})
+    @DisplayName("Should not store a zero-denominator visibility, and keep parsing the main body (#130)")
+    void testZeroDenominatorVisibilityNotStored(String vis) {
+        NoaaMetarData data = parseData("METAR KJFK 121853Z 28016KT " + vis + " FEW010 16/03 A3015");
+
+        assertThat(data.getConditions().visibility()).isNull();
+        assertThat(data.getConditions().skyConditions()).hasSize(1);
+        assertThat(data.getConditions().temperature()).isNotNull();
+        assertThat(data.getConditions().pressure()).isNotNull();
+    }
+
     // ========== RUNWAY VISUAL RANGE (RVR) TESTS ==========
 
     @ParameterizedTest
@@ -11330,7 +11342,10 @@ class NoaaMetarParserTest {
             "BKN020XX,  sky condition,  'Unknown cloud type XX'",
             "R04/1200V0800FT,  RVR,                   'RVR variable low above high'",
             "10/15,            temperature/dewpoint,  'Dewpoint above temperature'",
-            "40016KT,          wind,                  'Wind direction 400 out of range'"
+            "40016KT,          wind,                  'Wind direction 400 out of range'",
+            "1/0SM,     visibility,  'Zero denominator (was Infinity)'",
+            "'1 1/0SM', visibility,  'Mixed fraction with zero denominator'",
+            "0/0SM,     visibility,  'Zero over zero (was NaN)'"
     })
     @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN (#136)")
     void testRejectedMainBodyGroupLoggedAtDebugNotWarn(String group, String groupType, String scenario) {
