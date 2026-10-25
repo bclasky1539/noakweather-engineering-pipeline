@@ -110,10 +110,17 @@ public record Visibility(
     // ==================== Validation Helper Methods ====================
 
     /**
-     * Validate that distance value is non-negative if present.
+     * Validate that the distance value, if present, is a finite, non-negative number.
      */
     private static void validateDistanceValue(Double distanceValue) {
-        if (distanceValue != null && distanceValue < 0) {
+        if (distanceValue == null) {
+            return;
+        }
+        if (!Double.isFinite(distanceValue)) {
+            throw new InvalidObservationException("Visibility.distanceValue", String.valueOf(distanceValue),
+                    "Visibility distance must be a finite number");
+        }
+        if (distanceValue < 0) {
             throw new InvalidObservationException("Visibility.distanceValue", String.valueOf(distanceValue),
                     "Visibility distance cannot be negative");
         }
