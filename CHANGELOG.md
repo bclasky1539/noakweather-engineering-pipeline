@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.2-SNAPSHOT]
+
+### Fixed
+- Main-body visibility with a zero-denominator fraction (`1/0SM`,
+  `1 1/0SM`, `0/0SM`) was stored as `Infinity` or `NaN`. `parseFraction`
+  now rejects a zero denominator with `InvalidObservationException`
+  (`Visibility.distanceValue`), so the group is logged at DEBUG on the
+  Rejected category and the rest of the main body keeps parsing. Applies
+  to METAR and TAF. (#130)
+- `Visibility` accepted a non-finite distance (`Infinity`, `NaN`); only
+  negative values were checked. A distance must now be finite, which
+  guards every caller. (#130)
+
+### Known gaps
+- The rejected visibility group is not yet kept in `unparsedMainBody`;
+  that follows with #138 for all main-body rejections.
+
+### Tests
+- `FractionalDistanceTests`: zero-denominator cases; guard rows and a
+  parser-level test in `NoaaMetarParserTest`; a TAF case in
+  `NoaaTafParserTest`; non-finite distances in `VisibilityTest`.
+- `NoaaTafParserTest.testParseInvalidInputs` now labels each case with
+  its description.
+
 ## [1.24.1-SNAPSHOT]
 
 ### Fixed
