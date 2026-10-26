@@ -1,3 +1,19 @@
+/*
+ * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
+ * Copyright (C) 2025-2026 bclasky1539
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package weather.processing.parser.noaa;
 
 import org.junit.jupiter.api.Test;
@@ -883,6 +899,14 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getSeaLevelPressure()).isCloseTo(999.8, within(0.1));
                         }),
 
+                // MBSC: weather code hyphen-joined to its direction
+                arguments("MBSC-HyphenatedDirection",
+                        "2026/10/08 17:00 MBSC 081700Z 12010KT 9999 VCSH SCT015 31/25 Q1011 RMK VCSH-NE",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText()).isNull();
+                            assertThat(data.getRemarks().directionalWeather().directions()).containsExactly("NE");
+                        }),
+
                 arguments("KBBF-OldFormatA01Alone",
                         "2020/07/25 09:45 KBBF 250945Z AUTO 09048G59KT 1SM HZ SCT003 OVC015 27/25 A2947 RMK A01",
                         (Consumer<NoaaMetarData>) data -> assertThat(data.getRemarks().freeText()).isNull())
@@ -920,8 +944,9 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "2026/10/08 15:53 KMCO 081553Z 06005KT 3SM -RA BR FEW009 SCT020 BKN032 BKN130 26/24 A2993 RMK RAB35 VIS N-NE 2",
                 "2026/10/08 17:45 CYLK 081745Z 07004KT 050V110 6SM -SN BR FEW008 SCT014 OVC020 01/00 A3005 RMK ST2SC4SC2 VIS 1/2 E-SE-SW-W SLP190",
                 "METAR RPLL 020000Z 24010KT 8000 FEW025 SCT100 30/26 Q1008 NOSIG RMK A2977",
-                // Synthetic: tracks #129 (rejected hail group's GR claimed by directional weather)
+                // Synthetic: rejected hail group surfaces whole in freeText
                 "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210",
+                "2026/10/08 17:00 MBSC 081700Z 12010KT 9999 VCSH SCT015 31/25 Q1011 RMK VCSH-NE",
         };
 
         for (String raw : raws) {

@@ -1415,7 +1415,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * compass direction(s) — typically a vicinity phenomenon reported nearby.
      * Reuses the same PRESENT_WEATHER_PATTERN and PresentWeather parsing as the
      * main body, since the weather-code grammar is identical; only the trailing
-     * direction list is new.
+     * direction list is new. Also accepts the hyphen-joined form VCSH-NE.
      * <p>
      * Example: RMK VCSH E SE → showers in vicinity, east and southeast
      *
@@ -1430,19 +1430,40 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         String remaining = remarksText.trim();
 
+        // "VCSH-NE": match with the hyphen read as a space, so the code and direction
+        // parse as usual; the text is the same length, so offsets line up (#129)
+        String parseText = joinHyphenatedDirection(remaining);
+
         // PRESENT_WEATHER_PATTERN requires trailing whitespace, which is absent when
         // the weather code is the last token in the remarks string. Pad with a
         // synthetic trailing space so a bare trailing code (e.g. "VCSH") still
         // matches, without modifying the shared pattern itself.
-        String searchText = remaining.contains(" ") ? remaining : remaining + " ";
+        String searchText = parseText.contains(" ") ? parseText : parseText + " ";
 
         Matcher weatherMatcher = PRESENT_WEATHER_PATTERN.matcher(searchText);
 
         if (weatherMatcher.find() && weatherMatcher.start() == 0) {
-            remaining = processDirectionalWeatherMatch(weatherMatcher, remaining, remarks);
+            String result = processDirectionalWeatherMatch(weatherMatcher, parseText, remarks);
+            // Declined: return the remark exactly as reported (e.g. "VCSH-NE", not "VCSH NE")
+            return result.equals(parseText) ? remaining : result;
         }
 
         return remaining;
+    }
+
+    /**
+     * Replace the hyphen in a leading "CODE-POINT" token (e.g. "VCSH-NE") with a space.
+     *
+     * @param text the remaining remarks text
+     * @return the text with that one hyphen replaced, or the text unchanged
+     */
+    private static String joinHyphenatedDirection(String text) {
+        Matcher matcher = WEATHER_HYPHEN_DIRECTION_PATTERN.matcher(text);
+        if (!matcher.find()) {
+            return text;
+        }
+        int hyphen = matcher.end("wx");
+        return text.substring(0, hyphen) + " " + text.substring(hyphen + 1);
     }
 
     /**
@@ -1467,6 +1488,14 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         int matchEnd = Math.min(weatherMatcher.end(), remaining.length());
         String afterWeather = remaining.substring(matchEnd).trim();
 
+        // Optional location qualifier: "SH DSNT N", "SHRA OHD" (#129)
+        String location = null;
+        Matcher locationMatcher = REMARK_WEATHER_LOCATION_PATTERN.matcher(afterWeather);
+        if (locationMatcher.find()) {
+            location = locationMatcher.group("loc");
+            afterWeather = afterWeather.substring(locationMatcher.end()).trim();
+        }
+
         List<String> directions = null;
         boolean allQuadrants = false;
         String finalRemaining = afterWeather;
@@ -1481,9 +1510,19 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             finalRemaining = afterWeather.substring(allQuadrantsMatcher.end()).trim();
         }
 
+        // A remark weather code must say where: a location qualifier, a direction, ALQDS,
+        // or the VC (vicinity) prefix, which is itself a location. Without one (e.g. the GR
+        // of a rejected "GR 0") it is a fragment of another group: leave it for freeText (#129).
+        String intensity = weatherMatcher.group("int");
+        boolean vicinity = intensity != null && intensity.contains("VC");
+        if (location == null && directions == null && !allQuadrants && !vicinity) {
+            return remaining;
+        }
+
         try {
             PresentWeather presentWeather = PresentWeather.parse(weatherCode);
-            DirectionalWeather directionalWeather = new DirectionalWeather(presentWeather, directions, allQuadrants);
+            DirectionalWeather directionalWeather =
+                    new DirectionalWeather(presentWeather, location, directions, allQuadrants);
             remarks.directionalWeather(directionalWeather);
 
             if (LOGGER.isDebugEnabled()) {

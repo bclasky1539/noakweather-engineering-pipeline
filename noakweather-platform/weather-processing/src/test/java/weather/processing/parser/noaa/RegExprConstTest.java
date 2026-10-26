@@ -17,6 +17,7 @@
 package weather.processing.parser.noaa;
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -243,7 +244,7 @@ class RegExprConstTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"R22R/CLRD ", "R34L/CLRD70 ", "R23R/1///60 ", "R23L/2/0150 ", "R05R/090060 ", "R34L/040070 "})
-    @DisplayName("RUNWAY_PATTERN should not match CLRD or runway state groups (Issue #121)")
+    @DisplayName("RUNWAY_PATTERN should not match CLRD or runway state groups")
     void testRunwayPattern_RejectsRunwayStateGroups(String input) {
         assertThat(RegExprConst.RUNWAY_PATTERN.matcher(input).find()).isFalse();
     }
@@ -336,7 +337,7 @@ class RegExprConstTest {
     }
 
     @Test
-    @DisplayName("RUNWAY_PATTERN should consume only the first CYVR RVR group (Issue #113)")
+    @DisplayName("RUNWAY_PATTERN should consume only the first CYVR RVR group")
     void testRunwayPattern_CyvrConsumesOneGroup() {
         String input = "R08L/0800V1000FT/N R08R/1600V2000FT/N FG VV002 10/10 A3009";
         Matcher matcher = RegExprConst.RUNWAY_PATTERN.matcher(input);
@@ -371,7 +372,7 @@ class RegExprConstTest {
             "'REVA ',     VA",
             "'RE// ',     //"
     })
-    @DisplayName("RECENT_WEATHER_PATTERN should capture the weather code (Issue #116)")
+    @DisplayName("RECENT_WEATHER_PATTERN should capture the weather code")
     void testRecentWeatherPattern_Code(String input, String expectedCode) {
         Matcher matcher = RegExprConst.RECENT_WEATHER_PATTERN.matcher(input);
 
@@ -1197,14 +1198,14 @@ class RegExprConstTest {
 
     @ParameterizedTest(name = "{3}")
     @CsvSource({
-            "'CB DSNT E SE MOV SW TCU DSNT E SE T03000222', 'CB DSNT E SE MOV SW', 'E SE',       SW, 'KCRP real-world, space-separated points then MOV (#114)'",
-            "'TCU DSNT E SE T03000222',                     'TCU DSNT E SE',       'E SE',         , 'KCRP real-world second clause, no MOV (#114)'",
-            "'CB DSNT E SE',                                'CB DSNT E SE',        'E SE',         , 'Space-separated points at end of remarks (#114)'",
+            "'CB DSNT E SE MOV SW TCU DSNT E SE T03000222', 'CB DSNT E SE MOV SW', 'E SE',       SW, 'KCRP real-world, space-separated points then MOV'",
+            "'TCU DSNT E SE T03000222',                     'TCU DSNT E SE',       'E SE',         , 'KCRP real-world second clause, no MOV'",
+            "'CB DSNT E SE',                                'CB DSNT E SE',        'E SE',         , 'Space-separated points at end of remarks'",
             "'CB DSNT E-SE MOV SW',                         'CB DSNT E-SE MOV SW', 'E-SE',       SW, 'Hyphenated range with MOV (regression)'",
             "'CB DSNT N AND E-SE MOV NE',                   'CB DSNT N AND E-SE MOV NE', 'N AND E-SE', NE, 'AND-chain with range and MOV (regression)'",
-            "'CB DSNT SE S SNINCR 1/10',                    'CB DSNT SE S',        'SE S',         , 'Space-separated points do not consume SNINCR (#114)'"
+            "'CB DSNT SE S SNINCR 1/10',                    'CB DSNT SE S',        'SE S',         , 'Space-separated points do not consume SNINCR'"
     })
-    @DisplayName("TS_CLD_LOC_PATTERN should accept space-separated direction points (Issue #114)")
+    @DisplayName("TS_CLD_LOC_PATTERN should accept space-separated direction points")
     void testTsCldLocPattern_SpaceSeparatedPoints(String input, String expectedMatch,
                                                   String expectedChain, String expectedMov,
                                                   String scenario) {
@@ -1224,7 +1225,7 @@ class RegExprConstTest {
             "'CB W SLP142',         'CB W',         'Single point stops before SLP142'",
             "'TCU NW DSNT N NE S SW', 'TCU NW',     'KATL, DSNT clause still left for the continuation pattern'"
     })
-    @DisplayName("TS_CLD_LOC_PATTERN space-separated step should not consume part of the following token (Issue #114)")
+    @DisplayName("TS_CLD_LOC_PATTERN space-separated step should not consume part of the following token")
     void testTsCldLocPattern_SpaceSeparatedPointsTokenBoundary(String input, String expectedMatch, String scenario) {
         Matcher matcher = RegExprConst.TS_CLD_LOC_PATTERN.matcher(input);
 
@@ -1498,13 +1499,13 @@ class RegExprConstTest {
 
     @ParameterizedTest(name = "{4}")
     @CsvSource({
-            "'LTG DSNT S AND SW',                                     'LTG DSNT S AND SW',           DSNT, 'S AND SW',    'K46D real-world, simple AND (#117)'",
-            "'LTG DSNT N AND NE SLP110 T03110244',                    'LTG DSNT N AND NE',           DSNT, 'N AND NE',    'KFMY real-world, AND then other remarks (#117)'",
-            "'LTG DSNT SW AND W T02560244',                           'LTG DSNT SW AND W',           DSNT, 'SW AND W',    'KSPG real-world (#117)'",
-            "'OCNL LTGIC DSNT SE AND S-SW CB DSNT SE AND S-SW P0001', 'OCNL LTGIC DSNT SE AND S-SW', DSNT, 'SE AND S-SW', 'KTPA real-world, range on right side, CB left for TS handler (#117)'",
-            "'FRQ LTGCCCG VC NW-N AND W',                             'FRQ LTGCCCG VC NW-N AND W',   VC,   'NW-N AND W',  'Range on left side (#117)'"
+            "'LTG DSNT S AND SW',                                     'LTG DSNT S AND SW',           DSNT, 'S AND SW',    'K46D real-world, simple AND'",
+            "'LTG DSNT N AND NE SLP110 T03110244',                    'LTG DSNT N AND NE',           DSNT, 'N AND NE',    'KFMY real-world, AND then other remarks'",
+            "'LTG DSNT SW AND W T02560244',                           'LTG DSNT SW AND W',           DSNT, 'SW AND W',    'KSPG real-world'",
+            "'OCNL LTGIC DSNT SE AND S-SW CB DSNT SE AND S-SW P0001', 'OCNL LTGIC DSNT SE AND S-SW', DSNT, 'SE AND S-SW', 'KTPA real-world, range on right side, CB left for TS handler'",
+            "'FRQ LTGCCCG VC NW-N AND W',                             'FRQ LTGCCCG VC NW-N AND W',   VC,   'NW-N AND W',  'Range on left side'"
     })
-    @DisplayName("LIGHTNING_PATTERN should capture an AND-chained direction (Issue #117)")
+    @DisplayName("LIGHTNING_PATTERN should capture an AND-chained direction")
     void testLightningPattern_AndChain(String input, String expectedMatch, String expectedLoc,
                                        String expectedChain, String scenario) {
         Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
@@ -1524,7 +1525,7 @@ class RegExprConstTest {
             "'LTG DSNT S SLP110',              'LTG DSNT S',     'Single point stops before SLP110, S is not consumed'",
             "'LTG DSNT NE-SE OCNL LTGICCC DSNT E', 'LTG DSNT NE-SE', 'KCLT regression, next lightning group left for the next match'"
     })
-    @DisplayName("LIGHTNING_PATTERN AND chain should stop at the token boundary (Issue #117)")
+    @DisplayName("LIGHTNING_PATTERN AND chain should stop at the token boundary")
     void testLightningPattern_AndChainTokenBoundary(String input, String expectedMatch, String scenario) {
         Matcher matcher = RegExprConst.LIGHTNING_PATTERN.matcher(input);
 
@@ -1846,7 +1847,7 @@ class RegExprConstTest {
     }
 
     @Test
-    @DisplayName("CEILING_SECOND_SITE_PATTERN should not partially match variable-ceiling input (Issue #115)")
+    @DisplayName("CEILING_SECOND_SITE_PATTERN should not partially match variable-ceiling input")
     void testCeilingSecondSitePattern_DoesNotPartiallyMatchVariableCeiling() {
         // Previously the trailing \s* let this pattern match "CIG 005" inside
         // "CIG 005V010", leaving "V010" unconsumed, so only handler order kept
@@ -2308,7 +2309,7 @@ class RegExprConstTest {
             "'6000 ',   'Three digits'",
             "'600091 ', 'Five digits'"
     })
-    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match precip values other than four digits (Issue #115)")
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match precip values other than four digits")
     void testPrecip3Hr24HrPattern_RejectsOtherDigitLengths(String input, String scenario) {
         assertThat(RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher(input).find())
                 .as("Should not match: %s", scenario)
@@ -2328,7 +2329,7 @@ class RegExprConstTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/", "//", "///", "/////"})
-    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match a trace indicator other than four slashes (Issue #115)")
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not match a trace indicator other than four slashes")
     void testPrecip3Hr24HrPattern_RejectsOtherSlashLengths(String slashes) {
         assertThat(RegExprConst.PRECIP_3HR_24HR_PATTERN.matcher("7" + slashes + " ").find())
                 .as("Should not match '7%s'", slashes)
@@ -2346,7 +2347,7 @@ class RegExprConstTest {
     }
 
     @Test
-    @DisplayName("PRECIP_3HR_24HR_PATTERN should not partially match mixed slashes and letters (Issue #115)")
+    @DisplayName("PRECIP_3HR_24HR_PATTERN should not partially match mixed slashes and letters")
     void testPrecip3Hr24HrPattern_DoesNotPartiallyMatchMixedSlashesAndLetters() {
         // Previously "6/A/B" matched as "6/" with precip "/", leaving "A/B"
         // unconsumed. The four-character value and token boundary now reject
@@ -2567,7 +2568,7 @@ class RegExprConstTest {
             "'S T01720026',    S",
             "'E SE',           'E SE'"
     })
-    @DisplayName("DIRECTION_LIST_PATTERN should stop at a token boundary and match two-letter points in full (#118)")
+    @DisplayName("DIRECTION_LIST_PATTERN should stop at a token boundary and match two-letter points in full")
     void testDirectionListPattern(String input, String expectedList) {
         Matcher matcher = RegExprConst.DIRECTION_LIST_PATTERN.matcher(input);
 
@@ -2582,6 +2583,61 @@ class RegExprConstTest {
         assertThat(RegExprConst.DIRECTION_LIST_PATTERN.matcher(input).find()).isFalse();
     }
 
+    @Nested
+    @DisplayName("REMARK_WEATHER_LOCATION_PATTERN")
+    class RemarkWeatherLocationPatternTests {
+
+        @ParameterizedTest(name = "{0} -> {1}")
+        @CsvSource({
+                "'DSNT N',   DSNT",
+                "OHD,        OHD",
+                "'VC E SE',  VC",
+                "DSIPTD,     DSIPTD",
+                "'TOP SLP210', TOP",
+                "TR,         TR"
+        })
+        void testMatchesQualifierAtTokenBoundary(String text, String expected) {
+            Matcher matcher = RegExprConst.REMARK_WEATHER_LOCATION_PATTERN.matcher(text);
+
+            assertThat(matcher.find()).isTrue();
+            assertThat(matcher.group("loc")).isEqualTo(expected);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"ALQDS", "DSNTX", "OHDS", "N DSNT", "STNRY", "MOV E"})
+        void testRejectsNonQualifiers(String text) {
+            assertThat(RegExprConst.REMARK_WEATHER_LOCATION_PATTERN.matcher(text).find()).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("WEATHER_HYPHEN_DIRECTION_PATTERN")
+    class WeatherHyphenDirectionPatternTests {
+
+        @ParameterizedTest(name = "{0} -> {1} / {2}")
+        @CsvSource({
+                "VCSH-NE,           VCSH,  NE",
+                "'VCSH-NE SLP210',  VCSH,  NE",
+                "-RA-SW,            -RA,   SW",
+                "+TSRA-N,           +TSRA, N",
+                "VCFG-W,            VCFG,  W"
+        })
+        void testMatchesCodeJoinedToOnePoint(String text, String weather, String direction) {
+            Matcher matcher = RegExprConst.WEATHER_HYPHEN_DIRECTION_PATTERN.matcher(text);
+
+            assertThat(matcher.find()).isTrue();
+            assertThat(matcher.group("wx")).isEqualTo(weather);
+            assertThat(matcher.group("dir")).isEqualTo(direction);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"VCSH NE", "VCSH-NE-E", "VCSH-NEX", "-RA", "VCSH-", "VCSH-X", "N-NE"})
+        void testRejectsOtherForms(String text) {
+            assertThat(RegExprConst.WEATHER_HYPHEN_DIRECTION_PATTERN.matcher(text).find()).isFalse();
+        }
+    }
+
+
     // ========== VARIABLE VISIBILITY PATTERN TESTS ==========
 
     @ParameterizedTest(name = "{4}")
@@ -2592,7 +2648,7 @@ class RegExprConstTest {
             "'VIS 1 1/2V2 1/2 AO2',    'VIS 1 1/2V2 1/2', ,   1 1/2, 2 1/2, 'Mixed both sides, stops before AO2'",
             "'VIS NE 2V4 CIG 005V010', 'VIS NE 2V4',      NE, 2,     4,     'Stops before variable ceiling'"
     })
-    @DisplayName("VPV_SV_VSL_PATTERN should match variable visibility ranges (Issue #115)")
+    @DisplayName("VPV_SV_VSL_PATTERN should match variable visibility ranges")
     void testVariableVisibilityPattern_Matches(String input, String expectedMatch, String expectedDir,
                                                String expectedMin, String expectedMax, String scenario) {
         Matcher matcher = RegExprConst.VPV_SV_VSL_PATTERN.matcher(input);
@@ -2615,7 +2671,7 @@ class RegExprConstTest {
             "'VIS 2V4SLP',               'Maximum runs into the next token'",
             "'VIS',                      'Bare VIS'"
     })
-    @DisplayName("VPV_SV_VSL_PATTERN should not match forms the parser does not store (Issue #115)")
+    @DisplayName("VPV_SV_VSL_PATTERN should not match forms the parser does not store")
     void testVariableVisibilityPattern_DoesNotMatch(String input, String scenario) {
         assertThat(RegExprConst.VPV_SV_VSL_PATTERN.matcher(input).find())
                 .as("Should not match: %s", scenario)
@@ -2717,7 +2773,7 @@ class RegExprConstTest {
         assertThat(matcher.find() && matcher.start() == 0).isFalse();
     }
 
-    // ========== ALL QUADRANTS / AND-QUALIFIER PATTERN TESTS (Issue #104) ==========
+    // ========== ALL QUADRANTS / AND-QUALIFIER PATTERN TESTS ==========
 
     @ParameterizedTest
     @ValueSource(strings = {"ALQDS", "ALQDS P0016 T02780250", "ALQDS "})
@@ -2940,7 +2996,7 @@ class RegExprConstTest {
             "WSHFT, 'WSHFT 1575',        false",
             "WSHFT, 'WSHFT 15301',       false"
     })
-    @DisplayName("Batch-1 remark patterns should require their value and end at a token boundary (Issue #115)")
+    @DisplayName("Batch-1 remark patterns should require their value and end at a token boundary")
     void testBatch1Patterns_ValueRequiredAndTokenBounded(String patternName, String input, boolean expectedMatch) {
         Pattern pattern = switch (patternName) {
             case "AUTO" -> RegExprConst.AUTO_PATTERN;
@@ -2957,7 +3013,7 @@ class RegExprConstTest {
     }
 
     @Test
-    @DisplayName("PEAK_WIND_PATTERN should read two digits after the slash as the minute (FMH-1 (hh)mm) (Issue #115)")
+    @DisplayName("PEAK_WIND_PATTERN should read two digits after the slash as the minute (FMH-1 (hh)mm)")
     void testPeakWindPattern_TwoDigitsAreMinute() {
         Matcher matcher = RegExprConst.PEAK_WIND_PATTERN.matcher("PK WND 32035/15");
 
@@ -2983,7 +3039,7 @@ class RegExprConstTest {
             "A29775,     false",
             "'QNH 1009', false"
     })
-    @DisplayName("SECONDARY_ALTIMETER_PATTERN should require a unit prefix or INS suffix (Issue #115)")
+    @DisplayName("SECONDARY_ALTIMETER_PATTERN should require a unit prefix or INS suffix")
     void testSecondaryAltimeterPattern_UnitRequired(String input, boolean expectedMatch) {
         assertThat(RegExprConst.SECONDARY_ALTIMETER_PATTERN.matcher(input).find())
                 .as("'%s'", input)
@@ -3027,7 +3083,7 @@ class RegExprConstTest {
             "OBSC,   'FEW FG 000',     true",
             "OBSC,   'BKN FU 0055',    false"
     })
-    @DisplayName("Batch-3 remark patterns should require their value and end at a token boundary (Issue #115)")
+    @DisplayName("Batch-3 remark patterns should require their value and end at a token boundary")
     void testBatch3Patterns_ValueRequiredAndTokenBounded(String patternName, String input, boolean expectedMatch) {
         Pattern pattern = switch (patternName) {
             case "TWRSFC" -> RegExprConst.TWR_SFC_VIS_PATTERN;
@@ -3056,7 +3112,7 @@ class RegExprConstTest {
             "T24, 4004610061, false",
             "T24, 40046100X,  false"
     })
-    @DisplayName("Batch-4 temperature patterns should require exact digits and end at a token boundary (Issue #115)")
+    @DisplayName("Batch-4 temperature patterns should require exact digits and end at a token boundary")
     void testBatch4Patterns_ExactDigitsAndTokenBounded(String patternName, String input, boolean expectedMatch) {
         Pattern pattern = switch (patternName) {
             case "T6" -> RegExprConst.TEMP_6HR_MAX_MIN_PATTERN;

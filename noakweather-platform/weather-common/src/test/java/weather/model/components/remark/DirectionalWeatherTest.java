@@ -238,4 +238,82 @@ class DirectionalWeatherTest {
 
         assertThat(withFlag).isNotEqualTo(withoutFlag);
     }
+
+    // ==================== Location qualifier ====================
+
+    @Test
+    @DisplayName("Should store a location qualifier with directions (SH DSNT N)")
+    void testConstructor_LocationWithDirections() {
+        PresentWeather weather = PresentWeather.parse("SH");
+
+        DirectionalWeather directionalWeather = new DirectionalWeather(weather, "DSNT", List.of("N"), false);
+
+        assertThat(directionalWeather.location()).isEqualTo("DSNT");
+        assertThat(directionalWeather.hasLocation()).isTrue();
+        assertThat(directionalWeather.directions()).containsExactly("N");
+    }
+
+    @Test
+    @DisplayName("Should store a location qualifier alone (SHRA OHD)")
+    void testConstructor_LocationOnly() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(
+                PresentWeather.parse("SHRA"), "OHD", null, false);
+
+        assertThat(directionalWeather.location()).isEqualTo("OHD");
+        assertThat(directionalWeather.hasDirections()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Convenience constructors should default location to null")
+    void testConstructor_ConvenienceConstructorsDefaultLocationNull() {
+        PresentWeather weather = PresentWeather.parse("VCSH");
+
+        assertThat(new DirectionalWeather(weather, List.of("E")).location()).isNull();
+        assertThat(new DirectionalWeather(weather, null, true).location()).isNull();
+        assertThat(new DirectionalWeather(weather, null, true).hasLocation()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Should reject an unknown location qualifier as invalid report data")
+    void testConstructor_InvalidLocation_Throws() {
+        PresentWeather weather = PresentWeather.parse("SH");
+        List<String> directions = List.of("N");
+
+        assertThatThrownBy(() -> new DirectionalWeather(weather, "FAR", directions, false))
+                .isInstanceOfSatisfying(InvalidObservationException.class, e -> {
+                    assertThat(e.getComponent()).isEqualTo("DirectionalWeather.location");
+                    assertThat(e.getRejectedValue()).isEqualTo("FAR");
+                    assertThat(e.getMessage())
+                            .isEqualTo("Invalid location qualifier (valid: OHD, VC, DSNT, DSIPTD, TOP, TR): FAR");
+                });
+    }
+
+    @Test
+    @DisplayName("Should generate summary with location and directions")
+    void testGetSummary_WithLocationAndDirections() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(
+                PresentWeather.parse("SH"), "DSNT", List.of("N"), false);
+
+        assertThat(directionalWeather.getSummary())
+                .isEqualTo(PresentWeather.parse("SH").getDescription() + " (DSNT): N");
+    }
+
+    @Test
+    @DisplayName("Should generate summary with location only")
+    void testGetSummary_WithLocationOnly() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(
+                PresentWeather.parse("SHRA"), "OHD", null, false);
+
+        assertThat(directionalWeather.getSummary())
+                .isEqualTo(PresentWeather.parse("SHRA").getDescription() + " (OHD)");
+    }
+
+    @Test
+    @DisplayName("Should not be equal when location differs")
+    void testInequality_DifferentLocation() {
+        DirectionalWeather distant = new DirectionalWeather(PresentWeather.parse("SH"), "DSNT", List.of("N"), false);
+        DirectionalWeather noLocation = new DirectionalWeather(PresentWeather.parse("SH"), null, List.of("N"), false);
+
+        assertThat(distant).isNotEqualTo(noLocation);
+    }
 }
