@@ -622,7 +622,7 @@ class NoaaMetarParserTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"1/0SM", "1 1/0SM", "0/0SM"})
-    @DisplayName("Should not store a zero-denominator visibility, and keep parsing the main body (#130)")
+    @DisplayName("Should not store a zero-denominator visibility, and keep parsing the main body")
     void testZeroDenominatorVisibilityNotStored(String vis) {
         NoaaMetarData data = parseData("METAR KJFK 121853Z 28016KT " + vis + " FEW010 16/03 A3015");
 
@@ -3990,6 +3990,44 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "'SH DSNT N',  SH,   DSNT, N,     false",
+            "'SHRA OHD',   SHRA, OHD,  ,      false",
+            "'VCSH E SE',  VCSH, ,     'E SE', false",
+            "'-RA ALQDS',  -RA,  ,     ,      true",
+            "VCSH,         VCSH, ,     ,      false",
+            "VCSH-NE,      VCSH, ,     NE,    false"
+    })
+    @DisplayName("Should store a remark weather code with its location, directions or ALQDS")
+    void testDirectionalWeatherLocationForms(String remark, String weather, String location,
+                                             String directions, boolean allQuadrants) {
+        NoaaMetarData data = parseData("METAR KJFK 121853Z 28016KT 10SM A3015 RMK " + remark + " SLP210");
+
+        DirectionalWeather dw = data.getRemarks().directionalWeather();
+        assertThat(dw).as(remark).isNotNull();
+        assertThat(dw.presentWeather()).isEqualTo(PresentWeather.parse(weather));
+        assertThat(dw.location()).isEqualTo(location);
+        if (directions == null) {
+            assertThat(dw.directions()).isNull();
+        } else {
+            assertThat(dw.directions()).containsExactly(directions.split(" "));
+        }
+        assertThat(dw.allQuadrants()).isEqualTo(allQuadrants);
+        assertThat(data.getRemarks().freeText()).as(remark).isNull();
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+    }
+
+    @Test
+    @DisplayName("Should leave a bare non-VC weather code whole for freeText")
+    void testBareWeatherCodeLeftForFreeText() {
+        NoaaMetarData data = parseData("METAR KJFK 121853Z 28016KT 10SM A3015 RMK SH SLP210");
+
+        assertThat(data.getRemarks().directionalWeather()).isNull();
+        assertThat(data.getRemarks().freeText()).isEqualTo("SH");
+        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+    }
+
     // ========== VARIABLE VISIBILITY PARSING TESTS ==========
 
     @ParameterizedTest
@@ -7324,18 +7362,17 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should parse bare HZ without allQuadrants")
-    void testParseDirectionalWeather_BareHaze_NoAllQuadrants() {
+    @DisplayName("Should leave a bare HZ (no location) for freeText, not store it as directional weather")
+    void testParseDirectionalWeather_BareHaze_LeftForFreeText() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK HZ";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
         assertThat(result.isSuccess()).isTrue();
-        DirectionalWeather dw = extractMetarData(result).getRemarks().directionalWeather();
+        NoaaMetarData data = extractMetarData(result);
 
-        assertThat(dw).isNotNull();
-        assertThat(dw.allQuadrants()).isFalse();
-        assertThat(dw.directions()).isNull();
+        assertThat(data.getRemarks().directionalWeather()).isNull();
+        assertThat(data.getRemarks().freeText()).isEqualTo("HZ");
     }
 
     @Test
@@ -11203,7 +11240,7 @@ class NoaaMetarParserTest {
             assertThat(result.isFailure()).isTrue();
             assertThat(result.getErrorMessage())
                     .isEqualTo("Failed to parse METAR data: Could not extract station ID from METAR");
-            // Rejected cleanly at INFO; no ERROR from an NPE in handleRemarks (#146)
+            // Rejected cleanly at INFO; no ERROR from an NPE in handleRemarks
             assertThat(logs.events()).singleElement().satisfies(event -> {
                 assertThat(event.getLevel()).isEqualTo(Level.INFO);
                 assertThat(event.getMessage().getFormattedMessage())
@@ -11347,7 +11384,7 @@ class NoaaMetarParserTest {
             "'1 1/0SM', visibility,  'Mixed fraction with zero denominator'",
             "0/0SM,     visibility,  'Zero over zero (was NaN)'"
     })
-    @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN (#136)")
+    @DisplayName("Should drop expected bad main-body data at DEBUG on the Rejected category, never WARN")
     void testRejectedMainBodyGroupLoggedAtDebugNotWarn(String group, String groupType, String scenario) {
         String metar = "METAR KJFK 121853Z 28016KT 10SM " + group + " 16/03 A3015";
 
@@ -11368,7 +11405,7 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should log a rejected report at INFO with its reason, not silently (#136)")
+    @DisplayName("Should log a rejected report at INFO with its reason, not silently")
     void testParse_RejectedReportLoggedAtInfo() {
         String metar = "METAR 121853Z 28016KT 10SM A3015";
 
@@ -11426,7 +11463,7 @@ class NoaaMetarParserTest {
             "RMK VCSH S T01720026,                S,  NULL",
             "RMK VCSH S P0001,                    S,  NULL",
             "RMK VCSH S AO2,                      S,  NULL",
-            // Previously lost the direction - compass-letter follower (#118)
+            // Previously lost the direction - compass-letter follower
             "RMK VCSH S SLP186,                   S,  NULL",
             "RMK VCSH S STNRY,                    S,  STNRY",
             "RMK VCSH S STNRY SLP186 T01720026,   S,  STNRY",
@@ -11436,7 +11473,7 @@ class NoaaMetarParserTest {
             "RMK VCSH S NOSPECI,                  S,  NOSPECI",
             "RMK VCSH S SNINCR 1/10,              S,  'SNINCR 1/10'"
     }, nullValues = "NULL")
-    @DisplayName("Should keep the direction when the next remark token starts with a compass letter (#118)")
+    @DisplayName("Should keep the direction when the next remark token starts with a compass letter")
     void testDirectionKept_BeforeCompassLetterToken(String remark, String expectedDirection, String expectedFreeText) {
         NoaaMetarData data = parseData(KDPG_BODY + remark);
 
@@ -11455,7 +11492,7 @@ class NoaaMetarParserTest {
             "'RMK VCSH NW SW SLP101',      'NW,SW'",
             "'RMK VCSH E SE S SLP186',     'E,SE,S'"
     })
-    @DisplayName("Should keep every point of a multi-point direction list, including NE/NW/SW after the first (#118)")
+    @DisplayName("Should keep every point of a multi-point direction list, including NE/NW/SW after the first")
     void testDirectionList_MultiplePoints(String remark, String expectedDirections) {
         NoaaMetarData data = parseData(KDPG_BODY + remark);
 
@@ -11465,7 +11502,7 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should store VCSH with no direction when followed by STNRY alone (#118)")
+    @DisplayName("Should store VCSH with no direction when followed by STNRY alone")
     void testNoDirection_StnryOnly() {
         NoaaMetarData data = parseData(KDPG_BODY + "RMK VCSH STNRY");
 
@@ -11484,8 +11521,8 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Known gap: a rejected hail group loses GR to directional weather (follow-up issue)")
-    void knownGap_RejectedHailGroupLosesGrToDirectionalWeather() {
+    @DisplayName("Should leave a rejected hail group whole in freeText; GR is not claimed by directional weather")
+    void testRejectedHailGroup_SurfacesWhole() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -11494,19 +11531,22 @@ class NoaaMetarParserTest {
         NoaaMetarData data = extractMetarData(result);
 
         assertThat(data.getRemarks().hailSize())
-                .as("HailSize rejects 0 and the hail handler leaves GR 0 in place (#115)")
+                .as("HailSize rejects 0 and the hail handler leaves GR 0 in place")
                 .isNull();
         assertThat(data.getRemarks().directionalWeather())
-                .as("Known gap: directional weather then claims the bare GR")
-                .isNotNull();
+                .as("A bare GR has no location, so directional weather declines it")
+                .isNull();
         assertThat(data.getRemarks().freeText())
-                .as("Known gap: only the size reaches freeText; flip to 'GR 0' when the follow-up lands")
-                .isEqualTo("0");
+                .as("The rejected group surfaces whole")
+                .isEqualTo("GR 0");
+        assertThat(data.getSeaLevelPressure())
+                .as("Remarks after the rejected group still parse")
+                .isEqualTo(1021.0);
     }
 
     @Test
-    @DisplayName("Known gap (#129): unparseable hail size is left in place, but GR is claimed by directional weather")
-    void knownGap_UnparseableHailSizeLosesGrToDirectionalWeather() {
+    @DisplayName("Should leave an unparseable hail group whole in freeText; GR is not claimed by directional weather")
+    void testUnparseableHailSize_SurfacesWhole() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 1/0 SLP210";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
@@ -11518,10 +11558,9 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().hailSize()).isNull();
         assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
 
-        // #129: GR is then claimed by directional weather, so only the size reaches freeText.
-        // When #129 is fixed, freeText should be "GR 1/0" and directionalWeather null.
-        assertThat(data.getRemarks().directionalWeather()).isNotNull();
-        assertThat(data.getRemarks().freeText()).isEqualTo("1/0");
+        // #129: a bare GR has no location, so directional weather declines it and the group surfaces whole
+        assertThat(data.getRemarks().directionalWeather()).isNull();
+        assertThat(data.getRemarks().freeText()).isEqualTo("GR 1/0");
     }
 
     @Test

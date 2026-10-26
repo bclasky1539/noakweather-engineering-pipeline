@@ -430,6 +430,22 @@ public final class RegExprConst {
     public static final Pattern ALL_QUADRANTS_PATTERN = Pattern.compile("^ALQDS(?=\\s|$)");
 
     /**
+     * Location qualifier after a weather code in remarks (#129), e.g. "SH DSNT N", "SHRA OHD".
+     * Same qualifiers as TS_CLD_LOC_PATTERN except ALQDS, which ALL_QUADRANTS_PATTERN matches.
+     */
+    public static final Pattern REMARK_WEATHER_LOCATION_PATTERN = Pattern.compile(
+            "^(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR)(?=\\s|$)"
+    );
+
+    /**
+     * A remark weather code joined to one compass point by a hyphen (#129), e.g. "VCSH-NE"
+     * (MBSC). Only a single point: a hyphenated range after a weather code is not modelled.
+     */
+    public static final Pattern WEATHER_HYPHEN_DIRECTION_PATTERN = Pattern.compile(
+            "^(?<wx>[-+]?(?:VC)?[A-Z]{2,})-(?<dir>NE|NW|SE|SW|N|E|S|W)(?=\\s|$)"
+    );
+
+    /**
      * "AND <qualifier>" continuation: the same cloud type reported at an additional
      * location qualifier, with no direction (e.g. "CB OHD AND ALQDS"). Only attempted
      * after a successful TS_CLD_LOC_PATTERN match in the same handler call.
