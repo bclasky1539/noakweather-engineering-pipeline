@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.24.3-SNAPSHOT]
+
+### Added
+- `DirectionalWeather` has an optional location qualifier (`OHD`, `VC`,
+  `DSNT`, `DSIPTD`, `TOP`, `TR`). Remark weather such as `SH DSNT N`
+  (showers, distant, north) and `SHRA OHD` is now stored with its
+  location; an unknown qualifier is rejected with
+  `InvalidObservationException`. (#129)
+- The hyphen-joined remark form `VCSH-NE` (seen at MBSC) is stored as
+  `VCSH` with direction `NE`. (#129)
+
+### Changed
+- A remark weather code is stored as directional weather only when it says
+  where: a location qualifier, a direction, `ALQDS`, or the `VC` prefix.
+  A bare code without one (e.g. `HZ`, `SH`) is left whole for freeText.
+  Bare `VCSH` is still stored. (#129)
+
+### Fixed
+- A rejected hail group (`GR 0`, `GR 1/0`) lost `GR` to directional
+  weather, so only the size reached freeText. The whole group now
+  surfaces in freeText. (#129)
+
+### Downstream impact
+- Bronze JSON: directional weather entries gain a `location` field
+  (null when absent).
+- Bare non-VC remark weather codes move from `directionalWeather` to
+  `freeText`.
+
+### Known gaps
+- A hyphenated direction range after a weather code (e.g. `VCSH-NE-E`) and
+  a range after a qualifier (`SH DSNT N-NE`) are not modeled.
+- `STNRY` and movement (`MOV …`) after remark weather remain in freeText.
+
+### Tests
+- `DirectionalWeatherTest`: location qualifier, validation, summary,
+  equality.
+- `RegExprConstTest`: `REMARK_WEATHER_LOCATION_PATTERN` and
+  `WEATHER_HYPHEN_DIRECTION_PATTERN`, matches and boundaries.
+- `NoaaMetarParserTest`: the agreed location forms, bare `SH`/`HZ` to
+  freeText, and both hail known-gap tests flipped.
+- `NoaaMetarParserRemarksRecoveryTest`: MBSC `VCSH-NE` real-data case.
+
 ## [1.24.2-SNAPSHOT]
 
 ### Fixed
@@ -68,7 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without a height, and a non-numeric height. Null or blank coverage remains
   `IllegalArgumentException`.
 - Catches that the patterns make unreachable were removed instead of being
-  re-levelled: RVR low/high value parsing, temperature value parsing,
+  re-leveled: RVR low/high value parsing, temperature value parsing,
   `handleAutoType`, `parseTimeDigits`, and the present/recent weather
   handlers (`PresentWeather.parse` never rejects data). `handlePattern` is the
   safety net if one ever fires.
@@ -113,7 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed a SonarCloud issue (java:S9435) in `WeatherConditions`. Inverted
-  negated ternary in WeatherConditions.getSummary. There is No behaviour change.
+  negated ternary in WeatherConditions.getSummary. There is No behavior change.
 - Includes IDE reformatting of the Javadoc @param alignment.
 
 ## [1.23.0-SNAPSHOT]
