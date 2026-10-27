@@ -38,7 +38,7 @@ class CloudTypeTest {
     // ==================== Constructor and Validation Tests ====================
 
     @ParameterizedTest
-    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI"})
+    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"})
     void testValidCloudTypes(String cloudType) {
         CloudType cloud = new CloudType(cloudType, null, null, null, null);
 
@@ -302,7 +302,9 @@ class CloudTypeTest {
             "AC, Altocumulus",
             "CS, Cirrostratus",
             "CC, Cirrocumulus",
-            "CI, Cirrus"
+            "CI, Cirrus",
+            "ACC, Altocumulus Castellanus",
+            "ACSL, Altocumulus Standing Lenticular Cloud"
     })
     void testGetCloudTypeDescription(String code, String description) {
         CloudType cloud = new CloudType(code, null, null, null, null);
@@ -751,7 +753,9 @@ class CloudTypeTest {
             "AC, Altocumulus",
             "CS, Cirrostratus",
             "CC, Cirrocumulus",
-            "CI, Cirrus"
+            "CI, Cirrus",
+            "ACC, Altocumulus Castellanus",
+            "ACSL, Altocumulus Standing Lenticular Cloud"
     })
     @DisplayName("Should return correct descriptions for all cloud types")
     void testCloudTypeDescriptions(String code, String expectedDescription) {

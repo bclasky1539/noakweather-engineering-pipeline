@@ -17,6 +17,7 @@
 package weather.model.components.remark;
 
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CloudTypeAbbreviation;
 
 /**
  * Immutable value object representing a cloud type observation in METAR remarks.
@@ -33,22 +34,7 @@ import weather.exception.InvalidObservationException;
  * "AC8" → CloudType("AC", 8, null, null, null)
  * "CI MOVG NE" → CloudType("CI", null, null, null, "NE")
  * <p>
- * Cloud Type Codes:
- * CU - Cumulus
- * TCU - Towering Cumulus
- * CB - Cumulonimbus
- * CF - Cumuliform
- * ST - Stratus
- * SC - Stratocumulus
- * SF - Stratiform
- * NS - Nimbostratus
- * AS - Altostratus
- * AC - Altocumulus
- * CS - Cirrostratus
- * CC - Cirrocumulus
- * CI - Cirrus
- * ACC - Altocumulus Castellanus
- * ACSL - Altocumulus Standing Lenticular Cloud
+ * Cloud Type Codes: see {@link CloudTypeAbbreviation}, the shared vocabulary (#140).
  * <p>
  * Oktas: 1-8 (eighths of sky covered), null if not specified
  * <p>
@@ -81,11 +67,6 @@ public record CloudType(
 ) {
 
     private static final String OVERHEAD_ALL_QUADRANTS_CODE = "OHD-ALQDS";
-
-    // Valid cloud type codes
-    private static final String[] VALID_CLOUD_TYPES = {
-            "CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"
-    };
 
     // Valid intensity modifiers
     private static final String[] VALID_INTENSITIES = {
@@ -128,15 +109,13 @@ public record CloudType(
 
         String normalized = cloudType.trim().toUpperCase();
 
-        for (String valid : VALID_CLOUD_TYPES) {
-            if (valid.equals(normalized)) {
-                return normalized;
-            }
+        if (CloudTypeAbbreviation.isValid(normalized)) {
+            return normalized;
         }
 
         throw new InvalidObservationException(
                 "CloudType.cloudType", cloudType,
-                "Invalid cloud type (valid types: " + String.join(", ", VALID_CLOUD_TYPES) + ")");
+                "Invalid cloud type (valid types: " + CloudTypeAbbreviation.validCodesDisplay() + ")");
     }
 
     /**
@@ -300,24 +279,8 @@ public record CloudType(
      * @return human-readable cloud type name
      */
     public String getCloudTypeDescription() {
-        return switch (cloudType) {
-            case "CU" -> "Cumulus";
-            case "TCU" -> "Towering Cumulus";
-            case "CB" -> "Cumulonimbus";
-            case "CF" -> "Cumuliform";
-            case "ST" -> "Stratus";
-            case "SC" -> "Stratocumulus";
-            case "SF" -> "Stratiform";
-            case "NS" -> "Nimbostratus";
-            case "AS" -> "Altostratus";
-            case "AC" -> "Altocumulus";
-            case "CS" -> "Cirrostratus";
-            case "CC" -> "Cirrocumulus";
-            case "CI" -> "Cirrus";
-            case "ACC" -> "Altocumulus Castellanus";
-            case "ACSL" -> "Altocumulus Standing Lenticular Cloud";
-            default -> cloudType;
-        };
+        // cloudType was validated against the enum in the constructor
+        return CloudTypeAbbreviation.valueOf(cloudType).getDescription();
     }
 
     /**

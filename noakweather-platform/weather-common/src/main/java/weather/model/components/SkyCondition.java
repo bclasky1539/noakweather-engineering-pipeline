@@ -17,8 +17,8 @@
 package weather.model.components;
 
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CloudTypeAbbreviation;
 import weather.model.enums.SkyCoverage;
-import weather.utils.ValidationPatterns;
 
 /**
  * Immutable value object representing a sky condition (cloud layer).
@@ -96,19 +96,19 @@ public record SkyCondition(
     }
 
     /**
-     * Validate cloud type against known aviation cloud types.
+     * Validate cloud type against the shared cloud type vocabulary (#140).
      *
      * @param cloudType the cloud type to validate
-     * @throws IllegalArgumentException if cloud type is invalid
+     * @throws InvalidObservationException if cloud type is not a known abbreviation
      */
     private static void validateCloudType(String cloudType) {
         if (cloudType != null && !cloudType.isBlank()) {
             String upper = cloudType.trim().toUpperCase();
-            if (!ValidationPatterns.CLOUD_TYPE.matcher(upper).matches()) {
+            if (!CloudTypeAbbreviation.isValid(upper)) {
                 throw new InvalidObservationException(
                         "SkyCondition.cloudType",
                         cloudType,
-                        "Invalid cloud type (valid types: CB, TCU, CU, SC, ST, NS, AS, AC, CI, CC, CS)"
+                        "Invalid cloud type (valid types: " + CloudTypeAbbreviation.validCodesDisplay() + ")"
                 );
             }
         }
