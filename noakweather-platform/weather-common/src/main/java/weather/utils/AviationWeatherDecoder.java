@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,150 +18,136 @@ package weather.utils;
 
 import java.util.Map;
 
+import weather.model.enums.CloudTypeAbbreviation;
+
 /**
  * Utility class for decoding standard ICAO aviation weather codes into human-readable descriptions.
- * 
+ * <p>
  * This decoder handles standard codes as defined by ICAO Annex 3 and WMO standards,
  * used across METAR, TAF, SPECI, and other aviation weather products. All codes follow
  * international aviation weather reporting standards.
- * 
+ * <p>
  * All methods are static and thread-safe. The decoder uses immutable lookup maps
  * initialized at class loading time for optimal performance.
- * 
+ * <p>
  * Supported Code Types:
- * 
- *   Sky Coverage: SKC, CLR, FEW, SCT, BKN, OVC, VV
- *   Weather Phenomena: RA, SN, FG, BR, DZ, GR, TS, etc.
- *   Intensity: + (heavy), - (light), VC (vicinity)
- *   Descriptors: SH, TS, FZ, BL, MI, BC, DR, PR
- *   Cloud Types: CB, TCU
- * 
- * 
+ * <p>
+ * Sky Coverage: SKC, CLR, FEW, SCT, BKN, OVC, VV
+ * Weather Phenomena: RA, SN, FG, BR, DZ, GR, TS, etc.
+ * Intensity: + (heavy), - (light), VC (vicinity)
+ * Descriptors: SH, TS, FZ, BL, MI, BC, DR, PR
+ * Cloud Types: see {@link CloudTypeAbbreviation}
+ * <p>
+ * <p>
  * Usage Examples:
  * {@code
  * // Sky coverage
  * String sky = AviationWeatherDecoder.decodeSkyCoverage("BKN");  // "Broken"
- * 
+ * <p>
  * // Weather phenomena
  * String wx = AviationWeatherDecoder.decodeWeatherPhenomenon("RA");  // "Rain"
- * 
+ * <p>
  * // Complete weather string
  * String full = AviationWeatherDecoder.decodeWeather("-SHRA");  // "Light Shower(s) Rain"
- * 
+ * <p>
  * // Cloud type
  * String cloud = AviationWeatherDecoder.decodeCloudType("CB");  // "Cumulonimbus"
  * }
- * 
+ *
  * @author bclasky1539
  *
  */
 public final class AviationWeatherDecoder {
-    
+
     private static final String IN_THE_VICINITY = "In the Vicinity";
-    
+
     // Sky Coverage codes (ICAO Annex 3, Section 4.5)
     private static final Map<String, String> SKY_COVERAGE = Map.ofEntries(
-        Map.entry("SKC", "Sky Clear"),
-        Map.entry("CLR", "Clear"),
-        Map.entry("NSC", "No Significant Clouds"),
-        Map.entry("NCD", "No Clouds Detected"),
-        Map.entry("FEW", "Few"),
-        Map.entry("SCT", "Scattered"),
-        Map.entry("BKN", "Broken"),
-        Map.entry("OVC", "Overcast"),
-        Map.entry("VV", "Vertical Visibility"),
-        Map.entry("///", "Sky Obscured")
+            Map.entry("SKC", "Sky Clear"),
+            Map.entry("CLR", "Clear"),
+            Map.entry("NSC", "No Significant Clouds"),
+            Map.entry("NCD", "No Clouds Detected"),
+            Map.entry("FEW", "Few"),
+            Map.entry("SCT", "Scattered"),
+            Map.entry("BKN", "Broken"),
+            Map.entry("OVC", "Overcast"),
+            Map.entry("VV", "Vertical Visibility"),
+            Map.entry("///", "Sky Obscured")
     );
-    
+
     // Weather Phenomena codes (ICAO Annex 3, Table 4678)
     private static final Map<String, String> WEATHER_PHENOMENA = Map.ofEntries(
-        // Precipitation
-        Map.entry("DZ", "Drizzle"),
-        Map.entry("RA", "Rain"),
-        Map.entry("SN", "Snow"),
-        Map.entry("SG", "Snow Grains"),
-        Map.entry("IC", "Ice Crystals"),
-        Map.entry("PL", "Ice Pellets"),
-        Map.entry("GR", "Hail"),
-        Map.entry("GS", "Small Hail"),
-        Map.entry("UP", "Unknown Precipitation"),
-        
-        // Obscuration
-        Map.entry("BR", "Mist"),
-        Map.entry("FG", "Fog"),
-        Map.entry("FU", "Smoke"),
-        Map.entry("VA", "Volcanic Ash"),
-        Map.entry("DU", "Widespread Dust"),
-        Map.entry("SA", "Sand"),
-        Map.entry("HZ", "Haze"),
-        Map.entry("PY", "Spray"),
-        
-        // Other phenomena
-        Map.entry("PO", "Dust/Sand Whirls"),
-        Map.entry("SQ", "Squalls"),
-        Map.entry("FC", "Funnel Cloud"),
-        Map.entry("SS", "Sandstorm"),
-        Map.entry("DS", "Duststorm")
+            // Precipitation
+            Map.entry("DZ", "Drizzle"),
+            Map.entry("RA", "Rain"),
+            Map.entry("SN", "Snow"),
+            Map.entry("SG", "Snow Grains"),
+            Map.entry("IC", "Ice Crystals"),
+            Map.entry("PL", "Ice Pellets"),
+            Map.entry("GR", "Hail"),
+            Map.entry("GS", "Small Hail"),
+            Map.entry("UP", "Unknown Precipitation"),
+
+            // Obscuration
+            Map.entry("BR", "Mist"),
+            Map.entry("FG", "Fog"),
+            Map.entry("FU", "Smoke"),
+            Map.entry("VA", "Volcanic Ash"),
+            Map.entry("DU", "Widespread Dust"),
+            Map.entry("SA", "Sand"),
+            Map.entry("HZ", "Haze"),
+            Map.entry("PY", "Spray"),
+
+            // Other phenomena
+            Map.entry("PO", "Dust/Sand Whirls"),
+            Map.entry("SQ", "Squalls"),
+            Map.entry("FC", "Funnel Cloud"),
+            Map.entry("SS", "Sandstorm"),
+            Map.entry("DS", "Duststorm")
     );
-    
+
     // Intensity/Proximity indicators (ICAO Annex 3, Section 4.4.2.5)
     private static final Map<String, String> INTENSITY = Map.of(
-        "-", "Light",
-        "+", "Heavy",
-        "VC", IN_THE_VICINITY
+            "-", "Light",
+            "+", "Heavy",
+            "VC", IN_THE_VICINITY
     );
-    
+
     // Weather descriptors (ICAO Annex 3, Table 4678)
     private static final Map<String, String> DESCRIPTORS = Map.ofEntries(
-        Map.entry("MI", "Shallow"),
-        Map.entry("PR", "Partial"),
-        Map.entry("BC", "Patches"),
-        Map.entry("DR", "Low Drifting"),
-        Map.entry("BL", "Blowing"),
-        Map.entry("SH", "Shower(s)"),
-        Map.entry("TS", "Thunderstorm"),
-        Map.entry("FZ", "Freezing")
+            Map.entry("MI", "Shallow"),
+            Map.entry("PR", "Partial"),
+            Map.entry("BC", "Patches"),
+            Map.entry("DR", "Low Drifting"),
+            Map.entry("BL", "Blowing"),
+            Map.entry("SH", "Shower(s)"),
+            Map.entry("TS", "Thunderstorm"),
+            Map.entry("FZ", "Freezing")
     );
-    
-    // Cloud types (ICAO Annex 3, Section 4.5.4.3)
-    private static final Map<String, String> CLOUD_TYPES = Map.ofEntries(
-        Map.entry("CB", "Cumulonimbus"),
-        Map.entry("TCU", "Towering Cumulus"),
-        Map.entry("CU", "Cumulus"),
-        Map.entry("SC", "Stratocumulus"),
-        Map.entry("ST", "Stratus"),
-        Map.entry("NS", "Nimbostratus"),
-        Map.entry("AS", "Altostratus"),
-        Map.entry("AC", "Altocumulus"),
-        Map.entry("CI", "Cirrus"),
-        Map.entry("CC", "Cirrocumulus"),
-        Map.entry("CS", "Cirrostratus")
-    );
-    
+
     /**
      * Private constructor to prevent instantiation of utility class.
-     * 
+     *
      * @throws AssertionError if instantiation is attempted
      */
     private AviationWeatherDecoder() {
         throw new AssertionError("Utility class should not be instantiated");
     }
-    
+
     /**
      * Decode a sky coverage code to human-readable description.
-     * 
+     * <p>
      * Handles standard ICAO sky coverage codes including special conditions
      * like sky clear, vertical visibility, and cloud amount codes.
-     * 
+     * <p>
      * Coverage Meanings:
-     * 
-     *   SKC/CLR: 0 oktas (0/8 coverage)
-     *   FEW: 1-2 oktas (1/8 - 2/8 coverage)
-     *   SCT: 3-4 oktas (3/8 - 4/8 coverage)
-     *   BKN: 5-7 oktas (5/8 - 7/8 coverage)
-     *   OVC: 8 oktas (8/8 coverage)
-     * 
-     * 
+     * <p>
+     * SKC/CLR: 0 oktas (0/8 coverage)
+     * FEW: 1-2 oktas (1/8 - 2/8 coverage)
+     * SCT: 3-4 oktas (3/8 - 4/8 coverage)
+     * BKN: 5-7 oktas (5/8 - 7/8 coverage)
+     * OVC: 8 oktas (8/8 coverage)
+     *
      * @param code the sky coverage code (e.g., "BKN", "OVC", "FEW")
      * @return human-readable description, or the original code if not recognized
      */
@@ -171,13 +157,13 @@ public final class AviationWeatherDecoder {
         }
         return SKY_COVERAGE.getOrDefault(code.toUpperCase().trim(), code);
     }
-    
+
     /**
      * Decode a weather phenomenon code to human-readable description.
-     * 
+     * <p>
      * Handles all standard ICAO weather phenomenon codes for precipitation,
      * obscuration, and other weather events.
-     * 
+     *
      * @param code the weather phenomenon code (e.g., "RA", "SN", "FG")
      * @return human-readable description, or the original code if not recognized
      */
@@ -187,18 +173,17 @@ public final class AviationWeatherDecoder {
         }
         return WEATHER_PHENOMENA.getOrDefault(code.toUpperCase().trim(), code);
     }
-    
+
     /**
      * Decode an intensity or proximity indicator.
-     * 
+     * <p>
      * Intensity indicators modify the severity of weather phenomena:
-     * 
-     *   "-" : Light intensity
-     *   (no modifier) : Moderate intensity (default)
-     *   "+" : Heavy intensity
-     *   "VC" : In the vicinity (5-10 SM from the station)
-     * 
-     * 
+     * <p>
+     * "-" : Light intensity
+     * (no modifier) : Moderate intensity (default)
+     * "+" : Heavy intensity
+     * "VC" : In the vicinity (5-10 SM from the station)
+     *
      * @param code the intensity code ("+", "-", "VC")
      * @return human-readable description, or empty string if not recognized
      */
@@ -208,13 +193,13 @@ public final class AviationWeatherDecoder {
         }
         return INTENSITY.getOrDefault(code.trim(), "");
     }
-    
+
     /**
      * Decode a weather descriptor.
-     * 
+     * <p>
      * Descriptors provide additional detail about weather phenomena,
      * such as the character (showers, thunderstorm) or state (freezing, blowing).
-     * 
+     *
      * @param code the descriptor code (e.g., "SH", "TS", "FZ")
      * @return human-readable description, or the original code if not recognized
      */
@@ -224,35 +209,38 @@ public final class AviationWeatherDecoder {
         }
         return DESCRIPTORS.getOrDefault(code.toUpperCase().trim(), code);
     }
-    
+
     /**
      * Decode a cloud type code to human-readable description.
-     * 
+     * <p>
      * Cloud types indicate significant convective clouds or cloud genus.
      * CB (Cumulonimbus) and TCU (Towering Cumulus) are most commonly reported
      * in aviation weather due to their significance for flight operations.
-     * 
-     * @param code the cloud type code (e.g., "CB", "TCU")
+     * The vocabulary and descriptions come from {@link CloudTypeAbbreviation}.
+     *
+     * @param code the cloud type code (e.g., "CB", "TCU", "ACC")
      * @return human-readable description, or the original code if not recognized
      */
     public static String decodeCloudType(String code) {
         if (code == null || code.isBlank()) {
             return "";
         }
-        return CLOUD_TYPES.getOrDefault(code.toUpperCase().trim(), code);
+        return CloudTypeAbbreviation.find(code.toUpperCase().trim())
+                .map(CloudTypeAbbreviation::getDescription)
+                .orElse(code);
     }
-    
+
     /**
      * Decode a complete weather string including intensity, descriptor, and phenomena.
-     * 
+     * <p>
      * Parses and translates complex weather codes that may include:
-     * 
-     *   Intensity indicator (prefix)
-     *   One or more descriptors
-     *   One or more weather phenomena
-     *   Vicinity indicator (prefix or standalone)
-     * 
-     * 
+     * <p>
+     * Intensity indicator (prefix)
+     * One or more descriptors
+     * One or more weather phenomena
+     * Vicinity indicator (prefix or standalone)
+     * <p>
+     * <p>
      * Examples:
      * {@code
      * "-RA"      → "Light Rain"
@@ -263,7 +251,7 @@ public final class AviationWeatherDecoder {
      * "BLSN"     → "Blowing Snow"
      * "+TSRAGR"  → "Heavy Thunderstorm Rain Hail"
      * }
-     * 
+     *
      * @param weatherCode the complete weather code string
      * @return human-readable description of the weather condition
      */
@@ -271,11 +259,11 @@ public final class AviationWeatherDecoder {
         if (weatherCode == null || weatherCode.isBlank()) {
             return "";
         }
-        
+
         WeatherParser parser = new WeatherParser(weatherCode.trim().toUpperCase());
         return parser.parse();
     }
-    
+
     /**
      * Internal helper class to parse weather codes with reduced complexity.
      * Breaks down the parsing into discrete steps for better maintainability.
@@ -284,11 +272,11 @@ public final class AviationWeatherDecoder {
         private final StringBuilder result = new StringBuilder();
         private String remaining;
         private boolean vicinityAtStart = false;
-        
+
         WeatherParser(String weatherCode) {
             this.remaining = weatherCode;
         }
-        
+
         String parse() {
             extractIntensity();
             extractDescriptors();
@@ -297,7 +285,7 @@ public final class AviationWeatherDecoder {
             appendUnrecognized();
             return result.toString().trim();
         }
-        
+
         private void extractIntensity() {
             if (remaining.startsWith("+")) {
                 result.append("Heavy ");
@@ -310,15 +298,15 @@ public final class AviationWeatherDecoder {
                 remaining = remaining.substring(2);
             }
         }
-        
+
         private void extractDescriptors() {
             remaining = extractCodes(remaining, DESCRIPTORS, result);
         }
-        
+
         private void extractPhenomena() {
             remaining = extractCodes(remaining, WEATHER_PHENOMENA, result);
         }
-        
+
         private void extractVicinity() {
             // VC (vicinity) was extracted at the start, append it now after phenomena
             // According to ICAO Annex 3, VC always precedes weather phenomena (e.g., VCFG, VCTS)
@@ -326,19 +314,19 @@ public final class AviationWeatherDecoder {
                 result.append(IN_THE_VICINITY);
             }
         }
-        
+
         private void appendUnrecognized() {
             if (!remaining.isEmpty()) {
                 result.append(remaining);
             }
         }
-        
+
         /**
          * Extract codes from a map and append their decoded values to the result.
-         * 
-         * @param input the string to process
+         *
+         * @param input   the string to process
          * @param codeMap the map of codes to descriptions
-         * @param output the StringBuilder to append decoded values to
+         * @param output  the StringBuilder to append decoded values to
          * @return the remaining unprocessed string
          */
         private static String extractCodes(String input, Map<String, String> codeMap, StringBuilder output) {
