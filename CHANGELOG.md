@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.25.0-SNAPSHOT]
+
+### Added
+- `CloudTypeAbbreviation` enum (`weather.model.enums`) is the single
+  cloud type vocabulary: `CU`, `TCU`, `CB`, `CF`, `ST`, `SC`, `SF`, `NS`,
+  `AS`, `AC`, `CS`, `CC`, `CI`, `ACC`, `ACSL`, each with its description.
+  (#140)
+
+### Changed
+- `SkyCondition` validates its cloud type against `CloudTypeAbbreviation`,
+  so main-body layers such as `BKN030ACC`, `SCT045ACSL`, `FEW020CF` and
+  `OVC010SF` are now stored instead of rejected. The rejection reason
+  lists the valid codes from the enum. (#140)
+- `CloudType` (okta remarks) validates and describes against the same
+  enum; its accepted codes and messages are unchanged. (#140)
+- `AviationWeatherDecoder.decodeCloudType` reads descriptions from the
+  enum, so `CF`, `SF`, `ACC` and `ACSL` decode (e.g. `ACC` →
+  "Altocumulus Castellanus") instead of being echoed back. (#140)
+
+### Removed
+- `ValidationPatterns.CLOUD_TYPE`, `CloudType.VALID_CLOUD_TYPES` and the
+  decoder's private `CLOUD_TYPES` map; all three duplicated the
+  vocabulary. (#140)
+
+### Downstream impact
+- Bronze JSON: sky layers with `CF`, `SF`, `ACC` or `ACSL` now appear in
+  `skyConditions` where they were previously dropped.
+- Decoded cloud type text for those four codes changes from the raw code
+  to its description.
+
+### Known gaps
+- The remark regexes (`CLOUD_OKTA_PATTERN`, the thunderstorm/cloud
+  location pattern) still list their codes inline rather than reading
+  the enum.
+
+### Tests
+- `CloudTypeAbbreviationTest`: lookup, validity, description and display
+  order for all 15 codes.
+- `SkyConditionTest`: all 15 codes accepted; rejection message,
+  component and rejected value pinned.
+- `CloudTypeTest`: `ACC` and `ACSL` added to validity and description
+  tests.
+- `ValidationPatternsTest`: `CLOUD_TYPE` tests removed.
+- `AviationWeatherDecoderTest`: all 15 codes decoded; `@EnumSource`
+  check that the decoder and the enum agree.
+- `NoaaMetarParserTest`: `BKN030ACC`, `SCT045ACSL`, `FEW020CF` and
+  `OVC010SF` parse into one sky layer with no Rejected event.
+
 ## [1.24.3-SNAPSHOT]
 
 ### Added

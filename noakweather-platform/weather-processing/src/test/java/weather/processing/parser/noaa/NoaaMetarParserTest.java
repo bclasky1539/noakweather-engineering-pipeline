@@ -1589,6 +1589,32 @@ class NoaaMetarParserTest {
         assertThat(ovc.cloudType()).isNull();
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "BKN030ACC,  BROKEN,     3000, ACC,  'Broken with altocumulus castellanus'",
+            "SCT045ACSL, SCATTERED,  4500, ACSL, 'Scattered with standing lenticular altocumulus'",
+            "FEW020CF,   FEW,        2000, CF,   'Few cumuliform'",
+            "OVC010SF,   OVERCAST,   1000, SF,   'Overcast stratiform'"
+    })
+    @DisplayName("Should accept every CloudTypeAbbreviation code on a sky layer (Issue #140)")
+    void testParseSkyCondition_ExtendedCloudTypes(String group, SkyCoverage expectedCoverage,
+                                                  int expectedHeightFeet, String expectedCloudType,
+                                                  String scenario) {
+        String metar = "METAR KJFK 121853Z 28016KT 10SM " + group + " 16/03 A3015";
+
+        try (LogCapture rejected = LogCapture.of("weather.processing.parser.noaa.Rejected", Level.DEBUG)) {
+            NoaaMetarData data = parseData(metar);
+
+            assertThat(data.getSkyConditions()).as(scenario).singleElement().satisfies(sky -> {
+                assertThat(sky.coverage()).isEqualTo(expectedCoverage);
+                assertThat(sky.heightFeet()).isEqualTo(expectedHeightFeet);
+                assertThat(sky.cloudType()).isEqualTo(expectedCloudType);
+            });
+            // Before #140 SkyCondition rejected these codes and the layer was dropped
+            assertThat(rejected.events()).as(scenario).isEmpty();
+        }
+    }
+
     @Test
     @DisplayName("Should identify ceiling layers correctly")
     void testParseCeilingLayers() {
