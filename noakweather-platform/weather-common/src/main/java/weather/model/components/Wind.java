@@ -17,6 +17,7 @@
 package weather.model.components;
 
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CompassDirection;
 import weather.utils.ValidationPatterns;
 
 /**
@@ -92,15 +93,13 @@ public record Wind(
     }
 
     /**
-     * Generate a range validation error message.
+     * Generate a direction range validation error message.
      *
      * @param fieldName the name of the field being validated
-     * @param min       minimum valid value
-     * @param max       maximum valid value
      * @return formatted error message base
      */
-    private static String rangeErrorMessage(String fieldName, int min, int max) {
-        return fieldName + " must be between " + min + " and " + max;
+    private static String rangeErrorMessage(String fieldName) {
+        return fieldName + " must be between " + MIN_DIRECTION_DEGREES + " and " + MAX_DIRECTION_DEGREES;
     }
 
     /**
@@ -111,7 +110,7 @@ public record Wind(
             throw new InvalidObservationException(
                     "Wind.directionDegrees",
                     String.valueOf(direction),
-                    rangeErrorMessage("Wind direction", MIN_DIRECTION_DEGREES, MAX_DIRECTION_DEGREES) + " degrees"
+                    rangeErrorMessage("Wind direction") + " degrees"
             );
         }
     }
@@ -175,14 +174,14 @@ public record Wind(
             throw new InvalidObservationException(
                     "Wind.variabilityFrom",
                     String.valueOf(from),
-                    rangeErrorMessage("Variability from", MIN_DIRECTION_DEGREES, MAX_DIRECTION_DEGREES)
+                    rangeErrorMessage("Variability from")
             );
         }
         if (to < MIN_DIRECTION_DEGREES || to > MAX_DIRECTION_DEGREES) {
             throw new InvalidObservationException(
                     "Wind.variabilityTo",
                     String.valueOf(to),
-                    rangeErrorMessage("Variability to", MIN_DIRECTION_DEGREES, MAX_DIRECTION_DEGREES)
+                    rangeErrorMessage("Variability to")
             );
         }
     }
@@ -266,9 +265,10 @@ public record Wind(
     // ==================== Conversion Methods ====================
 
     /**
-     * Get wind direction as a cardinal direction (N, NE, E, etc.).
+     * Get wind direction as the nearest of the 16 compass points.
      *
-     * @return cardinal direction string, "VRB" if variable, "CALM" if calm
+     * @return compass point code (N, NNE, NE, etc.), "VRB" if variable, "CALM" if calm
+     * @see CompassDirection#fromDegrees(int)
      */
     public String getCardinalDirection() {
         if (isCalm()) {
@@ -278,11 +278,8 @@ public record Wind(
             return "VRB";
         }
 
-        // Convert degrees to cardinal direction (16 points)
-        String[] directions = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
-        int index = (int) Math.round(directionDegrees / 22.5) % 16;
-        return directions[index];
+        // directionDegrees was validated to 0-360 in the constructor
+        return CompassDirection.fromDegrees(directionDegrees).name();
     }
 
     /**

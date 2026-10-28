@@ -123,7 +123,7 @@ class DirectionSegmentTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"ESE", "NNE", "XX", "NORTH", "1"})
+    @ValueSource(strings = {"ESE", "NNE", "XX", "NORTH", "1", "OHD", "ALQDS"})
     @DisplayName("Should reject non-standard or invalid compass points")
     void testConstructor_InvalidCompassPoint(String invalidPoint) {
         List<String> singlePoint = List.of(invalidPoint);

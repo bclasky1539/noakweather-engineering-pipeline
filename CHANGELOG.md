@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.26.0-SNAPSHOT]
+
+### Added
+- `CompassDirection` enum (`weather.model.enums`) is the single compass
+  vocabulary: the 16 points N, NNE … NNW in clockwise order, each with a
+  description and an `isPrincipal()` flag for the 8 principal points
+  (N, NE, E, SE, S, SW, W, NW). `fromDegrees(int)` converts 0-360 degrees
+  to the nearest point. (#141)
+
+### Changed
+- `Wind.getCardinalDirection` and `PeakWind.getCardinalDirection` convert
+  degrees with `CompassDirection.fromDegrees`; output is unchanged for
+  every degree 0-360, and `CALM`, `VRB` and `UNKNOWN` are still returned
+  as before. (#141)
+- `VariableVisibility`, `DirectionSegment` and `CloudType` (movement
+  direction) validate against the 8 principal points of
+  `CompassDirection`; accepted values are unchanged. Rejection messages
+  are built from the enum. (#141)
+- `CloudType`'s movement-direction rejection message lists the valid
+  directions clockwise (`N, NE, E, SE, S, SW, W, NW`, was
+  `N, S, E, W, NE, NW, SE, SW`). (#141)
+
+### Removed
+- The private direction lists in `Wind`, `PeakWind`,
+  `VariableVisibility`, `DirectionSegment` and `CloudType`. (#141)
+
+### Downstream impact
+- None to Bronze JSON: accepted directions and degree conversions are
+  unchanged.
+- DEBUG `Rejected` lines for an invalid `CloudType` movement direction
+  show the reordered list.
+
+### Known gaps
+- Location qualifiers remain per-class (`CloudType`: OHD, OHD-ALQDS,
+  ALQDS, TR, EMBDD; `DirectionalWeather`: OHD, VC, DSNT, DSIPTD, TOP, TR).
+  A shared `LocationQualifier` vocabulary would be a separate issue.
+- Parser regexes still list compass letters inline (`[NSEW]` patterns).
+
+### Tests
+- `CompassDirectionTest`: constant order, principal subset, descriptions,
+  `fromDegrees` at each bearing and boundary, out-of-range input, `find`,
+  `isPrincipal`.
+- `WindTest`, `PeakWindTest`: every degree 0-360 agrees with the enum;
+  `WindTest` gains the 8 in-between points.
+- `VariableVisibilityTest`, `CloudTypeTest`: full rejection messages
+  pinned; `ESE` (and `OHD` for movement) rejected. `DirectionSegmentTest`:
+  `OHD` and `ALQDS` rejected as compass points.
+
+### Housekeeping
+- `Wind.rangeErrorMessage` drops parameters that were always the same
+  constants.
+- `VariableVisibilityTest` asserts the spread is non-null before
+  comparing, instead of risking an unboxing `NullPointerException`.
+
 ## [1.25.0-SNAPSHOT]
 
 ### Added

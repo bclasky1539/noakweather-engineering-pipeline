@@ -17,6 +17,7 @@
 package weather.model.components.remark.windremarks;
 
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CompassDirection;
 
 /**
  * Immutable value object representing peak wind from remarks section.
@@ -78,18 +79,16 @@ public record PeakWind(
     }
 
     /**
-     * Get wind direction as cardinal direction.
+     * Get wind direction as the nearest of the 16 compass points.
      *
-     * @return cardinal direction (N, NE, E, etc.)
+     * @return compass point code (N, NNE, NE, etc.), or "UNKNOWN" if direction is null
+     * @see CompassDirection#fromDegrees(int)
      */
     public String getCardinalDirection() {
         if (directionDegrees == null) {
             return "UNKNOWN";
         }
-
-        String[] directions = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
-        int index = (int) Math.round(directionDegrees / 22.5) % 16;
-        return directions[index];
+        // directionDegrees was validated to 0-360 in the constructor
+        return CompassDirection.fromDegrees(directionDegrees).name();
     }
 }

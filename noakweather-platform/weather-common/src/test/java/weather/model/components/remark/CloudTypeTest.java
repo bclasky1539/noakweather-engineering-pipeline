@@ -196,11 +196,21 @@ class CloudTypeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"NORTH", "NORTHEAST", "XXX", "NNE", "SSW"})
+    @ValueSource(strings = {"NORTH", "NORTHEAST", "XXX", "NNE", "SSW", "ESE", "OHD"})
     void testInvalidMovementDirection(String invalidDirection) {
         assertThatThrownBy(() -> new CloudType("CI", null, null, null, invalidDirection))
                 .isInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Invalid movement direction");
+    }
+
+    @Test
+    void testInvalidMovementDirection_MessagePinned() {
+        // Valid codes listed in clockwise order from CompassDirection (#141)
+        assertThatThrownBy(() -> new CloudType("CI", null, null, null, "nne"))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessage("Invalid movement direction (valid directions: N, NE, E, SE, S, SW, W, NW): nne")
+                .hasFieldOrPropertyWithValue("component", "CloudType.movementDirection")
+                .hasFieldOrPropertyWithValue("rejectedValue", "nne");
     }
 
     @ParameterizedTest
