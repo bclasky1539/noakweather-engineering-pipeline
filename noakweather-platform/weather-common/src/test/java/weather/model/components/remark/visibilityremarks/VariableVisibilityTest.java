@@ -35,6 +35,17 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class VariableVisibilityTest {
 
+
+    /**
+     * Get the spread, failing with a clear assertion rather than an unboxing
+     * NullPointerException if it is null.
+     */
+    private static double spreadOf(VariableVisibility varVis) {
+        Double spread = varVis.getSpread();
+        assertNotNull(spread, "Spread should not be null for " + varVis);
+        return spread;
+    }
+
     // ==================== Constructor and Validation Tests ====================
 
     @Test
@@ -135,9 +146,12 @@ class VariableVisibilityTest {
             "NNE",
             "SSW",
             "ENE",
+            "ESE",
             "NORTH",
             "123",
-            "XYZ"
+            "XYZ",
+            "ne",
+            "' N'"
     })
     @DisplayName("Should reject invalid directions")
     void testInvalidDirections(String direction) {
@@ -146,6 +160,21 @@ class VariableVisibilityTest {
 
         assertThrows(InvalidObservationException.class, () ->
                 new VariableVisibility(min, max, direction, null));
+    }
+
+    @Test
+    @DisplayName("Should reject an in-between compass point with the principal points listed")
+    void testInvalidDirection_MessagePinned() {
+        Visibility min = Visibility.statuteMiles(1.0);
+        Visibility max = Visibility.statuteMiles(3.0);
+
+        InvalidObservationException exception = assertThrows(InvalidObservationException.class, () ->
+                new VariableVisibility(min, max, "NNE", null));
+
+        assertEquals("VariableVisibility.direction", exception.getComponent());
+        assertEquals("NNE", exception.getRejectedValue());
+        assertEquals("Invalid direction (valid directions: N, NE, E, SE, S, SW, W, NW): NNE",
+                exception.getMessage());
     }
 
     // ==================== Query Methods Tests ====================
@@ -243,7 +272,7 @@ class VariableVisibilityTest {
 
         VariableVisibility varVis = new VariableVisibility(minVis, maxVis, null, null);
 
-        assertEquals(expectedSpread, varVis.getSpread(), 0.01);
+        assertEquals(expectedSpread, spreadOf(varVis), 0.01);
         assertEquals(significant, varVis.hasSignificantVariability());
     }
 
@@ -320,7 +349,7 @@ class VariableVisibilityTest {
 
         VariableVisibility varVis = new VariableVisibility(vis, vis, null, null);
 
-        assertEquals(0.0, varVis.getSpread(), 0.01);
+        assertEquals(0.0, spreadOf(varVis), 0.01);
         assertFalse(varVis.hasSignificantVariability());
     }
 
@@ -332,7 +361,7 @@ class VariableVisibilityTest {
 
         VariableVisibility varVis = new VariableVisibility(min, max, null, null);
 
-        assertEquals(0.125, varVis.getSpread(), 0.01);
+        assertEquals(0.125, spreadOf(varVis), 0.01);
     }
 
     @Test
@@ -343,7 +372,7 @@ class VariableVisibilityTest {
 
         VariableVisibility varVis = new VariableVisibility(min, max, null, null);
 
-        assertEquals(5.0, varVis.getSpread(), 0.01);
+        assertEquals(5.0, spreadOf(varVis), 0.01);
         assertTrue(varVis.hasSignificantVariability());
     }
 

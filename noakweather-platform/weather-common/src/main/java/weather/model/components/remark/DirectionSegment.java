@@ -17,6 +17,7 @@
 package weather.model.components.remark;
 
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CompassDirection;
 
 import java.util.List;
 
@@ -27,15 +28,12 @@ import java.util.List;
  * with AND to describe a location reported at more than one place
  * (e.g. "N-E AND SE-S").
  * <p>
- * Points are validated against the 8 standard compass abbreviations
- * (N, NE, E, SE, S, SW, W, NW). A finer-grained point (e.g. ESE) is
- * not currently recognized and would surface via freeText for review
- * rather than being silently accepted or guessed at.
+ * Points are validated against the 8 principal compass points
+ * (N, NE, E, SE, S, SW, W, NW) of {@link CompassDirection}. A finer-grained
+ * point (e.g. ESE) is not currently recognized and would surface via
+ * freeText for review rather than being silently accepted or guessed at.
  */
 public record DirectionSegment(List<String> points) {
-
-    private static final List<String> VALID_POINTS =
-            List.of("N", "NE", "E", "SE", "S", "SW", "W", "NW");
 
     public DirectionSegment {
         if (points == null || points.isEmpty()) {
@@ -50,10 +48,10 @@ public record DirectionSegment(List<String> points) {
             if (point == null || point.isEmpty()) {
                 throw new IllegalArgumentException("DirectionSegment points cannot be null or blank");
             }
-            if (!VALID_POINTS.contains(point)) {
+            if (!CompassDirection.isPrincipal(point)) {
                 throw new InvalidObservationException(
                         "DirectionSegment.points", point,
-                        "Invalid compass point (valid points: " + String.join(", ", VALID_POINTS) + ")");
+                        "Invalid compass point (valid points: " + CompassDirection.principalCodesDisplay() + ")");
             }
         }
 

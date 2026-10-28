@@ -18,6 +18,7 @@ package weather.model.components.remark;
 
 import weather.exception.InvalidObservationException;
 import weather.model.enums.CloudTypeAbbreviation;
+import weather.model.enums.CompassDirection;
 
 /**
  * Immutable value object representing a cloud type observation in METAR remarks.
@@ -47,8 +48,8 @@ import weather.model.enums.CloudTypeAbbreviation;
  * ALQDS - All quadrants
  * TR - Trace
  * <p>
- * Movement Direction:
- * N, S, E, W, NE, NW, SE, SW
+ * Movement Direction: the 8 principal points of {@link CompassDirection}
+ * (N, NE, E, SE, S, SW, W, NW)
  *
  * @param cloudType         Cloud type code (CU, CI, AC, etc.) - required
  * @param oktas             Coverage in eighths (1-8), null if not specified
@@ -76,11 +77,6 @@ public record CloudType(
     // Valid location indicators
     private static final String[] VALID_LOCATIONS = {
             "OHD", OVERHEAD_ALL_QUADRANTS_CODE, "ALQDS", "TR", "EMBDD"
-    };
-
-    // Valid movement directions
-    private static final String[] VALID_DIRECTIONS = {
-            "N", "S", "E", "W", "NE", "NW", "SE", "SW"
     };
 
     /**
@@ -195,15 +191,13 @@ public record CloudType(
 
         String normalized = movementDirection.trim().toUpperCase();
 
-        for (String valid : VALID_DIRECTIONS) {
-            if (valid.equals(normalized)) {
-                return normalized;
-            }
+        if (CompassDirection.isPrincipal(normalized)) {
+            return normalized;
         }
 
         throw new InvalidObservationException(
                 "CloudType.movementDirection", movementDirection,
-                "Invalid movement direction (valid directions: " + String.join(", ", VALID_DIRECTIONS) + ")");
+                "Invalid movement direction (valid directions: " + CompassDirection.principalCodesDisplay() + ")");
     }
 
     // ==================== Query Methods ====================

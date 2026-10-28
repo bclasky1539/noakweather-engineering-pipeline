@@ -18,6 +18,7 @@ package weather.model.components.remark.visibilityremarks;
 
 import weather.exception.InvalidObservationException;
 import weather.model.components.Visibility;
+import weather.model.enums.CompassDirection;
 
 /**
  * Immutable value object representing variable visibility from remarks section.
@@ -44,9 +45,6 @@ public record VariableVisibility(
         String direction,
         String location
 ) {
-
-    // Valid directions: N, NE, E, SE, S, SW, W, NW
-    private static final String[] VALID_DIRECTIONS = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
 
     /**
      * Compact constructor with validation.
@@ -99,22 +97,23 @@ public record VariableVisibility(
 
     /**
      * Validate direction if present.
+     * <p>
+     * Only the 8 principal points of {@link CompassDirection} are accepted, matched
+     * exactly (no trimming or case folding).
      */
     private static void validateDirection(String direction) {
         if (direction == null || direction.isBlank()) {
             return;
         }
 
-        for (String validDir : VALID_DIRECTIONS) {
-            if (validDir.equals(direction)) {
-                return;
-            }
+        if (CompassDirection.isPrincipal(direction)) {
+            return;
         }
 
         throw new InvalidObservationException(
                 "VariableVisibility.direction",
                 direction,
-                "Invalid direction (valid directions: " + String.join(", ", VALID_DIRECTIONS) + ")");
+                "Invalid direction (valid directions: " + CompassDirection.principalCodesDisplay() + ")");
     }
 
     // ==================== Query Methods ====================
