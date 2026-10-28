@@ -22,6 +22,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.CsvSource;
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CompassDirection;
+
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -400,6 +403,30 @@ class WindTest {
     void testGetCardinalDirection_Calm() {
         Wind wind = Wind.calm();
         assertThat(wind.getCardinalDirection()).isEqualTo("CALM");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "22, NNE",
+            "68, ENE",
+            "112, ESE",
+            "158, SSE",
+            "202, SSW",
+            "248, WSW",
+            "292, WNW",
+            "338, NNW"
+    })
+    void testGetCardinalDirection_InBetweenPoints(int degrees, String expected) {
+        Wind wind = new Wind(degrees, 10, null, null, null, "KT");
+        assertThat(wind.getCardinalDirection()).isEqualTo(expected);
+    }
+
+    @Test
+    void testGetCardinalDirection_AgreesWithCompassDirectionForEveryDegree() {
+        IntStream.rangeClosed(0, 360).forEach(degrees ->
+                assertThat(new Wind(degrees, 10, null, null, null, "KT").getCardinalDirection())
+                        .as("%d degrees", degrees)
+                        .isEqualTo(CompassDirection.fromDegrees(degrees).name()));
     }
 
     // ==================== Unit Conversion Tests ====================

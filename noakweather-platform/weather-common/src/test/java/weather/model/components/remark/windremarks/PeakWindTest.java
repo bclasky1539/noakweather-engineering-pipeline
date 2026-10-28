@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import weather.exception.InvalidObservationException;
+import weather.model.enums.CompassDirection;
+
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -263,5 +266,13 @@ class PeakWindTest {
         PeakWind peakWind = new PeakWind(202, 32, 15, 30);
 
         assertThat(peakWind.getCardinalDirection()).isEqualTo("SSW");
+    }
+
+    @Test
+    void testGetCardinalDirection_AgreesWithCompassDirectionForEveryDegree() {
+        IntStream.rangeClosed(0, 360).forEach(degrees ->
+                assertThat(new PeakWind(degrees, 32, 15, 30).getCardinalDirection())
+                        .as("%d degrees", degrees)
+                        .isEqualTo(CompassDirection.fromDegrees(degrees).name()));
     }
 }
