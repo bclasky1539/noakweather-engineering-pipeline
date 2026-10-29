@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.0-SNAPSHOT]
+
+### Added
+- Shared group parsing engine (#153 phase 1, #154), in
+  `weather.processing.parser.noaa`; no parser uses it yet:
+  - `GroupHandler` / `GroupOutcome`: one kind of report group and what its
+    step did (`Parsed`, `Rejected`, `NoMatch`). Steps report rejections
+    instead of logging them.
+  - `SectionPolicy`: per-section scheduling (`FIRST_MATCH_RESTART`, the
+    registry's behavior, or `PASSES`, the remark chain's), rejected text
+    (`CONSUME` or `KEEP`), unrecognized tokens (`STOP` or
+    `SKIP_TO_UNPARSED`) and an optional boundary (e.g. a TAF change group).
+  - `SectionParser`: runs a section's handlers under its policy, with a
+    per-handler circuit breaker (WARN, handler disabled for the rest of the
+    run); logs each rejection once via `RejectedGroupLog` and returns it in
+    `SectionResult`.
+  - `PatternGroupHandler`: `single` / `repeating` adapters for pattern-based
+    groups, reproducing the registry's text handling (including its
+    trailing-space rule); actions take `(target, matcher)` so parser methods
+    can be passed as method references.
+
+### Tests
+- `SectionParserTest`, `PatternGroupHandlerTest`, `GroupParsingContractTest`:
+  each policy value, boundary stop, breaker trip and reset, rejection
+  recording and logging, and the adapter's text handling.
+
 ## [1.26.1-SNAPSHOT]
 
 ### Added
