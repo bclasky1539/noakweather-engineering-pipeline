@@ -57,8 +57,9 @@ jobs:
         run: |
           cd noakweather-platform
           mvn clean verify
-      # Run SonarCloud analysis for both Java 17 and 21
+      # Analyze once, on the leg that matches the compile target (maven.compiler.release 17)
       - name: SonarCloud Analysis
+        if: matrix.java-version == 17
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -69,11 +70,11 @@ jobs:
             -Dsonar.organization=bclasky1539 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.projectName="Noakweather Engineering Pipeline" \
-            -Dsonar.java.source=${{ matrix.java-version }}
+            -Dsonar.java.source=17
 
-      # Only poll/report the Quality Gate once per PR (Java 21 leg)
+      # Poll/report the Quality Gate on the leg that ran the analysis (Java 17)
       - name: SonarQube Quality Gate Check
-        if: matrix.java-version == 21
+        if: matrix.java-version == 17
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         with:
