@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.26.1-SNAPSHOT]
+
+### Added
+- `NoaaMetarParserGoldenOutputTest`: parses 57 reports (the
+  remarks-recovery cases, the diagnostics raws and synthetic reports
+  covering every remark pattern the registry pass tried) and compares a
+  field-by-field rendering of each with
+  `golden/metar-golden-expected.txt`, recorded on main. Run with
+  `-Dgolden.record=true` to re-record after an intended output change.
+  (#137)
+
+### Notes
+- The remark registry pass stores nothing (its handlers only log); it is
+  not removed here. It will go when remarks move onto the unified group
+  parsing engine (see the epic).
+- Observation time is left out of the rendering, because reports without
+  a date header take their year and month from the current date.
+
 ## [1.26.0-SNAPSHOT]
 
 ### Added
