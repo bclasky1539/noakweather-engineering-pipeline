@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.2-SNAPSHOT]
+
+### Changed
+- METAR remarks now parse through the group parsing engine (`SectionParser` with
+  `PASSES` / `KEEP` / `SKIP_TO_UNPARSED`); the 31 remark handlers keep their names
+  and order via the new `GroupHandler.textStep` adapter (#159, #153 phase 3).
+- The remark circuit-breaker WARN now logs from `SectionParser`.
+
+### Removed
+- Duplicate remark registry pass (#137) and its helpers in `NoaaMetarParser`.
+- `NoaaAviationWeatherPatternRegistry.getRemarksHandlers()`.
+- `RemarkHandler` and `RemarkHandlerChain`, replaced by `SectionParser`.
+
+Parsed output is unchanged; the golden-output test passes without re-recording.
+
 ## [1.27.1-SNAPSHOT]
 
 ### Changed
