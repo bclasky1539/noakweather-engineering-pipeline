@@ -143,16 +143,21 @@ class PatternGroupHandlerTest {
     }
 
     @Test
-    void testOtherException_PropagatesToTheBreaker() {
+    void testOtherException_IsFailedNotRejected() {
         // A plain IllegalArgumentException is a programming error (#133), not bad data
+        IllegalArgumentException bug = new IllegalArgumentException("bug");
         GroupHandler<List<String>> handler = PatternGroupHandler.single("a", GROUP, (target, matcher) -> {
-            throw new IllegalArgumentException("bug");
+            throw bug;
         });
-        List<String> target = new ArrayList<>();
 
-        assertThatThrownBy(() -> apply(handler, "a1", target))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("bug");
+        GroupOutcome outcome = apply(handler, "a1 b", new ArrayList<>());
+
+        assertThat(outcome).isInstanceOfSatisfying(GroupOutcome.Failed.class, failed -> {
+            assertThat(failed.matchedText()).isEqualTo("a1");
+            assertThat(failed.atGroup()).isEqualTo("a1 b");
+            assertThat(failed.afterGroup()).isEqualTo("b ");
+            assertThat(failed.cause()).isSameAs(bug);
+        });
     }
 
     @Test
@@ -166,5 +171,16 @@ class PatternGroupHandlerTest {
         assertThatThrownBy(() -> PatternGroupHandler.<List<String>>repeating("a", GROUP, null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Group action cannot be null");
+    }
+
+    @Test
+    void testConsumeOnly_ConsumesWithoutStoring() {
+        GroupHandler<List<String>> handler = PatternGroupHandler.consumeOnly("ignored", GROUP);
+        List<String> target = new ArrayList<>();
+
+        assertThat(apply(handler, "a1 b", target)).isEqualTo(new GroupOutcome.Parsed("b "));
+        assertThat(apply(handler, "b", target)).isSameAs(GroupOutcome.noMatch());
+        assertThat(handler.name()).isEqualTo("ignored");
+        assertThat(target).isEmpty();
     }
 }

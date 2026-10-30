@@ -73,6 +73,23 @@ class GroupParsingContractTest {
     }
 
     @Test
+    @SuppressWarnings("DataFlowIssue")
+        // null fields on purpose: each call must throw
+    void testFailed_RejectsNullFields() {
+        IllegalStateException cause = new IllegalStateException("bug");
+
+        assertThatThrownBy(() -> new GroupOutcome.Failed(null, "a", "b", cause))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Failed outcome fields cannot be null");
+        assertThatThrownBy(() -> new GroupOutcome.Failed("x", null, "b", cause))
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new GroupOutcome.Failed("x", "a", null, cause))
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new GroupOutcome.Failed("x", "a", "b", null))
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void testNoMatch_IsShared() {
         assertThat(GroupOutcome.noMatch()).isSameAs(GroupOutcome.NO_MATCH);
     }

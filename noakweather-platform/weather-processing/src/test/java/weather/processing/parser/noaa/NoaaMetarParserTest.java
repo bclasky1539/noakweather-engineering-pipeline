@@ -43,6 +43,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11286,11 +11287,17 @@ class NoaaMetarParserTest {
             }
         };
 
-        try (LogCapture logs = LogCapture.of(NoaaMetarParser.class)) {
+        // Main body groups run through SectionParser (#153), which logs the failure
+        try (LogCapture logs = LogCapture.of(SectionParser.class)) {
             ParseResult<NoaaWeatherData> result =
                     failing.parse("METAR KJFK 121853Z 28016KT 10SM A3015");
 
             assertThat(result.isSuccess()).isTrue();
+            NoaaMetarData data = extractMetarData(result);
+            // The failing group is consumed and the groups after it are still parsed
+            assertThat(data.getVisibility()).isNotNull();
+            assertThat(data.getPressure()).isNotNull();
+            assertThat(data.getUnparsedMainBody()).isNull();
             assertThat(logs.events()).singleElement().satisfies(event -> {
                 assertThat(event.getLevel()).isEqualTo(Level.ERROR);
                 assertThat(event.getMessage().getFormattedMessage())
@@ -11444,6 +11451,24 @@ class NoaaMetarParserTest {
                 assertThat(event.getMessage().getFormattedMessage())
                         .isEqualTo("METAR rejected: Could not extract station ID from METAR [" + metar + "]");
             });
+        }
+    }
+
+    @Test
+    @DisplayName("Should log and skip an international visibility that fails to parse")
+    void testHandleVisibility_InternationalRejected_LoggedAndSkipped() {
+        // Unreachable from a real report (VISIBILITY_PATTERN allows only [MP]?dddd), so drive
+        // the handler directly with a pattern that supplies the same group names
+        Matcher matcher = Pattern.compile("^(?<vis>(?<dist>M12X4))(?<distu>Z)?(?<units>Z)?").matcher("M12X4");
+        assertThat(matcher.find()).isTrue();
+        parser.weatherData = new NoaaMetarData();
+
+        try (LogCapture rejected = LogCapture.of(RejectedGroupLog.CATEGORY, Level.DEBUG)) {
+            parser.handleVisibility(matcher);
+
+            assertThat(rejected.events()).singleElement()
+                    .satisfies(event -> assertThat(event.getMessage().getFormattedMessage())
+                            .startsWith("Rejected visibility 'M12X4'"));
         }
     }
 

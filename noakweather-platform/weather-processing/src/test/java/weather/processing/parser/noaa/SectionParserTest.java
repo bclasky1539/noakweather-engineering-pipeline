@@ -236,6 +236,51 @@ class SectionParserTest {
         assertThat(result.unparsedTokens()).isEmpty();
     }
 
+    // ==================== Failed groups ====================
+
+    private static GroupHandler<List<String>> failing(String name, RuntimeException bug) {
+        return PatternGroupHandler.single(name, Pattern.compile("^f\\s*"), (target, matcher) -> {
+            throw bug;
+        });
+    }
+
+    @Test
+    void testFailed_Consume_LoggedAtErrorAndHandlerStaysEnabled() {
+        IllegalStateException bug = new IllegalStateException("boom");
+        List<String> target = new ArrayList<>();
+
+        try (LogCapture errors = LogCapture.of(SectionParser.class)) {
+            SectionResult result = run(List.of(failing("F", bug), recording("B", "^b\\s*")),
+                    SectionPolicy.of(FIRST_MATCH_RESTART, CONSUME, STOP), "f b f", target);
+
+            // Both f groups were handled (no breaker), and b in between was parsed
+            assertThat(target).containsExactly("B:b");
+            assertThat(result.remaining()).isEmpty();
+            assertThat(result.trippedHandlers()).isEmpty();
+            assertThat(result.rejections()).isEmpty();
+            assertThat(errors.events()).hasSize(2).allSatisfy(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getMessage().getFormattedMessage())
+                        .isEqualTo("Unexpected error in handler 'F' on 'f'");
+                assertThat(event.getThrown()).isSameAs(bug);
+            });
+        }
+    }
+
+    @Test
+    void testFailed_Keep_LoggedOnceWhileGroupStaysAtFront() {
+        List<String> target = new ArrayList<>();
+
+        try (LogCapture errors = LogCapture.of(SectionParser.class)) {
+            SectionResult result = run(List.of(failing("F", new IllegalStateException("boom")), recording("Q", "q\\s*")),
+                    SectionPolicy.of(PASSES, KEEP, SKIP_TO_UNPARSED), "f q", target);
+
+            assertThat(target).containsExactly("Q:q");
+            assertThat(result.unparsedTokens()).containsExactly("f");
+            assertThat(errors.events()).hasSize(1);
+        }
+    }
+
     // ==================== Circuit breaker ====================
 
     @Test
