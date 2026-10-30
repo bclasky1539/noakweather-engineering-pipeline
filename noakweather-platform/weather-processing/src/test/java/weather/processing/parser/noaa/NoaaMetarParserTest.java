@@ -922,7 +922,7 @@ class NoaaMetarParserTest {
     }
 
     /**
-     * Known gap: parseWithHandlers() stops at the first main-body token no pattern matches,
+     * Known gap: the main body stops at the first token no handler matches (STOP policy),
      * so every token after it is stranded in unparsedMainBody (the #113 failure mode, for any
      * unrecognized token). This test asserts the current behavior and is expected to fail
      * once the main-body loop skips unmatched tokens and continues; flip it then.
@@ -8545,7 +8545,7 @@ class NoaaMetarParserTest {
     void testParseCloudType_RejectedBareCode_PreservedInFreeText() {
         String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK SC AC2";
 
-        try (LogCapture logs = LogCapture.of(RemarkHandlerChain.class)) {
+        try (LogCapture logs = LogCapture.of(SectionParser.class)) {
             ParseResult<NoaaWeatherData> result = parser.parse(metar);
 
             assertThat(result.isSuccess()).isTrue();

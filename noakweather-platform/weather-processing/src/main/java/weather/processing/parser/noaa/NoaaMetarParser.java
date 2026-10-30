@@ -35,7 +35,6 @@ import weather.model.enums.HighCloudType;
 import weather.model.enums.LowCloudType;
 import weather.model.enums.MiddleCloudType;
 import weather.processing.parser.common.ParseResult;
-import weather.utils.IndexedLinkedHashMap;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -109,20 +108,26 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             SectionPolicy.RejectedText.CONSUME,
             SectionPolicy.UnrecognizedToken.STOP);
 
-    // Main body groups, run through the shared group parsing engine
+    /**
+     * Remarks: the remark chain's behavior (#153 phase 3). Every handler runs once
+     * per pass until a pass makes no progress; a rejected group stays in place; a
+     * token no handler recognizes is skipped to freeText and parsing carries on.
+     */
+    private static final SectionPolicy REMARKS_POLICY = SectionPolicy.of(
+            SectionPolicy.Scheduling.PASSES,
+            SectionPolicy.RejectedText.KEEP,
+            SectionPolicy.UnrecognizedToken.SKIP_TO_UNPARSED);
+
+    // Main body and remark groups, run through the shared group parsing engine
     private final SectionParser<NoaaMetarParser> mainBodyParser;
-    // Pattern registry, still used for the remarks pass until #153 phase 3
-    private final NoaaAviationWeatherPatternRegistry patternRegistry;
-    // Sequential remark handlers, run per report through a RemarkHandlerChain
-    private final List<RemarkHandler> sequentialRemarkHandlers;
+    private final SectionParser<NoaaMetarRemarks.Builder> remarksParser;
 
     // METAR-specific state
     private String reportType;
 
     public NoaaMetarParser() {
         this.mainBodyParser = new SectionParser<>("METAR main body", createMainBodyHandlers(), MAIN_BODY_POLICY);
-        this.patternRegistry = new NoaaAviationWeatherPatternRegistry();
-        this.sequentialRemarkHandlers = createRemarkHandlers();
+        this.remarksParser = new SectionParser<>("METAR remarks", createRemarkHandlers(), REMARKS_POLICY);
     }
 
     @Override
@@ -239,10 +244,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Parse the remarks section (after RMK).
+     * Parse the remarks section (after RMK) on the group parsing engine (#153 phase 3).
      *
      * @param remarks the remarks section
-     * @return remaining unparsed tokens
+     * @return the remark text no handler could parse (the freeText), for logging
      */
     private String parseRemarks(String remarks) {
         // No station means no weatherData; there is nothing to attach remarks to, and
@@ -251,16 +256,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return remarks;
         }
 
-        String originalRemarks = remarks;
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> remarkHandlers =
-                patternRegistry.getRemarksHandlers();
+        handleRemarks(remarks, weatherData);
 
-        remarks = parseWithHandlers(remarks, remarkHandlers);
-
-        // Also do sequential parsing of remarks for components not in registry
-        handleRemarks(originalRemarks, weatherData);
-
-        return remarks;
+        NoaaMetarRemarks parsed = weatherData.getRemarks();
+        return parsed != null && parsed.freeText() != null ? parsed.freeText() : "";
     }
 
     /**
@@ -316,171 +315,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Parse token string using ordered pattern handlers from registry.
-     *
-     * @param token    The token string to parse
-     * @param handlers Ordered map of patterns and their handlers from NoaaAviationWeatherPatternRegistry
-     * @return Remaining unparsed token string
-     */
-    private String parseWithHandlers(String token,
-                                     IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers) {
-        String currentToken = token;
-
-        while (!currentToken.isEmpty()) {
-            LOGGER.debug("\nREMARK - Processing token: '{}'", currentToken);
-
-            String updatedToken = tryAllPatterns(currentToken, handlers);
-
-            // If no match found, exit loop
-            if (updatedToken.equals(currentToken)) {
-                break;
-            }
-
-            currentToken = updatedToken;
-        }
-
-        return currentToken;
-    }
-
-    /**
-     * Try all patterns against the token and return updated token after first match.
-     *
-     * @param token    Current token to parse
-     * @param handlers Pattern handlers to try
-     * @return Updated token after match, or original token if no match
-     */
-    private String tryAllPatterns(String token,
-                                  IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers) {
-        for (Map.Entry<Pattern, NoaaAviationWeatherPatternHandler> entry : handlers.entrySet()) {
-            Pattern pattern = entry.getKey();
-            NoaaAviationWeatherPatternHandler handlerInfo = entry.getValue();
-
-            LOGGER.debug("Trying pattern: {} ({})",
-                    handlerInfo.handlerName(), pattern.pattern());
-
-            String updatedToken = tryPattern(token, pattern, handlerInfo);
-
-            // If pattern matched (token changed), return updated token
-            if (!updatedToken.equals(token)) {
-                return updatedToken;
-            }
-        }
-
-        // No pattern matched
-        return token;
-    }
-
-    /**
-     * Try a single pattern against the token, applying it repeatedly if configured.
-     *
-     * @param token       Current token to parse
-     * @param pattern     Pattern to try
-     * @param handlerInfo Handler metadata
-     * @return Updated token after all matches, or original token if no match
-     */
-    private String tryPattern(String token, Pattern pattern, NoaaAviationWeatherPatternHandler handlerInfo) {
-        String currentToken = token;
-        Matcher matcher = pattern.matcher(currentToken);
-
-        while (matcher.find() && !matcher.group(0).isEmpty()) {
-            logMatchDetails(matcher);
-
-            // Execute handler to extract data
-            handlePattern(handlerInfo.handlerName(), matcher);
-
-            // Remove matched portion and prepare for next iteration
-            currentToken = prepareTokenForNextMatch(matcher);
-
-            LOGGER.debug("Token after match: '{}'", currentToken);
-
-            // If not repeating, stop after first match
-            if (!handlerInfo.canRepeat()) {
-                break;
-            }
-
-            // Re-apply pattern for repeating handlers
-            matcher = pattern.matcher(currentToken);
-        }
-
-        return currentToken;
-    }
-
-    /**
-     * Log details about a successful pattern match.
-     *
-     * @param matcher The matcher with a successful match
-     */
-    private void logMatchDetails(Matcher matcher) {
-        LOGGER.debug("Match found - Group count: {}", matcher.groupCount());
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Match group(0): '{}'", matcher.group(0));
-        }
-
-        // Log all capture groups
-        if (LOGGER.isDebugEnabled()) {
-            for (int j = 1; j <= matcher.groupCount(); j++) {
-                LOGGER.debug("  Capture group {}: '{}'", j, matcher.group(j));
-            }
-        }
-    }
-
-    /**
-     * Remove matched portion from token and add trailing space if needed.
-     *
-     * @param matcher The matcher with a successful match
-     * @return Updated token ready for next match
-     */
-    private String prepareTokenForNextMatch(Matcher matcher) {
-        String updatedToken = matcher.replaceFirst("").trim();
-
-        // Add trailing space for proper next match (legacy behavior)
-        if (!updatedToken.isEmpty()) {
-            updatedToken += " ";
-        }
-
-        return updatedToken;
-    }
-
-    /**
      * Logs a remark group that matched its pattern but was rejected. The caller
      * leaves the text in place so it surfaces in freeText (#92, #115). Delegates to
      * the shared {@link #logRejected} so remarks and main body use one category (#136).
      */
     private static void logRejectedRemark(String remarkType, String matchedText, IllegalArgumentException e) {
         logRejected(remarkType, matchedText, e);
-    }
-
-    /**
-     * Route a remark registry match to its handler by name. Only the remarks pass
-     * uses this now; the main body runs through {@link SectionParser} (#153 phase 2),
-     * and this method goes with the remark registry pass in phase 3.
-     * <p>
-     * Rejected data that reaches here is logged at DEBUG on the shared Rejected
-     * category; any other exception is a bug, logged at ERROR with its stack trace.
-     *
-     * @param handlerName The name of the handler from NoaaAviationWeatherPatternRegistry
-     * @param matcher     The regex matcher with captured groups
-     */
-    private void handlePattern(String handlerName, Matcher matcher) {
-        try {
-            switch (handlerName) {
-                case "autoType" -> handleAutoType(matcher);
-                case "seaLevelPressure" -> handleRemarkRegistry(matcher, "Sea level pressure");
-                case "peakWind" -> handleRemarkRegistry(matcher, "Peak wind");
-                case "windShift" -> handleRemarkRegistry(matcher, "Wind shift");
-                case "variableVis" -> handleRemarkRegistry(matcher, "Variable visibility");
-                case "precip1Hour" -> handleRemarkRegistry(matcher, "Hourly precipitation");
-                case "precip3Hr24Hr" -> handleRemarkRegistry(matcher, "Multi-hour precipitation");
-                case "hailSize" -> handleRemarkRegistry(matcher, "Hail size");
-
-                default -> LOGGER.debug("No handler implemented for: {}", handlerName);
-            }
-        } catch (InvalidObservationException e) {
-            // Rejected data a handler did not catch itself (e.g. Wind direction 400)
-            logRejected(handlerName, matcher.group(0).trim(), e);
-        } catch (RuntimeException e) {
-            LOGGER.error("Unexpected error in handler '{}' on '{}'", handlerName, matcher.group(0).trim(), e);
-        }
     }
 
     // ==================== METAR-SPECIFIC PATTERN HANDLERS ====================
@@ -847,42 +687,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
     }
 
-    /**
-     * Generic handler for registry-based remark patterns.
-     * This is a stub that logs when a pattern is matched by the registry.
-     * The actual parsing is done by sequential handlers in handleRemarks().
-     *
-     * @param matcher    The regex matcher with captured groups
-     * @param remarkType The type of remark for logging
-     */
-    private void handleRemarkRegistry(Matcher matcher, String remarkType) {
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("{} pattern matched: {}", remarkType, matcher.group(0));
-        }
-    }
-
-    /**
-     * Handle automated station type from remarks (AO1 or AO2).
-     * <p>
-     * This is called by the pattern registry when AUTO_PATTERN matches.
-     * The actual work is delegated to handleAutomatedStationType which
-     * can be called standalone for sequential parsing.
-     *
-     * @param matcher The regex matcher with captured groups
-     */
-    private void handleAutoType(Matcher matcher) {
-        if (weatherData == null) {
-            return;
-        }
-
-        // AUTO_PATTERN only matches type 1 or 2, so fromDigit cannot reject it here
-        String typeDigit = matcher.group("type");
-        AutomatedStationType stationType = AutomatedStationType.fromDigit(typeDigit);
-
-        // For now, just log it - full integration will store in remarks
-        logAutomatedStationType(stationType);
-    }
-
     // ==================== REMARKS HANDLERS ====================
     // (Keeping all the existing remarks handlers - they are METAR-specific)
     // These are NOT moved to base class as they are specific to METAR observations
@@ -902,79 +706,59 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         NoaaMetarRemarks.Builder remarksBuilder = NoaaMetarRemarks.builder();
-        String remaining = remarksText.trim();
-        List<String> unparsedTokens = new ArrayList<>();
-        RemarkHandlerChain chain = new RemarkHandlerChain(sequentialRemarkHandlers);
+        SectionResult result = remarksParser.parse(remarksText.trim(), remarksBuilder);
 
-        while (!remaining.isBlank()) {
-            remaining = chain.runPasses(remaining, remarksBuilder);
-
-            if (remaining.isBlank()) {
-                break;
-            }
-
-            // No handler could make progress against the current leading token.
-            // Peel off one whitespace-delimited token as unparsed, then retry
-            // the full handler set against whatever follows — an unrecognized
-            // token shouldn't prevent later, otherwise-parseable tokens from
-            // being recognized.
-            int spaceIdx = remaining.indexOf(' ');
-            if (spaceIdx < 0) {
-                unparsedTokens.add(remaining);
-                remaining = "";
-            } else {
-                unparsedTokens.add(remaining.substring(0, spaceIdx));
-                remaining = remaining.substring(spaceIdx + 1).trim();
-            }
-        }
-
-        // Store any unparsed remarks as free text
-        if (!unparsedTokens.isEmpty()) {
-            remarksBuilder.freeText(String.join(" ", unparsedTokens));
+        // Tokens no handler recognized are kept as free text
+        if (result.unparsedText() != null) {
+            remarksBuilder.freeText(result.unparsedText());
         }
 
         metarData.setRemarks(remarksBuilder.build());
     }
 
     /**
-     * Build the ordered list of remark handlers run by {@link RemarkHandlerChain}.
+     * Build the ordered list of remark handlers run by {@link #remarksParser}.
      * The order is the order handlers run within each pass; names appear in breaker logs.
+     * <p>
+     * Each step returns the remaining text and logs its own rejections, so it is
+     * wrapped with {@link GroupHandler#textStep}; converting steps to report
+     * rejections to the engine is follow-up work (#139).
      *
      * @return the remark handlers, in run order
      */
-    private List<RemarkHandler> createRemarkHandlers() {
+    private List<GroupHandler<NoaaMetarRemarks.Builder>> createRemarkHandlers() {
         return List.of(
-                new RemarkHandler("automated station type", this::handleAutomatedStationType),
-                new RemarkHandler("sea level pressure", this::handleSeaLevelPressureSequential),
-                new RemarkHandler("hourly temperature", this::handleHourlyTemperatureSequential),
-                new RemarkHandler("peak wind", this::handlePeakWindSequential),
-                new RemarkHandler("wind shift", this::handleWindShiftSequential),
-                new RemarkHandler("wind-at-location", this::handleWindAtLocationSequential),
-                new RemarkHandler("variable visibility", this::handleVariableVisibilitySequential),
-                new RemarkHandler("variable ceiling", this::handleVariableCeilingSequential),
-                new RemarkHandler("ceiling second site", this::handleCeilingSecondSiteSequential),
-                new RemarkHandler("obscuration", this::handleObscurationSequential),
-                new RemarkHandler("lightning", this::handleLightningSequential),
-                new RemarkHandler("thunderstorm location", this::handleThunderstormLocationSequential),
-                new RemarkHandler("cloud type", this::handleCloudTypeSequential),
-                new RemarkHandler("tower/surface visibility", this::handleTowerSurfaceVisibilitySequential),
-                new RemarkHandler("hourly precipitation", this::handleHourlyPrecipitationSequential),
-                new RemarkHandler("PP group", this::handlePpGroupSequential),
-                new RemarkHandler("predominant cloud type", this::handlePredominantCloudTypeSequential),
-                new RemarkHandler("multi-hour precipitation", this::handleMultiHourPrecipitationSequential),
-                new RemarkHandler("hail size", this::handleHailSizeSequential),
-                new RemarkHandler("weather events", this::handleWeatherEventsSequential),
-                new RemarkHandler("pressure tendency", this::handlePressureTendencySequential),
-                new RemarkHandler("pressure rapid change", this::handlePressureRapidChangeSequential),
-                new RemarkHandler("icing", this::handleIcingSequential),
-                new RemarkHandler("6-hour max/min temperature", this::handle6HourMaxMinTemperatureSequential),
-                new RemarkHandler("24-hour max/min temperature", this::handle24HourMaxMinTemperatureSequential),
-                new RemarkHandler("density altitude", this::handleDensityAltitudeSequential),
-                new RemarkHandler("automated maintenance", this::handleAutomatedMaintenanceSequential),
-                new RemarkHandler("secondary altimeter", this::handleSecondaryAltimeterSequential),
-                new RemarkHandler("directional weather", this::handleDirectionalWeatherSequential),
-                new RemarkHandler("observation program status", this::handleObservationProgramStatusSequential),
-                new RemarkHandler("except-direction", this::handleExceptDirectionSequential));
+                GroupHandler.textStep("automated station type", this::handleAutomatedStationType),
+                GroupHandler.textStep("sea level pressure", this::handleSeaLevelPressureSequential),
+                GroupHandler.textStep("hourly temperature", this::handleHourlyTemperatureSequential),
+                GroupHandler.textStep("peak wind", this::handlePeakWindSequential),
+                GroupHandler.textStep("wind shift", this::handleWindShiftSequential),
+                GroupHandler.textStep("wind-at-location", this::handleWindAtLocationSequential),
+                GroupHandler.textStep("variable visibility", this::handleVariableVisibilitySequential),
+                GroupHandler.textStep("variable ceiling", this::handleVariableCeilingSequential),
+                GroupHandler.textStep("ceiling second site", this::handleCeilingSecondSiteSequential),
+                GroupHandler.textStep("obscuration", this::handleObscurationSequential),
+                GroupHandler.textStep("lightning", this::handleLightningSequential),
+                GroupHandler.textStep("thunderstorm location", this::handleThunderstormLocationSequential),
+                GroupHandler.textStep("cloud type", this::handleCloudTypeSequential),
+                GroupHandler.textStep("tower/surface visibility", this::handleTowerSurfaceVisibilitySequential),
+                GroupHandler.textStep("hourly precipitation", this::handleHourlyPrecipitationSequential),
+                GroupHandler.textStep("PP group", this::handlePpGroupSequential),
+                GroupHandler.textStep("predominant cloud type", this::handlePredominantCloudTypeSequential),
+                GroupHandler.textStep("multi-hour precipitation", this::handleMultiHourPrecipitationSequential),
+                GroupHandler.textStep("hail size", this::handleHailSizeSequential),
+                GroupHandler.textStep("weather events", this::handleWeatherEventsSequential),
+                GroupHandler.textStep("pressure tendency", this::handlePressureTendencySequential),
+                GroupHandler.textStep("pressure rapid change", this::handlePressureRapidChangeSequential),
+                GroupHandler.textStep("icing", this::handleIcingSequential),
+                GroupHandler.textStep("6-hour max/min temperature", this::handle6HourMaxMinTemperatureSequential),
+                GroupHandler.textStep("24-hour max/min temperature", this::handle24HourMaxMinTemperatureSequential),
+                GroupHandler.textStep("density altitude", this::handleDensityAltitudeSequential),
+                GroupHandler.textStep("automated maintenance", this::handleAutomatedMaintenanceSequential),
+                GroupHandler.textStep("secondary altimeter", this::handleSecondaryAltimeterSequential),
+                GroupHandler.textStep("directional weather", this::handleDirectionalWeatherSequential),
+                GroupHandler.textStep("observation program status", this::handleObservationProgramStatusSequential),
+                GroupHandler.textStep("except-direction", this::handleExceptDirectionSequential));
     }
 
     /**
