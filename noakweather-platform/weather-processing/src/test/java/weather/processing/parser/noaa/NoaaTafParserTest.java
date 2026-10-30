@@ -34,8 +34,11 @@ import weather.processing.parser.common.ParseResult;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.regex.Matcher;
 
 import static org.assertj.core.api.Assertions.*;
+
+import org.apache.logging.log4j.Level;
 
 /**
  * Comprehensive test suite for NoaaTafParser.
@@ -1358,6 +1361,23 @@ class NoaaTafParserTest {
             ForecastPeriod base = data.getForecastPeriods().get(0);
             assertThat(base.conditions().skyConditions()).hasSize(1);
             assertThat(base.conditions().skyConditions().get(0).coverage()).isEqualTo(SkyCoverage.SKC);
+        }
+    }
+
+    // ==================== RUNWAY STATE ====================
+
+    @Test
+    void testHandleRunwayState_DefaultConsumesWithoutStoring() {
+        NoaaTafParser tafParser = new NoaaTafParser();
+        Matcher matcher = RegExprConst.RUNWAY_STATE_PATTERN.matcher("R05R/090060 ");
+        assertThat(matcher.find()).isTrue();
+
+        try (LogCapture logs = LogCapture.of(NoaaAviationWeatherParser.class.getName(), Level.DEBUG)) {
+            tafParser.handleRunwayState(matcher);
+
+            assertThat(logs.events()).singleElement()
+                    .satisfies(event -> assertThat(event.getMessage().getFormattedMessage())
+                            .startsWith("Runway state pattern matched: R05R/090060"));
         }
     }
 

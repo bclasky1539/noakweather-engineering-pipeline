@@ -35,6 +35,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static weather.processing.parser.noaa.RegExprConst.MONTH_DAY_YEAR_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.PRESENT_WEATHER_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.RECENT_WEATHER_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.RUNWAY_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.RUNWAY_STATE_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.SKY_CONDITION_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.VISIBILITY_PATTERN;
+import static weather.processing.parser.noaa.RegExprConst.WIND_PATTERN;
 
 /**
  * Abstract base class for NOAA aviation weather parsers (METAR and TAF).
@@ -73,6 +80,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     private static final String RVR_PREFIX_PATTERN = "^[MP]";
 
     private static final String RECENT_WEATHER_NOT_OBSERVABLE = "//";
+
+    private static final String VISIBILITY_STRING = "visibility";
 
     // ==================== SHARED STATE FOR BUILDING CONDITIONS ====================
 
@@ -118,6 +127,40 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         this.conditionsBuilder = WeatherConditions.builder();
         this.presentWeatherList = new ArrayList<>();
         this.skyConditionsList = new ArrayList<>();
+    }
+
+    // ==================== SHARED GROUP HANDLERS ====================
+
+    /**
+     * The condition groups METAR and TAF share, in report order: wind, visibility,
+     * runway state, RVR, present weather, recent weather and sky condition (#153).
+     * <p>
+     * Each parser places this block in its own handler list for the group parsing
+     * engine ({@link SectionParser}): the METAR main body between the report header
+     * and temperature/dewpoint, and every TAF forecast period. The handlers call the
+     * shared {@code handleX} methods, so a subclass override (e.g. TAF's
+     * {@link #handleRunway}) still applies.
+     * <p>
+     * Names are the pattern registry's handler names, so log output is unchanged.
+     *
+     * @param <P> the parser type the handlers run against
+     * @return the shared handlers, in order
+     */
+    static <P extends NoaaAviationWeatherParser<?>> List<GroupHandler<P>> conditionHandlers() {
+        return List.of(
+                PatternGroupHandler.single("wind", WIND_PATTERN, NoaaAviationWeatherParser::handleWind),
+                PatternGroupHandler.single(VISIBILITY_STRING, VISIBILITY_PATTERN,
+                        NoaaAviationWeatherParser::handleVisibility),
+                // Before runway: both start with Rdd/, and the first matching handler wins
+                PatternGroupHandler.repeating("runwayState", RUNWAY_STATE_PATTERN,
+                        NoaaAviationWeatherParser::handleRunwayState),
+                PatternGroupHandler.repeating("runway", RUNWAY_PATTERN, NoaaAviationWeatherParser::handleRunway),
+                PatternGroupHandler.repeating("presentWeather", PRESENT_WEATHER_PATTERN,
+                        NoaaAviationWeatherParser::handlePresentWeather),
+                PatternGroupHandler.repeating("recentWeather", RECENT_WEATHER_PATTERN,
+                        NoaaAviationWeatherParser::handleRecentWeather),
+                PatternGroupHandler.repeating("skyCondition", SKY_CONDITION_PATTERN,
+                        NoaaAviationWeatherParser::handleSkyCondition));
     }
 
     // ==================== SHARED HANDLER METHODS ====================
@@ -390,7 +433,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
                     distance, lessThan, greaterThan);
             return true;
         } catch (InvalidObservationException | NumberFormatException e) {
-            logRejected("visibility", distStr, e);
+            logRejected(VISIBILITY_STRING, distStr, e);
             return false;
         }
     }
@@ -422,7 +465,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             LOGGER.debug("Visibility: {} {} (lessThan={}, greaterThan={})",
                     distance, unit, lessThan, greaterThan);
         } catch (InvalidObservationException | NumberFormatException e) {
-            logRejected("visibility", distU + unit, e);
+            logRejected(VISIBILITY_STRING, distU + unit, e);
         }
     }
 
@@ -491,7 +534,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return;
         }
 
-        // PresentWeather.parse never rejects data (unrecognised text is kept as "other"),
+        // PresentWeather.parse never rejects data (unrecognized text is kept as "other"),
         // so there is nothing to catch here; anything it throws is a bug for handlePattern.
         PresentWeather presentWeather = PresentWeather.parse(weatherString);
         presentWeatherList.add(presentWeather);
@@ -851,6 +894,20 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         // METAR parser overrides this with full RVR handling
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("RVR pattern matched: {}", matcher.group(0));
+        }
+    }
+
+    /**
+     * Handle a runway state group (Rdd/ERCReeBB, Rdd/CLRDBB).
+     * <p>
+     * Runway state groups appear in METAR/SPECI only. The default consumes the
+     * group without storing it; the METAR parser overrides this with full handling.
+     *
+     * @param matcher Regex matcher positioned at runway state group
+     */
+    protected void handleRunwayState(Matcher matcher) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Runway state pattern matched: {}", matcher.group(0));
         }
     }
 

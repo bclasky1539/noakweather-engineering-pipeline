@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.27.1-SNAPSHOT]
+
+### Changed
+- The METAR main body runs on the shared group parsing engine (#153 phase 2,
+  #156): `NoaaMetarParser.createMainBodyHandlers()` declares the groups,
+  with the condition groups METAR and TAF share coming from
+  `NoaaAviationWeatherParser.conditionHandlers()`. Parsed output and log text
+  are unchanged (golden-output test passes without re-recording).
+- A main-body handler that throws unexpectedly is logged at ERROR by
+  `SectionParser` (was `NoaaMetarParser`); the group is consumed and parsing
+  continues, as before.
+
+### Added
+- `GroupOutcome.Failed`: per-group failure from a pattern-based handler,
+  logged at ERROR, text consumed or kept per policy, handler stays enabled.
+- `PatternGroupHandler.consumeOnly`: a group that is recognized and consumed
+  but not stored.
+- Default `NoaaAviationWeatherParser.handleRunwayState` (consumes without
+  storing); `NoaaMetarParser` overrides it.
+
+### Tests
+- Engine: Failed outcome (consume and keep), `consumeOnly`.
+- `NoaaMetarParserTest`: handler-throws test now also checks later groups are
+  parsed; direct test of the international-visibility rejection path.
+- `NoaaTafParserTest`: default `handleRunwayState`.
+
 ## [1.27.0-SNAPSHOT]
 
 ### Added

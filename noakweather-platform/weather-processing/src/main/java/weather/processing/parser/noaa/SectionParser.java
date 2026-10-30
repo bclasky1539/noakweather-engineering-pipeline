@@ -36,10 +36,12 @@ import java.util.Set;
  * <p>
  * Fuse (per group): a step reports bad data as {@link GroupOutcome.Rejected}. The
  * engine logs it once via {@link RejectedGroupLog}, records it in the result, and
- * consumes or keeps the text as the policy says.
+ * consumes or keeps the text as the policy says. A pattern-based step reports a
+ * bug in one group as {@link GroupOutcome.Failed}: logged at ERROR with its stack
+ * trace, text consumed or kept as for a rejection, handler still enabled (#133).
  * Circuit breaker (per handler): any exception escaping a step is a bug. It is
  * logged at WARN, the handler is skipped for the rest of this run, and the other
- * handlers keep running.
+ * handlers keep running (#135).
  * Main breaker: the parser's {@code parse()}, which fails the whole report.
  * <p>
  * Each {@link #parse} call is independent: breakers start closed on every call, so
@@ -109,7 +111,7 @@ final class SectionParser<B> {
 
         private final B target;
         private final Set<String> tripped = new LinkedHashSet<>();
-        private final Set<String> keptRejections = new HashSet<>();
+        private final Set<String> keptGroups = new HashSet<>();
         private final List<SectionResult.Rejection> rejections = new ArrayList<>();
         private final List<String> unparsed = new ArrayList<>();
 
@@ -220,6 +222,9 @@ final class SectionParser<B> {
             if (outcome instanceof GroupOutcome.Rejected rejected) {
                 return reject(handler, rejected);
             }
+            if (outcome instanceof GroupOutcome.Failed failed) {
+                return fail(handler, failed);
+            }
             return text;
         }
 
@@ -234,11 +239,37 @@ final class SectionParser<B> {
 
             // Under KEEP the group stays at the front and is tried again on later
             // passes until it is skipped; record it once per stay at the front
-            String key = handler.name() + '\u0000' + rejected.matchedText() + '\u0000' + unparsed.size();
-            if (keptRejections.add(key)) {
+            if (keptGroups.add(keptKey("rejected", handler, rejected.matchedText()))) {
                 recordRejection(handler, rejected);
             }
             return rejected.atGroup();
+        }
+
+        /**
+         * Log a failed group at ERROR, then consume or keep its text per policy.
+         */
+        private String fail(GroupHandler<B> handler, GroupOutcome.Failed failed) {
+            if (policy.rejectedText() == SectionPolicy.RejectedText.CONSUME) {
+                logFailure(handler, failed);
+                return failed.afterGroup();
+            }
+            if (keptGroups.add(keptKey("failed", handler, failed.matchedText()))) {
+                logFailure(handler, failed);
+            }
+            return failed.atGroup();
+        }
+
+        private void logFailure(GroupHandler<B> handler, GroupOutcome.Failed failed) {
+            LOGGER.error("Unexpected error in handler '{}' on '{}'",
+                    handler.name(), failed.matchedText(), failed.cause());
+        }
+
+        /**
+         * Key for a group kept at the front of the text: it is tried again on later
+         * passes until it is skipped, so it is logged once per stay at the front.
+         */
+        private String keptKey(String kind, GroupHandler<B> handler, String matchedText) {
+            return kind + '\u0000' + handler.name() + '\u0000' + matchedText + '\u0000' + unparsed.size();
         }
 
         private void recordRejection(GroupHandler<B> handler, GroupOutcome.Rejected rejected) {

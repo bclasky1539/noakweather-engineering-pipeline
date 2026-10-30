@@ -97,7 +97,21 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final Set<String> THUNDERSTORM_LOCATION_CODES =
             Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
 
-    // Pattern registry for METAR parsing
+    private static final Pattern REPORT_TYPE_PATTERN = Pattern.compile("^(METAR|SPECI)\\s+");
+
+    /**
+     * Main body: the registry's behavior (#153 phase 2). First matching handler
+     * wins, rejected groups are dropped, and parsing stops at the first group no
+     * handler recognizes; the rest becomes unparsedMainBody.
+     */
+    private static final SectionPolicy MAIN_BODY_POLICY = SectionPolicy.of(
+            SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
+            SectionPolicy.RejectedText.CONSUME,
+            SectionPolicy.UnrecognizedToken.STOP);
+
+    // Main body groups, run through the shared group parsing engine
+    private final SectionParser<NoaaMetarParser> mainBodyParser;
+    // Pattern registry, still used for the remarks pass until #153 phase 3
     private final NoaaAviationWeatherPatternRegistry patternRegistry;
     // Sequential remark handlers, run per report through a RemarkHandlerChain
     private final List<RemarkHandler> sequentialRemarkHandlers;
@@ -106,6 +120,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private String reportType;
 
     public NoaaMetarParser() {
+        this.mainBodyParser = new SectionParser<>("METAR main body", createMainBodyHandlers(), MAIN_BODY_POLICY);
         this.patternRegistry = new NoaaAviationWeatherPatternRegistry();
         this.sequentialRemarkHandlers = createRemarkHandlers();
     }
@@ -193,9 +208,34 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      */
     private String parseMainBody(String mainBody) {
         mainBody = parseIssueDateTime(mainBody);
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> mainHandlers =
-                patternRegistry.getMainHandlers();
-        return parseWithHandlers(mainBody, mainHandlers, "MAIN");
+        return mainBodyParser.parse(mainBody, this).remaining();
+    }
+
+    /**
+     * Main body handlers in report order (#153 phase 2): the METAR header groups, the
+     * condition groups shared with TAF, then temperature/dewpoint, altimeter and NOSIG.
+     * <p>
+     * Names and order are the pattern registry's, so parsed output and log text are
+     * unchanged. The month/day/year and station/issue-time entries have never had a
+     * handler: they consume a matching group without storing it, as before.
+     *
+     * @return the handlers, in order
+     */
+    private static List<GroupHandler<NoaaMetarParser>> createMainBodyHandlers() {
+        List<GroupHandler<NoaaMetarParser>> handlers = new ArrayList<>(List.of(
+                PatternGroupHandler.single("reportType", REPORT_TYPE_PATTERN, NoaaMetarParser::handleReportType),
+                PatternGroupHandler.consumeOnly("monthDayYear", MONTH_DAY_YEAR_PATTERN),
+                PatternGroupHandler.single("station", STATION_DAY_TIME_VALTMPER_PATTERN,
+                        NoaaMetarParser::handleStationAndObsTime),
+                PatternGroupHandler.consumeOnly("handleStationAndIssueTime", STATION_AND_ISSUE_TIME_PATTERN),
+                PatternGroupHandler.single("reportModifier", REPORT_MODIFIER_PATTERN,
+                        NoaaMetarParser::handleReportModifier)));
+        handlers.addAll(conditionHandlers());
+        handlers.addAll(List.of(
+                PatternGroupHandler.single("tempDewpoint", TEMP_DEWPOINT_PATTERN, NoaaMetarParser::handleTempDewpoint),
+                PatternGroupHandler.single("altimeter", ALTIMETER_PATTERN, NoaaMetarParser::handleAltimeter),
+                PatternGroupHandler.single("noSigChange", NO_SIG_CHANGE_PATTERN, NoaaMetarParser::handleNoSigChange)));
+        return handlers;
     }
 
     /**
@@ -215,7 +255,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> remarkHandlers =
                 patternRegistry.getRemarksHandlers();
 
-        remarks = parseWithHandlers(remarks, remarkHandlers, "REMARK");
+        remarks = parseWithHandlers(remarks, remarkHandlers);
 
         // Also do sequential parsing of remarks for components not in registry
         handleRemarks(originalRemarks, weatherData);
@@ -278,18 +318,16 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     /**
      * Parse token string using ordered pattern handlers from registry.
      *
-     * @param token        The token string to parse
-     * @param handlers     Ordered map of patterns and their handlers from NoaaAviationWeatherPatternRegistry
-     * @param handlersType Type of handlers ("MAIN" or "REMARK") for logging
+     * @param token    The token string to parse
+     * @param handlers Ordered map of patterns and their handlers from NoaaAviationWeatherPatternRegistry
      * @return Remaining unparsed token string
      */
     private String parseWithHandlers(String token,
-                                     IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers,
-                                     String handlersType) {
+                                     IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers) {
         String currentToken = token;
 
         while (!currentToken.isEmpty()) {
-            LOGGER.debug("\n{} - Processing token: '{}'", handlersType, currentToken);
+            LOGGER.debug("\nREMARK - Processing token: '{}'", currentToken);
 
             String updatedToken = tryAllPatterns(currentToken, handlers);
 
@@ -413,14 +451,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Route to appropriate handler method based on handler name from registry.
+     * Route a remark registry match to its handler by name. Only the remarks pass
+     * uses this now; the main body runs through {@link SectionParser} (#153 phase 2),
+     * and this method goes with the remark registry pass in phase 3.
      * <p>
-     * Handlers for shared aviation weather elements (wind, visibility, present weather,
-     * sky conditions) are inherited from NoaaAviationWeatherParser.
-     * <p>
-     * Main-body boundary: rejected data that reaches here is logged at DEBUG
-     * on the shared Rejected category and parsing continues; any other exception is
-     * a bug, logged at ERROR with its stack trace, and parsing still continues.
+     * Rejected data that reaches here is logged at DEBUG on the shared Rejected
+     * category; any other exception is a bug, logged at ERROR with its stack trace.
      *
      * @param handlerName The name of the handler from NoaaAviationWeatherPatternRegistry
      * @param matcher     The regex matcher with captured groups
@@ -428,24 +464,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private void handlePattern(String handlerName, Matcher matcher) {
         try {
             switch (handlerName) {
-                // METAR-specific handlers
-                case "reportType" -> handleReportType(matcher);
-                case "station" -> handleStationAndObsTime(matcher);
-                case "reportModifier" -> handleReportModifier(matcher);
-                case "tempDewpoint" -> handleTempDewpoint(matcher);
-                case "altimeter" -> handleAltimeter(matcher);
-                case "noSigChange" -> handleNoSigChange(matcher);
-
-                // Shared handlers (from base class)
-                case "wind" -> handleWind(matcher);
-                case "visibility" -> handleVisibility(matcher);
-                case "runway" -> handleRunway(matcher);
-                case "runwayState" -> handleRunwayState(matcher);
-                case "presentWeather" -> handlePresentWeather(matcher);
-                case "recentWeather" -> handleRecentWeather(matcher);
-                case "skyCondition" -> handleSkyCondition(matcher);
-
-                // Remarks handlers
                 case "autoType" -> handleAutoType(matcher);
                 case "seaLevelPressure" -> handleRemarkRegistry(matcher, "Sea level pressure");
                 case "peakWind" -> handleRemarkRegistry(matcher, "Peak wind");
@@ -717,7 +735,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      *
      * @param matcher The regex matcher
      */
-    private void handleRunwayState(Matcher matcher) {
+    @Override
+    protected void handleRunwayState(Matcher matcher) {
         if (weatherData == null) {
             return;
         }

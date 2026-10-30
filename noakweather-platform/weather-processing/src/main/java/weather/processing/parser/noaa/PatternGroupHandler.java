@@ -41,8 +41,9 @@ import java.util.regex.Pattern;
  * <p>
  * An action rejects a group by throwing {@link InvalidObservationException}, or
  * {@link NumberFormatException} for a malformed number; that becomes
- * {@link GroupOutcome.Rejected}. Any other exception is a bug and is left to the
- * engine's circuit breaker (#133).
+ * {@link GroupOutcome.Rejected}. Any other runtime exception is a bug (#133) and
+ * becomes {@link GroupOutcome.Failed}: the engine logs it at ERROR and moves on,
+ * and the handler stays enabled for later groups.
  *
  * @author bclasky1539
  */
@@ -77,6 +78,22 @@ final class PatternGroupHandler {
         return create(name, pattern, action, true);
     }
 
+    /**
+     * A group that is recognized and consumed but not stored, so it does not stop
+     * the section as unrecognized text would (e.g. a METAR-only group in a TAF, or
+     * a registry entry that never had a handler).
+     *
+     * @param name    group name used in logs
+     * @param pattern the group's pattern
+     * @param <B>     the target type
+     * @return the handler
+     */
+    static <B> GroupHandler<B> consumeOnly(String name, Pattern pattern) {
+        return create(name, pattern, (target, matcher) -> {
+            // Recognized but not stored
+        }, false);
+    }
+
     private static <B> GroupHandler<B> create(String name, Pattern pattern,
                                               BiConsumer<B, Matcher> action, boolean repeat) {
         if (pattern == null) {
@@ -100,6 +117,8 @@ final class PatternGroupHandler {
                 action.accept(target, matcher);
             } catch (InvalidObservationException | NumberFormatException e) {
                 return new GroupOutcome.Rejected(matchedText, current, removeMatch(matcher), e);
+            } catch (RuntimeException e) {
+                return new GroupOutcome.Failed(matchedText, current, removeMatch(matcher), e);
             }
 
             current = removeMatch(matcher);

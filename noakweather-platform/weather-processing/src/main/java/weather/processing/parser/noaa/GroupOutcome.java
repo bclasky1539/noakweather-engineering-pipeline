@@ -19,9 +19,9 @@ package weather.processing.parser.noaa;
 /**
  * What a {@link GroupHandler} step did with the text in front of it (#153).
  * <p>
- * Steps report a rejection instead of handling it: the section's
- * {@link SectionPolicy} decides whether rejected text is consumed or kept, and
- * {@link SectionParser} logs and records every rejection in one place.
+ * Steps report a rejection or a failure instead of handling it: the section's
+ * {@link SectionPolicy} decides whether that text is consumed or kept, and
+ * {@link SectionParser} logs every rejection and failure in one place.
  *
  * @author bclasky1539
  */
@@ -57,6 +57,26 @@ sealed interface GroupOutcome {
         public Rejected {
             if (matchedText == null || atGroup == null || afterGroup == null || reason == null) {
                 throw new IllegalArgumentException("Rejected outcome fields cannot be null");
+            }
+        }
+    }
+
+    /**
+     * The step matched its group but failed with an unexpected exception: a bug,
+     * not bad data (#133). Reported per group by {@link PatternGroupHandler}, so one
+     * failing occurrence does not disable the handler for later groups. Like a
+     * rejection, the text is consumed or kept per the section's policy.
+     *
+     * @param matchedText the group being handled, as it appears in the report
+     * @param atGroup     the text starting at the group
+     * @param afterGroup  the text after the group
+     * @param cause       the unexpected exception
+     */
+    record Failed(String matchedText, String atGroup, String afterGroup,
+                  RuntimeException cause) implements GroupOutcome {
+        public Failed {
+            if (matchedText == null || atGroup == null || afterGroup == null || cause == null) {
+                throw new IllegalArgumentException("Failed outcome fields cannot be null");
             }
         }
     }
