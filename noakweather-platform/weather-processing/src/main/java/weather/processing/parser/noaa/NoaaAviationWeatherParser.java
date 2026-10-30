@@ -535,7 +535,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         }
 
         // PresentWeather.parse never rejects data (unrecognized text is kept as "other"),
-        // so there is nothing to catch here; anything it throws is a bug for handlePattern.
+        // so there is nothing to catch here; anything it throws is a bug, reported by the
+        // group parsing engine as a failed group (ERROR, group consumed).
         PresentWeather presentWeather = PresentWeather.parse(weatherString);
         presentWeatherList.add(presentWeather);
 

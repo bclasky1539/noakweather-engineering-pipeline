@@ -19,6 +19,7 @@ package weather.processing.parser.noaa;
 import org.junit.jupiter.api.Test;
 import weather.exception.InvalidObservationException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -51,6 +52,43 @@ class GroupParsingContractTest {
     }
 
     @Test
+    void testTextStep_UnchangedTextIsNoMatchChangedTextIsParsed() {
+        GroupHandler<List<String>> handler = GroupHandler.textStep("text step", (text, target) -> {
+            if (text.startsWith("AAA")) {
+                target.add("AAA");
+                return text.substring(3).trim();
+            }
+            return text;
+        });
+        List<String> target = new ArrayList<>();
+
+        assertThat(handler.step().apply("AAA BBB", target)).isEqualTo(new GroupOutcome.Parsed("BBB"));
+        assertThat(handler.step().apply("BBB", target)).isSameAs(GroupOutcome.noMatch());
+        assertThat(handler.name()).isEqualTo("text step");
+        assertThat(target).containsExactly("AAA");
+    }
+
+    @Test
+    void testTextStep_NullResultIsABug() {
+        GroupHandler<List<String>> handler = GroupHandler.textStep("null result", (text, target) -> null);
+        GroupHandler.Step<List<String>> step = handler.step();
+        List<String> target = new ArrayList<>();
+
+        assertThatThrownBy(() -> step.apply("AAA", target))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("Group handler step returned null");
+    }
+
+    @Test
+    @SuppressWarnings("DataFlowIssue")
+        // null step on purpose: the call must throw
+    void testTextStep_RejectsNullStep() {
+        assertThatThrownBy(() -> GroupHandler.<List<String>>textStep("a", null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Group handler step cannot be null");
+    }
+
+    @Test
     void testParsed_RejectsNullRemaining() {
         assertThatThrownBy(() -> new GroupOutcome.Parsed(null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -73,7 +111,6 @@ class GroupParsingContractTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
         // null fields on purpose: each call must throw
     void testFailed_RejectsNullFields() {
         IllegalStateException cause = new IllegalStateException("bug");

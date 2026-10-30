@@ -16,39 +16,36 @@
  */
 package weather.processing.parser.noaa;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import weather.utils.IndexedLinkedHashMap;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for NoaaAviationWeatherPatternRegistry.
- * 
+ *
  * @author bclasky1539
  *
  */
 class NoaaAviationWeatherPatternRegistryTest {
-    
+
     private final NoaaAviationWeatherPatternRegistry registry = new NoaaAviationWeatherPatternRegistry();
-    
+
     @Test
     void testGetMainHandlersReturnsIndexedLinkedHashMap() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
-        
+
         assertThat(handlers)
                 .isNotNull()
                 .isInstanceOf(IndexedLinkedHashMap.class);
     }
-    
+
     @Test
     void testGetMainHandlersHasExpectedPatterns() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
-        
+
         // Should contain key patterns
         assertThat(handlers)
                 .containsKey(RegExprConst.STATION_DAY_TIME_VALTMPER_PATTERN)
@@ -57,23 +54,23 @@ class NoaaAviationWeatherPatternRegistryTest {
                 .containsKey(RegExprConst.TEMP_DEWPOINT_PATTERN)
                 .containsKey(RegExprConst.ALTIMETER_PATTERN);
     }
-    
+
     @Test
     void testGetMainHandlersMaintainsOrder() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
-        
+
         // Use IndexedLinkedHashMap's index access
         int stationIndex = handlers.getIndexOf(RegExprConst.STATION_DAY_TIME_VALTMPER_PATTERN);
         int windIndex = handlers.getIndexOf(RegExprConst.WIND_PATTERN);
         int tempIndex = handlers.getIndexOf(RegExprConst.TEMP_DEWPOINT_PATTERN);
-        
+
         // Station should come before wind
         assertThat(stationIndex).isLessThan(windIndex);
-        
+
         // Wind should come before temperature
         assertThat(windIndex).isLessThan(tempIndex);
     }
-    
+
     @Test
     void testGetMainHandlersIndexAccess() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
@@ -96,352 +93,75 @@ class NoaaAviationWeatherPatternRegistryTest {
         NoaaAviationWeatherPatternHandler secondHandler = handlers.getValueAtIndex(1);
         assertThat(secondHandler.handlerName()).isEqualTo("monthDayYear");
     }
-    
+
     @Test
     void testGetMainHandlersRepeatingPatterns() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
-        
+
         // Sky condition should be repeating
         NoaaAviationWeatherPatternHandler skyHandler = handlers.get(RegExprConst.SKY_CONDITION_PATTERN);
         assertThat(skyHandler.canRepeat()).isTrue();
-        
+
         // Wind should NOT be repeating
         NoaaAviationWeatherPatternHandler windHandler = handlers.get(RegExprConst.WIND_PATTERN);
         assertThat(windHandler.canRepeat()).isFalse();
     }
-    
-    @Test
-    void testGetRemarksHandlersReturnsIndexedLinkedHashMap() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-        
-        assertThat(handlers)
-                .isNotNull()
-                .isInstanceOf(IndexedLinkedHashMap.class);
-    }
-    
-    @Test
-    void testGetRemarksHandlersHasExpectedPatterns() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-        
-        // Should contain key remarks patterns
-        assertThat(handlers)
-                .containsKey(RegExprConst.AUTO_PATTERN)
-                .containsKey(RegExprConst.SEALVL_PRESS_PATTERN)
-                .containsKey(RegExprConst.PEAK_WIND_PATTERN)
-                .containsKey(RegExprConst.TEMP_1HR_PATTERN)
-                .containsKey(RegExprConst.HAIL_SIZE_PATTERN);
-    }
-    
-    @Test
-    void testGetRemarksHandlersIndexAccess() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-        
-        // Test that we can access by index
-        assertThat(handlers).hasSizeGreaterThan(0);
-        
-        Pattern firstPattern = handlers.getKeyAtIndex(0);
-        assertThat(firstPattern)
-                .isNotNull()
-                // First remarks pattern should be AUTO (AO1/AO2)
-                .isEqualTo(RegExprConst.AUTO_PATTERN);
-    }
-    
+
     @Test
     void testGetGroupHandlersReturnsIndexedLinkedHashMap() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getGroupHandlers();
-        
+
         assertThat(handlers)
                 .isNotNull()
                 .isInstanceOf(IndexedLinkedHashMap.class);
     }
-    
+
     @Test
     void testGetGroupHandlersHasExpectedPatterns() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getGroupHandlers();
-        
+
         // Should contain TAF group patterns
         assertThat(handlers)
                 .containsKey(RegExprConst.TAF_STR_PATTERN)
                 .containsKey(RegExprConst.GROUP_BECMG_TEMPO_PROB_PATTERN)
                 .containsKey(RegExprConst.GROUP_FM_PATTERN);
     }
-    
+
     @Test
     void testAllHandlersHaveValidHandlerNames() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> mainHandlers = registry.getMainHandlers();
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> remarksHandlers = registry.getRemarksHandlers();
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> groupHandlers = registry.getGroupHandlers();
-        
+
         // All handler names should be non-null and non-empty
         mainHandlers.values().forEach(handler -> {
             assertThat(handler.handlerName()).isNotNull();
             assertThat(handler.handlerName()).isNotEmpty();
         });
-        
-        remarksHandlers.values().forEach(handler -> {
-            assertThat(handler.handlerName()).isNotNull();
-            assertThat(handler.handlerName()).isNotEmpty();
-        });
-        
+
         groupHandlers.values().forEach(handler -> {
             assertThat(handler.handlerName()).isNotNull();
             assertThat(handler.handlerName()).isNotEmpty();
         });
     }
-    
+
     @Test
     void testIndexedLinkedHashMapFeatures() {
         IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getMainHandlers();
-        
+
         // Test IndexedLinkedHashMap specific features
         int size = handlers.size();
         assertThat(size).isGreaterThan(0);
-        
+
         // Test that we can iterate by index
         for (int i = 0; i < size; i++) {
             Pattern pattern = handlers.getKeyAtIndex(i);
             NoaaAviationWeatherPatternHandler handler = handlers.getValueAtIndex(i);
-            
+
             assertThat(pattern).isNotNull();
             assertThat(handler).isNotNull();
-            
+
             // Verify consistency: getting by key should match getting by index
             assertThat(handlers).containsEntry(pattern, handler);
-        }
-    }
-
-    @Test
-    void testGetRemarksHandlersHasHailSizePattern() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Should contain hail size pattern
-        assertThat(handlers)
-                .containsKey(RegExprConst.HAIL_SIZE_PATTERN);
-
-        // Verify handler details
-        NoaaAviationWeatherPatternHandler hailSizeHandler = handlers.get(RegExprConst.HAIL_SIZE_PATTERN);
-        assertThat(hailSizeHandler).isNotNull();
-        assertThat(hailSizeHandler.handlerName()).isEqualTo("hailSize");
-        assertThat(hailSizeHandler.canRepeat()).isFalse();
-    }
-
-    @Test
-    void testGetRemarksHandlersHasBeginEndWeatherPattern() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Should contain BEGIN_END_WEATHER_PATTERN
-        assertThat(handlers)
-                .containsKey(RegExprConst.BEGIN_END_WEATHER_PATTERN);
-
-        // Verify handler details
-        NoaaAviationWeatherPatternHandler weatherEventHandler = handlers.get(RegExprConst.BEGIN_END_WEATHER_PATTERN);
-        assertThat(weatherEventHandler).isNotNull();
-        assertThat(weatherEventHandler.handlerName()).isEqualTo("weatherBeginEnd");
-        assertThat(weatherEventHandler.canRepeat()).isTrue();  // Should be repeating for chained events
-    }
-
-    @Test
-    void testGetRemarksHandlersWeatherEventAfterHailSize() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get indices of both patterns
-        int hailSizeIndex = handlers.getIndexOf(RegExprConst.HAIL_SIZE_PATTERN);
-        int weatherEventIndex = handlers.getIndexOf(RegExprConst.BEGIN_END_WEATHER_PATTERN);
-
-        // Weather events should come after hail size
-        assertThat(weatherEventIndex)
-                .as("Weather events should be registered after hail size")
-                .isGreaterThan(hailSizeIndex);
-
-        // Both should come before unparsed catch-all
-        int unparsedIndex = handlers.getIndexOf(RegExprConst.UNPARSED_PATTERN);
-        assertThat(hailSizeIndex)
-                .as("Hail size should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-        assertThat(weatherEventIndex)
-                .as("Weather events should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-    }
-
-    @Test
-    void testGetRemarksHandlersHasVariableCeilingPattern() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Should contain variable ceiling pattern
-        assertThat(handlers)
-                .containsKey(RegExprConst.VARIABLE_CEILING_PATTERN);
-
-        // Verify handler details
-        NoaaAviationWeatherPatternHandler variableCeilingHandler = handlers.get(RegExprConst.VARIABLE_CEILING_PATTERN);
-        assertThat(variableCeilingHandler).isNotNull();
-        assertThat(variableCeilingHandler.handlerName()).isEqualTo("variableCeiling");
-        assertThat(variableCeilingHandler.canRepeat()).isFalse();
-    }
-
-    @Test
-    void testGetRemarksHandlersVariableCeilingAfterVariableVisibility() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get indices of both patterns
-        int variableVisibilityIndex = handlers.getIndexOf(RegExprConst.VPV_SV_VSL_PATTERN);
-        int variableCeilingIndex = handlers.getIndexOf(RegExprConst.VARIABLE_CEILING_PATTERN);
-
-        // Variable ceiling should come after variable visibility
-        assertThat(variableCeilingIndex)
-                .as("Variable ceiling should be registered after variable visibility")
-                .isGreaterThan(variableVisibilityIndex);
-
-        // Both should come before unparsed catch-all
-        int unparsedIndex = handlers.getIndexOf(RegExprConst.UNPARSED_PATTERN);
-        assertThat(variableVisibilityIndex)
-                .as("Variable visibility should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-        assertThat(variableCeilingIndex)
-                .as("Variable ceiling should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-    }
-
-    @Test
-    void testGetRemarksHandlersHasCeilingSecondSitePattern() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Should contain ceiling second site pattern
-        assertThat(handlers)
-                .containsKey(RegExprConst.CEILING_SECOND_SITE_PATTERN);
-
-        // Verify handler details
-        NoaaAviationWeatherPatternHandler ceilingSecondSiteHandler = handlers.get(RegExprConst.CEILING_SECOND_SITE_PATTERN);
-        assertThat(ceilingSecondSiteHandler).isNotNull();
-        assertThat(ceilingSecondSiteHandler.handlerName()).isEqualTo("ceilingSecondSite");
-        assertThat(ceilingSecondSiteHandler.canRepeat()).isFalse();
-    }
-
-    @Test
-    void testGetRemarksHandlersCeilingSecondSiteAfterVariableCeiling() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get indices of both patterns
-        int variableCeilingIndex = handlers.getIndexOf(RegExprConst.VARIABLE_CEILING_PATTERN);
-        int ceilingSecondSiteIndex = handlers.getIndexOf(RegExprConst.CEILING_SECOND_SITE_PATTERN);
-
-        // Ceiling second site should come after variable ceiling
-        assertThat(ceilingSecondSiteIndex)
-                .as("Ceiling second site should be registered after variable ceiling")
-                .isGreaterThan(variableCeilingIndex);
-
-        // Both should come before unparsed catch-all
-        int unparsedIndex = handlers.getIndexOf(RegExprConst.UNPARSED_PATTERN);
-        assertThat(variableCeilingIndex)
-                .as("Variable ceiling should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-        assertThat(ceilingSecondSiteIndex)
-                .as("Ceiling second site should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-    }
-
-    @Test
-    void testGetRemarksHandlersHasObscurationPattern() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Should contain obscuration pattern
-        assertThat(handlers)
-                .containsKey(RegExprConst.OBSCURATION_PATTERN);
-
-        // Verify handler details
-        NoaaAviationWeatherPatternHandler obscurationHandler = handlers.get(RegExprConst.OBSCURATION_PATTERN);
-        assertThat(obscurationHandler).isNotNull();
-        assertThat(obscurationHandler.handlerName()).isEqualTo("obscurationLayers");
-        assertThat(obscurationHandler.canRepeat()).isTrue();  // Should be repeating for multiple layers
-    }
-
-    @Test
-    void testGetRemarksHandlersObscurationAfterCeilingSecondSite() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get indices of both patterns
-        int ceilingSecondSiteIndex = handlers.getIndexOf(RegExprConst.CEILING_SECOND_SITE_PATTERN);
-        int obscurationIndex = handlers.getIndexOf(RegExprConst.OBSCURATION_PATTERN);
-
-        // Obscuration should come after ceiling second site
-        assertThat(obscurationIndex)
-                .as("Obscuration should be registered after ceiling second site")
-                .isGreaterThan(ceilingSecondSiteIndex);
-
-        // Both should come before unparsed catch-all
-        int unparsedIndex = handlers.getIndexOf(RegExprConst.UNPARSED_PATTERN);
-        assertThat(ceilingSecondSiteIndex)
-                .as("Ceiling second site should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-        assertThat(obscurationIndex)
-                .as("Obscuration should come before unparsed remarks")
-                .isLessThan(unparsedIndex);
-    }
-
-    @Test
-    void testGetRemarksHandlersObscurationBeforeLightning() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get indices of both patterns
-        int obscurationIndex = handlers.getIndexOf(RegExprConst.OBSCURATION_PATTERN);
-        int lightningIndex = handlers.getIndexOf(RegExprConst.LIGHTNING_PATTERN);
-
-        // Obscuration should come before lightning
-        assertThat(obscurationIndex)
-                .as("Obscuration should be registered before lightning")
-                .isLessThan(lightningIndex);
-    }
-
-    // ========== ADD TO NoaaAviationWeatherPatternRegistryTest.java ==========
-
-// ADD THESE 3 TESTS to the test class:
-
-    @Test
-    @DisplayName("Should have CLOUD_OKTA_PATTERN in remarks handlers")
-    void testGetRemarksHandlersHasCloudOktaPattern() {
-        Map<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Verify CLOUD_OKTA_PATTERN is registered
-        assertThat(handlers).containsKey(RegExprConst.CLOUD_OKTA_PATTERN);
-
-        NoaaAviationWeatherPatternHandler handler = handlers.get(RegExprConst.CLOUD_OKTA_PATTERN);
-        assertThat(handler).isNotNull();
-        assertThat(handler.handlerName()).isEqualTo("cloudTypes");
-        assertThat(handler.canRepeat()).isTrue();
-    }
-
-    @Test
-    @DisplayName("Should have CLOUD_OKTA_PATTERN after OBSCURATION_PATTERN")
-    void testGetRemarksHandlersCloudTypeAfterObscuration() {
-        Map<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get the insertion order of patterns
-        List<Pattern> patterns = new ArrayList<>(handlers.keySet());
-
-        int obscurationIndex = patterns.indexOf(RegExprConst.OBSCURATION_PATTERN);
-        int cloudTypeIndex = patterns.indexOf(RegExprConst.CLOUD_OKTA_PATTERN);
-
-        assertThat(obscurationIndex).isNotEqualTo(-1);
-        assertThat(cloudTypeIndex)
-                .isNotEqualTo(-1)
-                .isGreaterThan(obscurationIndex);
-    }
-
-    @Test
-    @DisplayName("Should have CLOUD_OKTA_PATTERN before LIGHTNING_PATTERN")
-    void testGetRemarksHandlersCloudTypeBeforeLightning() {
-        Map<Pattern, NoaaAviationWeatherPatternHandler> handlers = registry.getRemarksHandlers();
-
-        // Get the insertion order of patterns
-        List<Pattern> patterns = new ArrayList<>(handlers.keySet());
-
-        int cloudTypeIndex = patterns.indexOf(RegExprConst.CLOUD_OKTA_PATTERN);
-        int lightningIndex = patterns.indexOf(RegExprConst.LIGHTNING_PATTERN);
-
-        assertThat(cloudTypeIndex).isNotEqualTo(-1);
-
-        // If lightning pattern exists, cloud types should come before it
-        if (lightningIndex != -1) {
-            assertThat(cloudTypeIndex).isLessThan(lightningIndex);
         }
     }
 }

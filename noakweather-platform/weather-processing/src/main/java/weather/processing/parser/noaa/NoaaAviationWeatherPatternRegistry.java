@@ -26,10 +26,13 @@ import java.util.regex.Pattern;
  * Uses IndexedLinkedHashMap to maintain pattern order and provide index-based access.
  * Pattern order is critical for sequential parsing - patterns are checked in sequence.
  * <p>
- * Three types of registries:
+ * Two types of registries:
  * - Main handlers: Core METAR body (before RMK)
- * - Remarks handlers: Remarks section (after RMK)
  * - Group handlers: TAF groups (BECMG, TEMPO, FM, PROB)
+ * <p>
+ * The METAR main body and remarks no longer use this registry: they run on the
+ * shared group parsing engine ({@link SectionParser}, #153). It remains for the
+ * TAF parser until #153 phase 4.
  *
  * @author bclasky1539
  *
@@ -108,121 +111,6 @@ public class NoaaAviationWeatherPatternRegistry {
         // No significant change indicator (optional)
         handlers.put(RegExprConst.NO_SIG_CHANGE_PATTERN,
                 NoaaAviationWeatherPatternHandler.single("noSigChange"));
-
-        return handlers;
-    }
-
-    /**
-     * Get handlers for METAR remarks section (after RMK).
-     * <p>
-     * Remarks contain additional information such as:
-     * - Automated station type (AO1, AO2)
-     * - Sea level pressure (SLP)
-     * - Peak wind, wind shift
-     * - Precise temperature/dewpoint
-     * - Precipitation amounts
-     * - Pressure tendency
-     *
-     * @return IndexedLinkedHashMap maintaining insertion order with index access
-     */
-    public IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> getRemarksHandlers() {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers = new IndexedLinkedHashMap<>();
-
-        // Automated station type (AO1 or AO2)
-        handlers.put(RegExprConst.AUTO_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("autoType"));
-
-        // Sea level pressure (SLP)
-        handlers.put(RegExprConst.SEALVL_PRESS_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("seaLevelPressure"));
-
-        // Peak wind
-        handlers.put(RegExprConst.PEAK_WIND_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("peakWind"));
-
-        // Wind shift
-        handlers.put(RegExprConst.WIND_SHIFT_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("windShift"));
-
-        // Tower or surface visibility (NOT HANDLED)
-
-        // Variable visibility
-        handlers.put(RegExprConst.VPV_SV_VSL_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("variableVis"));
-
-        // Variable ceiling
-        handlers.put(RegExprConst.VARIABLE_CEILING_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("variableCeiling"));
-
-        // Ceiling second site (MUST be after variable ceiling)
-        handlers.put(RegExprConst.CEILING_SECOND_SITE_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("ceilingSecondSite"));
-
-        // Obscuration layers (can have multiple)
-        handlers.put(RegExprConst.OBSCURATION_PATTERN,
-                NoaaAviationWeatherPatternHandler.repeating("obscurationLayers"));
-
-        // Thunderstorm/cloud location
-        handlers.put(RegExprConst.TS_CLD_LOC_PATTERN,
-                NoaaAviationWeatherPatternHandler.repeating("thunderstormCloudLocation"));
-
-        // Cloud types (can have multiple)
-        handlers.put(RegExprConst.CLOUD_OKTA_PATTERN,
-                NoaaAviationWeatherPatternHandler.repeating("cloudTypes"));
-
-        // Lightning (uses wrapper class for individual type captures)
-        handlers.put(RegExprConst.LIGHTNING_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("lightning"));
-
-        // Pressure rising/falling rapidly
-        handlers.put(RegExprConst.PRES_RF_RAPDLY_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("pressureRapidly"));
-
-        // Temperature precision (T02330139)
-        handlers.put(RegExprConst.TEMP_1HR_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("temp1Hour"));
-
-        // Hourly precipitation
-        handlers.put(RegExprConst.PRECIP_1HR_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("precip1Hour"));
-
-        // 6-hour temperature extremes (can have both max and min)
-        handlers.put(RegExprConst.TEMP_6HR_MAX_MIN_PATTERN,
-                NoaaAviationWeatherPatternHandler.repeating("temp6HourMaxMin"));
-
-        // 24-hour temperature
-        handlers.put(RegExprConst.TEMP_24HR_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("temp24Hour"));
-
-        // 3-hour pressure tendency
-        handlers.put(RegExprConst.PRESS_3HR_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("pressure3Hour"));
-
-        // 3/6-hour precipitation
-        handlers.put(RegExprConst.PRECIP_3HR_24HR_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("precip3Hr24Hr"));
-
-        // Pressure Q-codes
-        handlers.put(RegExprConst.PRESS_Q_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("pressureQCode"));
-
-        // Automated maintenance indicators
-        handlers.put(RegExprConst.AUTOMATED_MAINTENANCE_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("automatedMaintenance"));
-
-        // Hail size
-        handlers.put(RegExprConst.HAIL_SIZE_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("hailSize"));
-
-        // Weather begin/end times (RAB05, FZRAB1159E1240, etc.)
-        // IMPORTANT: This is a repeating pattern because multiple weather events can be chained
-        // Example: RAB15E30SNB30 contains two events (rain and snow)
-        handlers.put(RegExprConst.BEGIN_END_WEATHER_PATTERN,
-                NoaaAviationWeatherPatternHandler.repeating("weatherBeginEnd"));
-
-        // Catch unparsed remarks
-        handlers.put(RegExprConst.UNPARSED_PATTERN,
-                NoaaAviationWeatherPatternHandler.single("unparsedRemark"));
 
         return handlers;
     }

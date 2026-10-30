@@ -41,6 +41,43 @@ record GroupHandler<B>(String name, Step<B> step) {
         GroupOutcome apply(String text, B target);
     }
 
+    /**
+     * A step in the older text-returning form: it returns the text with its group
+     * removed, or the text unchanged when the group is absent or was rejected (the
+     * step logs its own rejections).
+     *
+     * @param <B> the target type
+     */
+    @FunctionalInterface
+    interface TextStep<B> {
+        String apply(String text, B target);
+    }
+
+    /**
+     * Wrap a text-returning step (the METAR remark handlers' form) as a handler:
+     * unchanged text is {@link GroupOutcome#noMatch()}, anything else
+     * {@link GroupOutcome.Parsed}. Lets existing steps run on the engine unchanged
+     * (#153 phase 3).
+     *
+     * @param name group name used in logs
+     * @param step the text-returning step
+     * @param <B>  the target type
+     * @return the handler
+     * @throws IllegalArgumentException if step is null (or name is null or blank)
+     */
+    static <B> GroupHandler<B> textStep(String name, TextStep<B> step) {
+        if (step == null) {
+            throw new IllegalArgumentException("Group handler step cannot be null");
+        }
+        return new GroupHandler<>(name, (text, target) -> {
+            String remaining = step.apply(text, target);
+            if (remaining == null) {
+                throw new IllegalStateException("Group handler step returned null");
+            }
+            return remaining.equals(text) ? GroupOutcome.noMatch() : new GroupOutcome.Parsed(remaining);
+        });
+    }
+
     GroupHandler {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Group handler name cannot be null or blank");

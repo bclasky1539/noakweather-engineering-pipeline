@@ -238,8 +238,11 @@ class SectionParserTest {
 
     // ==================== Failed groups ====================
 
-    private static GroupHandler<List<String>> failing(String name, RuntimeException bug) {
-        return PatternGroupHandler.single(name, Pattern.compile("^f\\s*"), (target, matcher) -> {
+    /**
+     * A handler that matches the group "f" and always throws {@code bug}.
+     */
+    private static GroupHandler<List<String>> failing(RuntimeException bug) {
+        return PatternGroupHandler.single("F", Pattern.compile("^f\\s*"), (target, matcher) -> {
             throw bug;
         });
     }
@@ -250,7 +253,7 @@ class SectionParserTest {
         List<String> target = new ArrayList<>();
 
         try (LogCapture errors = LogCapture.of(SectionParser.class)) {
-            SectionResult result = run(List.of(failing("F", bug), recording("B", "^b\\s*")),
+            SectionResult result = run(List.of(failing(bug), recording("B", "^b\\s*")),
                     SectionPolicy.of(FIRST_MATCH_RESTART, CONSUME, STOP), "f b f", target);
 
             // Both f groups were handled (no breaker), and b in between was parsed
@@ -272,7 +275,7 @@ class SectionParserTest {
         List<String> target = new ArrayList<>();
 
         try (LogCapture errors = LogCapture.of(SectionParser.class)) {
-            SectionResult result = run(List.of(failing("F", new IllegalStateException("boom")), recording("Q", "q\\s*")),
+            SectionResult result = run(List.of(failing(new IllegalStateException("boom")), recording("Q", "q\\s*")),
                     SectionPolicy.of(PASSES, KEEP, SKIP_TO_UNPARSED), "f q", target);
 
             assertThat(target).containsExactly("Q:q");
@@ -303,6 +306,24 @@ class SectionParserTest {
                                 + "and is disabled for the rest of this section");
                 assertThat(event.getThrown()).isInstanceOf(IllegalStateException.class).hasMessage("boom");
             });
+        }
+    }
+
+    @Test
+    void testBreaker_PlainIllegalArgumentExceptionFromStepTripsHandler() {
+        // A plain IAE escaping a step is a programming error, not rejected data (#133)
+        GroupHandler<List<String>> buggy = new GroupHandler<>("buggy", (text, target) -> {
+            throw new IllegalArgumentException("bug");
+        });
+
+        try (LogCapture warnings = LogCapture.of(SectionParser.class)) {
+            SectionResult result = run(List.of(buggy, recording("B", "^b\\s*")),
+                    SectionPolicy.of(PASSES, KEEP, STOP), "b", new ArrayList<>());
+
+            assertThat(result.trippedHandlers()).containsExactly("buggy");
+            assertThat(result.rejections()).isEmpty();
+            assertThat(warnings.events()).singleElement()
+                    .satisfies(event -> assertThat(event.getThrown()).hasMessage("bug"));
         }
     }
 
