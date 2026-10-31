@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.27.2-SNAPSHOT]
+## Version 1.27.3-SNAPSHOT - October 30, 2026
+
+### Added
+- `NoaaTafParserGoldenOutputTest`: golden-output regression test over 37 dated TAF
+  reports, recorded before the engine move (#<new issue>).
+- `GoldenOutput` test support shared by the METAR and TAF golden tests.
+
+### Changed
+- TAF forecast-period conditions now parse through the group parsing engine
+  (`SectionParser` with `FIRST_MATCH_RESTART` / `CONSUME` / `STOP` and a change-group
+  boundary) (#<new issue>, #153 phase 4).
+- `REPORT_TYPE_PATTERN` moved to `RegExprConst`.
+- TAF handler errors log through the engine (rejections at DEBUG, failures at ERROR)
+  instead of WARN with a stack trace.
+
+### Removed
+- TAF's copy of the registry loop: `parseWithHandlers`, `tryAllPatterns`, `tryPattern`,
+  `handlePattern`, and the `patternRegistry` field.
+
+Parsed output is unchanged; both golden-output tests pass without re-recording.
+
+## Version 1.27.2-SNAPSHOT - October 30, 2026
 
 ### Changed
 - METAR remarks now parse through the group parsing engine (`SectionParser` with
@@ -22,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Parsed output is unchanged; the golden-output test passes without re-recording.
 
-## [1.27.1-SNAPSHOT]
+## Version 1.27.1-SNAPSHOT - October 30, 2026
 
 ### Changed
 - The METAR main body runs on the shared group parsing engine (#153 phase 2,
@@ -48,7 +69,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   parsed; direct test of the international-visibility rejection path.
 - `NoaaTafParserTest`: default `handleRunwayState`.
 
-## [1.27.0-SNAPSHOT]
+## Version 1.27.0-SNAPSHOT - October 30, 2026
 
 ### Added
 - Shared group parsing engine (#153 phase 1, #154), in
@@ -74,7 +95,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   each policy value, boundary stop, breaker trip and reset, rejection
   recording and logging, and the adapter's text handling.
 
-## [1.26.1-SNAPSHOT]
+## Version 1.26.1-SNAPSHOT
 
 ### Added
 - `NoaaMetarParserGoldenOutputTest`: parses 57 reports (the
@@ -92,7 +113,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Observation time is left out of the rendering, because reports without
   a date header take their year and month from the current date.
 
-## [1.26.0-SNAPSHOT]
+## Version 1.26.0-SNAPSHOT
 
 ### Added
 - `CompassDirection` enum (`weather.model.enums`) is the single compass
@@ -146,7 +167,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - `VariableVisibilityTest` asserts the spread is non-null before
   comparing, instead of risking an unboxing `NullPointerException`.
 
-## [1.25.0-SNAPSHOT]
+## Version 1.25.0-SNAPSHOT
 
 ### Added
 - `CloudTypeAbbreviation` enum (`weather.model.enums`) is the single
@@ -194,7 +215,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - `NoaaMetarParserTest`: `BKN030ACC`, `SCT045ACSL`, `FEW020CF` and
   `OVC010SF` parse into one sky layer with no Rejected event.
 
-## [1.24.3-SNAPSHOT]
+## Version 1.24.3-SNAPSHOT
 
 ### Added
 - `DirectionalWeather` has an optional location qualifier (`OHD`, `VC`,
@@ -236,7 +257,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   freeText, and both hail known-gap tests flipped.
 - `NoaaMetarParserRemarksRecoveryTest`: MBSC `VCSH-NE` real-data case.
 
-## [1.24.2-SNAPSHOT]
+## Version 1.24.2-SNAPSHOT
 
 ### Fixed
 - Main-body visibility with a zero-denominator fraction (`1/0SM`,
@@ -260,7 +281,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - `NoaaTafParserTest.testParseInvalidInputs` now labels each case with
   its description.
 
-## [1.24.1-SNAPSHOT]
+## Version 1.24.1-SNAPSHOT
 
 ### Fixed
 - A METAR with remarks but no station failed through a `NullPointerException`
@@ -269,7 +290,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   cleanly with `Could not extract station ID from METAR` and is logged at
   INFO like other rejected reports. (#146)
 
-## [1.24.0-SNAPSHOT]
+## Version 1.24.0-SNAPSHOT
 
 ### Changed
 - Parser log levels follow the exception-handling policy: expected bad data
@@ -338,14 +359,14 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - `testParse_RejectedReportLoggedAtInfo` (new); the handler-bug test now
   expects ERROR.
 
-## [1.23.1-SNAPSHOT]
+## Version 1.23.1-SNAPSHOT
 
 ### Fixed
 - Fixed a SonarCloud issue (java:S9435) in `WeatherConditions`. Inverted
   negated ternary in WeatherConditions.getSummary. There is No behavior change.
 - Includes IDE reformatting of the Javadoc @param alignment.
 
-## [1.23.0-SNAPSHOT]
+## Version 1.23.0-SNAPSHOT
 
 ### Added
 - Per-handler circuit breaker for METAR remark handlers. The 31 sequential
@@ -417,7 +438,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - `ObservationProgramStatusTest`: out-of-range and boundary times, plus one
   test pinning component, rejected value and message.
 
-## [1.22.0-SNAPSHOT]
+## Version 1.22.0-SNAPSHOT
 
 ### Added
 - `InvalidObservationException` (`weather.exception`), a subclass of
@@ -498,7 +519,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - `PressureRapidChangeTest` moved from `assertThatIllegalArgumentException`
   (accepts subclasses) to `assertThatThrownBy`.
 
-## [1.21.0-SNAPSHOT]
+## Version 1.21.0-SNAPSHOT
 
 ### Fixed
 - Remark handlers no longer silently drop a group they match but reject.
@@ -567,7 +588,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   KMCO, CYLK, RPLL and a #129 tracker raw added to the diagnostics, with new
   `LOGGER.info` fields for every remark type touched.
 
-## [1.20.15-SNAPSHOT]
+## Version 1.20.15-SNAPSHOT
 
 ### Fixed
 - Lightning remarks with an AND-chained direction (e.g. `LTG DSNT S AND SW`,
@@ -614,7 +635,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - UAT watch pattern `117-lightning-and-chain` added to
   `scripts/uat/wethuat_discover_stations.sh`.
 
-## [1.20.14-SNAPSHOT]
+## Version 1.20.14-SNAPSHOT - October 12, 2026
 
 ### Fixed
 - Thunderstorm/cloud location remarks with space-separated direction points
@@ -643,7 +664,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - UAT watch pattern `114-ts-location-space-separated-points` added to
   `scripts/uat/wethuat_discover_stations.sh`.
 
-## [1.20.13-SNAPSHOT] - 2026-10-11
+## Version 1.20.13-SNAPSHOT - October 11, 2026
 
 ### Fixed
 - Directional weather in remarks no longer loses its direction when the next token starts with a
@@ -670,7 +691,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 ### Not yet modeled
 - `NOSPECI` and `SNINCR` remarks have no handler and remain in `remarks.freeText`; found while testing #118
 
-## [1.20.12-SNAPSHOT] - 2026-10-11
+## Version 1.20.12-SNAPSHOT - October 11, 2026
 
 ### Fixed
 - Recent weather groups (`RE` + weather code, e.g. `REDZRA`, `RESHRA`) in the METAR main body are now
@@ -703,7 +724,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   hold mixed codes (e.g. `"RASN"`), and `other` no longer receives the second precipitation type.
   Silver Glue job and Athena schema to be reviewed in Silver pre-UAT.
 
-## [1.20.11-SNAPSHOT] - 2026-10-11
+## Version 1.20.11-SNAPSHOT - October 11, 2026
 
 ### Fixed
 - Runway state groups (`Rdd/ERCReeBB`, e.g. `R23R/1///60`, `R05R/090060`) are no longer parsed as
@@ -747,7 +768,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Bronze JSON shape changed (new `runwayStates` array; `cleared` removed from the RVR struct).
   The Silver Glue job and Athena schema are to be reviewed against these changes in Silver pre-UAT.
 
-## [1.20.10-SNAPSHOT] - 2026-10-10
+## Version 1.20.10-SNAPSHOT - October 10, 2026
 
 ### Fixed
 - RVR groups with a slash trend suffix after the FT unit (e.g. `R08L/0800V1000FT/N`, `R28L/1200FT/U`)
@@ -780,9 +801,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Main-body parsing stops at the first unrecognized token, stranding later
   tokens in `unparsedMainBody`; documented by `knownGap_unrecognizedMainBodyTokenStrandsLaterTokens`
 
-### Version 1.20.9-SNAPSHOT - October 7, 2026
+## Version 1.20.9-SNAPSHOT - October 7, 2026
 
-#### Fixed
+### Fixed
 - **#92: `handleCloudTypeSequential` silently consumed rejected matches**
   (data loss on bare cloud-type codes). `CLOUD_OKTA_PATTERN` can match a bare
   code (`SC`, `CI`) with no oktas, intensity, location or movement.
@@ -808,16 +829,16 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     cloud code (`CIG` matches as `CI`). It is harmless now because the rejected
     token is preserved and peeled whole.
 
-#### Internal
+### Internal
 - Tests: `testParseCloudType_InvalidFormats` now asserts the rejected text
   survives in `freeText`; new `testParseCloudType_RejectedBareCode_PreservedInFreeText`
   (`SC AC2`) and a mid-pass CB guard test;
   `testParseCloudType_BareCloudTypeStillRejected` corrected to assert that the
   thunderstorm-location handler claims the bare `TCU`. Full reactor green.
 
-### Version 1.20.8-SNAPSHOT - October 7, 2026
+## Version 1.20.8-SNAPSHOT - October 7, 2026
 
-#### Added
+### Added
 - **#104: ALQDS in additional remarks grammar positions** — three live UAT
   captures left `ALQDS` orphaned in `freeText`.
   - `DirectionalWeather` now carries an `allQuadrants` flag (KTRK `HZ ALQDS`,
@@ -843,16 +864,16 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - Known limit: `AND <qualifier>` followed by directions (`AND DSNT N`) is
     not supported; no live evidence exists for it.
 
-#### Internal
+### Internal
 - Tests: `DirectionalWeatherTest` (flag, mutual exclusion, summary, equality,
   default), `RegExprConstTest` (both patterns, boundary and rejection cases),
   `NoaaMetarParserTest` (KTRK, KBFM, PTRO, compass-direction regression, bare
   `HZ`, `AND ALQDS` with no parent), and three recovery cases verified through
   `printRemarksParsingDiagnostics`, which now also logs `directionalWeather`.
 
-### Version 1.20.7-SNAPSHOT - October 4, 2026
+## Version 1.20.7-SNAPSHOT - October 4, 2026
 
-#### Added
+### Added
 - **#106: Space-separated multi-direction thunderstorm-location continuation** —
   a location clause that omits the cloud type because it is implied by the
   preceding clause (e.g. `TCU NW DSNT N NE S SW`: the `DSNT` clause continues
@@ -880,7 +901,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     space-separated points (`TCU DSNT N NE S SW`) is still unsupported. No
     live evidence exists for either.
 
-#### Internal
+### Internal
 - Tests: `RegExprConstTest` (valid forms, false-positive guards, MOV,
   rejections), `NoaaMetarParserTest` (KATL, ranges/AND, movement, multiple
   continuations, boundary, no-parent, broken-link cases), and a KATL recovery
@@ -891,9 +912,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   Replaced with `(OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)( [NSEW]{1,2}){2,}( |$)`.
   The sweep found no genuine multipoint continuation beyond KATL.
 
-### Version 1.20.6-SNAPSHOT - October 3, 2026
+## Version 1.20.6-SNAPSHOT - October 3, 2026
 
-#### Added
+### Added
 - **#105: `XCPT`/`XCP`/`EXCP`/`EXC` (except) direction-exception remark** — a
   remark indicating a previously reported condition does not apply in a given
   direction (e.g. `CB ALQDS XCPT N` which is "CB in all quadrants, except to
@@ -922,7 +943,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     `printRemarksParsingDiagnostics`, both standalone and inserted into the
     existing dense KCLT recovery capture, before locking in assertions
 
-#### Internal
+### Internal
 - Test coverage added at all four levels: `RegExprConstTest` (pattern match
   for single-point, range, and AND-chain forms; `EXPCD`-family rejection),
   `ExceptDirectionTest` (record-level: construction, `hasDirections()`,
@@ -942,9 +963,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
   behavior change elsewhere
 
-### Version 1.20.5-SNAPSHOT - October 2, 2026
+## Version 1.20.5-SNAPSHOT - October 2, 2026
 
-#### Added
+### Added
 - **#89 (scope addition): `LAST STFD OBS/NEXT` trailing `VIA <station-id>` routing
   suffix** — a Canadian MANOBS observation-program-status remark can optionally
   end with `VIA <station-id>`, indicating the next observation will be relayed
@@ -968,7 +989,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     against actual parsed output, both standalone and inserted into the
     existing dense KCLT recovery capture, before locking in assertions
 
-#### Internal
+### Internal
 - Test coverage added at all four levels: `RegExprConstTest` (pattern match
   for the `VIA` suffix, with and without it present),
   `ObservationProgramStatusTest` (new field, `hasViaStation()`, `getSummary()`
@@ -981,9 +1002,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
   behavior change elsewhere
 
-### Version 1.20.4-SNAPSHOT - October 1, 2026
+## Version 1.20.4-SNAPSHOT - October 1, 2026
 
-#### Fixed
+### Fixed
 - **#99: `TS_CLD_LOC_PATTERN` does not recognize `ALQDS` as a location
   qualifier** — Bare thunderstorm/cloud-location remarks (`TCU ALQDS`, `CB
   ALQDS`) did not recognize `ALQDS` (all quadrants) as a location qualifier,
@@ -1001,7 +1022,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     gap: `TCU ALQDS SLP152 T02530204` — `freeText` now `null` (previously
     held the orphaned `"ALQDS"` token)
 
-#### Internal
+### Internal
 - Test coverage added at all three levels: `RegExprConstTest` (pattern
   match for `TCU ALQDS` / `CB ALQDS`), `NoaaMetarParserTest` (end-to-end
   parameterized case extended), `NoaaMetarParserRemarksRecoveryTest`
@@ -1011,9 +1032,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
   behavior change elsewhere
 
-### Version 1.20.3-SNAPSHOT - October 1, 2026
+## Version 1.20.3-SNAPSHOT - October 1, 2026
 
-#### Fixed
+### Fixed
 - **#100: Station code validation rejects legitimate FAA Location Identifiers
   containing digits** — `isValidStationCode()` and `canParse()`'s bare
   station-first branch both required all-alphabetic station codes
@@ -1032,7 +1053,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - `noakweather-legacy`'s identical all-alphabetic validation left
     untouched — separate, soon-to-be-retired module, out of scope
 
-#### Internal
+### Internal
 - Test coverage: `NoaaAviationWeatherClientTest` additions (all seven FAA
   LIDs as valid, a new `1JFK` leading-digit rejection case, `K1FK` moved from
   invalid to valid); `NoaaMetarParserTest` additions (`K3K3` added to the
@@ -1041,9 +1062,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
   behavior change elsewhere
 
-### Version 1.20.2-SNAPSHOT - October 1, 2026
+## Version 1.20.2-SNAPSHOT - October 1, 2026
 
-#### Added
+### Added
 - **#88: `AO1A`/`AO2A` manually-augmented automated station type codes** — resolved
   an undocumented suffix found on KFFO's `AO2A` remark during research, indicating
   an automated observation was manually augmented by a human observer, orthogonal
@@ -1059,13 +1080,13 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - `NoaaMetarParser.handleAutomatedStationType` now calls `RegExprConst.AUTO_PATTERN`
     directly instead of a duplicate, independently-maintained local pattern
 
-#### Fixed
+### Fixed
 - `AUTO_PATTERN`'s trailing `\s+` could never match when the automated station
   type was the last token in a remarks string (same latent-gap class as #74,
   #75, #86, #89). Replaced with a `(?=\s|$)` lookahead, confirmed via the real
   KBLV `A02A` capture used throughout this issue's development
 
-#### Internal
+### Internal
 - Test coverage: `AutomatedStationTypeTest` additions (new constants,
   `hasManualAugmentation()`, `fromDigitAndAugmentation()`, expanded `fromCode()`
   matrix including OCR-variant cross-checks); `RegExprConstTest` additions for
@@ -1078,9 +1099,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Verified across the full reactor (`./wethb.sh`, `./wetht.sh`) with zero
   behavior change elsewhere
 
-### Version 1.20.1-SNAPSHOT - September 30, 2026
+## Version 1.20.1-SNAPSHOT - September 30, 2026
 
-#### Added
+### Added
 - **#87: Predominant cloud type remark (`8/C_L C_M C_H`)** — resolved an
   unrecognized numeric remark group found at multiple stations
   (NSTU, PTYA) during UAT. Per WMO Cloud Atlas coding instructions
@@ -1102,7 +1123,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - `docs/CODE_STANDARDS.md`'s package hierarchy diagram updated for
     the three new enum files and the new `PredominantCloudTypes` class
 
-#### Internal
+### Internal
 - Test coverage: `LowCloudTypeTest`, `MiddleCloudTypeTest`,
   `HighCloudTypeTest`, `PredominantCloudTypesTest` (including live-data
   cross-checks against NSTU's `8/87/` and PTYA's `8/378` captures);
@@ -1116,9 +1137,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   zero behavior change elsewhere — all `weather-common` (3,134 tests)
   and `weather-processing` (1,484 tests) tests pass unchanged
 
-### Version 1.20.0-SNAPSHOT - September 29, 2026
+## Version 1.20.0-SNAPSHOT - September 29, 2026
 
-#### Changed
+### Changed
 - **#94: Resolved `NoaaMetarRemarks` Monster Class (SonarCloud java:S6539)** — grouped 12
   related fields into 5 new sub-records, reducing `NoaaMetarRemarks.Builder`'s dependency
   count from 21 to under 20. Minor version bump reflects the scope of this internal
@@ -1150,7 +1171,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     subpackages, plus additional corrections (glue-jobs directory, SQL directory, missing
     resource files, missing class comments) found while reviewing it for this change
 
-#### Internal
+### Internal
 - Test coverage: new `WindRemarksTest`, `VisibilityRemarksTest`, `CeilingRemarksTest`,
   `PressureRemarksTest`, `MaintenanceRemarksTest` (including their `with...`/`add...`
   methods); `NoaaMetarRemarksTest` raw-constructor tests updated for the new 29-argument
@@ -1159,9 +1180,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   Java 25 with zero behavior change to METAR remarks parsing — all `weather-common` and
   `weather-processing` tests pass unchanged
 
-### Version 1.19.14-SNAPSHOT - September 27, 2026
+## Version 1.19.14-SNAPSHOT - September 27, 2026
 
-#### Added
+### Added
 - **#86: Lightning remarks (LTG)** — frequency, discharge type(s), location qualifier, and
   direction are now parsed from lightning remarks, extending prior groundwork
   (`LIGHTNING_PATTERN`, `LightningMatcher`) that existed but was never part of a domain
@@ -1189,7 +1210,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     a separate bare `DSNT W` case), KCLT (bare range plus `OCNL` chained-type remarks), and
     CYOW (`AT AP`-adjacent bare `CG` type with no location)
 
-#### Internal
+### Internal
 - Test coverage: new `LightningFrequencyTest`, `LightningRemarkTest`, `RegExprConstTest`
   additions for the extended `LIGHTNING_PATTERN` (including a documented partial-match
   ambiguity case for an unrecognized location token), `LightningMatcherTest` updates for the
@@ -1198,14 +1219,14 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   cases updated (KMIA, KSAV, KCLT, CYOW) plus two new cases (KELP, KMIA multi-remark) now that
   LTG remarks parse instead of surfacing in `freeText`
 
-#### Follow-up filed
+### Follow-up filed
 - Cloud-type handler discards rejected bare-type matches instead of leaving them
   unparsed — latent bug uncovered while resolving the lightning/thunderstorm-location
   handler-ordering interaction above, filed separately as it is independent of #86
 
-### Version 1.19.13-SNAPSHOT - September 26, 2026
+## Version 1.19.13-SNAPSHOT - September 26, 2026
 
-#### Added
+### Added
 - **#89: Canadian MANOBS observation program status remark** — `LAST STFD OBS/NEXT <time>` and
   `LAST OBS/NEXT <time>` are now parsed, indicating whether the reporting station is staffed
   (24-hour program) and when the next observation will be issued.
@@ -1219,7 +1240,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
     types in the same remarks string) and CYKG (`LAST STFD OBS / NEXT 271200 UTC`, alongside SLP/cloud
     types)
 
-#### Internal
+### Internal
 - `NoaaMetarParser.handleObservationProgramStatusSequential` added to `runRemarkHandlerPasses`
 - Test coverage: new `ObservationProgramStatusTest`, `RegExprConstTest` additions for `LAST_OBS_PATTERN`,
   `NoaaMetarRemarksTest` builder/toString/equality coverage, `NoaaMetarParserTest` end-to-end parsing
@@ -1227,9 +1248,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   `NoaaMetarParserRemarksRecoveryTest` cases (CYZG, CYKG) confirming the new remark type composes
   cleanly with cloud types, PRESFR, and SLP in real captured remarks strings
 
-### Version 1.19.12-SNAPSHOT - September 25, 2026
+## Version 1.19.12-SNAPSHOT - September 25, 2026
 
-#### Added
+### Added
 - **#78: Direct match tests for previously untested `RegExprConst` patterns** — `RegExprConstTest.java`
   now has dedicated `matcher.find()`-level coverage for patterns that had no direct assertions on their
   matching behavior, despite SonarCloud reporting 100% line coverage on `RegExprConst.java` (a static
@@ -1245,7 +1266,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - `PRECIP_3HR_24HR_PATTERN`
   - `TEMP_24HR_PATTERN`
 
-#### Documented
+### Documented
 - Two real pattern-overlap/partial-match ambiguities, surfaced while writing the above tests, are now
   captured as explicit passing test cases rather than false negative-match assertions:
   - `CEILING_SECOND_SITE_PATTERN` partially matches variable-ceiling-shaped input (e.g. `CIG 005V010`),
@@ -1253,13 +1274,13 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - `PRECIP_3HR_24HR_PATTERN` partially matches malformed trace-slash input (e.g. `6/A/B`), consuming
     only a single leading slash
 
-#### Internal
+### Internal
 - Test-only change — no production code modified. `CLOUD_OKTA_PATTERN` and `TS_CLD_LOC_PATTERN` were not
   revisited, as they already had substantial direct coverage from the #69 (directional arc/AND-chain) work.
 
-### Version 1.19.11-SNAPSHOT - September 25, 2026
+## Version 1.19.11-SNAPSHOT - September 25, 2026
 
-#### Fixed
+### Fixed
 - **#69: AND-chain / directional arc in thunderstorm cloud location remarks** — `TS_CLD_LOC_PATTERN`'s
   fixed `dir`/`dir2` capacity (max one direction plus one range) has been replaced with a repeatable
   `dirchain` group, correctly parsing:
@@ -1269,7 +1290,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - Confirmed via real-world captures: KDFW (three-point arc with movement), KPHX (AND-chained ranges),
     KMIA (AND-chained singles)
 
-#### Changed
+### Changed
 - **`ThunderstormLocation`** (`weather.model.components.remark`): `direction`/`directionRange` fields
   replaced with `List<DirectionSegment> directionSegments` (breaking change to the record's public
   shape — no backward-compatible constructor retained). New `getDirectionsSummary()` and
@@ -1277,7 +1298,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - New `DirectionSegment` record (`weather.model.components.remark`) — represents a single directional
   point or a multipoint range/arc within a `ThunderstormLocation`'s direction chain.
 
-#### Internal
+### Internal
 - `NoaaMetarParser.parseThunderstormLocationFromMatcher` updated to read the new `dirchain` group;
   new `parseDirectionChain(String)` helper splits on `AND` and `-` to build the `DirectionSegment` list.
 - Test coverage: new `DirectionSegmentTest`, rewritten `ThunderstormLocationTest`, updated
@@ -1285,9 +1306,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   `NoaaMetarParserRemarksRecoveryTest` (KMIA, KPHX, KCLT recovery cases revised to reflect that
   AND-chains no longer leave orphaned tokens in `freeText`).
 
-### Version 1.19.10-SNAPSHOT - September 24, 2026
+## Version 1.19.10-SNAPSHOT - September 24, 2026
 
-#### JDK 25 Support: CI Matrix, Local Toolchain, Dependency Compatibility
+### JDK 25 Support: CI Matrix, Local Toolchain, Dependency Compatibility
 
 **Added:**
 - **`.github/workflows/maven.yml`**: added JDK 25 to the CI test matrix
@@ -1325,9 +1346,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 - Full reactor build and test suite passing under both Temurin 17 and
   Temurin 25 locally, before pushing the CI matrix change
 
-### Version 1.19.9-SNAPSHOT - September 19, 2026
+## Version 1.19.9-SNAPSHOT - September 19, 2026
 
-#### Cloud-Type Parse Failures No Longer Silently Discard Tokens (CI0, TCU/CB EMBDD)
+### Cloud-Type Parse Failures No Longer Silently Discard Tokens (CI0, TCU/CB EMBDD)
 
 **Fixed:**
 - **`weather-processing` / `RegExprConst.java`**: `CLOUD_OKTA_PATTERN`
@@ -1389,9 +1410,9 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 layer (this record's job is faithful capture, not interpretation). The
 downstream layers may decide how to treat it.
 
-### Version 1.19.8-SNAPSHOT - September 18, 2026
+## Version 1.19.8-SNAPSHOT - September 18, 2026
 
-#### Chained Begin/End Weather Event Continuation Fix
+### Chained Begin/End Weather Event Continuation Fix
 
 **Fixed:**
 - **`weather-processing` / `NoaaMetarParser.java`**: fixed `handleWeatherEventsSequential`/
@@ -1431,9 +1452,9 @@ downstream layers may decide how to treat it.
 **Note:** this fix is independent of and unrelated to the `AND`-chain/
 directional-arc gap tracked on the KDFW/#61 issue — that gap remains open.
 
-### Version 1.19.7-SNAPSHOT - September 17, 2026
+## Version 1.19.7-SNAPSHOT - September 17, 2026
 
-#### Icing (ICG) Support
+### Icing (ICG) Support
 
 **Added:**
 - **`weather-common` / `Icing.java`** (new record, `weather.model.components.remark`):
@@ -1481,9 +1502,9 @@ directional-arc gap tracked on the KDFW/#61 issue — that gap remains open.
 match. Confirmed intentional given the only observed real-world format
 includes one; revisit if a qualifier-less `ICG` is ever observed in UAT.
 
-### Version 1.19.6-SNAPSHOT - September 15, 2026
+## Version 1.19.6-SNAPSHOT - September 15, 2026
 
-#### Pressure Rising/Falling Rapidly (PRESRR/PRESFR) Support
+### Pressure Rising/Falling Rapidly (PRESRR/PRESFR) Support
 
 **Added:**
 - **`weather-common` / `PressureRapidChange.java`** (new enum,
@@ -1524,9 +1545,9 @@ includes one; revisit if a qualifier-less `ICG` is ever observed in UAT.
   previously asserted `PRESFR` fell into `freeText` (correct prior to this
   fix); now asserts `pressureRapidChange` parses and `freeText` is clear
 
-### Version 1.19.5-SNAPSHOT - September 14, 2026
+## Version 1.19.5-SNAPSHOT - September 14, 2026
 
-#### Remarks Parsing Recovery Fix
+### Remarks Parsing Recovery Fix
 
 **Fixed:**
 - **`weather-processing` / `NoaaMetarParser.java`**: fixed a structural bug in
@@ -1583,13 +1604,13 @@ includes one; revisit if a qualifier-less `ICG` is ever observed in UAT.
 - Icing (`ICG`) pattern defined but never invoked by any handler
   (KCLT: `ICG PAST HR`)
 
-### September 14, 2026 - UAT Tooling & Round 2 Findings
+## September 14, 2026 - UAT Tooling & Round 2 Findings
 
 *(No version bump — these changes are to UAT tooling and process,
 not to a versioned Maven artifact. Current artifact version remains
 1.19.4-SNAPSHOT.)*
 
-#### Worldwide METAR UAT Sweep — Round 2
+### Worldwide METAR UAT Sweep — Round 2
 
 **Added:**
 - **New Kanban column: `Reviewed / No Action`** (placed ahead of Backlog)
@@ -1686,9 +1707,9 @@ not to a versioned Maven artifact. Current artifact version remains
   real captured METAR examples, organized by source station for
   provenance, before implementing a fix
 
-### Version 1.19.4-SNAPSHOT - September 10, 2026
+## Version 1.19.4-SNAPSHOT - September 10, 2026
 
-#### UAT Round 1 Remediation - Observation Year Not Parsed From Header (#63)
+### UAT Round 1 Remediation - Observation Year Not Parsed From Header (#63)
 
 **Fixed:**
 - **Observation year derived from system clock instead of NOAA's source header
@@ -1767,9 +1788,9 @@ not to a versioned Maven artifact. Current artifact version remains
   tests and code review, not yet confirmed against the full worldwide UAT
   station set.
 
-### Version 1.19.3-SNAPSHOT - September 8, 2026
+## Version 1.19.3-SNAPSHOT - September 8, 2026
 
-#### UAT Round 1 Remediation - Directional Weather and PP Precipitation Group (#60, #61)
+### UAT Round 1 Remediation - Directional Weather and PP Precipitation Group (#60, #61)
 
 **Added:**
 - **Present-weather phenomenon restated in remarks with compass direction(s)**
@@ -1845,9 +1866,9 @@ not to a versioned Maven artifact. Current artifact version remains
   identical header-line format consistently, rather than METAR growing a
   separate, possibly-divergent implementation.
 
-### Version 1.19.2-SNAPSHOT - September 6, 2026
+## Version 1.19.2-SNAPSHOT - September 6, 2026
 
-#### UAT Round 1 Remediation - Present Weather, Secondary Altimeter, and Wind at Location (#54, #56, #62)
+### UAT Round 1 Remediation - Present Weather, Secondary Altimeter, and Wind at Location (#54, #56, #62)
 
 **Fixed:**
 - **Missing-data slash placeholders misclassified as present weather** (weather-processing) (#54)
@@ -1921,9 +1942,9 @@ not to a versioned Maven artifact. Current artifact version remains
   verified via unit tests and code review, not yet confirmed against the full
   worldwide UAT station set.
 
-### Version 1.19.1-SNAPSHOT - September 3, 2026
+## Version 1.19.1-SNAPSHOT - September 3, 2026
 
-#### UAT Round 1 Remediation - Cloud Type Parsing and Density Altitude (#53, #57)
+### UAT Round 1 Remediation - Cloud Type Parsing and Density Altitude (#53, #57)
 
 **Fixed:**
 - **Downstream parse corruption after unrecognized cloud type codes** (weather-common, weather-processing) (#53)
@@ -1971,9 +1992,9 @@ not to a versioned Maven artifact. Current artifact version remains
   after a UAT re-run confirms the fixes hold across all previously affected
   and unaffected stations.
 
-### Version 1.19.0-SNAPSHOT - September 2, 2026
+## Version 1.19.0-SNAPSHOT - September 2, 2026
 
-#### Worldwide METAR UAT Sweep and Tooling
+### Worldwide METAR UAT Sweep and Tooling
 
 **Added:**
 - **`wethuat_metar_ingest.sh`** - UAT ingestion sweep script (repository root)
@@ -2030,9 +2051,9 @@ not to a versioned Maven artifact. Current artifact version remains
   command's `--role` from a generic placeholder to the actual IAM role name;
   removed leftover scratch text; documented the new `tools/` subdirectory
 
-### Version 1.18.0-SNAPSHOT - August 29, 2026
+## Version 1.18.0-SNAPSHOT - August 29, 2026
 
-#### Build Tooling and Documentation Cleanup
+### Build Tooling and Documentation Cleanup
 
 **Added:**
 - **`wethp.sh`** - Package script matching the style of `wethb.sh`/`wetht.sh`;
@@ -2093,9 +2114,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - `wethb.sh`, `wetht.sh`, and `wethp.sh` all verified passing (exit 0)
   after these changes
 
-### Version 1.17.2-SNAPSHOT - August 28, 2026
+## Version 1.17.2-SNAPSHOT - August 28, 2026
 
-#### Additional SonarCloud Fixes - Modern Java Idioms
+### Additional SonarCloud Fixes - Modern Java Idioms
 
 **Fixed:**
 - **Anonymous classes on functional interfaces** (weather-common) (java:S9357)
@@ -2123,9 +2144,9 @@ not to a versioned Maven artifact. Current artifact version remains
   semantics of the original `Arrays.asList()` calls or anonymous class
   instances
 
-### Version 1.17.1-SNAPSHOT - August 28, 2026
+## Version 1.17.1-SNAPSHOT - August 28, 2026
 
-#### SonarCloud Maintainability and Reliability Fixes
+### SonarCloud Maintainability and Reliability Fixes
 
 **Fixed:**
 - **Implicit time zone in timestamp generation** (weather-ingestion)
@@ -2164,9 +2185,9 @@ not to a versioned Maven artifact. Current artifact version remains
   extraction only covered `source` and omitted `rawData`/`stationId`
   validation; corrected before commit)
 
-### Version 1.17.0-SNAPSHOT - August 27, 2026
+## Version 1.17.0-SNAPSHOT - August 27, 2026
 
-#### AWS Glue Bronze-to-Silver ETL Pipeline - METAR Observations
+### AWS Glue Bronze-to-Silver ETL Pipeline - METAR Observations
 
 **Added:**
 - **Bronze-to-Silver Glue ETL job for METAR observations** (glue-jobs)
@@ -2217,9 +2238,9 @@ not to a versioned Maven artifact. Current artifact version remains
     corrected `storage.location.template` TBLPROPERTIES to use Hive-style
     `key=value` path segments matching the actual S3 partition layout
 
-### Version 1.16.0-SNAPSHOT - February 08, 2026
+## Version 1.16.0-SNAPSHOT - February 08, 2026
 
-#### Weather Model & Processing - Unparsed Main Body Token Capture
+### Weather Model & Processing - Unparsed Main Body Token Capture
 
 **Added:**
 - **Unparsed Main Body Token Capture** - Production data preservation for unknown METAR tokens
@@ -2272,9 +2293,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Ready for production deployment with full test coverage
 - Enables data-driven parser improvement (analyze unparsed tokens in production)
 
-### Version 1.15.0-SNAPSHOT - February 07, 2026
+## Version 1.15.0-SNAPSHOT - February 07, 2026
 
-#### Weather Ingestion Module - METAR/TAF Parser Integration & Remark Field Enhancement
+### Weather Ingestion Module - METAR/TAF Parser Integration & Remark Field Enhancement
 
 **Added:**
 - **Parser Integration (Phase 1)** - Complete integration of weather-processing parsers
@@ -2373,9 +2394,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - S3 now receives fully parsed, queryable aviation weather data
 - Rich metadata enables advanced querying and analytics
 
-### Version 1.14.0-SNAPSHOT - February 03, 2026
+## Version 1.14.0-SNAPSHOT - February 03, 2026
 
-#### Weather Ingestion Module - Dual Storage Implementation for NOAA Data
+### Weather Ingestion Module - Dual Storage Implementation for NOAA Data
 
 **Added:**
 - **Dual Storage System** - Simultaneous storage of raw text and JSON formats
@@ -2483,9 +2504,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Integration test guide validates end-to-end functionality
 - Ready for production deployment with monitoring and lifecycle policies
 
-### Version 1.13.0-SNAPSHOT - January 28, 2026
+## Version 1.13.0-SNAPSHOT - January 28, 2026
 
-#### Weather Storage Module - Phase 4 GSI Implementation & DynamoDB Integration Testing
+### Weather Storage Module - Phase 4 GSI Implementation & DynamoDB Integration Testing
 
 **Added:**
 - **DynamoDB Time-Bucket GSI Implementation** (Phase 4 - Production Ready)
@@ -2698,9 +2719,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Documentation updated for production deployment
 - Ready for production GSI migration with zero downtime
 
-### Version 1.12.0-SNAPSHOT - January 21, 2026
+## Version 1.12.0-SNAPSHOT - January 21, 2026
 
-#### Weather Storage Module - Complete Implementation & Unit Testing
+### Weather Storage Module - Complete Implementation & Unit Testing
 
 **Added:**
 - **DynamoDB Repository Implementation** (weather-storage)
@@ -2816,9 +2837,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Jackson polymorphic serialization properly configured
 - Unit testing phase complete (96% coverage)
 
-### Version 1.11.0-SNAPSHOT - January 15, 2026
+## Version 1.11.0-SNAPSHOT - January 15, 2026
 
-#### Weather Common Package Structure Refactoring & Code Quality Improvements
+### Weather Common Package Structure Refactoring & Code Quality Improvements
 
 **Changed:**
 - **Package Structure Reorganization** (weather-common)
@@ -2876,9 +2897,9 @@ not to a versioned Maven artifact. Current artifact version remains
   cannot be tested as the constructor validates all units. Overall project coverage
   remains at 91%. This metric will reset with the next release.
 
-### Version 1.10.0-SNAPSHOT - January 13, 2026
+## Version 1.10.0-SNAPSHOT - January 13, 2026
 
-#### NOAA Aviation Weather Ingestion System - Complete Implementation
+### NOAA Aviation Weather Ingestion System - Complete Implementation
 
 **Added:**
 - **NOAA Aviation Weather Ingestion System**
@@ -2918,9 +2939,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Inline comments explaining complex logic
 - Test documentation with clear arrange/act/assert structure
 
-### Version 1.9.0-SNAPSHOT - January 10, 2026
+## Version 1.9.0-SNAPSHOT - January 10, 2026
 
-#### TAF Parser Implementation & Architecture Refactoring
+### TAF Parser Implementation & Architecture Refactoring
 
 **Added:**
 - **TAF Parser Components** (Complete Terminal Aerodrome Forecast parsing)
@@ -3068,9 +3089,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Both METAR and TAF parsers achieve >85% test coverage
 - Ready for integration with weather-ingestion pipeline
 
-### Version 1.8.0-SNAPSHOT - December 29, 2025
+## Version 1.8.0-SNAPSHOT - December 29, 2025
 
-#### Enhanced METAR Remarks Parser - Phase 2 Complete
+### Enhanced METAR Remarks Parser - Phase 2 Complete
 
 **Added:**
 - **METAR Remarks Parser Components** (9 additional remark types implemented)
@@ -3294,9 +3315,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Strong architectural foundation
 - All implementations follow consistent patterns established in Phase 1
 
-### Version 1.7.0-SNAPSHOT - December 18, 2025
+## Version 1.7.0-SNAPSHOT - December 18, 2025
 
-#### Enhanced METAR Remarks Parser - Phase 1 Complete
+### Enhanced METAR Remarks Parser - Phase 1 Complete
 
 **Added:**
 - **METAR Remarks Parser Components** (4 major remark types implemented)
@@ -3410,9 +3431,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Strong foundation established for future remark types
 - All implementations follow consistent architectural patterns
 
-### Version 1.6.0-SNAPSHOT - December 13, 2025
+## Version 1.6.0-SNAPSHOT - December 13, 2025
 
-#### Enhanced METAR Parser Implementation - Main Body Components Complete
+### Enhanced METAR Parser Implementation - Main Body Components Complete
 
 **Added:**
 - **METAR Parser Components** (5 major handlers implemented)
@@ -3490,9 +3511,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Build time: ~3 seconds for weather-common, ~2.5 seconds for weather-processing
 - Zero test failures across all modules
 
-### Version 1.5.0-SNAPSHOT - November 21, 2025
+## Version 1.5.0-SNAPSHOT - November 21, 2025
 
-#### Domain Model Refinement & Test Coverage Excellence
+### Domain Model Refinement & Test Coverage Excellence
 
 **Enhanced:**
 - **NoaaMetarData Domain Model**
@@ -3528,9 +3549,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Maven build: clean 'install' successful
 - Ready for Day 7: Enhanced METAR Parser Implementation
 
-### Version 1.4.0-SNAPSHOT Additional - November 8, 2025
+## Version 1.4.0-SNAPSHOT Additional - November 8, 2025
 
-#### Domain Model Foundation
+### Domain Model Foundation
 
 **Added:**
 **New Domain Model Components**
@@ -3574,9 +3595,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - Domain model is complete and tested, ready for parser integration
 - Parser implementation deferred to next iteration
 
-### Version 1.4.0-SNAPSHOT - Date: October 29, 2025
+## Version 1.4.0-SNAPSHOT - Date: October 29, 2025
 
-#### weather-storage Module - Weather Storage & Lambda Architecture Foundation
+### weather-storage Module - Weather Storage & Lambda Architecture Foundation
 
 **Added:**
 **Weather Storage**
@@ -3624,9 +3645,9 @@ not to a versioned Maven artifact. Current artifact version remains
 **Technical Debt Addressed**
 - Improved branch coverage from 73% to 89% in weather-ingestion
 
-### Version 1.3.0-SNAPSHOT - Date: October 26, 2025
+## Version 1.3.0-SNAPSHOT - Date: October 26, 2025
 
-#### weather-ingestion Module - Comprehensive Unit Test Coverage
+### weather-ingestion Module - Comprehensive Unit Test Coverage
 
 **Added:**
 - **NoaaConfiguration Test Suite** (21 tests, 94% coverage)
@@ -3680,9 +3701,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - All Sonar quality rules satisfied (no unused imports, proper exception handling)
 - Test methods properly declare checked exceptions
 
-### Version 1.2.0-SNAPSHOT - Date: October 23, 2025
+## Version 1.2.0-SNAPSHOT - Date: October 23, 2025
 
-#### weather-processing Module - Weather Processing Module
+### weather-processing Module - Weather Processing Module
 
 **Added:**
 - **Parser Infrastructure** - Multi-source weather data parsing framework
@@ -3713,9 +3734,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - ParserConfigurationTest (29 tests)
 - WeatherParserTest (16 tests)
 
-### Version 1.1.0-SNAPSHOT - Date: October 21, 2025
+## Version 1.1.0-SNAPSHOT - Date: October 21, 2025
 
-#### weather-common Module - Universal Weather Data Models
+### weather-common Module - Universal Weather Data Models
 
 **Added:**
 - **Universal Weather Data Model** (Java 17 sealed classes):
@@ -3739,9 +3760,9 @@ not to a versioned Maven artifact. Current artifact version remains
 - All tests use JUnit 5 with descriptive display names
 - Mock implementations for interface testing
 
-### Version 1.0.0-SNAPSHOT - Date: October 15, 2025
+## Version 1.0.0-SNAPSHOT - Date: October 15, 2025
 
-#### Major Architecture Rewrite - Multi-Module Platform Structure
+### Major Architecture Rewrite - Multi-Module Platform Structure
 
 **Breaking Changes:**
 - Restructured entire project into multi-module Maven architecture
