@@ -20,8 +20,8 @@ import java.util.function.Predicate;
 
 /**
  * How {@link SectionParser} runs one section of a report (#153). The settings
- * capture the behavior that used to differ between the pattern registry and the
- * remark handler chain, so each section can choose it explicitly.
+ * capture how sections differ (METAR main body and TAF periods versus METAR remarks),
+ * so each section chooses its behavior explicitly.
  *
  * @param scheduling   the order handlers are tried in
  * @param rejectedText what happens to a group a handler rejected
@@ -41,12 +41,12 @@ record SectionPolicy(Scheduling scheduling,
     enum Scheduling {
         /**
          * Try handlers in order; after any progress, start again from the first
-         * handler. The pattern registry's behavior (main body, TAF periods).
+         * handler. Used by the METAR main body and TAF forecast periods.
          */
         FIRST_MATCH_RESTART,
         /**
          * Run every handler once per pass, in order, repeating passes until one
-         * makes no progress. The remark handler chain's behavior.
+         * makes no progress. Used by METAR remarks.
          */
         PASSES
     }

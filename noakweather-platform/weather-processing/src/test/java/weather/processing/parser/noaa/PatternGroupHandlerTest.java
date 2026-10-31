@@ -27,9 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link PatternGroupHandler} (#153, #154). The adapter must reproduce
- * the pattern registry's text handling so registry entries can move onto the
- * engine without changing parsed output.
+ * Tests for {@link PatternGroupHandler} (#153, #154). The adapter's text handling
+ * must stay fixed: the golden-output tests depend on it.
  */
 class PatternGroupHandlerTest {
 
@@ -50,7 +49,7 @@ class PatternGroupHandlerTest {
                 "a1 a2 b", target);
 
         assertThat(target).containsExactly("1");
-        // Registry rule: trimmed rest plus one trailing space
+        // Legacy rule: trimmed rest plus one trailing space
         assertThat(outcome).isEqualTo(new GroupOutcome.Parsed("a2 b "));
     }
 

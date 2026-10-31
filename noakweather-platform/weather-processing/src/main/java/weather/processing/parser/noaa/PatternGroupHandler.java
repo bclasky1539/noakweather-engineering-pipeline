@@ -30,13 +30,13 @@ import java.util.regex.Pattern;
  * be passed as a method reference:
  * {@code PatternGroupHandler.single("wind", WIND_PATTERN, NoaaMetarParser::handleWind)}.
  * <p>
- * Matching and text handling follow the pattern registry exactly, so moving a
- * registry entry here does not change parsed output:
+ * Matching and text handling are pinned by the golden-output tests;
+ * changing them changes parsed output:
  * <p>
  * - the pattern is applied with {@code find()}; an empty match is ignored;
  * - the match is removed with {@code replaceFirst("")}, the rest is trimmed, and a
- * trailing space is added when text remains (the registry's legacy rule, which
- * some patterns rely on to see the end of a group);
+ * trailing space is added when text remains (a legacy rule some patterns rely
+ * on to see the end of a group);
  * - a repeating handler applies its pattern again until it stops matching.
  * <p>
  * An action rejects a group by throwing {@link InvalidObservationException}, or
@@ -81,7 +81,7 @@ final class PatternGroupHandler {
     /**
      * A group that is recognized and consumed but not stored, so it does not stop
      * the section as unrecognized text would (e.g. a METAR-only group in a TAF, or
-     * a registry entry that never had a handler).
+     * a METAR header group with nothing to store).
      *
      * @param name    group name used in logs
      * @param pattern the group's pattern
@@ -134,7 +134,7 @@ final class PatternGroupHandler {
     }
 
     /**
-     * Remove the match and keep the registry's trailing-space rule.
+     * Remove the match and keep the legacy trailing-space rule.
      */
     private static String removeMatch(Matcher matcher) {
         String remaining = matcher.replaceFirst("").trim();

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Version 1.27.4-SNAPSHOT - October 31, 2026
+
+### Removed
+- `NoaaAviationWeatherPatternRegistry` and `NoaaAviationWeatherPatternHandler`, with their
+  tests (#<phase 5 issue>, #153 phase 5). METAR and TAF now share one group parsing
+  mechanism, `SectionParser`.
+- Registry-only patterns from `RegExprConst`: `TAF_STR_PATTERN`, `VALTMPER_PATTERN`,
+  `GROUP_BECMG_TEMPO_PROB_PATTERN`, `GROUP_FM_PATTERN`.
+
+### Changed
+- Comments and Javadoc in the engine (`PatternGroupHandler`, `SectionPolicy`) and both
+  parsers describe the engine rather than the registry.
+
+Parsed output is unchanged; both golden-output tests pass without re-recording.
+
 ## Version 1.27.3-SNAPSHOT - October 30, 2026
 
 ### Added
