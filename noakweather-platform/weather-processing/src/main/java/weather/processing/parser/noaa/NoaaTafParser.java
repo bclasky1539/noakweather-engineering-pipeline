@@ -22,14 +22,13 @@ import weather.model.WeatherConditions;
 import weather.model.components.*;
 import weather.model.enums.ChangeIndicator;
 import weather.processing.parser.common.ParseResult;
-import weather.utils.IndexedLinkedHashMap;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,6 +62,7 @@ import static weather.processing.parser.noaa.RegExprConst.*;
  * - Parses TAF into base forecast + change groups
  * - Each period (base, FM, TEMPO, etc.) becomes a ForecastPeriod
  * - Inherits aviation weather handlers from NoaaAviationWeatherParser
+ * - Each period's conditions run on the group parsing engine ({@link SectionParser})
  * - Stores result in NoaaTafData model
  *
  * @author bclasky1539
@@ -71,8 +71,19 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NoaaTafParser.class);
 
-    // Pattern registry for METAR-like weather elements
-    private final NoaaAviationWeatherPatternRegistry patternRegistry;
+    /**
+     * Forecast-period conditions: the registry's behavior (#153 phase 4). First matching
+     * handler wins, rejected groups are dropped, and parsing stops at the first group no
+     * handler recognizes or at the start of the next change group or TX/TN forecast.
+     */
+    private static final SectionPolicy CONDITIONS_POLICY = SectionPolicy.of(
+                    SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
+                    SectionPolicy.RejectedText.CONSUME,
+                    SectionPolicy.UnrecognizedToken.STOP)
+            .withBoundary(NoaaTafParser::isChangeGroupStart);
+
+    // Forecast-period condition groups, run through the shared group parsing engine
+    private final SectionParser<NoaaTafParser> conditionsParser;
 
     // TAF-specific state
     private ValidityPeriod validityPeriod;
@@ -85,7 +96,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     private Integer currentProbability;
 
     public NoaaTafParser() {
-        this.patternRegistry = new NoaaAviationWeatherPatternRegistry();
+        this.conditionsParser = new SectionParser<>("TAF forecast period", createConditionHandlers(), CONDITIONS_POLICY);
     }
 
     @Override
@@ -419,7 +430,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
         currentPeriodEnd = validityPeriod.validTo();
 
         // Parse weather conditions until we hit a change group or end
-        token = parseWeatherConditions(token, this::isChangeGroupStart);
+        token = parseWeatherConditions(token);
 
         // Save BASE forecast period
         saveForecastPeriod();
@@ -447,7 +458,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
         // Parse weather conditions
         String remaining = token.substring(matcher.end()).trim();
-        remaining = parseWeatherConditions(remaining, this::isChangeGroupStart);
+        remaining = parseWeatherConditions(remaining);
 
         // Save FM period
         saveForecastPeriod();
@@ -496,7 +507,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
         // Parse weather conditions
         String remaining = token.substring(matcher.end()).trim();
-        remaining = parseWeatherConditions(remaining, this::isChangeGroupStart);
+        remaining = parseWeatherConditions(remaining);
 
         // Save TEMPO period
         saveForecastPeriod();
@@ -526,7 +537,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
         // Parse weather conditions
         String remaining = token.substring(matcher.end()).trim();
-        remaining = parseWeatherConditions(remaining, this::isChangeGroupStart);
+        remaining = parseWeatherConditions(remaining);
 
         // Save BECMG period
         saveForecastPeriod();
@@ -558,7 +569,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
         // Parse weather conditions
         String remaining = token.substring(matcher.end()).trim();
-        remaining = parseWeatherConditions(remaining, this::isChangeGroupStart);
+        remaining = parseWeatherConditions(remaining);
 
         // Save PROB period
         saveForecastPeriod();
@@ -567,9 +578,9 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     }
 
     /**
-     * Check if token starts with a change group indicator.
+     * Check if token starts with a change group indicator or a TX/TN forecast.
      */
-    private boolean isChangeGroupStart(String token) {
+    private static boolean isChangeGroupStart(String token) {
         return token.startsWith("FM") ||
                 token.startsWith("TEMPO ") ||
                 token.startsWith("BECMG ") ||
@@ -579,91 +590,39 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     }
 
     /**
-     * Parse weather conditions (wind, visibility, clouds, etc.) for current period.
-     * Stops when stopCondition is met.
+     * Parse weather conditions (wind, visibility, clouds, etc.) for the current period,
+     * stopping at the next change group, a TX/TN forecast, or a group no handler recognizes.
+     *
+     * @param token the text after the period's change-group header
+     * @return the text from the stopping point on
      */
-    private String parseWeatherConditions(String token, java.util.function.Predicate<String> stopCondition) {
-        IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> mainHandlers =
-                patternRegistry.getMainHandlers();
-
-        return parseWithHandlers(token, mainHandlers, stopCondition);
+    private String parseWeatherConditions(String token) {
+        return conditionsParser.parse(token, this).remaining();
     }
 
     /**
-     * Parse token using METAR pattern handlers, stopping when condition is met.
+     * Forecast-period handlers in the pattern registry's main-body order (#153 phase 4).
+     * <p>
+     * TAF only ever stored wind, visibility, runway (logged only), present weather and
+     * sky condition. The METAR header groups, temperature/dewpoint, altimeter and NOSIG
+     * consume a matching group without storing it, as the registry did; runway state and
+     * recent weather do the same through their TAF handlers.
+     *
+     * @return the handlers, in order
      */
-    private String parseWithHandlers(
-            String token,
-            IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers,
-            java.util.function.Predicate<String> stopCondition) {
-
-        String currentToken = token;
-
-        while (!currentToken.isEmpty() && !stopCondition.test(currentToken)) {
-            LOGGER.debug("Processing token: '{}'", currentToken);
-
-            String updatedToken = tryAllPatterns(currentToken, handlers);
-
-            // If no match found, exit loop
-            if (updatedToken.equals(currentToken)) {
-                break;
-            }
-
-            currentToken = updatedToken;
-        }
-
-        return currentToken;
-    }
-
-    /**
-     * Try all patterns against token and return updated token after first match.
-     */
-    private String tryAllPatterns(
-            String token,
-            IndexedLinkedHashMap<Pattern, NoaaAviationWeatherPatternHandler> handlers) {
-
-        for (Map.Entry<Pattern, NoaaAviationWeatherPatternHandler> entry : handlers.entrySet()) {
-            Pattern pattern = entry.getKey();
-            NoaaAviationWeatherPatternHandler handlerInfo = entry.getValue();
-
-            LOGGER.debug("Trying pattern: {} ({})",
-                    handlerInfo.handlerName(), pattern.pattern());
-
-            String updatedToken = tryPattern(token, pattern, handlerInfo);
-
-            if (!updatedToken.equals(token)) {
-                return updatedToken;
-            }
-        }
-
-        return token;
-    }
-
-    /**
-     * Try a single pattern against token.
-     */
-    private String tryPattern(String token, Pattern pattern, NoaaAviationWeatherPatternHandler handlerInfo) {
-        Matcher matcher = pattern.matcher(token);
-
-        if (!matcher.find() || matcher.group(0).isEmpty()) {
-            return token;
-        }
-
-        if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("Match found: '{}'", matcher.group(0));
-        }
-
-        // Execute handler
-        handlePattern(handlerInfo.handlerName(), matcher);
-
-        // Remove matched portion
-        String updatedToken = matcher.replaceFirst("").trim();
-
-        if (!updatedToken.isEmpty()) {
-            updatedToken += " ";
-        }
-
-        return updatedToken;
+    private static List<GroupHandler<NoaaTafParser>> createConditionHandlers() {
+        List<GroupHandler<NoaaTafParser>> handlers = new ArrayList<>(List.of(
+                PatternGroupHandler.consumeOnly("reportType", REPORT_TYPE_PATTERN),
+                PatternGroupHandler.consumeOnly("monthDayYear", MONTH_DAY_YEAR_PATTERN),
+                PatternGroupHandler.consumeOnly("station", STATION_DAY_TIME_VALTMPER_PATTERN),
+                PatternGroupHandler.consumeOnly("handleStationAndIssueTime", STATION_AND_ISSUE_TIME_PATTERN),
+                PatternGroupHandler.consumeOnly("reportModifier", REPORT_MODIFIER_PATTERN)));
+        handlers.addAll(conditionHandlers());
+        handlers.addAll(List.of(
+                PatternGroupHandler.consumeOnly("tempDewpoint", TEMP_DEWPOINT_PATTERN),
+                PatternGroupHandler.consumeOnly("altimeter", ALTIMETER_PATTERN),
+                PatternGroupHandler.consumeOnly("noSigChange", NO_SIG_CHANGE_PATTERN)));
+        return handlers;
     }
 
     /**
@@ -694,26 +653,6 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     // ==================== PATTERN HANDLERS ====================
 
     /**
-     * Route to appropriate handler based on handler name.
-     * Handlers for shared aviation weather elements (wind, visibility, present weather,
-     * sky conditions) are inherited from NoaaAviationWeatherParser.
-     */
-    private void handlePattern(String handlerName, Matcher matcher) {
-        try {
-            switch (handlerName) {
-                case "wind" -> handleWind(matcher);              // Inherited from base
-                case "visibility" -> handleVisibility(matcher);  // Inherited from base
-                case "runway" -> handleRunway(matcher);          // Overridden below
-                case "presentWeather" -> handlePresentWeather(matcher);  // Inherited from base
-                case "skyCondition" -> handleSkyCondition(matcher);      // Inherited from base
-                default -> LOGGER.debug("No handler implemented for: {}", handlerName);
-            }
-        } catch (Exception e) {
-            LOGGER.warn("Error in handler '{}': {}", handlerName, e.getMessage(), e);
-        }
-    }
-
-    /**
      * Override base class with minimal TAF RVR support.
      * RVR is rare in TAF forecasts - just log if encountered.
      */
@@ -723,6 +662,17 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
             LOGGER.debug("RVR in TAF (unusual): {}", matcher.group(0));
         }
         // RVR is rare in TAF, just log it
+    }
+
+    /**
+     * Override base class: TAF does not store recent weather (RE groups are an
+     * observation, not a forecast). The group is consumed and logged only.
+     */
+    @Override
+    protected void handleRecentWeather(Matcher matcher) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Recent weather in TAF (not stored): {}", matcher.group(0));
+        }
     }
 
     // ==================== TAF-SPECIFIC HANDLERS ====================

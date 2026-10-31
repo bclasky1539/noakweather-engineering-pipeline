@@ -96,8 +96,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final Set<String> THUNDERSTORM_LOCATION_CODES =
             Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
 
-    private static final Pattern REPORT_TYPE_PATTERN = Pattern.compile("^(METAR|SPECI)\\s+");
-
     /**
      * Main body: the registry's behavior (#153 phase 2). First matching handler
      * wins, rejected groups are dropped, and parsing stops at the first group no

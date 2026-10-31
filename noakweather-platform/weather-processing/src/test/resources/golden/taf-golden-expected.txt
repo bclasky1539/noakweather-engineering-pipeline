@@ -1,0 +1,1266 @@
+=== 2026/10/15 17:20 TAF KJFK 151720Z 1518/1624 18012KT P6SM FEW250 FM152100 21015KT P6SM FEW250 FM160300 24012KT P6SM SCT250
+  stationId: KJFK
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 3
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=180, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=25000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T21:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=210, speedValue=15, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=25000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: FM
+  period[2].changeTime: 2026-10-16T03:00:00Z
+  period[2].periodStart: null
+  period[2].periodEnd: null
+  period[2].probability: null
+  period[2].conditions.wind: Wind[directionDegrees=240, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[2].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[2].conditions.presentWeather: []
+  period[2].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=25000, cloudType=null]]
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+
+=== 2025/12/15 20:57 TAF AMD KCLT 151953Z 1520/1624 VRB02KT P6SM FEW250 FM152100 21005KT P6SM SCT250 FM160400 20007KT P6SM BKN250
+  stationId: KCLT
+  reportType: TAF
+  reportModifier: AMD
+  issueTime: 2025-12-15T19:53:00Z
+  validityPeriod: ValidityPeriod[validFrom=2025-12-15T20:00:00Z, validTo=2025-12-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 3
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2025-12-15T20:00:00Z
+  period[0].periodEnd: 2025-12-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=null, speedValue=2, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=25000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2025-12-15T21:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=210, speedValue=5, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=25000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: FM
+  period[2].changeTime: 2025-12-16T04:00:00Z
+  period[2].periodStart: null
+  period[2].periodEnd: null
+  period[2].probability: null
+  period[2].conditions.wind: Wind[directionDegrees=200, speedValue=7, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[2].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[2].conditions.presentWeather: []
+  period[2].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=25000, cloudType=null]]
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+
+=== 2026/10/15 11:30 TAF COR KORD 151130Z 1512/1618 27015G25KT P6SM SCT035 BKN250 TEMPO 1514/1518 BKN030
+  stationId: KORD
+  reportType: TAF
+  reportModifier: COR
+  issueTime: 2026-10-15T11:30:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T12:00:00Z, validTo=2026-10-16T18:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T12:00:00Z
+  period[0].periodEnd: 2026-10-16T18:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=270, speedValue=15, gustValue=25, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=3500, cloudType=null], SkyCondition[coverage=BROKEN, heightFeet=25000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T14:00:00Z
+  period[1].periodEnd: 2026-10-15T18:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=3000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 11:40 TAF KBOS 151140Z 1512/1612 06012KT 3SM -RA BR OVC010 TEMPO 1512/1516 1SM RA BR OVC006 FM151800 08015G22KT 2SM RA BR OVC008 FM160200 33010KT P6SM SCT030
+  stationId: KBOS
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T11:40:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T12:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 4
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T12:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=60, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=3.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: [PresentWeather[intensity=-, descriptor=null, precipitation=RA, obscuration=null, other=null, rawCode=-RA], PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=BR, other=null, rawCode=BR]]
+  period[0].conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=1000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T12:00:00Z
+  period[1].periodEnd: 2026-10-15T16:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=1.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=RA, obscuration=null, other=null, rawCode=RA], PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=BR, other=null, rawCode=BR]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=600, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: FM
+  period[2].changeTime: 2026-10-15T18:00:00Z
+  period[2].periodStart: null
+  period[2].periodEnd: null
+  period[2].probability: null
+  period[2].conditions.wind: Wind[directionDegrees=80, speedValue=15, gustValue=22, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[2].conditions.visibility: Visibility[distanceValue=2.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[2].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=RA, obscuration=null, other=null, rawCode=RA], PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=BR, other=null, rawCode=BR]]
+  period[2].conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=800, cloudType=null]]
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+  period[3].changeIndicator: FM
+  period[3].changeTime: 2026-10-16T02:00:00Z
+  period[3].periodStart: null
+  period[3].periodEnd: null
+  period[3].probability: null
+  period[3].conditions.wind: Wind[directionDegrees=330, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[3].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[3].conditions.presentWeather: []
+  period[3].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=3000, cloudType=null]]
+  period[3].conditions.temperature: null
+  period[3].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF EGLL 150500Z 1506/1612 22010KT 9999 SCT030 BECMG 1510/1513 25015G25KT TEMPO 1514/1520 7000 SHRA BKN014
+  stationId: EGLL
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 3
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=220, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=3000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: BECMG
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T10:00:00Z
+  period[1].periodEnd: 2026-10-15T13:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=250, speedValue=15, gustValue=25, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: []
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: TEMPO
+  period[2].changeTime: null
+  period[2].periodStart: 2026-10-15T14:00:00Z
+  period[2].periodEnd: 2026-10-15T20:00:00Z
+  period[2].probability: null
+  period[2].conditions.wind: null
+  period[2].conditions.visibility: Visibility[distanceValue=7000.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[2].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=SH, precipitation=RA, obscuration=null, other=null, rawCode=SHRA]]
+  period[2].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=1400, cloudType=null]]
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KATL 151720Z 1518/1624 19008KT P6SM SCT050 PROB30 1520/1524 4SM TSRA BKN030CB FM160000 VRB03KT P6SM FEW250
+  stationId: KATL
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 3
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=190, speedValue=8, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=5000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: PROB
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T20:00:00Z
+  period[1].periodEnd: 2026-10-16T00:00:00Z
+  period[1].probability: 30
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=4.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=TS, precipitation=RA, obscuration=null, other=null, rawCode=TSRA]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=3000, cloudType=CB]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: FM
+  period[2].changeTime: 2026-10-16T00:00:00Z
+  period[2].periodStart: null
+  period[2].periodEnd: null
+  period[2].probability: null
+  period[2].conditions.wind: Wind[directionDegrees=null, speedValue=3, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[2].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[2].conditions.presentWeather: []
+  period[2].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=25000, cloudType=null]]
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF LFPG 150500Z 1506/1612 20008KT CAVOK PROB40 TEMPO 1514/1518 4000 TSRA SCT030CB
+  stationId: LFPG
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=200, speedValue=8, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=null, unit=null, lessThan=false, greaterThan=false, specialCondition=CAVOK]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: []
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: PROB
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T14:00:00Z
+  period[1].periodEnd: 2026-10-15T18:00:00Z
+  period[1].probability: 40
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=4000.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=TS, precipitation=RA, obscuration=null, other=null, rawCode=TSRA]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=3000, cloudType=CB]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 23:00 TAF RJTT 152300Z 1600/1706 04010KT 9999 FEW030 BECMG 1603/1606 36015KT TEMPO 1606/1612 SHRA PROB30 TEMPO 1612/1618 3000 TSRA FEW015CB
+  stationId: RJTT
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T23:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-16T00:00:00Z, validTo=2026-10-17T06:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 4
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-16T00:00:00Z
+  period[0].periodEnd: 2026-10-17T06:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=40, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=3000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: BECMG
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-16T03:00:00Z
+  period[1].periodEnd: 2026-10-16T06:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=360, speedValue=15, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: []
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: TEMPO
+  period[2].changeTime: null
+  period[2].periodStart: 2026-10-16T06:00:00Z
+  period[2].periodEnd: 2026-10-16T12:00:00Z
+  period[2].probability: null
+  period[2].conditions.wind: null
+  period[2].conditions.visibility: null
+  period[2].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=SH, precipitation=RA, obscuration=null, other=null, rawCode=SHRA]]
+  period[2].conditions.skyConditions: []
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+  period[3].changeIndicator: PROB
+  period[3].changeTime: null
+  period[3].periodStart: 2026-10-16T12:00:00Z
+  period[3].periodEnd: 2026-10-16T18:00:00Z
+  period[3].probability: 30
+  period[3].conditions.wind: null
+  period[3].conditions.visibility: Visibility[distanceValue=3000.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[3].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=TS, precipitation=RA, obscuration=null, other=null, rawCode=TSRA]]
+  period[3].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=1500, cloudType=CB]]
+  period[3].conditions.temperature: null
+  period[3].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KLAX 151720Z 1518/1624 25010KT P6SM SCT020 FM160300 VRB03KT P6SM BKN008 FM161700 23008KT P6SM SCT015
+  stationId: KLAX
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 3
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=250, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=2000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-16T03:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=null, speedValue=3, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=800, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: FM
+  period[2].changeTime: 2026-10-16T17:00:00Z
+  period[2].periodStart: null
+  period[2].periodEnd: null
+  period[2].probability: null
+  period[2].conditions.wind: Wind[directionDegrees=230, speedValue=8, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[2].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[2].conditions.presentWeather: []
+  period[2].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=1500, cloudType=null]]
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KSTL 151720Z 1518/1624 FM152000 18010KT P6SM SKC
+  stationId: KSTL
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: null
+  period[0].conditions.visibility: null
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: []
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T20:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=180, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SKC, heightFeet=null, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF LEMD 150500Z 1506/1612 VRB03KT CAVOK TX24/1515Z TN08/1606Z
+  stationId: LEMD
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: 24
+  maxTemperatureTime: 2026-10-15T15:00:00Z
+  minTemperature: 8
+  minTemperatureTime: 2026-10-16T06:00:00Z
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 1
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=null, speedValue=3, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=null, unit=null, lessThan=false, greaterThan=false, specialCondition=CAVOK]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: []
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+
+=== 2026/01/10 11:00 TAF CYYZ 101100Z 1012/1112 32015G25KT P6SM SKC TEMPO 1012/1016 BKN030 TXM02/1018Z TNM12/1111Z
+  stationId: CYYZ
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-01-10T11:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-01-10T12:00:00Z, validTo=2026-01-11T12:00:00Z]
+  maxTemperature: -2
+  maxTemperatureTime: 2026-01-10T18:00:00Z
+  minTemperature: -12
+  minTemperatureTime: 2026-01-11T11:00:00Z
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-01-10T12:00:00Z
+  period[0].periodEnd: 2026-01-11T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=320, speedValue=15, gustValue=25, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SKC, heightFeet=null, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-01-10T12:00:00Z
+  period[1].periodEnd: 2026-01-10T16:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=3000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 13:00 TAF KADW 151300Z 1513/1619 18008KT 9999 FEW040 QNH3002INS BECMG 1518/1519 22010KT 9999 SCT050 QNH2998INS TX22/1519Z TN10/1611Z
+  stationId: KADW
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T13:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T13:00:00Z, validTo=2026-10-16T19:00:00Z]
+  maxTemperature: 22
+  maxTemperatureTime: 2026-10-15T19:00:00Z
+  minTemperature: 10
+  minTemperatureTime: 2026-10-16T11:00:00Z
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T13:00:00Z
+  period[0].periodEnd: 2026-10-16T19:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=180, speedValue=8, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=4000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: BECMG
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T18:00:00Z
+  period[1].periodEnd: 2026-10-15T19:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=220, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=5000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2025/12/31 18:00 TAF KJFK 311800Z 3118/0124 18010KT P6SM SKC FM010600 20012KT P6SM SCT250
+  stationId: KJFK
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2025-12-31T18:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2025-12-31T18:00:00Z, validTo=2026-01-02T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2025-12-31T18:00:00Z
+  period[0].periodEnd: 2026-01-02T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=180, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SKC, heightFeet=null, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2025-12-01T06:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=200, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=25000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/04/30 05:00 TAF KSEA 300500Z 3006/3024 16008KT P6SM BKN040 FM301800 20010KT P6SM OVC030
+  stationId: KSEA
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-04-30T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-04-30T06:00:00Z, validTo=2026-05-01T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-04-30T06:00:00Z
+  period[0].periodEnd: 2026-05-01T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=160, speedValue=8, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=4000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-04-30T18:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=200, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=3000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/02/28 11:20 TAF KDEN 281120Z 2812/0112 34012KT P6SM FEW100 TEMPO 2818/2824 BKN060
+  stationId: KDEN
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-02-28T11:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-02-28T12:00:00Z, validTo=2026-03-01T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-02-28T12:00:00Z
+  period[0].periodEnd: 2026-03-01T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=340, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=10000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-02-28T18:00:00Z
+  period[1].periodEnd: 2026-03-01T00:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=6000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:20 TAF KSFO 150520Z 1506/1612 00000KT 1/4SM FG VV001 FM151700 28010KT P6SM FEW010
+  stationId: KSFO
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=null, speedValue=0, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=0.25, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=FG, other=null, rawCode=FG]]
+  period[0].conditions.skyConditions: [SkyCondition[coverage=VERTICAL_VISIBILITY, heightFeet=100, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T17:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=280, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=1000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 11:20 TAF KMSP 151120Z 1512/1612 34018G28KT 1 1/2SM -SN BLSN OVC012 BECMG 1516/1518 P6SM NSW BKN025
+  stationId: KMSP
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T11:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T12:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T12:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=340, speedValue=18, gustValue=28, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=1.5, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: [PresentWeather[intensity=-, descriptor=null, precipitation=SN, obscuration=null, other=null, rawCode=-SN], PresentWeather[intensity=null, descriptor=BL, precipitation=SN, obscuration=null, other=null, rawCode=BLSN]]
+  period[0].conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=1200, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: BECMG
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T16:00:00Z
+  period[1].periodEnd: 2026-10-15T18:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=null, other=NSW, rawCode=NSW]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=2500, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF EDDF 150500Z 1506/1612 24012KT 9999 NSC TEMPO 1506/1509 0800 FG BKN002 BECMG 1509/1511 9999 NSW
+  stationId: EDDF
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 3
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=240, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=NSC, heightFeet=null, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T06:00:00Z
+  period[1].periodEnd: 2026-10-15T09:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=800.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=FG, other=null, rawCode=FG]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=200, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+  period[2].changeIndicator: BECMG
+  period[2].changeTime: null
+  period[2].periodStart: 2026-10-15T09:00:00Z
+  period[2].periodEnd: 2026-10-15T11:00:00Z
+  period[2].probability: null
+  period[2].conditions.wind: null
+  period[2].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[2].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=null, other=NSW, rawCode=NSW]]
+  period[2].conditions.skyConditions: []
+  period[2].conditions.temperature: null
+  period[2].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF UUWW 150500Z 1506/1612 25007MPS 9999 SCT020CB TEMPO 1506/1510 25012G17MPS 3100 -SHRA
+  stationId: UUWW
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=250, speedValue=7, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=MPS]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=2000, cloudType=CB]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T06:00:00Z
+  period[1].periodEnd: 2026-10-15T10:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=250, speedValue=12, gustValue=17, variabilityFrom=null, variabilityTo=null, unit=MPS]
+  period[1].conditions.visibility: Visibility[distanceValue=3100.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=-, descriptor=SH, precipitation=RA, obscuration=null, other=null, rawCode=-SHRA]]
+  period[1].conditions.skyConditions: []
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KOKC 151720Z 1518/1624 18020G35KT P6SM -TSRA BR BKN040CB SCT020TCU FM160000 +FC 1/2SM +TSRA OVC010CB
+  stationId: KOKC
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=180, speedValue=20, gustValue=35, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: [PresentWeather[intensity=-, descriptor=TS, precipitation=RA, obscuration=null, other=null, rawCode=-TSRA], PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=BR, other=null, rawCode=BR]]
+  period[0].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=4000, cloudType=CB], SkyCondition[coverage=SCATTERED, heightFeet=2000, cloudType=TCU]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-16T00:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=0.5, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=+, descriptor=null, precipitation=null, obscuration=null, other=FC, rawCode=+FC], PresentWeather[intensity=+, descriptor=TS, precipitation=RA, obscuration=null, other=null, rawCode=+TSRA]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=1000, cloudType=CB]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:20 TAF KBTV 150520Z 1506/1612 00000KT M1/4SM FZFG VV000 FM151500 VRB03KT 5SM BR SCT005
+  stationId: KBTV
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=null, speedValue=0, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=0.25, unit=SM, lessThan=true, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=FZ, precipitation=null, obscuration=FG, other=null, rawCode=FZFG]]
+  period[0].conditions.skyConditions: [SkyCondition[coverage=VERTICAL_VISIBILITY, heightFeet=0, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T15:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=null, speedValue=3, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=5.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=BR, other=null, rawCode=BR]]
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=500, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF EGKK 150500Z 1506/1612 VRB02KT 0300 R26L/0400 FG VV001 BECMG 1508/1510 4000 BR
+  stationId: EGKK
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=null, speedValue=2, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=300.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=FG, other=null, rawCode=FG]]
+  period[0].conditions.skyConditions: [SkyCondition[coverage=VERTICAL_VISIBILITY, heightFeet=100, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: BECMG
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T08:00:00Z
+  period[1].periodEnd: 2026-10-15T10:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: Visibility[distanceValue=4000.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=BR, other=null, rawCode=BR]]
+  period[1].conditions.skyConditions: []
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF EGPH 150500Z 1506/1612 27015KT 9999 RERA SCT020 FM151200 30010KT 9999 FEW030
+  stationId: EGPH
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=270, speedValue=15, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=2000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T12:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=300, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=3000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF LIRF 150500Z 1506/1612 VRB03KT 9999 FEW030 Q1015 TEMPO 1510/1514 SCT025
+  stationId: LIRF
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=null, speedValue=3, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=3000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T10:00:00Z
+  period[1].periodEnd: 2026-10-15T14:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=2500, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF EHAM 150500Z 1506/1612 23015KT 9999 BKN025 NOSIG BECMG 1510/1512 26020G30KT
+  stationId: EHAM
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=230, speedValue=15, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=2500, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: BECMG
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T10:00:00Z
+  period[1].periodEnd: 2026-10-15T12:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: []
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF ENGM 150500Z 1506/1612 02005KT 9999 R01L/290055 SCT030 TEMPO 1506/1510 BKN012
+  stationId: ENGM
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T05:00:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T06:00:00Z, validTo=2026-10-16T12:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T06:00:00Z
+  period[0].periodEnd: 2026-10-16T12:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=20, speedValue=5, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=3000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: TEMPO
+  period[1].changeTime: null
+  period[1].periodStart: 2026-10-15T06:00:00Z
+  period[1].periodEnd: 2026-10-15T10:00:00Z
+  period[1].probability: null
+  period[1].conditions.wind: null
+  period[1].conditions.visibility: null
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=1200, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KMIA 151720Z 1518/1624 09012KT P6SM SCT025 RMK NXT FCST BY 152100Z
+  stationId: KMIA
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 1
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=90, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=2500, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KBWI 151720Z 1518/1624 20010KT P6SM BKN040 FM160200 VRB03KT P6SM SKC AMD NOT SKED
+  stationId: KBWI
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=200, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=4000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-16T02:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=null, speedValue=3, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=SKC, heightFeet=null, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF AMD KPHL 151720Z 1518/1624 CNL
+  stationId: KPHL
+  reportType: TAF
+  reportModifier: AMD
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 1
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: null
+  period[0].conditions.visibility: null
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: []
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KDFW 151720Z 1518/1624 17015KT P6SM SCT040 WS020/22040KT FM160000 18010KT P6SM SKC
+  stationId: KDFW
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 1
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=170, speedValue=15, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=4000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KIAH 151720Z 1518/1624 16012KT P6SM BKN030 FM152200 18010KT P6SM XYZ123 FM160400 20008KT 5SM BR
+  stationId: KIAH
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: Wind[directionDegrees=160, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=BROKEN, heightFeet=3000, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T22:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=180, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: []
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 17:20 TAF KSAN 151720Z 1518/1624 40012KT P6SM SKC FM152100 25010KT P6SM FEW020
+  stationId: KSAN
+  reportType: TAF
+  reportModifier: null
+  issueTime: 2026-10-15T17:20:00Z
+  validityPeriod: ValidityPeriod[validFrom=2026-10-15T18:00:00Z, validTo=2026-10-17T00:00:00Z]
+  maxTemperature: null
+  maxTemperatureTime: null
+  minTemperature: null
+  minTemperatureTime: null
+  recentWeather: []
+  recentWeatherNotObservable: false
+  forecastPeriods: 2
+  period[0].changeIndicator: BASE
+  period[0].changeTime: null
+  period[0].periodStart: 2026-10-15T18:00:00Z
+  period[0].periodEnd: 2026-10-17T00:00:00Z
+  period[0].probability: null
+  period[0].conditions.wind: null
+  period[0].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[0].conditions.presentWeather: []
+  period[0].conditions.skyConditions: [SkyCondition[coverage=SKC, heightFeet=null, cloudType=null]]
+  period[0].conditions.temperature: null
+  period[0].conditions.pressure: null
+  period[1].changeIndicator: FM
+  period[1].changeTime: 2026-10-15T21:00:00Z
+  period[1].periodStart: null
+  period[1].periodEnd: null
+  period[1].probability: null
+  period[1].conditions.wind: Wind[directionDegrees=250, speedValue=10, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  period[1].conditions.visibility: Visibility[distanceValue=6.0, unit=SM, lessThan=false, greaterThan=true, specialCondition=null]
+  period[1].conditions.presentWeather: []
+  period[1].conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=2000, cloudType=null]]
+  period[1].conditions.temperature: null
+  period[1].conditions.pressure: null
+
+=== 2026/10/15 05:00 TAF UUEE 150500Z 1506/1612 25007MPS 9999 SCT020CB TEMPO 1506/1612 25012G17MPS 3100 -SHRA
+  FAILURE: Failed to parse TAF data: Forecast period too long (30 hours). Maximum is 12
+
+=== 2026/10/15 17:20 TAF KJFK 151720Z 18012KT P6SM FEW250
+  FAILURE: Failed to parse TAF data: Could not parse validity period
+
+=== 2026/10/15 17:20 TAF 151720Z 1518/1624 18012KT P6SM FEW250
+  FAILURE: Failed to parse TAF data: Could not parse station ID and issue time
+
+=== 2026/10/15 17:20 TAF KXYZ 151720Z NIL
+  FAILURE: Failed to parse TAF data: Could not parse validity period
+

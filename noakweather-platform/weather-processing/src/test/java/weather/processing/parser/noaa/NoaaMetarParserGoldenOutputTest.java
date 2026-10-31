@@ -16,32 +16,15 @@
  */
 package weather.processing.parser.noaa;
 
-import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.processing.parser.common.ParseResult;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Method;
-import java.lang.reflect.RecordComponent;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static weather.processing.parser.noaa.GoldenOutput.expand;
+import static weather.processing.parser.noaa.GoldenOutput.field;
 
 /**
  * Golden-output regression test for {@link NoaaMetarParser} (#137).
@@ -65,40 +48,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class NoaaMetarParserGoldenOutputTest {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NoaaMetarParserGoldenOutputTest.class);
-
     private static final String CORPUS_RESOURCE = "/golden/metar-golden-corpus.txt";
     private static final String EXPECTED_RESOURCE = "/golden/metar-golden-expected.txt";
-    // Surefire runs with the module directory as the working directory
-    private static final Path EXPECTED_SOURCE = Path.of("src/test/resources/golden/metar-golden-expected.txt");
-    private static final String RECORD_PROPERTY = "golden.record";
-    private static final String CASE_HEADER = "=== ";
 
     @Test
     void parsedOutputMatchesGoldenFile() throws IOException {
-        Map<String, String> actual = new LinkedHashMap<>();
-        for (String raw : readCorpus()) {
-            actual.put(raw, render(raw));
-        }
-
-        if (Boolean.getBoolean(RECORD_PROPERTY)) {
-            writeExpected(actual);
-            return;
-        }
-
-        Map<String, String> expected = readExpected();
-
-        assertThat(actual.keySet())
-                .as("Corpus and expected file must list the same reports, in order; re-record if the corpus changed")
-                .containsExactlyElementsOf(expected.keySet());
-
-        SoftAssertions softly = new SoftAssertions();
-        actual.forEach((raw, rendering) ->
-                softly.assertThat(rendering).as(raw).isEqualTo(expected.get(raw)));
-        softly.assertAll();
+        GoldenOutput.verify(CORPUS_RESOURCE, EXPECTED_RESOURCE, NoaaMetarParserGoldenOutputTest::render);
     }
-
-    // ==================== Rendering ====================
 
     /**
      * Render one parse result as stable, line-per-field text.
@@ -139,115 +95,5 @@ class NoaaMetarParserGoldenOutputTest {
 
         expand(sb, "remarks", data.getRemarks());
         return sb.toString();
-    }
-
-    private static void field(StringBuilder sb, String name, Object value) {
-        sb.append("  ").append(name).append(": ").append(format(value)).append('\n');
-    }
-
-    /**
-     * One line per record component, so a diff points at the field that changed.
-     */
-    private static void expand(StringBuilder sb, String name, Object value) {
-        if (value == null || !value.getClass().isRecord()) {
-            field(sb, name, value);
-            return;
-        }
-        for (RecordComponent component : value.getClass().getRecordComponents()) {
-            field(sb, name + "." + component.getName(), componentValue(value, component));
-        }
-    }
-
-    /**
-     * Deterministic rendering: records by component, sets and maps sorted, so the
-     * output does not depend on hash iteration order (e.g. Set.of).
-     */
-    private static String format(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value.getClass().isRecord()) {
-            List<String> parts = new ArrayList<>();
-            for (RecordComponent component : value.getClass().getRecordComponents()) {
-                parts.add(component.getName() + "=" + format(componentValue(value, component)));
-            }
-            return value.getClass().getSimpleName() + "[" + String.join(", ", parts) + "]";
-        }
-        if (value instanceof Set<?> set) {
-            return set.stream().map(NoaaMetarParserGoldenOutputTest::format).sorted()
-                    .collect(Collectors.joining(", ", "{", "}"));
-        }
-        if (value instanceof Collection<?> collection) {
-            return collection.stream().map(NoaaMetarParserGoldenOutputTest::format)
-                    .collect(Collectors.joining(", ", "[", "]"));
-        }
-        if (value instanceof Map<?, ?> map) {
-            return map.entrySet().stream()
-                    .map(e -> format(e.getKey()) + "=" + format(e.getValue())).sorted()
-                    .collect(Collectors.joining(", ", "{", "}"));
-        }
-        return String.valueOf(value);
-    }
-
-    private static Object componentValue(Object target, RecordComponent component) {
-        try {
-            Method accessor = component.getAccessor();
-            accessor.trySetAccessible();
-            return accessor.invoke(target);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Cannot read " + target.getClass().getSimpleName()
-                    + "." + component.getName(), e);
-        }
-    }
-
-    // ==================== Files ====================
-
-    private static List<String> readCorpus() throws IOException {
-        return readResourceLines(CORPUS_RESOURCE).stream()
-                .map(String::trim)
-                .filter(line -> !line.isEmpty() && !line.startsWith("#"))
-                .toList();
-    }
-
-    private static Map<String, String> readExpected() throws IOException {
-        Map<String, String> expected = new LinkedHashMap<>();
-        String raw = null;
-        StringBuilder rendering = new StringBuilder();
-
-        for (String line : readResourceLines(EXPECTED_RESOURCE)) {
-            if (line.startsWith(CASE_HEADER)) {
-                if (raw != null) {
-                    expected.put(raw, rendering.toString());
-                }
-                raw = line.substring(CASE_HEADER.length());
-                rendering.setLength(0);
-            } else if (raw != null && !line.isEmpty()) {
-                rendering.append(line).append('\n');
-            }
-        }
-        if (raw != null) {
-            expected.put(raw, rendering.toString());
-        }
-        return expected;
-    }
-
-    private static void writeExpected(Map<String, String> actual) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        actual.forEach((raw, rendering) ->
-                sb.append(CASE_HEADER).append(raw).append('\n').append(rendering).append('\n'));
-
-        Files.createDirectories(EXPECTED_SOURCE.getParent());
-        Files.writeString(EXPECTED_SOURCE, sb.toString(), StandardCharsets.UTF_8);
-        LOGGER.info("Recorded {} reports to {}", actual.size(), EXPECTED_SOURCE.toAbsolutePath());
-    }
-
-    private static List<String> readResourceLines(String resource) throws IOException {
-        InputStream in = NoaaMetarParserGoldenOutputTest.class.getResourceAsStream(resource);
-        assertThat(in)
-                .as("Missing test resource %s; record it with -D%s=true", resource, RECORD_PROPERTY)
-                .isNotNull();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            return reader.lines().toList();
-        }
     }
 }
