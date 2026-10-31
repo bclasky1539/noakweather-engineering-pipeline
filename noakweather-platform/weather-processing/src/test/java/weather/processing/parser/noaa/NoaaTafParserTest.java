@@ -1381,6 +1381,27 @@ class NoaaTafParserTest {
         }
     }
 
+    @Test
+    @DisplayName("Recent weather in a forecast period is consumed and logged, not stored")
+    void testHandleRecentWeather_ConsumedAndLoggedNotStored() {
+        String taf = "TAF EGPH 150500Z 1506/1612 27015KT 9999 RERA SCT020";
+
+        try (LogCapture logs = LogCapture.of(NoaaTafParser.class.getName(), Level.DEBUG)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(taf);
+
+            assertThat(result.isSuccess()).isTrue();
+            NoaaTafData data = (NoaaTafData) result.getData().orElseThrow();
+            assertThat(data.getRecentWeather()).isEmpty();
+            assertThat(data.isRecentWeatherNotObservable()).isFalse();
+            // RERA was consumed, so the sky group after it still parsed
+            assertThat(data.getForecastPeriods()).singleElement()
+                    .satisfies(period -> assertThat(period.conditions().skyConditions()).hasSize(1));
+            assertThat(logs.events())
+                    .extracting(event -> event.getMessage().getFormattedMessage())
+                    .contains("Recent weather in TAF (not stored): RERA");
+        }
+    }
+
     // ==================== ERROR HANDLING ====================
 
     @Nested

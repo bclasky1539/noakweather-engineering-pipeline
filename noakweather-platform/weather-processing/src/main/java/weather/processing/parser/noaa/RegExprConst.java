@@ -82,6 +82,14 @@ public final class RegExprConst {
     );
 
     /**
+     * Report type (METAR or SPECI)
+     * Example: "METAR", "SPECI"
+     */
+    public static final Pattern REPORT_TYPE_PATTERN = Pattern.compile(
+            "^(METAR|SPECI)\\s+"
+    );
+
+    /**
      * Report Modifier (AUTO, COR, AMD, etc.)
      * Example: "AUTO", "COR", "AMD"
      */
@@ -439,7 +447,7 @@ public final class RegExprConst {
 
     /**
      * A remark weather code joined to one compass point by a hyphen (#129), e.g. "VCSH-NE"
-     * (MBSC). Only a single point: a hyphenated range after a weather code is not modelled.
+     * (MBSC). Only a single point: a hyphenated range after a weather code is not modeled.
      */
     public static final Pattern WEATHER_HYPHEN_DIRECTION_PATTERN = Pattern.compile(
             "^(?<wx>[-+]?(?:VC)?[A-Z]{2,})-(?<dir>NE|NW|SE|SW|N|E|S|W)(?=\\s|$)"
