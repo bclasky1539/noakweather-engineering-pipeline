@@ -141,7 +141,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * shared {@code handleX} methods, so a subclass override (e.g. TAF's
      * {@link #handleRunway}) still applies.
      * <p>
-     * Names are the pattern registry's handler names, so log output is unchanged.
+     * Names appear in log output (rejections, failures and breaker warnings).
      *
      * @param <P> the parser type the handlers run against
      * @return the shared handlers, in order

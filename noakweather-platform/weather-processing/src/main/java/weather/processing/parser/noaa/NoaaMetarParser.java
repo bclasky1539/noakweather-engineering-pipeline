@@ -97,8 +97,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
 
     /**
-     * Main body: the registry's behavior (#153 phase 2). First matching handler
-     * wins, rejected groups are dropped, and parsing stops at the first group no
+     * Main body (#153 phase 2). First matching handler wins, rejected groups
+     * are dropped, and parsing stops at the first group no
      * handler recognizes; the rest becomes unparsedMainBody.
      */
     private static final SectionPolicy MAIN_BODY_POLICY = SectionPolicy.of(
@@ -218,9 +218,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Main body handlers in report order (#153 phase 2): the METAR header groups, the
      * condition groups shared with TAF, then temperature/dewpoint, altimeter and NOSIG.
      * <p>
-     * Names and order are the pattern registry's, so parsed output and log text are
-     * unchanged. The month/day/year and station/issue-time entries have never had a
-     * handler: they consume a matching group without storing it, as before.
+     * Order matters: the first matching handler wins. The month/day/year and
+     * station/issue-time groups consume a matching group without storing it.
      *
      * @return the handlers, in order
      */

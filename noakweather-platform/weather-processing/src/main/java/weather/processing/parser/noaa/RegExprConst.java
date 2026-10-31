@@ -40,13 +40,6 @@ public final class RegExprConst {
     private static final String COMPASS_SEGMENT = COMPASS_POINT + "(?:-" + COMPASS_POINT + ")*+";
 
     /**
-     * TAF string pattern
-     */
-    public static final Pattern TAF_STR_PATTERN = Pattern.compile(
-            "^(?<type>TAF)\\s+"
-    );
-
-    /**
      * Month, Day and Year (optional at start of METAR/TAF)
      * Example: "2024/11/02 16:51"
      */
@@ -625,24 +618,6 @@ public final class RegExprConst {
     );
 
     /**
-     * Groups - BECMG - Becoming, TEMPO - Temporary, PROB - Probability forecasts
-     * Complexity is required to capture group type and all observation data
-     * Examples: "BECMG 18016KT 10SM FEW250 ", "TEMPO +TSRA BKN020CB ", "PROB30 SHRA "
-     */
-    @SuppressWarnings("java:S5843") // Complex regex required for TAF group format
-    public static final Pattern GROUP_BECMG_TEMPO_PROB_PATTERN = Pattern.compile(
-            "^(?<group>BECMG|TEMPO|PROB\\d{2})\\s+(?<obs>.+?)(?=\\s*$)"
-    );
-
-    /**
-     * Group - FM - From
-     * Example: "FM121600"
-     */
-    public static final Pattern GROUP_FM_PATTERN = Pattern.compile(
-            "^(?<group>FM)(?<daytime>\\d{6})\\s+(?<obs>.+?)(?=\\s*$)"
-    );
-
-    /**
      * TAF TEMPO change group with validity period
      * Example: "TEMPO 3003/3011 -SHSN BKN040"
      * Captures the validity period (from/to times) for TEMPO groups
@@ -690,14 +665,6 @@ public final class RegExprConst {
      */
     public static final Pattern VALIDITY_PATTERN =
             Pattern.compile("^(?<from>\\d{4})/(?<to>\\d{4})\\s+");
-
-    /**
-     * Valid Time Period
-     * Example: "1218/1318"
-     */
-    public static final Pattern VALTMPER_PATTERN = Pattern.compile(
-            "^(?<bvaltime>\\d{4})/(?<evaltime>\\d{4})\\s+"
-    );
 
     /**
      * Next Forecast By

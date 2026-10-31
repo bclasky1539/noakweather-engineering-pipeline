@@ -72,9 +72,9 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     private static final Logger LOGGER = LoggerFactory.getLogger(NoaaTafParser.class);
 
     /**
-     * Forecast-period conditions: the registry's behavior (#153 phase 4). First matching
-     * handler wins, rejected groups are dropped, and parsing stops at the first group no
-     * handler recognizes or at the start of the next change group or TX/TN forecast.
+     * Forecast-period conditions (#153 phase 4). First matching handler wins, rejected
+     * groups are dropped, and parsing stops at the first group no handler recognizes or
+     * at the start of the next change group or TX/TN forecast.
      */
     private static final SectionPolicy CONDITIONS_POLICY = SectionPolicy.of(
                     SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
@@ -601,11 +601,11 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     }
 
     /**
-     * Forecast-period handlers in the pattern registry's main-body order (#153 phase 4).
+     * Forecast-period handlers in METAR main-body order (#153 phase 4).
      * <p>
      * TAF only ever stored wind, visibility, runway (logged only), present weather and
      * sky condition. The METAR header groups, temperature/dewpoint, altimeter and NOSIG
-     * consume a matching group without storing it, as the registry did; runway state and
+     * consume a matching group without storing it, as they always have; runway state and
      * recent weather do the same through their TAF handlers.
      *
      * @return the handlers, in order
