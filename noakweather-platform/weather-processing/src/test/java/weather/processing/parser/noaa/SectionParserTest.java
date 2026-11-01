@@ -30,6 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static weather.processing.parser.noaa.SectionPolicy.RejectedText.CONSUME;
 import static weather.processing.parser.noaa.SectionPolicy.RejectedText.KEEP;
+import static weather.processing.parser.noaa.SectionPolicy.RejectedText.MOVE_TO_UNPARSED;
 import static weather.processing.parser.noaa.SectionPolicy.Scheduling.FIRST_MATCH_RESTART;
 import static weather.processing.parser.noaa.SectionPolicy.Scheduling.PASSES;
 import static weather.processing.parser.noaa.SectionPolicy.UnrecognizedToken.SKIP_TO_UNPARSED;
@@ -177,6 +178,55 @@ class SectionParserTest {
                 assertThat(event.getLevel()).isEqualTo(Level.DEBUG);
                 assertThat(event.getMessage().getFormattedMessage())
                         .isEqualTo("Rejected test group 'x9' [Test.field]: Invalid test group: x9");
+            });
+        }
+    }
+
+    @Test
+    void testRejected_MoveToUnparsed_KeepsGroupAndContinues() {
+        List<String> target = new ArrayList<>();
+        SectionResult result = run(List.of(rejecting("R"), recording("B", "^b\\s*")),
+                SectionPolicy.of(FIRST_MATCH_RESTART, MOVE_TO_UNPARSED, STOP), "x9 b", target);
+
+        // Unlike KEEP with STOP, the rejected group does not block what follows
+        assertThat(target).containsExactly("B:b");
+        assertThat(result.unparsedTokens()).containsExactly("x9");
+        assertThat(result.remaining()).isEmpty();
+        assertThat(result.rejections()).singleElement()
+                .satisfies(rejection -> assertThat(rejection.matchedText()).isEqualTo("x9"));
+    }
+
+    @Test
+    void testRejected_MoveToUnparsed_EachOccurrenceMovedInReportOrder() {
+        List<String> target = new ArrayList<>();
+        SectionResult result = run(List.of(rejecting("R"), recording("B", "^b\\s*")),
+                SectionPolicy.of(FIRST_MATCH_RESTART, MOVE_TO_UNPARSED, STOP), "x9 b x9 zz b", target);
+
+        // Both x9 groups are moved aside; parsing stops at the unrecognized zz
+        assertThat(target).containsExactly("B:b");
+        assertThat(result.unparsedTokens()).containsExactly("x9", "x9");
+        // The rest keeps the legacy trailing space from the last removed match
+        assertThat(result.remaining()).isEqualTo("zz b ");
+        assertThat(result.rejections()).hasSize(2);
+        assertThat(result.unparsedAndRemainingText()).isEqualTo("x9 x9 zz b");
+    }
+
+    @Test
+    void testFailed_MoveToUnparsed_LoggedAtErrorAndGroupKept() {
+        IllegalStateException bug = new IllegalStateException("boom");
+        List<String> target = new ArrayList<>();
+
+        try (LogCapture errors = LogCapture.of(SectionParser.class)) {
+            SectionResult result = run(List.of(failing(bug), recording("B", "^b\\s*")),
+                    SectionPolicy.of(FIRST_MATCH_RESTART, MOVE_TO_UNPARSED, STOP), "f b", target);
+
+            // A bug does not drop data either: the group is kept and parsing continues
+            assertThat(target).containsExactly("B:b");
+            assertThat(result.unparsedTokens()).containsExactly("f");
+            assertThat(result.trippedHandlers()).isEmpty();
+            assertThat(errors.events()).singleElement().satisfies(event -> {
+                assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+                assertThat(event.getThrown()).isSameAs(bug);
             });
         }
     }
@@ -397,5 +447,28 @@ class SectionParserTest {
         assertThatThrownBy(() -> parser.parse(null, target))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Section text cannot be null");
+    }
+
+    // ==================== Section result ====================
+
+    @Test
+    void testUnparsedAndRemainingText_NullWhenEverythingParsed() {
+        SectionResult result = new SectionResult("", List.of(), List.of(), java.util.Set.of());
+
+        assertThat(result.unparsedAndRemainingText()).isNull();
+    }
+
+    @Test
+    void testUnparsedAndRemainingText_RemainingOnly() {
+        SectionResult result = new SectionResult("zz b ", List.of(), List.of(), java.util.Set.of());
+
+        assertThat(result.unparsedAndRemainingText()).isEqualTo("zz b");
+    }
+
+    @Test
+    void testUnparsedAndRemainingText_TokensOnly() {
+        SectionResult result = new SectionResult("", List.of("x9", "yy"), List.of(), java.util.Set.of());
+
+        assertThat(result.unparsedAndRemainingText()).isEqualTo("x9 yy");
     }
 }

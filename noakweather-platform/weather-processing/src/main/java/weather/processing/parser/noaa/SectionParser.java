@@ -36,9 +36,10 @@ import java.util.Set;
  * <p>
  * Fuse (per group): a step reports bad data as {@link GroupOutcome.Rejected}. The
  * engine logs it once via {@link RejectedGroupLog}, records it in the result, and
- * consumes or keeps the text as the policy says. A pattern-based step reports a
- * bug in one group as {@link GroupOutcome.Failed}: logged at ERROR with its stack
- * trace, text consumed or kept as for a rejection, handler still enabled (#133).
+ * consumes, keeps or moves the text to the unparsed list as the policy says. A
+ * pattern-based step reports a bug in one group as {@link GroupOutcome.Failed}:
+ * logged at ERROR with its stack trace, text handled as for a rejection, handler
+ * still enabled (#133).
  * Circuit breaker (per handler): any exception escaping a step is a bug. It is
  * logged at WARN, the handler is skipped for the rest of this run, and the other
  * handlers keep running (#135).
@@ -229,12 +230,12 @@ final class SectionParser<B> {
         }
 
         /**
-         * Log and record a rejection, then consume or keep its text per policy.
+         * Log and record a rejection, then consume, keep or move its text per policy.
          */
         private String reject(GroupHandler<B> handler, GroupOutcome.Rejected rejected) {
-            if (policy.rejectedText() == SectionPolicy.RejectedText.CONSUME) {
+            if (policy.rejectedText() != SectionPolicy.RejectedText.KEEP) {
                 recordRejection(handler, rejected);
-                return rejected.afterGroup();
+                return passOver(rejected.matchedText(), rejected.afterGroup());
             }
 
             // Under KEEP the group stays at the front and is tried again on later
@@ -246,17 +247,32 @@ final class SectionParser<B> {
         }
 
         /**
-         * Log a failed group at ERROR, then consume or keep its text per policy.
+         * Log a failed group at ERROR, then consume, keep or move its text per policy.
          */
         private String fail(GroupHandler<B> handler, GroupOutcome.Failed failed) {
-            if (policy.rejectedText() == SectionPolicy.RejectedText.CONSUME) {
+            if (policy.rejectedText() != SectionPolicy.RejectedText.KEEP) {
                 logFailure(handler, failed);
-                return failed.afterGroup();
+                return passOver(failed.matchedText(), failed.afterGroup());
             }
             if (keptGroups.add(keptKey("failed", handler, failed.matchedText()))) {
                 logFailure(handler, failed);
             }
             return failed.atGroup();
+        }
+
+        /**
+         * Continue after a rejected or failed group. CONSUME drops the group;
+         * MOVE_TO_UNPARSED adds it to the unparsed list first, so it is kept.
+         *
+         * @param matchedText the group, as it appears in the report
+         * @param afterGroup  the text after the group
+         * @return the text to continue with
+         */
+        private String passOver(String matchedText, String afterGroup) {
+            if (policy.rejectedText() == SectionPolicy.RejectedText.MOVE_TO_UNPARSED) {
+                unparsed.add(matchedText);
+            }
+            return afterGroup;
         }
 
         private void logFailure(GroupHandler<B> handler, GroupOutcome.Failed failed) {

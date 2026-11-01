@@ -3298,3 +3298,63 @@
   remarks.predominantCloudTypes: null
   remarks.freeText: null
 
+=== METAR KJFK 151751Z 27012KT 1/0SM FEW250 10/15 A3012 XYZ RMK AO2 SLP201
+  stationId: KJFK
+  reportType: METAR
+  reportModifier: null
+  unparsedMainBody: 1/0SM 10/15 XYZ
+  conditions.wind: Wind[directionDegrees=270, speedValue=12, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  conditions.visibility: null
+  conditions.presentWeather: []
+  conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=25000, cloudType=null]]
+  conditions.temperature: null
+  conditions.pressure: Pressure[value=30.12, unit=INCHES_HG]
+  runwayVisualRange: []
+  runwayStates: []
+  recentWeather: []
+  recentWeatherNotObservable: false
+  noSignificantChange: false
+  automatedStation: AO2
+  seaLevelPressure: 1020.1
+  hourlyPrecipitation: null
+  sixHourMaxTemp: null
+  sixHourMinTemp: null
+  twentyFourHourMaxTemp: null
+  twentyFourHourMinTemp: null
+  threeHourPressureTendency: null
+  peakWind: null
+  windShift: null
+  pressureRapidChange: null
+  icing: null
+  remarks.automatedStationType: AO2
+  remarks.seaLevelPressure: Pressure[value=1020.1, unit=HECTOPASCALS]
+  remarks.preciseTemperature: null
+  remarks.preciseDewpoint: null
+  remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
+  remarks.directionalWeather: null
+  remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
+  remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
+  remarks.obscurationLayers: []
+  remarks.cloudTypes: []
+  remarks.hourlyPrecipitation: null
+  remarks.ppGroupValue: null
+  remarks.sixHourPrecipitation: null
+  remarks.twentyFourHourPrecipitation: null
+  remarks.hailSize: null
+  remarks.weatherEvents: []
+  remarks.thunderstormLocations: []
+  remarks.exceptDirections: []
+  remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
+  remarks.icing: null
+  remarks.secondaryAltimeter: null
+  remarks.sixHourMaxTemperature: null
+  remarks.sixHourMinTemperature: null
+  remarks.twentyFourHourMaxTemperature: null
+  remarks.twentyFourHourMinTemperature: null
+  remarks.densityAltitudeFeet: null
+  remarks.maintenance: MaintenanceRemarks[automatedMaintenanceIndicators=[], maintenanceRequired=false]
+  remarks.observationProgramStatus: null
+  remarks.lightningRemarks: []
+  remarks.predominantCloudTypes: null
+  remarks.freeText: null
+

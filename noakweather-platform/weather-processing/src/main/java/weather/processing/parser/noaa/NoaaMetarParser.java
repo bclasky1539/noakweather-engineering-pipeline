@@ -97,13 +97,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
 
     /**
-     * Main body (#153 phase 2). First matching handler wins, rejected groups
-     * are dropped, and parsing stops at the first group no
-     * handler recognizes; the rest becomes unparsedMainBody.
+     * Main body (#153 phase 2, #138). First matching handler wins; a rejected group
+     * is moved to the unparsed list and parsing continues after it; parsing stops at
+     * the first group no handler recognizes. Both end up in unparsedMainBody.
      */
     private static final SectionPolicy MAIN_BODY_POLICY = SectionPolicy.of(
             SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
-            SectionPolicy.RejectedText.CONSUME,
+            SectionPolicy.RejectedText.MOVE_TO_UNPARSED,
             SectionPolicy.UnrecognizedToken.STOP);
 
     /**
@@ -207,11 +207,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Parse the main METAR body (before RMK).
      *
      * @param mainBody the main body section
-     * @return remaining unparsed tokens
+     * @return everything not parsed, in report order (rejected groups, then the text
+     * from the first unrecognized group on), or "" when everything was parsed
      */
     private String parseMainBody(String mainBody) {
         mainBody = parseIssueDateTime(mainBody);
-        return mainBodyParser.parse(mainBody, this).remaining();
+        String unparsed = mainBodyParser.parse(mainBody, this).unparsedAndRemainingText();
+        return unparsed != null ? unparsed : "";
     }
 
     /**
@@ -459,7 +461,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String trend = extractRvrTrend(matcher.group("trend"), matcher.group("unit"), runwayName);
 
         // Create and add RVR
-        createAndAddRvr(runwayName, range, prefix, trend, matcher.group(0).trim());
+        createAndAddRvr(runwayName, range, prefix, trend);
     }
 
     /**
@@ -541,27 +543,21 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @param range      The RVR range values
      * @param prefix     The M/P prefix
      * @param trend      The trend indicator
-     * @param rawGroup   The RVR group as reported, for the rejection log
      */
-    private void createAndAddRvr(String runwayName, RvrRange range, String prefix, String trend, String rawGroup) {
-        try {
-            RunwayVisualRange rvr = new RunwayVisualRange(
-                    runwayName,
-                    range.visualRange(),
-                    range.variableLow(),
-                    range.variableHigh(),
-                    prefix,
-                    trend
-            );
+    private void createAndAddRvr(String runwayName, RvrRange range, String prefix, String trend) {
+        RunwayVisualRange rvr = new RunwayVisualRange(
+                runwayName,
+                range.visualRange(),
+                range.variableLow(),
+                range.variableHigh(),
+                prefix,
+                trend
+        );
 
-            weatherData.addRunwayVisualRange(rvr);
+        weatherData.addRunwayVisualRange(rvr);
 
-            LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
-                    runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
-
-        } catch (InvalidObservationException e) {
-            logRejected("RVR", rawGroup, e);
-        }
+        LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
+                runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
     }
 
     // ==================== RUNWAY STATE HANDLER ====================
@@ -579,16 +575,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         String runwayName = matcher.group("name");
-        try {
-            RunwayState state = matcher.group("clrd") != null
-                    ? RunwayState.clearedFromCode(runwayName, matcher.group("friction"))
-                    : RunwayState.fromCodes(runwayName, matcher.group("deposit"), matcher.group("extent"),
-                    matcher.group("depth"), matcher.group("friction"));
-            weatherData.addRunwayState(state);
-            LOGGER.debug("Runway state: {}", state);
-        } catch (InvalidObservationException e) {
-            logRejected("runway state", matcher.group(0).trim(), e);
-        }
+        RunwayState state = matcher.group("clrd") != null
+                ? RunwayState.clearedFromCode(runwayName, matcher.group("friction"))
+                : RunwayState.fromCodes(runwayName, matcher.group("deposit"), matcher.group("extent"),
+                matcher.group("depth"), matcher.group("friction"));
+        weatherData.addRunwayState(state);
+        LOGGER.debug("Runway state: {}", state);
     }
 
     /**
@@ -610,27 +602,22 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String dewpointSign = matcher.group("signd");
         String dewpointDigits = matcher.group("dewpt");
 
-        try {
-            // Parse temperature
-            Double temperatureCelsius = parseTemperatureValue(tempSign, tempDigits);
+        // Parse temperature
+        Double temperatureCelsius = parseTemperatureValue(tempSign, tempDigits);
 
-            // Parse dewpoint (optional)
-            Double dewpointCelsius = parseTemperatureValue(dewpointSign, dewpointDigits);
+        // Parse dewpoint (optional)
+        Double dewpointCelsius = parseTemperatureValue(dewpointSign, dewpointDigits);
 
-            // Only create Temperature object if we have at least temperature
-            if (temperatureCelsius != null) {
-                Temperature temperature = Temperature.ofCurrent(temperatureCelsius, dewpointCelsius);
-                conditionsBuilder.temperature(temperature);
+        // Only create Temperature object if we have at least temperature
+        if (temperatureCelsius != null) {
+            Temperature temperature = Temperature.ofCurrent(temperatureCelsius, dewpointCelsius);
+            conditionsBuilder.temperature(temperature);
 
-                LOGGER.debug("Temperature: {}°C, Dewpoint: {}°C",
-                        temperatureCelsius,
-                        dewpointCelsius != null ? dewpointCelsius : "N/A");
-            } else {
-                LOGGER.debug("Temperature: Missing/Unknown");
-            }
-
-        } catch (InvalidObservationException e) {
-            logRejected("temperature/dewpoint", matcher.group(0).trim(), e);
+            LOGGER.debug("Temperature: {}°C, Dewpoint: {}°C",
+                    temperatureCelsius,
+                    dewpointCelsius != null ? dewpointCelsius : "N/A");
+        } else {
+            LOGGER.debug("Temperature: Missing/Unknown");
         }
     }
 

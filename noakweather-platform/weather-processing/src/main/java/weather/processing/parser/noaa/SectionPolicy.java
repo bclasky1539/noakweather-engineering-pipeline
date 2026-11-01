@@ -52,18 +52,25 @@ record SectionPolicy(Scheduling scheduling,
     }
 
     /**
-     * What happens to a group a handler rejected.
+     * What happens to a group a handler rejected (or failed on).
      */
     enum RejectedText {
         /**
-         * Drop the rejected group and continue after it (main body today).
+         * Drop the rejected group and continue after it (TAF forecast periods,
+         * which have nowhere to keep unparsed text).
          */
         CONSUME,
         /**
          * Leave the rejected group in place so it surfaces as unparsed text
          * (remarks, where it reaches freeText).
          */
-        KEEP
+        KEEP,
+        /**
+         * Move the rejected group to the unparsed list and continue after it, so it
+         * is kept without stopping the section (METAR main body, where it reaches
+         * unparsedMainBody; #138).
+         */
+        MOVE_TO_UNPARSED
     }
 
     /**

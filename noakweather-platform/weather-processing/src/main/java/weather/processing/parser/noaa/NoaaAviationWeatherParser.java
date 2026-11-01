@@ -424,18 +424,13 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         // Remove M/P prefix if present
         String numStr = distStr.replaceFirst(RVR_PREFIX_PATTERN, "");
 
-        try {
-            double distance = Double.parseDouble(numStr);
-            Visibility visibility = new Visibility(distance, "M", lessThan, greaterThan, null);
-            conditionsBuilder.visibility(visibility);
+        double distance = Double.parseDouble(numStr);
+        Visibility visibility = new Visibility(distance, "M", lessThan, greaterThan, null);
+        conditionsBuilder.visibility(visibility);
 
-            LOGGER.debug("Visibility: {} meters (lessThan={}, greaterThan={})",
-                    distance, lessThan, greaterThan);
-            return true;
-        } catch (InvalidObservationException | NumberFormatException e) {
-            logRejected(VISIBILITY_STRING, distStr, e);
-            return false;
-        }
+        LOGGER.debug("Visibility: {} meters (lessThan={}, greaterThan={})",
+                distance, lessThan, greaterThan);
+        return true;
     }
 
     /**
@@ -457,16 +452,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         // Remove M/P prefix if present
         String numStr = distU.replaceFirst(RVR_PREFIX_PATTERN, "").trim();
 
-        try {
-            double distance = parseFractionalDistance(numStr);
-            Visibility visibility = new Visibility(distance, unit, lessThan, greaterThan, null);
-            conditionsBuilder.visibility(visibility);
+        double distance = parseFractionalDistance(numStr);
+        Visibility visibility = new Visibility(distance, unit, lessThan, greaterThan, null);
+        conditionsBuilder.visibility(visibility);
 
-            LOGGER.debug("Visibility: {} {} (lessThan={}, greaterThan={})",
-                    distance, unit, lessThan, greaterThan);
-        } catch (InvalidObservationException | NumberFormatException e) {
-            logRejected(VISIBILITY_STRING, distU + unit, e);
-        }
+        LOGGER.debug("Visibility: {} {} (lessThan={}, greaterThan={})",
+                distance, unit, lessThan, greaterThan);
     }
 
     /**
@@ -615,28 +606,23 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return;
         }
 
-        try {
-            // Parse coverage
-            SkyCoverage coverage = parseCoverage(coverageStr);
+        // Parse coverage
+        SkyCoverage coverage = parseCoverage(coverageStr);
 
-            // Parse height (if present and not unknown)
-            Integer heightFeet = parseHeight(heightStr, coverage);
+        // Parse height (if present and not unknown)
+        Integer heightFeet = parseHeight(heightStr, coverage);
 
-            // Parse cloud type (if present and not unknown)
-            String cloudType = parseCloudType(cloudTypeStr);
+        // Parse cloud type (if present and not unknown)
+        String cloudType = parseCloudType(cloudTypeStr);
 
-            // Create and add sky condition
-            SkyCondition skyCondition = new SkyCondition(coverage, heightFeet, cloudType);
-            skyConditionsList.add(skyCondition);
+        // Create and add sky condition
+        SkyCondition skyCondition = new SkyCondition(coverage, heightFeet, cloudType);
+        skyConditionsList.add(skyCondition);
 
-            LOGGER.debug("Sky Condition: {} at {} feet{}",
-                    coverage,
-                    heightFeet != null ? heightFeet : "N/A",
-                    cloudType != null ? " (" + cloudType + ")" : "");
-
-        } catch (InvalidObservationException e) {
-            logRejected("sky condition", matcher.group(0).trim(), e);
-        }
+        LOGGER.debug("Sky Condition: {} at {} feet{}",
+                coverage,
+                heightFeet != null ? heightFeet : "N/A",
+                cloudType != null ? " (" + cloudType + ")" : "");
     }
 
     /**
@@ -756,18 +742,13 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return;
         }
 
-        try {
-            // Determine unit and parse pressure
-            Pressure pressure = parsePressure(unit1, pressureStr, unit2);
+        // Determine unit and parse pressure
+        Pressure pressure = parsePressure(unit1, pressureStr, unit2);
 
-            if (pressure != null) {
-                conditionsBuilder.pressure(pressure);
+        if (pressure != null) {
+            conditionsBuilder.pressure(pressure);
 
-                LOGGER.debug("Altimeter: {}", pressure.getSummary());
-            }
-
-        } catch (InvalidObservationException e) {
-            logRejected("altimeter", matcher.group(0).trim(), e);
+            LOGGER.debug("Altimeter: {}", pressure.getSummary());
         }
     }
 
@@ -915,7 +896,8 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     // ==================== UTILITY METHODS ====================
 
     /**
-     * Log a report group that was rejected as invalid data. The group is dropped
+     * Log a report group that was rejected as invalid data. Used by remark handlers
+     * (the group is left for freeText) and by parsePressure. The group is dropped
      * (main body) or left for freeText (remarks); parsing continues. Expected bad
      * data is logged at DEBUG on the shared "Rejected" category, never WARN (#136).
      *

@@ -44,7 +44,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -66,6 +68,8 @@ class NoaaMetarParserTest {
     private static final String KDPG_BODY = "METAR KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 ";
     private static final String LEGE_BODY = "METAR LEGE 081730Z VRB02KT 9999 4000SW -RA VCSH FEW003 FEW030TCU BKN040 BKN080 12/11 Q1019 ";
     private static final String MMCB_BODY = "METAR MMCB 081444Z 00000KT 3SM BR FEW005 OVC090 20/20 A3009 ";
+
+    private static final String REJECTED_CATEGORY = "weather.processing.parser.noaa.Rejected";
 
     @BeforeEach
     void setUp() {
@@ -1708,7 +1712,7 @@ class NoaaMetarParserTest {
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(4);
 
-        // Verify lowest ceiling (BKN)
+        // Verify the lowest ceiling (BKN)
         SkyCondition ceiling = skyConditions.stream()
                 .filter(SkyCondition::isCeiling)
                 .findFirst()
@@ -11211,6 +11215,55 @@ class NoaaMetarParserTest {
         assertThat(indicators.get(4).location()).isEqualTo("RWY22L");
     }
 
+    // ==================== MAIN-BODY REJECTED GROUPS ====================
+
+    /**
+     * One case per main-body handler that can reject a group it matches: the report
+     * carries that group, then NOSIG as a canary that must still parse after it.
+     * Present and recent weather are not listed: PresentWeather.parse never rejects.
+     */
+    static Stream<Arguments> rejectedMainBodyGroups() {
+        return Stream.of(
+                Arguments.of("wind: direction over 360",
+                        "METAR KJFK 151751Z 40012KT 10SM FEW250 22/12 A3012 NOSIG", "40012KT"),
+                Arguments.of("visibility: zero denominator (#130)",
+                        "METAR KJFK 151751Z 27012KT 1/0SM FEW250 22/12 A3012 NOSIG", "1/0SM"),
+                Arguments.of("RVR: variable low above high",
+                        "METAR KJFK 151751Z 27012KT 1/2SM R04R/2000V1000FT FG OVC002 22/12 A3012 NOSIG",
+                        "R04R/2000V1000FT"),
+                Arguments.of("runway state: runway 37 does not exist",
+                        "METAR UUEE 151750Z 27012MPS 9999 R37/290055 FEW020 M05/M10 Q1012 NOSIG", "R37/290055"),
+                Arguments.of("sky condition: vertical visibility without a height",
+                        "METAR KJFK 151751Z 27012KT 1/4SM FG VV/// 22/12 A3012 NOSIG", "VV///"),
+                Arguments.of("temperature: dewpoint above temperature",
+                        "METAR KJFK 151751Z 27012KT 10SM FEW250 10/15 A3012 NOSIG", "10/15"),
+                Arguments.of("altimeter: out of range",
+                        "METAR KJFK 151751Z 27012KT 10SM FEW250 22/12 A0500 NOSIG", "A0500"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("rejectedMainBodyGroups")
+    @DisplayName("A rejected main-body group is kept for unparsedMainBody (#138)")
+    void testRejectedMainBodyGroup_KeptForUnparsedMainBody(
+            String scenario, String metar, String rejectedGroup) {
+
+        try (LogCapture rejected = LogCapture.of(REJECTED_CATEGORY, Level.DEBUG)) {
+            ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+            assertThat(result.isSuccess()).as(scenario).isTrue();
+            NoaaMetarData data = (NoaaMetarData) result.getData().orElseThrow();
+
+            // The group is rejected and logged...
+            assertThat(rejected.events()).as(scenario)
+                    .extracting(event -> event.getMessage().getFormattedMessage())
+                    .anySatisfy(message -> assertThat(message).contains(rejectedGroup));
+            // ...parsing carries on past it (the canary still parses)...
+            assertThat(data.isNoSignificantChange()).as(scenario).isTrue();
+            // ...and the group itself is kept in unparsedMainBody (#138)
+            assertThat(data.getUnparsedMainBody()).as(scenario).isEqualTo(rejectedGroup);
+        }
+    }
+
     // ========== MISC TESTS ==========
 
     @ParameterizedTest
@@ -11297,7 +11350,8 @@ class NoaaMetarParserTest {
             // The failing group is consumed and the groups after it are still parsed
             assertThat(data.getVisibility()).isNotNull();
             assertThat(data.getPressure()).isNotNull();
-            assertThat(data.getUnparsedMainBody()).isNull();
+            // A failed group is kept for unparsedMainBody rather than dropped (#138)
+            assertThat(data.getUnparsedMainBody()).isEqualTo("28016KT");
             assertThat(logs.events()).singleElement().satisfies(event -> {
                 assertThat(event.getLevel()).isEqualTo(Level.ERROR);
                 assertThat(event.getMessage().getFormattedMessage())
@@ -11408,10 +11462,10 @@ class NoaaMetarParserTest {
     @CsvSource({
             "A9999,     altimeter,      'Altimeter 99.99 inHg out of range'",
             "5U,        visibility,     'Visibility unit U is not SM, M or KM'",
-            "VV///,     sky condition,  'Vertical visibility with no height'",
-            "BKN020XX,  sky condition,  'Unknown cloud type XX'",
-            "R04/1200V0800FT,  RVR,                   'RVR variable low above high'",
-            "10/15,            temperature/dewpoint,  'Dewpoint above temperature'",
+            "VV///,     skyCondition,  'Vertical visibility with no height'",
+            "BKN020XX,  skyCondition,  'Unknown cloud type XX'",
+            "R04/1200V0800FT,  runway,                   'RVR variable low above high'",
+            "10/15,            tempDewpoint,  'Dewpoint above temperature'",
             "40016KT,          wind,                  'Wind direction 400 out of range'",
             "1/0SM,     visibility,  'Zero denominator (was Infinity)'",
             "'1 1/0SM', visibility,  'Mixed fraction with zero denominator'",
@@ -11455,8 +11509,8 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should log and skip an international visibility that fails to parse")
-    void testHandleVisibility_InternationalRejected_LoggedAndSkipped() {
+    @DisplayName("Should reject an international visibility that fails to parse, leaving logging to the engine")
+    void testHandleVisibility_InternationalRejected_ThrowsForEngine() {
         // Unreachable from a real report (VISIBILITY_PATTERN allows only [MP]?dddd), so drive
         // the handler directly with a pattern that supplies the same group names
         Matcher matcher = Pattern.compile("^(?<vis>(?<dist>M12X4))(?<distu>Z)?(?<units>Z)?").matcher("M12X4");
@@ -11464,11 +11518,13 @@ class NoaaMetarParserTest {
         parser.weatherData = new NoaaMetarData();
 
         try (LogCapture rejected = LogCapture.of(RejectedGroupLog.CATEGORY, Level.DEBUG)) {
-            parser.handleVisibility(matcher);
+            // The rejection reaches PatternGroupHandler, which reports it to the engine (#138)
+            assertThatThrownBy(() -> parser.handleVisibility(matcher))
+                    .isInstanceOf(NumberFormatException.class)
+                    .hasMessageContaining("12X4");
 
-            assertThat(rejected.events()).singleElement()
-                    .satisfies(event -> assertThat(event.getMessage().getFormattedMessage())
-                            .startsWith("Rejected visibility 'M12X4'"));
+            // The handler no longer logs it itself; the engine logs it once
+            assertThat(rejected.events()).isEmpty();
         }
     }
 

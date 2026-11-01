@@ -16,6 +16,7 @@
  */
 package weather.processing.parser.noaa;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -26,7 +27,9 @@ import java.util.Set;
  *                        the first unrecognized token under
  *                        {@link SectionPolicy.UnrecognizedToken#STOP}; empty otherwise
  * @param unparsedTokens  tokens skipped under
- *                        {@link SectionPolicy.UnrecognizedToken#SKIP_TO_UNPARSED}, in order
+ *                        {@link SectionPolicy.UnrecognizedToken#SKIP_TO_UNPARSED} and
+ *                        groups moved aside under
+ *                        {@link SectionPolicy.RejectedText#MOVE_TO_UNPARSED}, in report order
  * @param rejections      every rejected group, in the order rejected
  * @param trippedHandlers handlers disabled by the circuit breaker during this run
  * @author bclasky1539
@@ -58,5 +61,21 @@ record SectionResult(String remaining,
      */
     String unparsedText() {
         return unparsedTokens.isEmpty() ? null : String.join(" ", unparsedTokens);
+    }
+
+    /**
+     * Everything the section did not parse, in report order: the unparsed tokens,
+     * then the remaining text. Unparsed tokens always come before the point where
+     * the section stopped, so the order matches the report.
+     *
+     * @return the text joined with single spaces, or null when everything was parsed
+     * (matches how unparsedMainBody is stored)
+     */
+    String unparsedAndRemainingText() {
+        List<String> parts = new ArrayList<>(unparsedTokens);
+        if (!remaining.isBlank()) {
+            parts.add(remaining.trim());
+        }
+        return parts.isEmpty() ? null : String.join(" ", parts);
     }
 }
