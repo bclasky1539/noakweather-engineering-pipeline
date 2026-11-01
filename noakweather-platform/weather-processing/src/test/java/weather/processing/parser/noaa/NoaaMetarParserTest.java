@@ -46,6 +46,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -1711,7 +1712,7 @@ class NoaaMetarParserTest {
         List<SkyCondition> skyConditions = data.getSkyConditions();
         assertThat(skyConditions).hasSize(4);
 
-        // Verify lowest ceiling (BKN)
+        // Verify the lowest ceiling (BKN)
         SkyCondition ceiling = skyConditions.stream()
                 .filter(SkyCondition::isCeiling)
                 .findFirst()
@@ -11242,8 +11243,8 @@ class NoaaMetarParserTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("rejectedMainBodyGroups")
-    @DisplayName("Known gap (#138): a rejected main-body group is dropped, not kept for unparsedMainBody")
-    void knownGap_RejectedMainBodyGroup_IsDroppedNotKeptForUnparsedMainBody(
+    @DisplayName("A rejected main-body group is kept for unparsedMainBody (#138)")
+    void testRejectedMainBodyGroup_KeptForUnparsedMainBody(
             String scenario, String metar, String rejectedGroup) {
 
         try (LogCapture rejected = LogCapture.of(REJECTED_CATEGORY, Level.DEBUG)) {
@@ -11258,8 +11259,8 @@ class NoaaMetarParserTest {
                     .anySatisfy(message -> assertThat(message).contains(rejectedGroup));
             // ...parsing carries on past it (the canary still parses)...
             assertThat(data.isNoSignificantChange()).as(scenario).isTrue();
-            // ...but the group itself is lost: today it does not reach unparsedMainBody
-            assertThat(data.getUnparsedMainBody()).as(scenario).isNull();
+            // ...and the group itself is kept in unparsedMainBody (#138)
+            assertThat(data.getUnparsedMainBody()).as(scenario).isEqualTo(rejectedGroup);
         }
     }
 
@@ -11349,7 +11350,8 @@ class NoaaMetarParserTest {
             // The failing group is consumed and the groups after it are still parsed
             assertThat(data.getVisibility()).isNotNull();
             assertThat(data.getPressure()).isNotNull();
-            assertThat(data.getUnparsedMainBody()).isNull();
+            // A failed group is kept for unparsedMainBody rather than dropped (#138)
+            assertThat(data.getUnparsedMainBody()).isEqualTo("28016KT");
             assertThat(logs.events()).singleElement().satisfies(event -> {
                 assertThat(event.getLevel()).isEqualTo(Level.ERROR);
                 assertThat(event.getMessage().getFormattedMessage())
@@ -11460,10 +11462,10 @@ class NoaaMetarParserTest {
     @CsvSource({
             "A9999,     altimeter,      'Altimeter 99.99 inHg out of range'",
             "5U,        visibility,     'Visibility unit U is not SM, M or KM'",
-            "VV///,     sky condition,  'Vertical visibility with no height'",
-            "BKN020XX,  sky condition,  'Unknown cloud type XX'",
-            "R04/1200V0800FT,  RVR,                   'RVR variable low above high'",
-            "10/15,            temperature/dewpoint,  'Dewpoint above temperature'",
+            "VV///,     skyCondition,  'Vertical visibility with no height'",
+            "BKN020XX,  skyCondition,  'Unknown cloud type XX'",
+            "R04/1200V0800FT,  runway,                   'RVR variable low above high'",
+            "10/15,            tempDewpoint,  'Dewpoint above temperature'",
             "40016KT,          wind,                  'Wind direction 400 out of range'",
             "1/0SM,     visibility,  'Zero denominator (was Infinity)'",
             "'1 1/0SM', visibility,  'Mixed fraction with zero denominator'",
@@ -11507,8 +11509,8 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should log and skip an international visibility that fails to parse")
-    void testHandleVisibility_InternationalRejected_LoggedAndSkipped() {
+    @DisplayName("Should reject an international visibility that fails to parse, leaving logging to the engine")
+    void testHandleVisibility_InternationalRejected_ThrowsForEngine() {
         // Unreachable from a real report (VISIBILITY_PATTERN allows only [MP]?dddd), so drive
         // the handler directly with a pattern that supplies the same group names
         Matcher matcher = Pattern.compile("^(?<vis>(?<dist>M12X4))(?<distu>Z)?(?<units>Z)?").matcher("M12X4");
@@ -11516,11 +11518,13 @@ class NoaaMetarParserTest {
         parser.weatherData = new NoaaMetarData();
 
         try (LogCapture rejected = LogCapture.of(RejectedGroupLog.CATEGORY, Level.DEBUG)) {
-            parser.handleVisibility(matcher);
+            // The rejection reaches PatternGroupHandler, which reports it to the engine (#138)
+            assertThatThrownBy(() -> parser.handleVisibility(matcher))
+                    .isInstanceOf(NumberFormatException.class)
+                    .hasMessageContaining("12X4");
 
-            assertThat(rejected.events()).singleElement()
-                    .satisfies(event -> assertThat(event.getMessage().getFormattedMessage())
-                            .startsWith("Rejected visibility 'M12X4'"));
+            // The handler no longer logs it itself; the engine logs it once
+            assertThat(rejected.events()).isEmpty();
         }
     }
 
