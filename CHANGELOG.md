@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Version 1.28.0-SNAPSHOT - November 1, 2026
+
+### Changed
+- Rejected METAR main-body groups are now kept in `unparsedMainBody` instead of
+  being dropped (#138). Covers wind, visibility, RVR, runway state, sky condition,
+  temperature/dewpoint and altimeter; a group a handler fails on is kept too.
+- A zero-denominator visibility (e.g. `1/0SM`) is rejected and kept in
+  `unparsedMainBody` (#130).
+- Main-body handlers no longer catch their own rejections; the parsing engine logs
+  each rejection once on the `Rejected` category under the handler name
+  (`skyCondition`, `runway`, `tempDewpoint`, …).
+
+### Added
+- `SectionPolicy.RejectedText.MOVE_TO_UNPARSED` and
+  `SectionResult.unparsedAndRemainingText()` in the group parsing engine.
+- METAR golden corpus: a report with two rejected main-body groups followed by an
+  unrecognized group, covering the order of `unparsedMainBody`.
+
+Data impact: `unparsedMainBody` can now be non-null for reports that contain a
+rejected main-body group. No schema change. TAF output is unchanged.
+
 ## Version 1.27.4-SNAPSHOT - October 31, 2026
 
 ### Removed
