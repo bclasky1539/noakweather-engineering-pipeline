@@ -157,6 +157,18 @@ public class NoaaAviationWeatherClient {
      * @throws WeatherServiceException if station code is invalid or request fails
      */
     public WeatherData fetchMetarReport(String stationId) throws WeatherServiceException {
+        return dataOf(fetchMetar(stationId));
+    }
+
+    /**
+     * Fetches and parses the current METAR for a single station, keeping the parse
+     * issues alongside the data (#139). Used by the ingestion orchestrators.
+     *
+     * @param stationId ICAO station identifier (e.g., "KJFK", "KCLT")
+     * @return the parsed report and its issues, or null if no data available
+     * @throws WeatherServiceException if station code is invalid or request fails
+     */
+    ParsedReport fetchMetar(String stationId) throws WeatherServiceException {
         if (!isValidStationCode(stationId)) {
             throw new WeatherServiceException(
                     ErrorType.INVALID_STATION_CODE,
@@ -217,6 +229,18 @@ public class NoaaAviationWeatherClient {
      * @throws WeatherServiceException if station code is invalid or request fails
      */
     public WeatherData fetchTafReport(String stationId) throws WeatherServiceException {
+        return dataOf(fetchTaf(stationId));
+    }
+
+    /**
+     * Fetches and parses the current TAF for a single station, keeping the parse
+     * issues alongside the data (#139). Used by the ingestion orchestrators.
+     *
+     * @param stationId ICAO station identifier (e.g., "KJFK", "KCLT")
+     * @return the parsed report and its issues, or null if no data available
+     * @throws WeatherServiceException if station code is invalid or request fails
+     */
+    ParsedReport fetchTaf(String stationId) throws WeatherServiceException {
         if (!isValidStationCode(stationId)) {
             throw new WeatherServiceException(
                     ErrorType.INVALID_STATION_CODE,
@@ -329,14 +353,11 @@ public class NoaaAviationWeatherClient {
     }
 
     /**
-     * Alias for fetchMetarReport for backward compatibility.
-     *
-     * @param stationId ICAO station identifier
-     * @return WeatherData object or null if no data available
-     * @throws WeatherServiceException if request fails
+     * @param report a fetched report, or null when the station had no data
+     * @return the report's data, or null when there was none
      */
-    public WeatherData fetchLatestMetar(String stationId) throws WeatherServiceException {
-        return fetchMetarReport(stationId);
+    private static WeatherData dataOf(ParsedReport report) {
+        return report != null ? report.data() : null;
     }
 
     /**
@@ -431,16 +452,18 @@ public class NoaaAviationWeatherClient {
      *
      * @param rawText   the raw response from NOAA
      * @param stationId the station identifier
-     * @return WeatherData object (NoaaMetarData with fully populated conditions)
+     * @return the report (NoaaMetarData with fully populated conditions) and its parse issues
      */
-    private WeatherData parseMetarResponse(String rawText, String stationId) {
+    private ParsedReport parseMetarResponse(String rawText, String stationId) {
         String metarLine = extractMetarLine(rawText, stationId);
         logger.debug("Parsing METAR for {}: {}", stationId, metarLine);
 
         NoaaMetarParser metarParser = new NoaaMetarParser();
         ParseResult<NoaaWeatherData> parseResult = metarParser.parse(metarLine);
 
-        return buildWeatherData(rawText, stationId, metarLine, parseResult, NoaaMetarData::new, "METAR");
+        return new ParsedReport(
+                buildWeatherData(rawText, stationId, metarLine, parseResult, NoaaMetarData::new, "METAR"),
+                parseResult.getIssues());
     }
 
     /**
@@ -460,16 +483,18 @@ public class NoaaAviationWeatherClient {
      *
      * @param rawText   the raw response from NOAA
      * @param stationId the station identifier
-     * @return WeatherData object (NoaaTafData with forecast periods parsed)
+     * @return the report (NoaaTafData with forecast periods parsed) and its parse issues
      */
-    private WeatherData parseTafResponse(String rawText, String stationId) {
+    private ParsedReport parseTafResponse(String rawText, String stationId) {
         String tafText = extractTafText(rawText);
         logger.debug("Parsing TAF for {}: {}", stationId, tafText);
 
         NoaaTafParser tafParser = new NoaaTafParser();
         ParseResult<NoaaWeatherData> parseResult = tafParser.parse(tafText);
 
-        return buildWeatherData(rawText, stationId, tafText, parseResult, NoaaTafData::new, "TAF");
+        return new ParsedReport(
+                buildWeatherData(rawText, stationId, tafText, parseResult, NoaaTafData::new, "TAF"),
+                parseResult.getIssues());
     }
 
     /**
