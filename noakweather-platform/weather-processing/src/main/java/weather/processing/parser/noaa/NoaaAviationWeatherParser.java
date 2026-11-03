@@ -22,6 +22,8 @@ import weather.model.WeatherConditions;
 import weather.model.components.*;
 import weather.model.enums.PressureUnit;
 import weather.model.enums.SkyCoverage;
+import weather.processing.parser.common.ParseIssue;
+import weather.processing.parser.common.ParseResult;
 import weather.processing.parser.common.WeatherParser;
 
 import java.time.Instant;
@@ -891,6 +893,54 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Runway state pattern matched: {}", matcher.group(0));
         }
+    }
+
+    // ==================== PARSE ISSUES ====================
+
+    /**
+     * Issues found while parsing the current report; returned on its ParseResult.
+     */
+    private final List<ParseIssue> parseIssues = new ArrayList<>();
+
+    /**
+     * Start a new report: forget the previous report's issues. Called once per parse,
+     * not per TAF period (initializeSharedState runs per period).
+     */
+    protected void clearParseIssues() {
+        parseIssues.clear();
+    }
+
+    /**
+     * Log a rejected group, as {@link #logRejected}, and record it as a parse issue.
+     * Used by handlers that catch their own rejections (the remark handlers, #115).
+     *
+     * @param section   the report section, e.g. "METAR remarks"
+     * @param groupType human-readable group name, e.g. "peak wind"
+     * @param text      the rejected text from the report
+     * @param e         the rejection
+     */
+    protected void recordRejected(String section, String groupType, String text, IllegalArgumentException e) {
+        logRejected(groupType, text, e);
+        parseIssues.add(ParseIssue.rejected(section, groupType, text, e));
+    }
+
+    /**
+     * Record the rejections, failures and disabled handlers of one section run. The
+     * engine has already logged them.
+     *
+     * @param section the section the result came from
+     * @param result  the section run's result
+     */
+    protected void recordSectionIssues(String section, SectionResult result) {
+        parseIssues.addAll(result.toParseIssues(section));
+    }
+
+    /**
+     * @param result the parse result for the current report
+     * @return the result carrying the report's issues
+     */
+    protected ParseResult<NoaaWeatherData> withParseIssues(ParseResult<NoaaWeatherData> result) {
+        return result.withIssues(parseIssues);
     }
 
     // ==================== UTILITY METHODS ====================

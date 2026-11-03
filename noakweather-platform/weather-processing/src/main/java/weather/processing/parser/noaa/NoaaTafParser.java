@@ -81,6 +81,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
                     SectionPolicy.RejectedText.CONSUME,
                     SectionPolicy.UnrecognizedToken.STOP)
             .withBoundary(NoaaTafParser::isChangeGroupStart);
+    private static final String CONDITIONS_SECTION = "TAF forecast period";
 
     // Forecast-period condition groups, run through the shared group parsing engine
     private final SectionParser<NoaaTafParser> conditionsParser;
@@ -96,7 +97,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
     private Integer currentProbability;
 
     public NoaaTafParser() {
-        this.conditionsParser = new SectionParser<>("TAF forecast period", createConditionHandlers(), CONDITIONS_POLICY);
+        this.conditionsParser = new SectionParser<>(CONDITIONS_SECTION, createConditionHandlers(), CONDITIONS_POLICY);
     }
 
     @Override
@@ -137,17 +138,17 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
 
             logUnparsedTokens(mainBody, remarks);
 
-            return ParseResult.success(weatherData);
+            return withParseIssues(ParseResult.success(weatherData));
 
         } catch (IllegalStateException | IllegalArgumentException e) {
-            return ParseResult.failure(
+            return withParseIssues(ParseResult.failure(
                     "Failed to parse TAF data: " + e.getMessage(), e
-            );
+            ));
         } catch (RuntimeException e) {
             LOGGER.error("Unexpected error parsing TAF data", e);
-            return ParseResult.failure(
+            return withParseIssues(ParseResult.failure(
                     "Unexpected parsing error: " + e.getMessage(), e
-            );
+            ));
         }
     }
 
@@ -180,6 +181,7 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
      * Calls base class to initialize shared state.
      */
     private void initializeParsingState() {
+        clearParseIssues();
         initializeSharedState();  // Initialize base class state
         this.weatherData = new NoaaTafData();
         this.issueTime = null;
@@ -597,7 +599,9 @@ public class NoaaTafParser extends NoaaAviationWeatherParser<NoaaTafData> {
      * @return the text from the stopping point on
      */
     private String parseWeatherConditions(String token) {
-        return conditionsParser.parse(token, this).remaining();
+        SectionResult result = conditionsParser.parse(token, this);
+        recordSectionIssues(CONDITIONS_SECTION, result);
+        return result.remaining();
     }
 
     /**

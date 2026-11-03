@@ -35,6 +35,7 @@ import weather.model.components.remark.windremarks.PeakWind;
 import weather.model.components.remark.windremarks.WindAtLocation;
 import weather.model.components.remark.windremarks.WindShift;
 import weather.model.enums.*;
+import weather.processing.parser.common.ParseIssue;
 import weather.processing.parser.common.ParseResult;
 import org.junit.jupiter.params.ParameterizedTest;
 
@@ -11264,6 +11265,56 @@ class NoaaMetarParserTest {
         }
     }
 
+    // ==================== PARSE ISSUES ====================
+
+    @Test
+    @DisplayName("A cleanly parsed report has no parse issues")
+    void testParseIssues_CleanReportHasNone() {
+        ParseResult<NoaaWeatherData> result =
+                parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 22/12 A3012");
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getIssues()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("A rejected main-body group is a REJECTED issue with its component and value")
+    void testParseIssues_MainBodyRejection() {
+        ParseResult<NoaaWeatherData> result =
+                parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 10/15 A3012");
+
+        assertThat(result.getIssues()).singleElement().satisfies(issue -> {
+            assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+            assertThat(issue.section()).isEqualTo("METAR main body");
+            assertThat(issue.handler()).isEqualTo("tempDewpoint");
+            assertThat(issue.text()).isEqualTo("10/15");
+            assertThat(issue.component()).isEqualTo("Temperature.dewpointCelsius");
+        });
+    }
+
+    @Test
+    @DisplayName("A rejected remark group is a REJECTED issue in the remarks section")
+    void testParseIssues_RemarkRejection() {
+        ParseResult<NoaaWeatherData> result =
+                parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 22/12 A3012 RMK PK WND 40035/42");
+
+        assertThat(result.getIssues()).singleElement().satisfies(issue -> {
+            assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+            assertThat(issue.section()).isEqualTo("METAR remarks");
+            assertThat(issue.handler()).isEqualTo("peak wind");
+        });
+    }
+
+    @Test
+    @DisplayName("Issues do not carry over from one report to the next")
+    void testParseIssues_ClearedBetweenReports() {
+        parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 10/15 A3012");
+        ParseResult<NoaaWeatherData> clean =
+                parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 22/12 A3012");
+
+        assertThat(clean.getIssues()).isEmpty();
+    }
+
     // ========== MISC TESTS ==========
 
     @ParameterizedTest
@@ -11352,6 +11403,10 @@ class NoaaMetarParserTest {
             assertThat(data.getPressure()).isNotNull();
             // A failed group is kept for unparsedMainBody rather than dropped (#138)
             assertThat(data.getUnparsedMainBody()).isEqualTo("28016KT");
+            assertThat(result.getIssues()).singleElement().satisfies(issue -> {
+                assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.FAILED);
+                assertThat(issue.text()).isEqualTo("28016KT");
+            });
             assertThat(logs.events()).singleElement().satisfies(event -> {
                 assertThat(event.getLevel()).isEqualTo(Level.ERROR);
                 assertThat(event.getMessage().getFormattedMessage())

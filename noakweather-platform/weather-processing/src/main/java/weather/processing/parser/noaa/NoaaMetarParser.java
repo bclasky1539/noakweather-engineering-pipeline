@@ -97,7 +97,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
 
     /**
-     * Main body (#153 phase 2, #138). First matching handler wins; a rejected group
+     * Main body. First matching handler wins; a rejected group
      * is moved to the unparsed list and parsing continues after it; parsing stops at
      * the first group no handler recognizes. Both end up in unparsedMainBody.
      */
@@ -105,9 +105,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
             SectionPolicy.RejectedText.MOVE_TO_UNPARSED,
             SectionPolicy.UnrecognizedToken.STOP);
+    private static final String MAIN_BODY_SECTION = "METAR main body";
 
     /**
-     * Remarks: the remark chain's behavior (#153 phase 3). Every handler runs once
+     * Remarks: the remark chain's behavior. Every handler runs once
      * per pass until a pass makes no progress; a rejected group stays in place; a
      * token no handler recognizes is skipped to freeText and parsing carries on.
      */
@@ -115,6 +116,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             SectionPolicy.Scheduling.PASSES,
             SectionPolicy.RejectedText.KEEP,
             SectionPolicy.UnrecognizedToken.SKIP_TO_UNPARSED);
+    private static final String REMARKS_SECTION = "METAR remarks";
 
     // Main body and remark groups, run through the shared group parsing engine
     private final SectionParser<NoaaMetarParser> mainBodyParser;
@@ -124,8 +126,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private String reportType;
 
     public NoaaMetarParser() {
-        this.mainBodyParser = new SectionParser<>("METAR main body", createMainBodyHandlers(), MAIN_BODY_POLICY);
-        this.remarksParser = new SectionParser<>("METAR remarks", createRemarkHandlers(), REMARKS_POLICY);
+        this.mainBodyParser = new SectionParser<>(MAIN_BODY_SECTION, createMainBodyHandlers(), MAIN_BODY_POLICY);
+        this.remarksParser = new SectionParser<>(REMARKS_SECTION, createRemarkHandlers(), REMARKS_POLICY);
     }
 
     @Override
@@ -162,19 +164,19 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             logUnparsedTokens(mainBody, remarks);
 
-            return ParseResult.success(weatherData);
+            return withParseIssues(ParseResult.success(weatherData));
 
         } catch (InvalidObservationException | IllegalStateException e) {
             // The report as a whole is unusable (e.g. no station): expected bad data, not a bug
             LOGGER.info("METAR rejected: {} [{}]", e.getMessage(), rawData.trim());
-            return ParseResult.failure(
+            return withParseIssues(ParseResult.failure(
                     "Failed to parse METAR data: " + e.getMessage(), e
-            );
+            ));
         } catch (RuntimeException e) {
             LOGGER.error("Unexpected error parsing METAR data", e);
-            return ParseResult.failure(
+            return withParseIssues(ParseResult.failure(
                     "Unexpected parsing error: " + e.getMessage(), e
-            );
+            ));
         }
     }
 
@@ -183,6 +185,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Calls base class to initialize shared state.
      */
     private void initializeParsingState() {
+        clearParseIssues();
         initializeSharedState();  // Initialize base class state
         this.weatherData = null;
         this.issueTime = null;
@@ -212,7 +215,9 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      */
     private String parseMainBody(String mainBody) {
         mainBody = parseIssueDateTime(mainBody);
-        String unparsed = mainBodyParser.parse(mainBody, this).unparsedAndRemainingText();
+        SectionResult result = mainBodyParser.parse(mainBody, this);
+        recordSectionIssues(MAIN_BODY_SECTION, result);
+        String unparsed = result.unparsedAndRemainingText();
         return unparsed != null ? unparsed : "";
     }
 
@@ -314,12 +319,13 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Logs a remark group that matched its pattern but was rejected. The caller
-     * leaves the text in place so it surfaces in freeText (#92, #115). Delegates to
-     * the shared {@link #logRejected} so remarks and main body use one category (#136).
+     * Logs a remark group that matched its pattern but was rejected, and records it as
+     * a parse issue. The caller leaves the text in place so it surfaces in freeText.
+     * Logging goes through the shared {@link #logRejected}, so remarks and main body
+     * use one category.
      */
-    private static void logRejectedRemark(String remarkType, String matchedText, IllegalArgumentException e) {
-        logRejected(remarkType, matchedText, e);
+    private void logRejectedRemark(String remarkType, String matchedText, IllegalArgumentException e) {
+        recordRejected(REMARKS_SECTION, remarkType, matchedText, e);
     }
 
     // ==================== METAR-SPECIFIC PATTERN HANDLERS ====================
@@ -691,6 +697,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         NoaaMetarRemarks.Builder remarksBuilder = NoaaMetarRemarks.builder();
         SectionResult result = remarksParser.parse(remarksText.trim(), remarksBuilder);
+        recordSectionIssues(REMARKS_SECTION, result);
 
         // Tokens no handler recognized are kept as free text
         if (result.unparsedText() != null) {
