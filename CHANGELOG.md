@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Version 1.29.0-SNAPSHOT - November 3, 2026
+
+### Added
+- `ParseIssue` and `ParseResult.getIssues()`: each parse now returns the problems found
+  (rejected groups with the domain exception's component/value/reason, groups a handler
+  failed on, and handlers disabled by their circuit breaker) (#139).
+- METAR (main body and remarks) and TAF parsers collect issues per report;
+  `SectionResult` records failed groups and converts a section run to issues.
+- Ingestion logs one `ParseIssueSummary` line per batch (`ingestStationsSequential`,
+  `ingestStationsBatch`): INFO normally, WARN when there are parser bugs. Stable
+  `key=value` format for a future CloudWatch Logs metric filter.
+- Orchestrator metrics: `parse_rejected`, `parse_failed`, `parse_handler_disabled`.
+
+### Changed
+- The orchestrators' `fetchFromNoaa` hook returns `ParsedReport` (data plus issues);
+  the client's public fetch methods are unchanged.
+
+### Removed
+- Unused `NoaaAviationWeatherClient.fetchLatestMetar` alias.
+
+No change to stored data: issues are not written to the record (that is #166).
+
 ## Version 1.28.0-SNAPSHOT - November 1, 2026
 
 ### Changed
