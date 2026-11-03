@@ -913,6 +913,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     /**
      * Log a rejected group, as {@link #logRejected}, and record it as a parse issue.
      * Used by handlers that catch their own rejections (the remark handlers, #115).
+     * <p>
+     * Remarks run in passes and a rejected remark stays in place, so a later pass meets
+     * the same group again; it is logged and recorded once per report (#132).
      *
      * @param section   the report section, e.g. "METAR remarks"
      * @param groupType human-readable group name, e.g. "peak wind"
@@ -920,8 +923,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * @param e         the rejection
      */
     protected void recordRejected(String section, String groupType, String text, IllegalArgumentException e) {
+        ParseIssue issue = ParseIssue.rejected(section, groupType, text, e);
+        if (parseIssues.contains(issue)) {
+            return;
+        }
         logRejected(groupType, text, e);
-        parseIssues.add(ParseIssue.rejected(section, groupType, text, e));
+        parseIssues.add(issue);
     }
 
     /**

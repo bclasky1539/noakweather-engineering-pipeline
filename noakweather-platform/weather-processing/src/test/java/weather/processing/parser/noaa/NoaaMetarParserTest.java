@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.*;
+import weather.exception.InvalidObservationException;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherConditions;
@@ -11581,6 +11582,16 @@ class NoaaMetarParserTest {
             // The handler no longer logs it itself; the engine logs it once
             assertThat(rejected.events()).isEmpty();
         }
+    }
+
+    @Test
+    void testRecordRejected_SameGroupTwice_RecordedOnce() {
+        InvalidObservationException e = new InvalidObservationException("Wind.speed", "x", "bad");
+
+        parser.recordRejected("METAR remarks", "peak wind", "PK WND x", e);
+        parser.recordRejected("METAR remarks", "peak wind", "PK WND x", e);
+
+        assertEquals(1, parser.withParseIssues(ParseResult.failure("test")).getIssues().size());
     }
 
     // --- Correct behavior (regression) ---
