@@ -746,12 +746,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
         // Determine unit and parse pressure
         Pressure pressure = parsePressure(unit1, pressureStr, unit2);
+        conditionsBuilder.pressure(pressure);
 
-        if (pressure != null) {
-            conditionsBuilder.pressure(pressure);
-
-            LOGGER.debug("Altimeter: {}", pressure.getSummary());
-        }
+        LOGGER.debug("Altimeter: {}", pressure.getSummary());
     }
 
     /**
@@ -768,11 +765,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * @param unit1       Prefix unit indicator
      * @param pressureStr Pressure digits
      * @param unit2       Suffix unit indicator
-     * @return Pressure object, or null if invalid
+     * @return Pressure object, never null
+     * @throws InvalidObservationException if the pressure is blank or not numeric
      */
     protected Pressure parsePressure(String unit1, String pressureStr, String unit2) {
         if (pressureStr == null || pressureStr.isBlank()) {
-            return null;
+            throw new InvalidObservationException("Pressure.value", pressureStr, "Pressure value is blank");
         }
 
         // Handle OCR error: O → 0
@@ -795,8 +793,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return parsePressureByValue(pressureValue);
 
         } catch (NumberFormatException e) {
-            logRejected("pressure", pressureStr, e);
-            return null;
+            throw new InvalidObservationException("Pressure.value", pressureStr, "Invalid pressure format", e);
         }
     }
 

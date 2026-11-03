@@ -11584,6 +11584,37 @@ class NoaaMetarParserTest {
         }
     }
 
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "VIS 1/0V2   | variable visibility",
+            "TWR VIS 1/0 | tower/surface visibility",
+            "GR 1/0      | hail size"
+    })
+    void testRemarkZeroDenominator_RecordedOnceAsRejected(String remark, String handler) {
+        ParseResult<NoaaWeatherData> result = parser.parse(
+                "METAR KCLT 151953Z 19005KT 10SM CLR 20/10 A3015 RMK AO2 " + remark);
+
+        assertTrue(result.isSuccess());
+        List<ParseIssue> issues = result.getIssues();
+        assertEquals(1, issues.size(), issues::toString);
+        ParseIssue issue = issues.get(0);
+        assertEquals(ParseIssue.Kind.REJECTED, issue.kind());
+        assertEquals(handler, issue.handler());
+        assertEquals(remark, issue.text().trim());
+    }
+
+    @Test
+    void testParsePressure_NotNumeric_Rejected() {
+        InvalidObservationException e = assertThrows(InvalidObservationException.class,
+                () -> parser.parsePressure("A", "29X2", null));
+        assertInstanceOf(NumberFormatException.class, e.getCause());
+    }
+
+    @Test
+    void testParsePressure_Blank_Rejected() {
+        assertThrows(InvalidObservationException.class, () -> parser.parsePressure("A", " ", null));
+    }
+
     @Test
     void testRecordRejected_SameGroupTwice_RecordedOnce() {
         InvalidObservationException e = new InvalidObservationException("Wind.speed", "x", "bad");
