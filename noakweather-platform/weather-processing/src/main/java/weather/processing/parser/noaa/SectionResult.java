@@ -31,12 +31,14 @@ import java.util.Set;
  *                        groups moved aside under
  *                        {@link SectionPolicy.RejectedText#MOVE_TO_UNPARSED}, in report order
  * @param rejections      every rejected group, in the order rejected
+ * @param failures        every group a handler failed on, in the order failed
  * @param trippedHandlers handlers disabled by the circuit breaker during this run
  * @author bclasky1539
  */
 record SectionResult(String remaining,
                      List<String> unparsedTokens,
                      List<Rejection> rejections,
+                     List<Failure> failures,
                      Set<String> trippedHandlers) {
 
     /**
@@ -49,9 +51,20 @@ record SectionResult(String remaining,
     record Rejection(String handlerName, String matchedText, IllegalArgumentException reason) {
     }
 
+    /**
+     * One group a handler failed on with an unexpected exception (a parser bug).
+     *
+     * @param handlerName the handler that failed
+     * @param matchedText the group, as it appears in the report
+     * @param cause       the unexpected exception
+     */
+    record Failure(String handlerName, String matchedText, RuntimeException cause) {
+    }
+
     SectionResult {
         unparsedTokens = List.copyOf(unparsedTokens);
         rejections = List.copyOf(rejections);
+        failures = List.copyOf(failures);
         trippedHandlers = Set.copyOf(trippedHandlers);
     }
 

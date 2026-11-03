@@ -38,8 +38,8 @@ import java.util.Set;
  * engine logs it once via {@link RejectedGroupLog}, records it in the result, and
  * consumes, keeps or moves the text to the unparsed list as the policy says. A
  * pattern-based step reports a bug in one group as {@link GroupOutcome.Failed}:
- * logged at ERROR with its stack trace, text handled as for a rejection, handler
- * still enabled (#133).
+ * logged at ERROR with its stack trace and recorded in the result (#139), text
+ * handled as for a rejection, handler still enabled (#133).
  * Circuit breaker (per handler): any exception escaping a step is a bug. It is
  * logged at WARN, the handler is skipped for the rest of this run, and the other
  * handlers keep running (#135).
@@ -114,6 +114,7 @@ final class SectionParser<B> {
         private final Set<String> tripped = new LinkedHashSet<>();
         private final Set<String> keptGroups = new HashSet<>();
         private final List<SectionResult.Rejection> rejections = new ArrayList<>();
+        private final List<SectionResult.Failure> failures = new ArrayList<>();
         private final List<String> unparsed = new ArrayList<>();
 
         private Run(B target) {
@@ -129,7 +130,7 @@ final class SectionParser<B> {
                 }
                 current = skipToken(current);
             }
-            return new SectionResult(current, unparsed, rejections, tripped);
+            return new SectionResult(current, unparsed, rejections, failures, tripped);
         }
 
         private String runUntilStuck(String text) {
@@ -247,15 +248,15 @@ final class SectionParser<B> {
         }
 
         /**
-         * Log a failed group at ERROR, then consume, keep or move its text per policy.
+         * Log and record a failed group, then consume, keep or move its text per policy.
          */
         private String fail(GroupHandler<B> handler, GroupOutcome.Failed failed) {
             if (policy.rejectedText() != SectionPolicy.RejectedText.KEEP) {
-                logFailure(handler, failed);
+                recordFailure(handler, failed);
                 return passOver(failed.matchedText(), failed.afterGroup());
             }
             if (keptGroups.add(keptKey("failed", handler, failed.matchedText()))) {
-                logFailure(handler, failed);
+                recordFailure(handler, failed);
             }
             return failed.atGroup();
         }
@@ -275,9 +276,10 @@ final class SectionParser<B> {
             return afterGroup;
         }
 
-        private void logFailure(GroupHandler<B> handler, GroupOutcome.Failed failed) {
+        private void recordFailure(GroupHandler<B> handler, GroupOutcome.Failed failed) {
             LOGGER.error("Unexpected error in handler '{}' on '{}'",
                     handler.name(), failed.matchedText(), failed.cause());
+            failures.add(new SectionResult.Failure(handler.name(), failed.matchedText(), failed.cause()));
         }
 
         /**
