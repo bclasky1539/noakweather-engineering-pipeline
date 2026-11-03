@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import weather.exception.InvalidObservationException;
+import weather.processing.parser.common.ParseIssue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -228,6 +229,8 @@ class SectionParserTest {
                 assertThat(event.getLevel()).isEqualTo(Level.ERROR);
                 assertThat(event.getThrown()).isSameAs(bug);
             });
+            assertThat(result.failures()).singleElement()
+                    .satisfies(failure -> assertThat(failure.matchedText()).isEqualTo("f"));
         }
     }
 
@@ -311,11 +314,18 @@ class SectionParserTest {
             assertThat(result.remaining()).isEmpty();
             assertThat(result.trippedHandlers()).isEmpty();
             assertThat(result.rejections()).isEmpty();
+            // Each failure is logged at ERROR...
             assertThat(errors.events()).hasSize(2).allSatisfy(event -> {
                 assertThat(event.getLevel()).isEqualTo(Level.ERROR);
                 assertThat(event.getMessage().getFormattedMessage())
                         .isEqualTo("Unexpected error in handler 'F' on 'f'");
                 assertThat(event.getThrown()).isSameAs(bug);
+            });
+            // ...and recorded in the result (#139)
+            assertThat(result.failures()).hasSize(2).allSatisfy(failure -> {
+                assertThat(failure.handlerName()).isEqualTo("F");
+                assertThat(failure.matchedText()).isEqualTo("f");
+                assertThat(failure.cause()).isSameAs(bug);
             });
         }
     }
@@ -331,6 +341,7 @@ class SectionParserTest {
             assertThat(target).containsExactly("Q:q");
             assertThat(result.unparsedTokens()).containsExactly("f");
             assertThat(errors.events()).hasSize(1);
+            assertThat(result.failures()).hasSize(1);
         }
     }
 
@@ -453,22 +464,46 @@ class SectionParserTest {
 
     @Test
     void testUnparsedAndRemainingText_NullWhenEverythingParsed() {
-        SectionResult result = new SectionResult("", List.of(), List.of(), java.util.Set.of());
+        SectionResult result = new SectionResult("", List.of(), List.of(), List.of(), java.util.Set.of());
 
         assertThat(result.unparsedAndRemainingText()).isNull();
     }
 
     @Test
     void testUnparsedAndRemainingText_RemainingOnly() {
-        SectionResult result = new SectionResult("zz b ", List.of(), List.of(), java.util.Set.of());
+        SectionResult result = new SectionResult("zz b ", List.of(), List.of(), List.of(), java.util.Set.of());
 
         assertThat(result.unparsedAndRemainingText()).isEqualTo("zz b");
     }
 
     @Test
     void testUnparsedAndRemainingText_TokensOnly() {
-        SectionResult result = new SectionResult("", List.of("x9", "yy"), List.of(), java.util.Set.of());
+        SectionResult result = new SectionResult("", List.of("x9", "yy"), List.of(), List.of(), java.util.Set.of());
 
         assertThat(result.unparsedAndRemainingText()).isEqualTo("x9 yy");
+    }
+
+    @Test
+    void testToParseIssues_RejectionsThenFailuresThenDisabledHandlers() {
+        InvalidObservationException rejection =
+                new InvalidObservationException("Test.field", "x9", "Invalid test group");
+        IllegalStateException bug = new IllegalStateException("boom");
+        SectionResult result = new SectionResult("", List.of(),
+                List.of(new SectionResult.Rejection("R", "x9", rejection)),
+                List.of(new SectionResult.Failure("F", "f", bug)),
+                java.util.Set.of("Z", "A"));
+
+        assertThat(result.toParseIssues(SECTION)).containsExactly(
+                ParseIssue.rejected(SECTION, "R", "x9", rejection),
+                ParseIssue.failed(SECTION, "F", "f", bug),
+                ParseIssue.handlerDisabled(SECTION, "A"),
+                ParseIssue.handlerDisabled(SECTION, "Z"));
+    }
+
+    @Test
+    void testToParseIssues_EmptyWhenTheRunHadNone() {
+        SectionResult result = new SectionResult("", List.of(), List.of(), List.of(), java.util.Set.of());
+
+        assertThat(result.toParseIssues(SECTION)).isEmpty();
     }
 }

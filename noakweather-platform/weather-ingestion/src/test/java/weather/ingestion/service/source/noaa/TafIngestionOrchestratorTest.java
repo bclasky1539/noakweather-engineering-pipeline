@@ -28,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -90,15 +91,15 @@ class TafIngestionOrchestratorTest {
         String stationId = "KJFK";
         WeatherData expectedData = createMockWeatherData(stationId);
 
-        when(mockNoaaClient.fetchTafReport(stationId)).thenReturn(expectedData);
+        when(mockNoaaClient.fetchTaf(stationId)).thenReturn(new ParsedReport(expectedData, List.of()));
 
         // Act
-        WeatherData result = invokeFetchFromNoaa(orchestrator, stationId);
+        ParsedReport result = invokeFetchFromNoaa(orchestrator, stationId);
 
         // Assert
         assertNotNull(result);
-        assertEquals(stationId, result.getStationId());
-        verify(mockNoaaClient, times(1)).fetchTafReport(stationId);
+        assertEquals(stationId, result.data().getStationId());
+        verify(mockNoaaClient, times(1)).fetchTaf(stationId);
     }
 
     @Test
@@ -106,14 +107,14 @@ class TafIngestionOrchestratorTest {
         // Arrange
         String stationId = "KJFK";
 
-        when(mockNoaaClient.fetchTafReport(stationId)).thenReturn(null);
+        when(mockNoaaClient.fetchTaf(stationId)).thenReturn(null);
 
         // Act
-        WeatherData result = invokeFetchFromNoaa(orchestrator, stationId);
+        ParsedReport result = invokeFetchFromNoaa(orchestrator, stationId);
 
         // Assert
         assertNull(result);
-        verify(mockNoaaClient, times(1)).fetchTafReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchTaf(stationId);
     }
 
     @Test
@@ -123,14 +124,14 @@ class TafIngestionOrchestratorTest {
         WeatherServiceException expectedException =
                 new WeatherServiceException(ErrorType.NETWORK_ERROR, "Connection failed");
 
-        when(mockNoaaClient.fetchTafReport(stationId)).thenThrow(expectedException);
+        when(mockNoaaClient.fetchTaf(stationId)).thenThrow(expectedException);
 
         // Act & Assert
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
                 () -> invokeFetchFromNoaa(orchestrator, stationId));
 
         assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
-        verify(mockNoaaClient, times(1)).fetchTafReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchTaf(stationId);
     }
 
     @Test
@@ -139,14 +140,14 @@ class TafIngestionOrchestratorTest {
         String stationId = "KCLT";
         WeatherData mockData = createMockWeatherData(stationId);
 
-        when(mockNoaaClient.fetchTafReport(stationId)).thenReturn(mockData);
+        when(mockNoaaClient.fetchTaf(stationId)).thenReturn(new ParsedReport(mockData, List.of()));
 
         // Act
         invokeFetchFromNoaa(orchestrator, stationId);
 
-        // Assert - verify it calls fetchTafReport, not fetchMetarReport
-        verify(mockNoaaClient, times(1)).fetchTafReport(stationId);
-        verify(mockNoaaClient, never()).fetchMetarReport(anyString());
+        // Assert - verify it calls fetchTaf, not fetchMetar
+        verify(mockNoaaClient, times(1)).fetchTaf(stationId);
+        verify(mockNoaaClient, never()).fetchMetar(anyString());
     }
 
     // ===== Data Type Verification =====
@@ -171,13 +172,13 @@ class TafIngestionOrchestratorTest {
     /**
      * Helper to invoke the protected fetchFromNoaa method using reflection.
      */
-    private WeatherData invokeFetchFromNoaa(TafIngestionOrchestrator orchestrator,
-                                            String stationId) throws WeatherServiceException {
+    private ParsedReport invokeFetchFromNoaa(TafIngestionOrchestrator orchestrator,
+                                             String stationId) throws WeatherServiceException {
         try {
             java.lang.reflect.Method method =
                     AbstractNoaaIngestionOrchestrator.class.getDeclaredMethod("fetchFromNoaa", String.class);
             method.setAccessible(true);
-            return (WeatherData) method.invoke(orchestrator, stationId);
+            return (ParsedReport) method.invoke(orchestrator, stationId);
         } catch (java.lang.reflect.InvocationTargetException e) {
             // Unwrap the actual exception thrown by the method
             Throwable cause = e.getCause();

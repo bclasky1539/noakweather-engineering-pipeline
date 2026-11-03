@@ -28,6 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -90,15 +91,15 @@ class MetarIngestionOrchestratorTest {
         String stationId = "KJFK";
         WeatherData expectedData = createMockWeatherData(stationId);
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(expectedData);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(new ParsedReport(expectedData, List.of()));
 
         // Act
-        WeatherData result = invokeFetchFromNoaa(orchestrator, stationId);
+        ParsedReport result = invokeFetchFromNoaa(orchestrator, stationId);
 
         // Assert
         assertNotNull(result);
-        assertEquals(stationId, result.getStationId());
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
+        assertEquals(stationId, result.data().getStationId());
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
     }
 
     @Test
@@ -106,14 +107,14 @@ class MetarIngestionOrchestratorTest {
         // Arrange
         String stationId = "KJFK";
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(null);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(null);
 
         // Act
-        WeatherData result = invokeFetchFromNoaa(orchestrator, stationId);
+        ParsedReport result = invokeFetchFromNoaa(orchestrator, stationId);
 
         // Assert
         assertNull(result);
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
     }
 
     @Test
@@ -123,14 +124,14 @@ class MetarIngestionOrchestratorTest {
         WeatherServiceException expectedException =
                 new WeatherServiceException(ErrorType.NETWORK_ERROR, "Connection failed");
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenThrow(expectedException);
+        when(mockNoaaClient.fetchMetar(stationId)).thenThrow(expectedException);
 
         // Act & Assert
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
                 () -> invokeFetchFromNoaa(orchestrator, stationId));
 
         assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
     }
 
     @Test
@@ -139,14 +140,14 @@ class MetarIngestionOrchestratorTest {
         String stationId = "KCLT";
         WeatherData mockData = createMockWeatherData(stationId);
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(mockData);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(new ParsedReport(mockData, List.of()));
 
         // Act
         invokeFetchFromNoaa(orchestrator, stationId);
 
-        // Assert - verify it calls fetchMetarReport, not fetchTafReport
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
-        verify(mockNoaaClient, never()).fetchTafReport(anyString());
+        // Assert - verify it calls fetchMetar, not fetchTaf
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
+        verify(mockNoaaClient, never()).fetchTaf(anyString());
     }
 
     // ===== Data Type Verification =====
@@ -171,13 +172,13 @@ class MetarIngestionOrchestratorTest {
     /**
      * Helper to invoke the protected fetchFromNoaa method using reflection.
      */
-    private WeatherData invokeFetchFromNoaa(MetarIngestionOrchestrator orchestrator,
-                                            String stationId) throws WeatherServiceException {
+    private ParsedReport invokeFetchFromNoaa(MetarIngestionOrchestrator orchestrator,
+                                             String stationId) throws WeatherServiceException {
         try {
             java.lang.reflect.Method method =
                     AbstractNoaaIngestionOrchestrator.class.getDeclaredMethod("fetchFromNoaa", String.class);
             method.setAccessible(true);
-            return (WeatherData) method.invoke(orchestrator, stationId);
+            return (ParsedReport) method.invoke(orchestrator, stationId);
         } catch (java.lang.reflect.InvocationTargetException e) {
             // Unwrap the actual exception thrown by the method
             Throwable cause = e.getCause();

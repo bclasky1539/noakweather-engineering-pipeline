@@ -29,6 +29,7 @@ import weather.model.NoaaWeatherData;
 import weather.model.components.*;
 import weather.model.enums.ChangeIndicator;
 import weather.model.enums.SkyCoverage;
+import weather.processing.parser.common.ParseIssue;
 import weather.processing.parser.common.ParseResult;
 
 import java.time.LocalDateTime;
@@ -1444,6 +1445,55 @@ class NoaaTafParserTest {
 
             assertThat(result.isSuccess()).isFalse();
             assertThat(result.getErrorMessage()).isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("A rejected group in a forecast period is a REJECTED issue")
+        void testParseIssues_RejectedGroupInForecastPeriod() {
+            ParseResult<NoaaWeatherData> result = parser.parse(
+                    "2026/10/15 17:20 TAF KSAN 151720Z 1518/1624 40012KT P6SM SKC FM152100 25010KT P6SM FEW020");
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(result.getIssues()).singleElement().satisfies(issue -> {
+                assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+                assertThat(issue.section()).isEqualTo("TAF forecast period");
+                assertThat(issue.handler()).isEqualTo("wind");
+                assertThat(issue.text()).isEqualTo("40012KT");
+            });
+        }
+
+        @Test
+        @DisplayName("A cleanly parsed TAF has no parse issues")
+        void testParseIssues_CleanTafHasNone() {
+            ParseResult<NoaaWeatherData> result = parser.parse(
+                    "2026/10/15 17:20 TAF KJFK 151720Z 1518/1624 18012KT P6SM FEW250 FM152100 21015KT P6SM FEW250");
+
+            assertThat(result.getIssues()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("An unexpected error fails the report, logged at ERROR, and keeps the parse result shape")
+        void testParse_UnexpectedError_ReturnsFailure() {
+            NoaaTafParser failingParser = new NoaaTafParser() {
+                @Override
+                protected String parseIssueDateTime(String token) {
+                    throw new UnsupportedOperationException("boom");
+                }
+            };
+
+            try (LogCapture errors = LogCapture.of(NoaaTafParser.class)) {
+                ParseResult<NoaaWeatherData> result =
+                        failingParser.parse("TAF KJFK 151720Z 1518/1624 18012KT P6SM FEW250");
+
+                assertThat(result.isFailure()).isTrue();
+                assertThat(result.getErrorMessage()).isEqualTo("Unexpected parsing error: boom");
+                assertThat(result.getException()).containsInstanceOf(UnsupportedOperationException.class);
+                // Thrown before any section ran, so nothing was collected
+                assertThat(result.getIssues()).isEmpty();
+                assertThat(errors.events()).singleElement()
+                        .satisfies(event -> assertThat(event.getMessage().getFormattedMessage())
+                                .isEqualTo("Unexpected error parsing TAF data"));
+            }
         }
     }
 }

@@ -21,6 +21,7 @@ import weather.model.WeatherDataSource;
 import weather.exception.WeatherServiceException;
 import weather.exception.ErrorType;
 import weather.ingestion.config.NoaaConfiguration;
+import weather.processing.parser.common.ParseIssue;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import org.junit.jupiter.api.AfterEach;
@@ -385,6 +386,74 @@ class NoaaAviationWeatherClientTest {
 
         assertNotNull(results);
         assertEquals(2, results.size());
+    }
+
+    // ===== Parse Issue Tests (#139) =====
+
+    @Test
+    void testFetchMetar_ReturnsParseIssuesWithTheData() throws WeatherServiceException {
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2025/01/11 14:56\nKJFK 111456Z 27012KT 10SM FEW250 10/15 A3012")));
+
+        ParsedReport report = client.fetchMetar("KJFK");
+
+        assertNotNull(report);
+        assertEquals("KJFK", report.data().getStationId());
+        assertEquals(1, report.issues().size());
+        ParseIssue issue = report.issues().get(0);
+        assertEquals(ParseIssue.Kind.REJECTED, issue.kind());
+        assertEquals("tempDewpoint", issue.handler());
+        assertEquals("10/15", issue.text());
+    }
+
+    @Test
+    void testFetchMetar_CleanReportHasNoIssues() throws WeatherServiceException {
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2025/01/11 14:56\nKJFK 111456Z 27012KT 10SM FEW250 22/12 A3012")));
+
+        ParsedReport report = client.fetchMetar("KJFK");
+
+        assertNotNull(report);
+        assertTrue(report.issues().isEmpty());
+    }
+
+    @Test
+    void testFetchMetar_NoData_ReturnsNull() throws WeatherServiceException {
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("")));
+
+        assertNull(client.fetchMetar("KJFK"));
+    }
+
+    @Test
+    void testFetchTaf_ReturnsParseIssuesWithTheData() throws WeatherServiceException {
+        stubFor(get(urlEqualTo("/taf/stations/KSAN.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("2026/10/15 17:20\nTAF KSAN 151720Z 1518/1624 40012KT P6SM SKC")));
+
+        ParsedReport report = client.fetchTaf("KSAN");
+
+        assertNotNull(report);
+        assertEquals(1, report.issues().size());
+        assertEquals("TAF forecast period", report.issues().get(0).section());
+        assertEquals("wind", report.issues().get(0).handler());
+    }
+
+    @Test
+    void testFetchTaf_NoData_ReturnsNull() throws WeatherServiceException {
+        stubFor(get(urlEqualTo("/taf/stations/KJFK.TXT"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withBody("")));
+
+        assertNull(client.fetchTaf("KJFK"));
     }
 
     // ===== Error Handling Tests =====

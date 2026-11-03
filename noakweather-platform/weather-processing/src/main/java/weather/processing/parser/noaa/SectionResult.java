@@ -16,6 +16,8 @@
  */
 package weather.processing.parser.noaa;
 
+import weather.processing.parser.common.ParseIssue;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -31,12 +33,14 @@ import java.util.Set;
  *                        groups moved aside under
  *                        {@link SectionPolicy.RejectedText#MOVE_TO_UNPARSED}, in report order
  * @param rejections      every rejected group, in the order rejected
+ * @param failures        every group a handler failed on, in the order failed (#139)
  * @param trippedHandlers handlers disabled by the circuit breaker during this run
  * @author bclasky1539
  */
 record SectionResult(String remaining,
                      List<String> unparsedTokens,
                      List<Rejection> rejections,
+                     List<Failure> failures,
                      Set<String> trippedHandlers) {
 
     /**
@@ -49,9 +53,20 @@ record SectionResult(String remaining,
     record Rejection(String handlerName, String matchedText, IllegalArgumentException reason) {
     }
 
+    /**
+     * One group a handler failed on with an unexpected exception (a parser bug).
+     *
+     * @param handlerName the handler that failed
+     * @param matchedText the group, as it appears in the report
+     * @param cause       the unexpected exception
+     */
+    record Failure(String handlerName, String matchedText, RuntimeException cause) {
+    }
+
     SectionResult {
         unparsedTokens = List.copyOf(unparsedTokens);
         rejections = List.copyOf(rejections);
+        failures = List.copyOf(failures);
         trippedHandlers = Set.copyOf(trippedHandlers);
     }
 
@@ -77,5 +92,23 @@ record SectionResult(String remaining,
             parts.add(remaining.trim());
         }
         return parts.isEmpty() ? null : String.join(" ", parts);
+    }
+
+    /**
+     * This run's problems as parse issues: rejections, then failures, each in
+     * the order they happened, then disabled handlers by name (the set has no order).
+     *
+     * @param section the section this result came from, e.g. "METAR main body"
+     * @return the issues; empty when the run had none
+     */
+    List<ParseIssue> toParseIssues(String section) {
+        List<ParseIssue> issues = new ArrayList<>();
+        rejections.forEach(rejection -> issues.add(ParseIssue.rejected(
+                section, rejection.handlerName(), rejection.matchedText(), rejection.reason())));
+        failures.forEach(failure -> issues.add(ParseIssue.failed(
+                section, failure.handlerName(), failure.matchedText(), failure.cause())));
+        trippedHandlers.stream().sorted()
+                .forEach(handler -> issues.add(ParseIssue.handlerDisabled(section, handler)));
+        return issues;
     }
 }

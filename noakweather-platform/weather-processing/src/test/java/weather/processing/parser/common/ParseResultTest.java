@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,25 +17,34 @@
 package weather.processing.parser.common;
 
 import org.junit.jupiter.api.DisplayName;
+
 import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Comprehensive tests for ParseResult wrapper class.
  * Tests success/failure handling, error propagation, and functional operations.
- * 
+ *
  * @author bclasky1539
  *
  */
 class ParseResultTest {
-    
+
     @Test
     @DisplayName("Should create successful result with data")
     void testSuccessWithData() {
         String testData = "test data";
         ParseResult<String> result = ParseResult.success(testData);
-        
+
         assertTrue(result.isSuccess());
         assertFalse(result.isFailure());
         assertTrue(result.getData().isPresent());
@@ -43,249 +52,361 @@ class ParseResultTest {
         assertNull(result.getErrorMessage());
         assertFalse(result.getException().isPresent());
     }
-    
+
     @Test
     @DisplayName("Should throw exception when creating success with null data")
     void testSuccessWithNullData() {
         IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> ParseResult.success(null)
+                IllegalArgumentException.class,
+                () -> ParseResult.success(null)
         );
-        
+
         assertEquals("Success data cannot be null", exception.getMessage());
     }
-    
+
     @Test
     @DisplayName("Should create failed result with error message")
     void testFailureWithMessage() {
         String errorMessage = "Something went wrong";
         ParseResult<String> result = ParseResult.failure(errorMessage);
-        
+
         assertFalse(result.isSuccess());
         assertTrue(result.isFailure());
         assertFalse(result.getData().isPresent());
         assertEquals(errorMessage, result.getErrorMessage());
         assertFalse(result.getException().isPresent());
     }
-    
+
     @Test
     @DisplayName("Should use default message when error message is null")
     void testFailureWithNullMessage() {
         ParseResult<String> result = ParseResult.failure(null);
-        
+
         assertTrue(result.isFailure());
         assertEquals("Unknown error", result.getErrorMessage());
     }
-    
+
     @Test
     @DisplayName("Should use default message when error message is empty")
     void testFailureWithEmptyMessage() {
         ParseResult<String> result = ParseResult.failure("   ");
-        
+
         assertTrue(result.isFailure());
         assertEquals("Unknown error", result.getErrorMessage());
     }
-    
+
     @Test
     @DisplayName("Should create failed result with error message and exception")
     void testFailureWithMessageAndException() {
         String errorMessage = "Parse failed";
         Exception exception = new RuntimeException("Root cause");
         ParseResult<String> result = ParseResult.failure(errorMessage, exception);
-        
+
         assertFalse(result.isSuccess());
         assertTrue(result.isFailure());
         assertEquals(errorMessage, result.getErrorMessage());
         assertTrue(result.getException().isPresent());
         assertEquals(exception, result.getException().get());
     }
-    
+
     @Test
     @DisplayName("Should use exception message when error message is null")
     void testFailureWithNullMessageButException() {
         Exception exception = new RuntimeException("Exception message");
         ParseResult<String> result = ParseResult.failure(null, exception);
-        
+
         assertTrue(result.isFailure());
         assertEquals("Exception message", result.getErrorMessage());
         assertTrue(result.getException().isPresent());
     }
-    
+
     @Test
     @DisplayName("Should use default when both message and exception are null")
     void testFailureWithBothNull() {
         ParseResult<String> result = ParseResult.failure(null, null);
-        
+
         assertTrue(result.isFailure());
         assertEquals("Unknown error", result.getErrorMessage());
         assertFalse(result.getException().isPresent());
     }
-    
+
     @Test
     @DisplayName("Should execute action on success")
     void testIfSuccess() {
         ParseResult<String> result = ParseResult.success("test");
-        
+
         StringBuilder builder = new StringBuilder();
         result.ifSuccess(builder::append);
-        
+
         assertEquals("test", builder.toString());
     }
-    
+
     @Test
     @DisplayName("Should not execute action on failure")
     void testIfSuccessNotCalled() {
         ParseResult<String> result = ParseResult.failure("error");
-        
+
         StringBuilder builder = new StringBuilder();
         result.ifSuccess(builder::append);
-        
+
         assertEquals("", builder.toString());
     }
-    
+
     @Test
     @DisplayName("Should execute action on failure")
     void testIfFailure() {
         ParseResult<String> result = ParseResult.failure("error message");
-        
+
         StringBuilder builder = new StringBuilder();
         result.ifFailure(builder::append);
-        
+
         assertEquals("error message", builder.toString());
     }
-    
+
     @Test
     @DisplayName("Should not execute action on success when checking failure")
     void testIfFailureNotCalled() {
         ParseResult<String> result = ParseResult.success("test");
-        
+
         StringBuilder builder = new StringBuilder();
         result.ifFailure(builder::append);
-        
+
         assertEquals("", builder.toString());
     }
-    
+
     @Test
     @DisplayName("Should allow chaining ifSuccess and ifFailure")
     void testChaining() {
         StringBuilder successBuilder = new StringBuilder();
         StringBuilder failureBuilder = new StringBuilder();
-        
+
         ParseResult<String> success = ParseResult.success("data");
         success.ifSuccess(successBuilder::append)
-           .ifFailure(failureBuilder::append);
-        
+                .ifFailure(failureBuilder::append);
+
         assertEquals("data", successBuilder.toString());
         assertEquals("", failureBuilder.toString());
     }
-    
+
+    @Test
+    @DisplayName("Should allow chaining ifFailure then ifSuccess")
+    void testChaining_FailureFirst() {
+        StringBuilder successBuilder = new StringBuilder();
+        StringBuilder failureBuilder = new StringBuilder();
+
+        ParseResult<String> failure = ParseResult.failure("error message");
+        failure.ifFailure(failureBuilder::append)
+                .ifSuccess(successBuilder::append);
+
+        assertEquals("error message", failureBuilder.toString());
+        assertEquals("", successBuilder.toString());
+    }
+
     @Test
     @DisplayName("Should map successful result to new type")
     void testMapSuccess() {
         ParseResult<String> stringResult = ParseResult.success("123");
         ParseResult<Integer> intResult = stringResult.map(Integer::parseInt);
-        
+
         assertTrue(intResult.isSuccess());
-        assertEquals(123, intResult.getData().get());
+        assertThat(intResult.getData()).contains(123);
     }
-    
+
     @Test
     @DisplayName("Should propagate failure when mapping")
     void testMapFailure() {
         ParseResult<String> stringResult = ParseResult.failure("error");
         ParseResult<Integer> intResult = stringResult.map(Integer::parseInt);
-        
+
         assertTrue(intResult.isFailure());
         assertEquals("error", intResult.getErrorMessage());
     }
-    
+
     @Test
     @DisplayName("Should handle exception during mapping")
     void testMapWithException() {
         ParseResult<String> stringResult = ParseResult.success("not a number");
         ParseResult<Integer> intResult = stringResult.map(Integer::parseInt);
-        
+
         assertTrue(intResult.isFailure());
         assertTrue(intResult.getErrorMessage().contains("Mapping failed"));
     }
-    
+
     @Test
     @DisplayName("Should return data when calling orElse on success")
     void testOrElseOnSuccess() {
         ParseResult<String> result = ParseResult.success("actual");
         String value = result.orElse("default");
-        
+
         assertEquals("actual", value);
     }
-    
+
     @Test
     @DisplayName("Should return default when calling orElse on failure")
     void testOrElseOnFailure() {
         ParseResult<String> result = ParseResult.failure("error");
         String value = result.orElse("default");
-        
+
         assertEquals("default", value);
     }
-    
+
     @Test
     @DisplayName("Should return data when calling orElseThrow on success")
     void testOrElseThrowOnSuccess() throws ParserException {
         ParseResult<String> result = ParseResult.success("data");
         String value = result.orElseThrow();
-        
+
         assertEquals("data", value);
     }
-    
+
     @Test
     @DisplayName("Should throw exception when calling orElseThrow on failure")
     void testOrElseThrowOnFailure() {
         ParseResult<String> result = ParseResult.failure("error message");
-        
+
         ParserException exception = assertThrows(
-            ParserException.class,
-            result::orElseThrow
+                ParserException.class,
+                result::orElseThrow
         );
-        
+
         assertEquals("error message", exception.getMessage());
     }
-    
+
     @Test
     @DisplayName("Should have meaningful toString for success")
     void testToStringSuccess() {
         ParseResult<String> result = ParseResult.success("test data");
         String str = result.toString();
-        
+
         assertTrue(str.contains("success=true"));
         assertTrue(str.contains("test data"));
     }
-    
+
     @Test
     @DisplayName("Should have meaningful toString for failure")
     void testToStringFailure() {
         ParseResult<String> result = ParseResult.failure("error message");
         String str = result.toString();
-        
+
         assertTrue(str.contains("success=false"));
         assertTrue(str.contains("error message"));
     }
-    
+
     @Test
     @DisplayName("Should include exception type in toString")
     void testToStringWithException() {
         Exception exception = new RuntimeException("cause");
         ParseResult<String> result = ParseResult.failure("error", exception);
         String str = result.toString();
-        
+
         assertTrue(str.contains("RuntimeException"));
     }
-    
+
     @Test
     @DisplayName("Should handle getData returning empty Optional on failure")
     void testGetDataReturnsEmpty() {
         ParseResult<String> result = ParseResult.failure("error");
         Optional<String> data = result.getData();
-        
+
         assertFalse(data.isPresent());
         assertEquals(Optional.empty(), data);
+    }
+
+    // ==================== Parse issues ====================
+
+    private static final ParseIssue REJECTED_SKY = new ParseIssue(ParseIssue.Kind.REJECTED, "METAR main body",
+            "skyCondition", "VV///", "SkyCondition.heightFeet", "///", "Vertical visibility must have height specified");
+
+    @Test
+    void testIssues_EmptyByDefault() {
+        assertThat(ParseResult.success("data").getIssues()).isEmpty();
+        assertThat(ParseResult.success("data").hasIssues()).isFalse();
+        assertThat(ParseResult.failure("bad").getIssues()).isEmpty();
+        assertThat(ParseResult.failure("bad", new IllegalStateException("x")).getIssues()).isEmpty();
+    }
+
+    @Test
+    void testWithIssues_KeepsOutcomeAndAddsIssues() {
+        ParseResult<String> result = ParseResult.success("data").withIssues(List.of(REJECTED_SKY));
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(result.getData()).contains("data");
+        assertThat(result.getIssues()).containsExactly(REJECTED_SKY);
+        assertThat(result.hasIssues()).isTrue();
+    }
+
+    @Test
+    void testWithIssues_OnFailureKeepsErrorAndException() {
+        IllegalStateException cause = new IllegalStateException("x");
+        ParseResult<String> result = ParseResult.<String>failure("bad", cause).withIssues(List.of(REJECTED_SKY));
+
+        assertThat(result.isFailure()).isTrue();
+        assertThat(result.getErrorMessage()).isEqualTo("bad");
+        assertThat(result.getException()).containsSame(cause);
+        assertThat(result.getIssues()).containsExactly(REJECTED_SKY);
+    }
+
+    @Test
+    void testWithIssues_CopiesTheList() {
+        List<ParseIssue> issues = new ArrayList<>(List.of(REJECTED_SKY));
+        ParseResult<String> result = ParseResult.success("data").withIssues(issues);
+
+        issues.clear();
+
+        List<ParseIssue> stored = result.getIssues();
+        assertThat(stored).containsExactly(REJECTED_SKY);
+        assertThatThrownBy(() -> stored.add(REJECTED_SKY))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @Test
+    void testWithIssues_RejectsNullListOrElement() {
+        ParseResult<String> result = ParseResult.success("data");
+        List<ParseIssue> withNull = new ArrayList<>();
+        withNull.add(null);
+
+        assertThatThrownBy(() -> result.withIssues(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Parse issues cannot be null or contain null");
+        assertThatThrownBy(() -> result.withIssues(withNull))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Parse issues cannot be null or contain null");
+    }
+
+    @Test
+    void testMap_CarriesIssuesOnSuccess() {
+        ParseResult<Integer> mapped = ParseResult.success("data").withIssues(List.of(REJECTED_SKY)).map(String::length);
+
+        assertThat(mapped.getData()).contains(4);
+        assertThat(mapped.getIssues()).containsExactly(REJECTED_SKY);
+    }
+
+    @Test
+    void testMap_CarriesIssuesWhenMappingFails() {
+        ParseResult<Integer> mapped = ParseResult.success("data").withIssues(List.of(REJECTED_SKY))
+                .map(text -> {
+                    throw new IllegalStateException("mapping bug");
+                });
+
+        assertThat(mapped.isFailure()).isTrue();
+        assertThat(mapped.getIssues()).containsExactly(REJECTED_SKY);
+    }
+
+    @Test
+    void testMap_CarriesIssuesOnFailure() {
+        ParseResult<Integer> mapped = ParseResult.<String>failure("bad").withIssues(List.of(REJECTED_SKY))
+                .map(String::length);
+
+        assertThat(mapped.isFailure()).isTrue();
+        assertThat(mapped.getIssues()).containsExactly(REJECTED_SKY);
+    }
+
+    @Test
+    void testToString_ShowsIssueCountOnlyWhenThereAreIssues() {
+        assertThat(ParseResult.success("data")).hasToString("ParseResult{success=true, data=data}");
+        assertThat(ParseResult.success("data").withIssues(List.of(REJECTED_SKY)))
+                .hasToString("ParseResult{success=true, data=data, issues=1}");
+        assertThat(ParseResult.<String>failure("bad").withIssues(List.of(REJECTED_SKY)))
+                .hasToString("ParseResult{success=false, error='bad', issues=1}");
     }
 }

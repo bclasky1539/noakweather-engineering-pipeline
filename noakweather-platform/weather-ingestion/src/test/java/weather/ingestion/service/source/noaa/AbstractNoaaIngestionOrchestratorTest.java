@@ -22,6 +22,7 @@ import weather.model.NoaaWeatherData;
 import weather.model.WeatherData;
 import weather.exception.WeatherServiceException;
 import weather.exception.ErrorType;
+import weather.processing.parser.common.ParseIssue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,8 +73,13 @@ class AbstractNoaaIngestionOrchestratorTest {
 
     /**
      * Concrete implementation for testing purposes.
+     * <p>
+     * Fetches through the mocked client's fetchMetarReport, so the stubs below stay
+     * simple, and attaches {@link #issuesToReturn} as the report's parse issues (#139).
      */
     private class TestNoaaOrchestrator extends AbstractNoaaIngestionOrchestrator {
+
+        private List<ParseIssue> issuesToReturn = List.of();
 
         public TestNoaaOrchestrator(NoaaAviationWeatherClient noaaClient,
                                     S3UploadService s3Service,
@@ -82,8 +88,9 @@ class AbstractNoaaIngestionOrchestratorTest {
         }
 
         @Override
-        protected WeatherData fetchFromNoaa(String stationId) throws WeatherServiceException {
-            return mockNoaaClient.fetchMetarReport(stationId);
+        protected ParsedReport fetchFromNoaa(String stationId) throws WeatherServiceException {
+            WeatherData data = mockNoaaClient.fetchMetarReport(stationId);
+            return data != null ? new ParsedReport(data, issuesToReturn) : null;
         }
     }
 
@@ -392,7 +399,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         // The exception should be caught and logged, not propagate
         verify(spyOrchestrator, timeout(2000).atLeastOnce()).ingestStationsBatch(stationIds);
 
-        // Task should continue running (not done/cancelled due to exception)
+        // Task should continue running (not done/canceled due to exception)
         assertFalse(future.isDone(), "Task should continue running after exception");
         assertFalse(future.isCancelled(), "Task should not be cancelled due to exception");
 
@@ -503,6 +510,9 @@ class AbstractNoaaIngestionOrchestratorTest {
         assertEquals(0L, metrics.get("fetch_failures"));
         assertEquals(0L, metrics.get("no_data_count"));
         assertEquals(0.0, metrics.get("fetch_success_rate"));
+        assertEquals(0L, metrics.get("parse_rejected"));
+        assertEquals(0L, metrics.get("parse_failed"));
+        assertEquals(0L, metrics.get("parse_handler_disabled"));
     }
 
     @Test
@@ -526,6 +536,59 @@ class AbstractNoaaIngestionOrchestratorTest {
         assertEquals(1L, metrics.get("fetch_successes"));
         assertEquals(1L, metrics.get("upload_successes"));
         assertEquals(1.0, metrics.get("fetch_success_rate"));
+    }
+
+    // ===== Parse Issue Tests (#139) =====
+
+    private static final ParseIssue REJECTED_TEMP = new ParseIssue(ParseIssue.Kind.REJECTED,
+            "METAR main body", "tempDewpoint", "10/15", "Temperature.dewpointCelsius", "15.0", "bad");
+
+    @Test
+    void testGetMetrics_CountsParseIssuesByKind() throws Exception {
+        orchestrator.issuesToReturn = List.of(REJECTED_TEMP, REJECTED_TEMP,
+                ParseIssue.failed("METAR main body", "wind", "28016KT", new IllegalStateException("boom")),
+                ParseIssue.handlerDisabled("METAR remarks", "peakWind"));
+        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(createMockWeatherData("KJFK"));
+        when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
+                .thenReturn(createMockWeatherData("KJFK"));
+        setSpeedLayerProcessor(orchestrator, mockSpeedLayerProcessor);
+
+        orchestrator.ingestStation("KJFK");
+        Map<String, Object> metrics = orchestrator.getMetrics();
+
+        assertEquals(2L, metrics.get("parse_rejected"));
+        assertEquals(1L, metrics.get("parse_failed"));
+        assertEquals(1L, metrics.get("parse_handler_disabled"));
+    }
+
+    @Test
+    void testGetMetrics_ParseIssuesCountedEvenWhenUploadFails() throws Exception {
+        orchestrator.issuesToReturn = List.of(REJECTED_TEMP);
+        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(createMockWeatherData("KJFK"));
+        when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
+                .thenThrow(new IOException("S3 upload failed"));
+        setSpeedLayerProcessor(orchestrator, mockSpeedLayerProcessor);
+
+        assertThrows(WeatherServiceException.class, () -> orchestrator.ingestStation("KJFK"));
+
+        // The report was fetched and parsed, so its issues count, whatever happened next
+        assertEquals(1L, orchestrator.getMetrics().get("parse_rejected"));
+    }
+
+    @Test
+    void testIngestStationsBatch_CountsParseIssuesAcrossStations() throws Exception {
+        orchestrator.issuesToReturn = List.of(REJECTED_TEMP);
+        when(mockNoaaClient.fetchMetarReport(anyString()))
+                .thenAnswer(invocation -> createMockWeatherData(invocation.getArgument(0)));
+        when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        setSpeedLayerProcessor(orchestrator, mockSpeedLayerProcessor);
+
+        List<WeatherData> results = orchestrator.ingestStationsBatch(List.of("KJFK", "KLGA", "KEWR"));
+
+        // Stations run in parallel; every station's issues are counted
+        assertEquals(3, results.size());
+        assertEquals(3L, orchestrator.getMetrics().get("parse_rejected"));
     }
 
     // ===== Health Check Tests =====

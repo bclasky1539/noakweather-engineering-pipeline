@@ -17,11 +17,10 @@
 package weather.ingestion.service.source.noaa;
 
 import weather.ingestion.service.S3UploadService;
-import weather.model.WeatherData;
 import weather.exception.WeatherServiceException;
 
 /**
- * Orchestrates TAF data ingestion from NOAA to S3 storage.
+ * Orchestrates 'TAF' data ingestion from NOAA to S3 storage.
  * <p>
  * This class extends AbstractNoaaIngestionOrchestrator.
  * The only TAF-specific logic is the fetch method.
@@ -38,37 +37,34 @@ public class TafIngestionOrchestrator extends AbstractNoaaIngestionOrchestrator 
      * Creates orchestrator with default concurrency.
      *
      * @param noaaClient the NOAA weather client
-     * @param s3Service the S3 upload service
+     * @param s3Service  the S3 upload service
      */
-    public TafIngestionOrchestrator(NoaaAviationWeatherClient noaaClient,
-                                    S3UploadService s3Service) {
+    public TafIngestionOrchestrator(NoaaAviationWeatherClient noaaClient, S3UploadService s3Service) {
         this(noaaClient, s3Service, 10);
     }
 
     /**
      * Creates orchestrator with custom concurrency.
      *
-     * @param noaaClient the NOAA weather client
-     * @param s3Service the S3 upload service
+     * @param noaaClient           the NOAA weather client
+     * @param s3Service            the S3 upload service
      * @param maxConcurrentFetches maximum number of concurrent NOAA requests
      */
-    public TafIngestionOrchestrator(NoaaAviationWeatherClient noaaClient,
-                                    S3UploadService s3Service,
-                                    int maxConcurrentFetches) {
+    public TafIngestionOrchestrator(NoaaAviationWeatherClient noaaClient, S3UploadService s3Service, int maxConcurrentFetches) {
         super(noaaClient, s3Service, maxConcurrentFetches, "TAF");
     }
 
     /**
-     * Fetches TAF data from NOAA for a specific station.
+     * Fetches 'TAF' data from NOAA for a specific station.
      * <p>
      * This is the ONLY TAF-specific method - everything else is inherited.
      *
      * @param stationId ICAO station identifier
-     * @return WeatherData or null if no data available
+     * @return the parsed report and its parse issues, or null if no data available
      * @throws WeatherServiceException if fetch fails
      */
     @Override
-    protected WeatherData fetchFromNoaa(String stationId) throws WeatherServiceException {
-        return noaaClient.fetchTafReport(stationId);
+    protected ParsedReport fetchFromNoaa(String stationId) throws WeatherServiceException {
+        return noaaClient.fetchTaf(stationId);
     }
 }

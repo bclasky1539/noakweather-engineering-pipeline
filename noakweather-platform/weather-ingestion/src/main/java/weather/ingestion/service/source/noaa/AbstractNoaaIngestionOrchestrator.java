@@ -20,6 +20,7 @@ import weather.ingestion.service.S3UploadService;
 import weather.ingestion.service.SpeedLayerProcessor;
 import weather.model.WeatherData;
 import weather.exception.WeatherServiceException;
+import weather.processing.parser.common.ParseIssue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -27,6 +28,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -58,10 +60,10 @@ public abstract class AbstractNoaaIngestionOrchestrator {
     /**
      * Creates orchestrator with custom concurrency.
      *
-     * @param noaaClient the NOAA weather client
-     * @param s3Service the S3 upload service
+     * @param noaaClient           the NOAA weather client
+     * @param s3Service            the S3 upload service
      * @param maxConcurrentFetches maximum number of concurrent NOAA requests
-     * @param dataType the type of data being ingested (e.g., "METAR", "TAF")
+     * @param dataType             the type of data being ingested (e.g., "METAR", "TAF")
      */
     protected AbstractNoaaIngestionOrchestrator(NoaaAviationWeatherClient noaaClient,
                                                 S3UploadService s3Service,
@@ -81,13 +83,13 @@ public abstract class AbstractNoaaIngestionOrchestrator {
     /**
      * Template method: Fetches data from NOAA for a specific station.
      * Subclasses must implement this to call the appropriate fetch method
-     * (fetchMetarReport, fetchTafReport, etc.)
+     * (fetchMetar, fetchTaf, etc.), which returns the report with its parse issues (#139).
      *
      * @param stationId ICAO station identifier
-     * @return WeatherData or null if no data available
+     * @return the parsed report and its issues, or null if no data available
      * @throws WeatherServiceException if fetch fails
      */
-    protected abstract WeatherData fetchFromNoaa(String stationId) throws WeatherServiceException;
+    protected abstract ParsedReport fetchFromNoaa(String stationId) throws WeatherServiceException;
 
     /**
      * Ingests weather data for a single station.
@@ -99,6 +101,31 @@ public abstract class AbstractNoaaIngestionOrchestrator {
      * @throws WeatherServiceException if ingestion fails
      */
     public WeatherData ingestStation(String stationId) throws WeatherServiceException {
+        // A single station is not a batch: its issues reach the metrics, no summary is logged
+        return ingestStation(stationId, new ParseIssueSummary(dataType));
+    }
+
+    /**
+     * Log the batch's parse issue summary (#139): WARN when there were parser bugs,
+     * INFO otherwise. The line is built only if that level is enabled.
+     *
+     * @param summary the batch's summary
+     */
+    private void logParseIssueSummary(ParseIssueSummary summary) {
+        logger.log(summary.level(), summary::toLogLine);
+    }
+
+    /**
+     * Ingests one station, adding its parse issues to the metrics and to the
+     * batch's summary (#139).
+     *
+     * @param stationId ICAO station identifier
+     * @param summary   the summary of the batch this station belongs to
+     * @return ingested WeatherData with S3 location
+     * @throws WeatherServiceException if ingestion fails
+     */
+    private WeatherData ingestStation(String stationId, ParseIssueSummary summary)
+            throws WeatherServiceException {
         logger.info("Starting {} ingestion for station: {}", dataType, stationId);
 
         Instant startTime = Instant.now();
@@ -106,9 +133,9 @@ public abstract class AbstractNoaaIngestionOrchestrator {
         try {
             // Step 1: Fetch from NOAA (delegated to subclass)
             metrics.incrementFetchAttempts();
-            WeatherData weatherData = fetchFromNoaa(stationId);
+            ParsedReport report = fetchFromNoaa(stationId);
 
-            if (weatherData == null) {
+            if (report == null) {
                 metrics.incrementNoDataCount();
                 logger.warn("No {} data available for station: {}", dataType, stationId);
                 throw new WeatherServiceException(
@@ -119,6 +146,11 @@ public abstract class AbstractNoaaIngestionOrchestrator {
             }
 
             metrics.incrementFetchSuccesses();
+
+            // Parse issues are counted once the report is fetched, whatever happens to it next
+            metrics.recordParseIssues(report.issues());
+            summary.add(report.issues());
+            WeatherData weatherData = report.data();
 
             // Step 2: NOAA-specific validation
             validateNoaaWeatherData(weatherData);
@@ -160,11 +192,12 @@ public abstract class AbstractNoaaIngestionOrchestrator {
         logger.info("Starting batch {} ingestion for {} stations", dataType, stationIds.size());
 
         Instant startTime = Instant.now();
+        ParseIssueSummary summary = new ParseIssueSummary(dataType);
 
         List<CompletableFuture<WeatherData>> futures = stationIds.stream()
                 .map(stationId -> CompletableFuture.supplyAsync(() -> {
                     try {
-                        return ingestStation(stationId);
+                        return ingestStation(stationId, summary);
                     } catch (WeatherServiceException e) {
                         logIngestionFailure(stationId, e);
                         return null;
@@ -194,6 +227,8 @@ public abstract class AbstractNoaaIngestionOrchestrator {
             logger.error("Batch ingestion timed out after 2 minutes");
         }
 
+        logParseIssueSummary(summary);
+
         Duration duration = Duration.between(startTime, Instant.now());
         logger.info("Batch ingestion complete: {}/{} succeeded in {}ms",
                 results.size(), stationIds.size(), duration.toMillis());
@@ -212,16 +247,19 @@ public abstract class AbstractNoaaIngestionOrchestrator {
 
         IngestionResult result = new IngestionResult();
         Instant startTime = Instant.now();
+        ParseIssueSummary summary = new ParseIssueSummary(dataType);
 
         for (String stationId : stationIds) {
             try {
-                WeatherData data = ingestStation(stationId);
+                WeatherData data = ingestStation(stationId, summary);
                 result.addSuccess(stationId, data);
             } catch (WeatherServiceException e) {
                 result.addFailure(stationId, e);
                 logIngestionFailure(stationId, e);
             }
         }
+
+        logParseIssueSummary(summary);
 
         Duration duration = Duration.between(startTime, Instant.now());
         result.setDuration(duration);
@@ -236,7 +274,7 @@ public abstract class AbstractNoaaIngestionOrchestrator {
      * Logs an ingestion failure with consistent formatting.
      *
      * @param stationId the station that failed
-     * @param e the exception that occurred
+     * @param e         the exception that occurred
      */
     private void logIngestionFailure(String stationId, WeatherServiceException e) {
         logger.error("Failed to ingest station {}: {}", stationId, e.getMessage());
@@ -245,7 +283,7 @@ public abstract class AbstractNoaaIngestionOrchestrator {
     /**
      * Schedules periodic ingestion for specified stations.
      *
-     * @param stationIds list of ICAO station identifiers
+     * @param stationIds      list of ICAO station identifiers
      * @param intervalMinutes interval between ingestion runs (in minutes)
      * @return ScheduledFuture that can be used to cancel the scheduled ingestion
      */
@@ -423,6 +461,13 @@ public abstract class AbstractNoaaIngestionOrchestrator {
         private final AtomicLong noDataCount = new AtomicLong(0);
         private final AtomicLong uploadSuccesses = new AtomicLong(0);
         private final AtomicLong uploadFailures = new AtomicLong(0);
+        private final Map<ParseIssue.Kind, AtomicLong> parseIssues = new EnumMap<>(ParseIssue.Kind.class);
+
+        public MetricsCollector() {
+            for (ParseIssue.Kind kind : ParseIssue.Kind.values()) {
+                parseIssues.put(kind, new AtomicLong(0));
+            }
+        }
 
         public void incrementFetchAttempts() {
             fetchAttempts.incrementAndGet();
@@ -448,17 +493,30 @@ public abstract class AbstractNoaaIngestionOrchestrator {
             uploadFailures.incrementAndGet();
         }
 
+        /**
+         * Count a fetched report's parse issues by kind (#139).
+         *
+         * @param issues the report's parse issues
+         */
+        public void recordParseIssues(List<ParseIssue> issues) {
+            issues.forEach(issue -> parseIssues.get(issue.kind()).incrementAndGet());
+        }
+
         public Map<String, Object> getSnapshot() {
-            return Map.of(
-                    "fetch_attempts", fetchAttempts.get(),
-                    "fetch_successes", fetchSuccesses.get(),
-                    "fetch_failures", fetchFailures.get(),
-                    "no_data_count", noDataCount.get(),
-                    "upload_successes", uploadSuccesses.get(),
-                    "upload_failures", uploadFailures.get(),
-                    "fetch_success_rate", calculateRate(fetchSuccesses.get(), fetchAttempts.get()),
-                    "upload_success_rate", calculateRate(uploadSuccesses.get(),
-                            uploadSuccesses.get() + uploadFailures.get())
+            // Map.of stops at 10 entries; ofEntries has no limit
+            return Map.ofEntries(
+                    Map.entry("fetch_attempts", fetchAttempts.get()),
+                    Map.entry("fetch_successes", fetchSuccesses.get()),
+                    Map.entry("fetch_failures", fetchFailures.get()),
+                    Map.entry("no_data_count", noDataCount.get()),
+                    Map.entry("upload_successes", uploadSuccesses.get()),
+                    Map.entry("upload_failures", uploadFailures.get()),
+                    Map.entry("fetch_success_rate", calculateRate(fetchSuccesses.get(), fetchAttempts.get())),
+                    Map.entry("upload_success_rate", calculateRate(uploadSuccesses.get(),
+                            uploadSuccesses.get() + uploadFailures.get())),
+                    Map.entry("parse_rejected", parseIssues.get(ParseIssue.Kind.REJECTED).get()),
+                    Map.entry("parse_failed", parseIssues.get(ParseIssue.Kind.FAILED).get()),
+                    Map.entry("parse_handler_disabled", parseIssues.get(ParseIssue.Kind.HANDLER_DISABLED).get())
             );
         }
 

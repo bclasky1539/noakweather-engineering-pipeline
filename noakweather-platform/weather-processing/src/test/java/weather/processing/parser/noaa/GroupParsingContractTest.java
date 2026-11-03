@@ -155,12 +155,12 @@ class GroupParsingContractTest {
     @Test
     void testSectionResult_CopiesCollectionsAndJoinsUnparsedText() {
         SectionResult result = new SectionResult("", new java.util.ArrayList<>(List.of("A", "B")),
-                List.of(), Set.of());
+                List.of(), List.of(), Set.of());
         List<String> unparsedTokens = result.unparsedTokens();
 
         assertThat(result.unparsedText()).isEqualTo("A B");
         assertThatThrownBy(() -> unparsedTokens.add("C"))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThat(new SectionResult("", List.of(), List.of(), Set.of()).unparsedText()).isNull();
+        assertThat(new SectionResult("", List.of(), List.of(), List.of(), Set.of()).unparsedText()).isNull();
     }
 }
