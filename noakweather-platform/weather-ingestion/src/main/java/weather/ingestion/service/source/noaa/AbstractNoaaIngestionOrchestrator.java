@@ -106,6 +106,16 @@ public abstract class AbstractNoaaIngestionOrchestrator {
     }
 
     /**
+     * Log the batch's parse issue summary (#139): WARN when there were parser bugs,
+     * INFO otherwise. The line is built only if that level is enabled.
+     *
+     * @param summary the batch's summary
+     */
+    private void logParseIssueSummary(ParseIssueSummary summary) {
+        logger.log(summary.level(), summary::toLogLine);
+    }
+
+    /**
      * Ingests one station, adding its parse issues to the metrics and to the
      * batch's summary (#139).
      *
@@ -217,7 +227,7 @@ public abstract class AbstractNoaaIngestionOrchestrator {
             logger.error("Batch ingestion timed out after 2 minutes");
         }
 
-        logger.log(summary.level(), summary.toLogLine());
+        logParseIssueSummary(summary);
 
         Duration duration = Duration.between(startTime, Instant.now());
         logger.info("Batch ingestion complete: {}/{} succeeded in {}ms",
@@ -249,7 +259,7 @@ public abstract class AbstractNoaaIngestionOrchestrator {
             }
         }
 
-        logger.log(summary.level(), summary.toLogLine());
+        logParseIssueSummary(summary);
 
         Duration duration = Duration.between(startTime, Instant.now());
         result.setDuration(duration);
