@@ -563,8 +563,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         weatherData.addRunwayVisualRange(rvr);
 
-        LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
-                runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
+                    runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
+        }
     }
 
     // ==================== RUNWAY STATE HANDLER ====================
@@ -870,9 +872,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     private void logAutomatedStationType(AutomatedStationType stationType) {
-        LOGGER.debug("Automated Station Type: {} ({})",
-                stationType.getCode(),
-                stationType.getDescription());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Automated Station Type: {} ({})",
+                    stationType.getCode(),
+                    stationType.getDescription());
+        }
     }
 
     /**
@@ -1442,10 +1446,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             remarks.updateVisibility(v -> v.withVariableVisibility(variableVisibility));
 
-            LOGGER.debug("Variable visibility: {} varying to {}{}",
-                    dist1Str,
-                    dist2Str,
-                    direction != null ? " (" + direction + ")" : "");
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Variable visibility: {} varying to {}{}",
+                        dist1Str,
+                        dist2Str,
+                        direction != null ? " (" + direction + ")" : "");
+            }
 
             return remarksText.substring(matcher.end()).trim();
 
@@ -1688,9 +1694,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
                 remarks.predominantCloudTypes(new PredominantCloudTypes(low, middle, high));
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Predominant cloud types: low={}, middle={}, high={}", low, middle, high);
-                }
+                LOGGER.debug("Predominant cloud types: low={}, middle={}, high={}", low, middle, high);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -1728,9 +1732,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int value = Integer.parseInt(matcher.group("value"));
                 remarks.ppGroupValue(value);
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("PP group value (raw, unit unconfirmed): {}", value);
-                }
+                LOGGER.debug("PP group value (raw, unit unconfirmed): {}", value);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -1818,9 +1820,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int densityAlt = Integer.parseInt(matcher.group("denalt"));
                 remarks.densityAltitudeFeet(densityAlt);
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Density altitude: {}FT", densityAlt);
-                }
+                LOGGER.debug("Density altitude: {}FT", densityAlt);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -2613,9 +2613,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 PressureRapidChange change = PressureRapidChange.fromCode(matcher.group("presrisfal"));
                 remarks.updatePressure(p -> p.withPressureRapidChange(change));
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Pressure rapid change: {}", change);
-                }
+                LOGGER.debug("Pressure rapid change: {}", change);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
