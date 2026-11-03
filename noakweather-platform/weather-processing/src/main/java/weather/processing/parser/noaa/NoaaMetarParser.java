@@ -1489,7 +1489,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @return the value
      * @throws InvalidObservationException if the text is not a valid distance
      */
-    private static double parseDistance(String distStr) {
+     static double parseDistance(String distStr) {
         if (distStr == null || distStr.isBlank()) {
             throw new InvalidObservationException(VISIBILITY_DISTANCE_COMPONENT, distStr,
                     "Visibility distance is blank");

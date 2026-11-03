@@ -4456,6 +4456,21 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
+    // ========== PARSE DISTANCE TESTS ==========
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "x", "1/x", "1/0"})
+    void testParseDistance_Invalid_Rejected(String text) {
+        assertThrows(InvalidObservationException.class, () -> NoaaMetarParser.parseDistance(text));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"10, 10.0", "1/2, 0.5", "1 1/2, 1.5"})
+    void testParseDistance_Valid(String text, double expected) {
+        assertEquals(expected, NoaaMetarParser.parseDistance(text), 1e-9);
+    }
+
     // ========== TOWER VISIBILITY PARSING TESTS ==========
 
     @ParameterizedTest
@@ -11623,6 +11638,31 @@ class NoaaMetarParserTest {
         parser.recordRejected("METAR remarks", "peak wind", "PK WND x", e);
 
         assertEquals(1, parser.withParseIssues(ParseResult.failure("test")).getIssues().size());
+    }
+
+    @Test
+    void testDebugLogging_GuardedGroups_LoggedWhenDebugEnabled() {
+        try (LogCapture base = LogCapture.of(NoaaAviationWeatherParser.class.getName(), Level.DEBUG);
+             LogCapture metar = LogCapture.of(NoaaMetarParser.class.getName(), Level.DEBUG)) {
+
+            ParseResult<NoaaWeatherData> result = parser.parse(
+                    "METAR KCLT 151953Z 19005KT 10SM R06/1200FT -RA BKN050CB 20/10 A3015 RERA RMK AO2 VIS 1/2V2");
+
+            assertTrue(result.isSuccess());
+            assertLogged(metar, "RVR: Runway 06");
+            assertLogged(metar, "Variable visibility: 1/2 varying to 2");
+            assertLogged(base, "Present Weather: -RA");
+            assertLogged(base, "Recent weather: RA (");
+            assertLogged(base, "feet (CB)");
+        }
+    }
+
+    private static void assertLogged(LogCapture capture, String expected) {
+        List<String> messages = capture.events().stream()
+                .map(event -> event.getMessage().getFormattedMessage())
+                .toList();
+        assertTrue(messages.stream().anyMatch(message -> message.contains(expected)),
+                () -> "Expected a log message containing '" + expected + "' in " + messages);
     }
 
     // --- Correct behavior (regression) ---
