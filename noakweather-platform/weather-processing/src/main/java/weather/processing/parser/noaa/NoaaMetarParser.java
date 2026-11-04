@@ -81,6 +81,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final String GROUP_HEIGHT_CODE = "height";
 
     private static final String DIRECTION_CHAIN_CODE = "dirchain";
+    private static final String VISIBILITY_DISTANCE_COMPONENT = "Visibility.distanceValue";
 
     // Splits a direction chain into segments: segments are separated by
     // whitespace, optionally with the word AND (e.g. "N AND SW" or "N NE S SW")
@@ -562,8 +563,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         weatherData.addRunwayVisualRange(rvr);
 
-        LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
-                runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("RVR: Runway {}, Visual Range: {}, Variable: {}-{}, Prefix: {}, Trend: {}",
+                    runwayName, range.visualRange(), range.variableLow(), range.variableHigh(), prefix, trend);
+        }
     }
 
     // ==================== RUNWAY STATE HANDLER ====================
@@ -869,9 +872,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     private void logAutomatedStationType(AutomatedStationType stationType) {
-        LOGGER.debug("Automated Station Type: {} ({})",
-                stationType.getCode(),
-                stationType.getDescription());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Automated Station Type: {} ({})",
+                    stationType.getCode(),
+                    stationType.getDescription());
+        }
     }
 
     /**
@@ -1431,11 +1436,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         try {
             Visibility minVisibility = parseVisibilityDistance(dist1Str);
             Visibility maxVisibility = parseVisibilityDistance(dist2Str);
-            if (minVisibility == null || maxVisibility == null) {
-                LOGGER.debug("Variable visibility distance could not be parsed, leaving for freeText: {}",
-                        matchedText);
-                return remarksText;
-            }
 
             VariableVisibility variableVisibility = new VariableVisibility(
                     minVisibility,
@@ -1446,10 +1446,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
             remarks.updateVisibility(v -> v.withVariableVisibility(variableVisibility));
 
-            LOGGER.debug("Variable visibility: {} varying to {}{}",
-                    dist1Str,
-                    dist2Str,
-                    direction != null ? " (" + direction + ")" : "");
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Variable visibility: {} varying to {}{}",
+                        dist1Str,
+                        dist2Str,
+                        direction != null ? " (" + direction + ")" : "");
+            }
 
             return remarksText.substring(matcher.end()).trim();
 
@@ -1461,31 +1463,44 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Parse a visibility distance string into a Visibility object.
+     *
+     * @param distStr the distance string
+     * @return the parsed visibility, never null
+     * @throws InvalidObservationException if the distance is not valid
+     * @see #parseDistance(String)
+     */
+    private Visibility parseVisibilityDistance(String distStr) {
+        return Visibility.statuteMiles(parseDistance(distStr));
+    }
+
+    /**
+     * Parse a distance or size written as a whole number, fraction or mixed number.
      * <p>
      * Handles formats:
      * - Fractions: "1/2", "3/4"
      * - Mixed: "1 1/2", "2 1/4"
      * - Whole numbers: "1", "10"
      * <p>
-     * A zero denominator (e.g. "1/0") is not a valid distance and returns null,
-     * so callers leave the group for freeText (#115).
+     * Invalid text (blank, not numeric, or a zero denominator such as "1/0") is
+     * rejected. The caller records the rejection once and leaves the remark for
+     * freeText (#115, #132).
      *
-     * @param distStr the distance string
-     * @return Visibility object, or null if parsing fails
+     * @param distStr the distance text
+     * @return the value
+     * @throws InvalidObservationException if the text is not a valid distance
      */
-    private Visibility parseVisibilityDistance(String distStr) {
+     static double parseDistance(String distStr) {
         if (distStr == null || distStr.isBlank()) {
-            return null;
+            throw new InvalidObservationException(VISIBILITY_DISTANCE_COMPONENT, distStr,
+                    "Visibility distance is blank");
         }
 
         String trimmed = distStr.trim();
         try {
-            Double statuteMiles = parseDistanceStatuteMiles(trimmed);
-            return statuteMiles != null ? Visibility.statuteMiles(statuteMiles) : null;
-
+            return parseDistanceStatuteMiles(trimmed);
         } catch (NumberFormatException e) {
-            logRejectedRemark("visibility distance", trimmed, e);
-            return null;
+            throw new InvalidObservationException(VISIBILITY_DISTANCE_COMPONENT, trimmed,
+                    "Invalid visibility distance format", e);
         }
     }
 
@@ -1494,10 +1509,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * distance to statute miles.
      *
      * @param text the trimmed distance text
-     * @return the distance in statute miles, or null if a fraction has a zero denominator
-     * @throws NumberFormatException if a numeric part cannot be parsed
+     * @return the distance in statute miles
+     * @throws NumberFormatException       if a numeric part cannot be parsed
+     * @throws InvalidObservationException if a fraction has a zero denominator
      */
-    private static Double parseDistanceStatuteMiles(String text) {
+    private static double parseDistanceStatuteMiles(String text) {
         if (!text.contains("/")) {
             return Double.parseDouble(text);
         }
@@ -1505,8 +1521,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String[] parts = text.split("\\s+");
         if (parts.length == 2) {
             // Mixed fraction: "1 1/2"
-            Double fraction = parseVisFraction(parts[1]);
-            return fraction != null ? Integer.parseInt(parts[0]) + fraction : null;
+            return Integer.parseInt(parts[0]) + parseVisFraction(parts[1]);
         }
 
         // Simple fraction: "1/2"
@@ -1517,14 +1532,16 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Parse a simple fraction such as "3/4".
      *
      * @param fraction the fraction text
-     * @return the fraction's value, or null if the denominator is zero
-     * @throws NumberFormatException if the numerator or denominator cannot be parsed
+     * @return the fraction's value
+     * @throws NumberFormatException       if the numerator or denominator cannot be parsed
+     * @throws InvalidObservationException if the denominator is zero (e.g. "1/0", #115)
      */
-    private static Double parseVisFraction(String fraction) {
+    private static double parseVisFraction(String fraction) {
         String[] parts = fraction.split("/");
         int denominator = Integer.parseInt(parts[1]);
         if (denominator == 0) {
-            return null; // e.g. "1/0" is not a valid distance (#115)
+            throw new InvalidObservationException(VISIBILITY_DISTANCE_COMPONENT, fraction,
+                    "Fraction denominator cannot be zero");
         }
         return (double) Integer.parseInt(parts[0]) / denominator;
     }
@@ -1579,10 +1596,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         try {
             Visibility visibility = parseVisibilityDistance(distStr);
-            if (visibility == null) {
-                LOGGER.debug("Tower/surface visibility could not be parsed, leaving for freeText: {}", matchedText);
-                return false;
-            }
             setVisibilityByType(type, visibility, distStr, remarks);
             return true;
 
@@ -1681,9 +1694,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
                 remarks.predominantCloudTypes(new PredominantCloudTypes(low, middle, high));
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Predominant cloud types: low={}, middle={}, high={}", low, middle, high);
-                }
+                LOGGER.debug("Predominant cloud types: low={}, middle={}, high={}", low, middle, high);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -1721,9 +1732,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int value = Integer.parseInt(matcher.group("value"));
                 remarks.ppGroupValue(value);
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("PP group value (raw, unit unconfirmed): {}", value);
-                }
+                LOGGER.debug("PP group value (raw, unit unconfirmed): {}", value);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -1811,9 +1820,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 int densityAlt = Integer.parseInt(matcher.group("denalt"));
                 remarks.densityAltitudeFeet(densityAlt);
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Density altitude: {}FT", densityAlt);
-                }
+                LOGGER.debug("Density altitude: {}FT", densityAlt);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -1834,7 +1841,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - GR 1 3/4 → 1.75 inch hail
      * - GR 2 → 2 inch hail
      * <p>
-     * Uses parseVisibilityDistance() to parse the size value since
+     * Uses parseDistance() to parse the size value since
      * the format is identical (fractions, mixed numbers, whole numbers).
      *
      * @param remarksText the remaining remarks text to process
@@ -1852,13 +1859,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         String matchedText = matcher.group();
         try {
-            // Reuse parseVisibilityDistance - same format (fraction, mixed, whole)
-            Visibility parsed = parseVisibilityDistance(matcher.group("size"));
-            Double sizeInches = parsed != null ? parsed.toStatuteMiles() : null;
-            if (sizeInches == null) {
-                LOGGER.debug("Hail size could not be parsed, leaving for freeText: {}", matchedText);
-                return remarksText;
-            }
+            // Same number format as visibility distances (fraction, mixed, whole)
+            double sizeInches = parseDistance(matcher.group("size"));
 
             HailSize hailSize = HailSize.inches(sizeInches);
             remarks.hailSize(hailSize);
@@ -2611,9 +2613,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 PressureRapidChange change = PressureRapidChange.fromCode(matcher.group("presrisfal"));
                 remarks.updatePressure(p -> p.withPressureRapidChange(change));
 
-                if (LOGGER.isDebugEnabled()) {
-                    LOGGER.debug("Pressure rapid change: {}", change);
-                }
+                LOGGER.debug("Pressure rapid change: {}", change);
 
                 remaining = remaining.substring(matcher.end()).trim();
 
@@ -2717,10 +2717,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
         try {
             Pressure pressure = parsePressure(matcher.group("unit"), pressureStr, matcher.group("unit2"));
-            if (pressure == null) {
-                LOGGER.debug("Secondary altimeter could not be parsed, leaving for freeText: {}", matchedText);
-                return false;
-            }
 
             remarks.secondaryAltimeter(pressure);
 

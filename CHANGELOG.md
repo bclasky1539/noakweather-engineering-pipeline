@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Version 1.29.1-SNAPSHOT - November 3, 2026
+
+### Added
+- `CONTRIBUTING.md`: workflow from issue to merge, build/test/coverage steps, versioning
+  and changelog format, UAT conventions, and the parser and logging conventions (#132).
+- Tests for the guarded debug lines (DEBUG enabled through `LogCapture`) and for
+  `parseDistance` (blank, non-numeric and zero-denominator input).
+
+### Changed
+- Variable visibility, tower/surface visibility, hail size and secondary altimeter values
+  that cannot be parsed are recorded as REJECTED parse issues on the `Rejected` log
+  category, instead of a parser debug line; the text is still kept in `freeText`.
+- `parseVisibilityDistance` and `parsePressure` throw `InvalidObservationException`
+  instead of returning `null`; hail size is parsed with the new `parseDistance` helper.
+- One debug-logging style across `NoaaMetarParser`, `NoaaAviationWeatherParser` and
+  `NoaaTafParser`: `isDebugEnabled()` guards only for computed arguments, documented on
+  `NoaaAviationWeatherParser`.
+- `recordSectionIssues` is package-private, so it no longer exposes the package-internal
+  `SectionResult`.
+
+### Fixed
+- A rejected remark was logged and recorded twice when the remarks section took more than
+  one pass, overcounting rejected groups in the ingestion `ParseIssueSummary` since 1.29.0.
+
+No change to stored data. Runtime-configurable log levels and a test logging config
+are #174.
+
 ## Version 1.29.0-SNAPSHOT - November 3, 2026
 
 ### Added

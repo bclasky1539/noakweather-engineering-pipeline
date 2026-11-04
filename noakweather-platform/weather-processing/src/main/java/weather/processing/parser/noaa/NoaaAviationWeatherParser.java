@@ -64,6 +64,14 @@ import static weather.processing.parser.noaa.RegExprConst.WIND_PATTERN;
  * Generic Type Parameter:
  * - T extends NoaaWeatherData: Allows type-safe access to specific data types
  * (NoaaMetarData or NoaaTafData) without casting
+ * <p>
+ * Debug logging: use SLF4J placeholders ({@code {}}), never string concatenation.
+ * Wrap a debug call in {@code if (LOGGER.isDebugEnabled())} only when an argument
+ * is computed (a method call such as {@code getSummary()} or {@code matcher.group(0)},
+ * {@code String.format}, or string building); pass plain variables without a guard.
+ * A group rejected as bad data is logged through {@link #recordRejected} or the group
+ * parsing engine, on the shared {@code Rejected} category, never with a parser-level
+ * debug line.
  *
  * @param <T> The specific weather data type (NoaaMetarData or NoaaTafData)
  * @author bclasky1539
@@ -535,11 +543,13 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
         String phenomenon = getPrimaryPhenomenon(presentWeather);
 
-        LOGGER.debug("Present Weather: {} (Intensity: {}, Descriptor: {}, Phenomena: {})",
-                weatherString,
-                presentWeather.intensity(),
-                presentWeather.descriptor(),
-                phenomenon);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Present Weather: {} (Intensity: {}, Descriptor: {}, Phenomena: {})",
+                    weatherString,
+                    presentWeather.intensity(),
+                    presentWeather.descriptor(),
+                    phenomenon);
+        }
     }
 
     /**
@@ -576,7 +586,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         // As for present weather, PresentWeather.parse never rejects data.
         PresentWeather recent = PresentWeather.parse(code);
         weatherData.addRecentWeather(recent);
-        LOGGER.debug("Recent weather: {} ({})", code, recent.getDescription());
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Recent weather: {} ({})", code, recent.getDescription());
+        }
     }
 
     /**
@@ -621,10 +633,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
         SkyCondition skyCondition = new SkyCondition(coverage, heightFeet, cloudType);
         skyConditionsList.add(skyCondition);
 
-        LOGGER.debug("Sky Condition: {} at {} feet{}",
-                coverage,
-                heightFeet != null ? heightFeet : "N/A",
-                cloudType != null ? " (" + cloudType + ")" : "");
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Sky Condition: {} at {} feet{}",
+                    coverage,
+                    heightFeet != null ? heightFeet : "N/A",
+                    cloudType != null ? " (" + cloudType + ")" : "");
+        }
     }
 
     /**
@@ -746,10 +760,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
         // Determine unit and parse pressure
         Pressure pressure = parsePressure(unit1, pressureStr, unit2);
+        conditionsBuilder.pressure(pressure);
 
-        if (pressure != null) {
-            conditionsBuilder.pressure(pressure);
-
+        if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Altimeter: {}", pressure.getSummary());
         }
     }
@@ -768,11 +781,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * @param unit1       Prefix unit indicator
      * @param pressureStr Pressure digits
      * @param unit2       Suffix unit indicator
-     * @return Pressure object, or null if invalid
+     * @return Pressure object, never null
+     * @throws InvalidObservationException if the pressure is blank or not numeric
      */
     protected Pressure parsePressure(String unit1, String pressureStr, String unit2) {
         if (pressureStr == null || pressureStr.isBlank()) {
-            return null;
+            throw new InvalidObservationException("Pressure.value", pressureStr, "Pressure value is blank");
         }
 
         // Handle OCR error: O → 0
@@ -795,8 +809,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
             return parsePressureByValue(pressureValue);
 
         } catch (NumberFormatException e) {
-            logRejected("pressure", pressureStr, e);
-            return null;
+            throw new InvalidObservationException("Pressure.value", pressureStr, "Invalid pressure format", e);
         }
     }
 
@@ -913,6 +926,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     /**
      * Log a rejected group, as {@link #logRejected}, and record it as a parse issue.
      * Used by handlers that catch their own rejections (the remark handlers, #115).
+     * <p>
+     * Remarks run in passes and a rejected remark stays in place, so a later pass meets
+     * the same group again; it is logged and recorded once per report (#132).
      *
      * @param section   the report section, e.g. "METAR remarks"
      * @param groupType human-readable group name, e.g. "peak wind"
@@ -920,8 +936,12 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * @param e         the rejection
      */
     protected void recordRejected(String section, String groupType, String text, IllegalArgumentException e) {
+        ParseIssue issue = ParseIssue.rejected(section, groupType, text, e);
+        if (parseIssues.contains(issue)) {
+            return;
+        }
         logRejected(groupType, text, e);
-        parseIssues.add(ParseIssue.rejected(section, groupType, text, e));
+        parseIssues.add(issue);
     }
 
     /**
@@ -931,7 +951,7 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
      * @param section the section the result came from
      * @param result  the section run's result
      */
-    protected void recordSectionIssues(String section, SectionResult result) {
+    void recordSectionIssues(String section, SectionResult result) {
         parseIssues.addAll(result.toParseIssues(section));
     }
 
@@ -947,9 +967,9 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
 
     /**
      * Log a report group that was rejected as invalid data. Used by remark handlers
-     * (the group is left for freeText) and by parsePressure. The group is dropped
-     * (main body) or left for freeText (remarks); parsing continues. Expected bad
-     * data is logged at DEBUG on the shared "Rejected" category, never WARN (#136).
+     * (the group is left for freeText). The group is dropped (main body) or left for
+     * freeText (remarks); parsing continues. Expected bad data is logged at DEBUG on
+     * the shared "Rejected" category, never WARN (#136).
      *
      * @param groupType human-readable group name, e.g. "sky condition"
      * @param text      the rejected text from the report

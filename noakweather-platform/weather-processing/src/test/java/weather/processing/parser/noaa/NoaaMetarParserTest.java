@@ -20,6 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.*;
+import weather.exception.InvalidObservationException;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherConditions;
@@ -4453,6 +4454,21 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().variableVisibility()).isNotNull();
         assertThat(data.getRemarks().variableVisibility().direction()).isEqualTo("NE");
         assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    // ========== PARSE DISTANCE TESTS ==========
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "x", "1/x", "1/0"})
+    void testParseDistance_Invalid_Rejected(String text) {
+        assertThrows(InvalidObservationException.class, () -> NoaaMetarParser.parseDistance(text));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"10, 10.0", "1/2, 0.5", "1 1/2, 1.5"})
+    void testParseDistance_Valid(String text, double expected) {
+        assertEquals(expected, NoaaMetarParser.parseDistance(text), 1e-9);
     }
 
     // ========== TOWER VISIBILITY PARSING TESTS ==========
@@ -11581,6 +11597,72 @@ class NoaaMetarParserTest {
             // The handler no longer logs it itself; the engine logs it once
             assertThat(rejected.events()).isEmpty();
         }
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "VIS 1/0V2   | variable visibility",
+            "TWR VIS 1/0 | tower/surface visibility",
+            "GR 1/0      | hail size"
+    })
+    void testRemarkZeroDenominator_RecordedOnceAsRejected(String remark, String handler) {
+        ParseResult<NoaaWeatherData> result = parser.parse(
+                "METAR KCLT 151953Z 19005KT 10SM CLR 20/10 A3015 RMK AO2 " + remark);
+
+        assertTrue(result.isSuccess());
+        List<ParseIssue> issues = result.getIssues();
+        assertEquals(1, issues.size(), issues::toString);
+        ParseIssue issue = issues.get(0);
+        assertEquals(ParseIssue.Kind.REJECTED, issue.kind());
+        assertEquals(handler, issue.handler());
+        assertEquals(remark, issue.text().trim());
+    }
+
+    @Test
+    void testParsePressure_NotNumeric_Rejected() {
+        InvalidObservationException e = assertThrows(InvalidObservationException.class,
+                () -> parser.parsePressure("A", "29X2", null));
+        assertInstanceOf(NumberFormatException.class, e.getCause());
+    }
+
+    @Test
+    void testParsePressure_Blank_Rejected() {
+        assertThrows(InvalidObservationException.class, () -> parser.parsePressure("A", " ", null));
+    }
+
+    @Test
+    void testRecordRejected_SameGroupTwice_RecordedOnce() {
+        InvalidObservationException e = new InvalidObservationException("Wind.speed", "x", "bad");
+
+        parser.recordRejected("METAR remarks", "peak wind", "PK WND x", e);
+        parser.recordRejected("METAR remarks", "peak wind", "PK WND x", e);
+
+        assertEquals(1, parser.withParseIssues(ParseResult.failure("test")).getIssues().size());
+    }
+
+    @Test
+    void testDebugLogging_GuardedGroups_LoggedWhenDebugEnabled() {
+        try (LogCapture base = LogCapture.of(NoaaAviationWeatherParser.class.getName(), Level.DEBUG);
+             LogCapture metar = LogCapture.of(NoaaMetarParser.class.getName(), Level.DEBUG)) {
+
+            ParseResult<NoaaWeatherData> result = parser.parse(
+                    "METAR KCLT 151953Z 19005KT 10SM R06/1200FT -RA BKN050CB 20/10 A3015 RERA RMK AO2 VIS 1/2V2");
+
+            assertTrue(result.isSuccess());
+            assertLogged(metar, "RVR: Runway 06");
+            assertLogged(metar, "Variable visibility: 1/2 varying to 2");
+            assertLogged(base, "Present Weather: -RA");
+            assertLogged(base, "Recent weather: RA (");
+            assertLogged(base, "feet (CB)");
+        }
+    }
+
+    private static void assertLogged(LogCapture capture, String expected) {
+        List<String> messages = capture.events().stream()
+                .map(event -> event.getMessage().getFormattedMessage())
+                .toList();
+        assertTrue(messages.stream().anyMatch(message -> message.contains(expected)),
+                () -> "Expected a log message containing '" + expected + "' in " + messages);
     }
 
     // --- Correct behavior (regression) ---
