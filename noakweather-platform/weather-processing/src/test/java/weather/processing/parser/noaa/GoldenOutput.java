@@ -19,6 +19,7 @@ package weather.processing.parser.noaa;
 import org.assertj.core.api.SoftAssertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import weather.model.components.ParseIssueRecord;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -110,6 +111,17 @@ final class GoldenOutput {
         }
         for (RecordComponent component : value.getClass().getRecordComponents()) {
             field(sb, name + "." + component.getName(), componentValue(value, component));
+        }
+    }
+
+    /**
+     * The report's parse issues: a count, then one line per component of each issue,
+     * so a change in what the parser rejects shows up like any other change in output.
+     */
+    static void parseIssues(StringBuilder sb, List<ParseIssueRecord> issues) {
+        field(sb, "parseIssues", issues.size());
+        for (int i = 0; i < issues.size(); i++) {
+            expand(sb, "parseIssue[" + i + "]", issues.get(i));
         }
     }
 
