@@ -17,6 +17,7 @@
 package weather.processing.parser.common;
 
 import weather.exception.InvalidObservationException;
+import weather.model.components.ParseIssueRecord;
 import weather.model.enums.ParseIssueKind;
 
 /**
@@ -106,5 +107,12 @@ public record ParseIssue(ParseIssueKind kind,
 
     private static String messageOf(Exception e) {
         return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+    }
+
+    /**
+     * @return this issue as stored on the weather data's {@code parseIssues}
+     */
+    public ParseIssueRecord toRecord() {
+        return new ParseIssueRecord(kind, section, handler, text, component, rejectedValue, reason);
     }
 }

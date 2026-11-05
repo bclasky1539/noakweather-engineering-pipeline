@@ -20,7 +20,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
-
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -30,6 +29,7 @@ import weather.model.components.*;
 import weather.model.enums.ChangeIndicator;
 import weather.model.enums.ParseIssueKind;
 import weather.model.enums.SkyCoverage;
+import weather.processing.parser.common.ParseIssue;
 import weather.processing.parser.common.ParseResult;
 
 import java.time.LocalDateTime;
@@ -1460,6 +1460,8 @@ class NoaaTafParserTest {
                 assertThat(issue.handler()).isEqualTo("wind");
                 assertThat(issue.text()).isEqualTo("40012KT");
             });
+            assertThat(result.getData().orElseThrow().getParseIssues())
+                    .isEqualTo(result.getIssues().stream().map(ParseIssue::toRecord).toList());
         }
 
         @Test

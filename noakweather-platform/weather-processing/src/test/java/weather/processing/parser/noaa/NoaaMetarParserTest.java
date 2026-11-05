@@ -11665,6 +11665,25 @@ class NoaaMetarParserTest {
                 () -> "Expected a log message containing '" + expected + "' in " + messages);
     }
 
+    @Test
+    void testParse_IssuesAreAttachedToTheData() {
+        ParseResult<NoaaWeatherData> result = parser.parse(
+                "METAR KCLT 151953Z 19005KT 10SM CLR 20/10 A3015 RMK AO2 GR 1/0");
+
+        assertTrue(result.isSuccess());
+        List<ParseIssueRecord> expected = result.getIssues().stream().map(ParseIssue::toRecord).toList();
+        assertEquals(1, expected.size());
+        assertEquals(expected, result.getData().orElseThrow().getParseIssues());
+    }
+
+    @Test
+    void testParse_CleanReport_DataHasNoParseIssues() {
+        ParseResult<NoaaWeatherData> result = parser.parse(
+                "METAR KCLT 151953Z 19005KT 10SM CLR 20/10 A3015 RMK AO2");
+
+        assertTrue(result.getData().orElseThrow().getParseIssues().isEmpty());
+    }
+
     // --- Correct behavior (regression) ---
 
     @ParameterizedTest

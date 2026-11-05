@@ -956,10 +956,15 @@ public abstract class NoaaAviationWeatherParser<T extends NoaaWeatherData>
     }
 
     /**
+     * Attach the report's issues to the result and, for a successful result, to the parsed
+     * data, so the stored record carries them too (#166).
+     *
      * @param result the parse result for the current report
      * @return the result carrying the report's issues
      */
     protected ParseResult<NoaaWeatherData> withParseIssues(ParseResult<NoaaWeatherData> result) {
+        result.getData().ifPresent(data ->
+                data.setParseIssues(parseIssues.stream().map(ParseIssue::toRecord).toList()));
         return result.withIssues(parseIssues);
     }
 

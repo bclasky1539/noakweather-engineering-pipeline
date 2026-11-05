@@ -18,13 +18,14 @@ package weather.processing.parser.common;
 
 import org.junit.jupiter.api.Test;
 import weather.exception.InvalidObservationException;
+import weather.model.components.ParseIssueRecord;
 import weather.model.enums.ParseIssueKind;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link ParseIssue} (#139).
+ * Tests for {@link ParseIssue}.
  */
 class ParseIssueTest {
 
@@ -86,5 +87,16 @@ class ParseIssueTest {
         assertThatThrownBy(() -> new ParseIssue(null, SECTION, "wind", "28016KT", null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Parse issue kind cannot be null");
+    }
+
+    @Test
+    void testToRecord_CopiesAllValues() {
+        ParseIssue issue = ParseIssue.rejected("METAR remarks", "hail size", "GR 1/0",
+                new InvalidObservationException("Visibility.distanceValue", "1/0",
+                        "Fraction denominator cannot be zero"));
+
+        assertThat(issue.toRecord()).isEqualTo(new ParseIssueRecord(ParseIssueKind.REJECTED,
+                "METAR remarks", "hail size", "GR 1/0", "Visibility.distanceValue", "1/0",
+                "Fraction denominator cannot be zero"));
     }
 }
