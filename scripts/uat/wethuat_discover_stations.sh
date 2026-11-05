@@ -90,6 +90,18 @@ declare -a PATTERNS=(
      "114-ts-location-space-separated-points|(^| )(TS|CB|TCU|ACC|CBMAM|VIRGA)( (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS))? (N|NE|E|SE|S|SW|W|NW) (N|NE|E|SE|S|SW|W|NW)( |$)"
      "117-lightning-and-chain|(^| )LTG(IC|CC|CG|CA|CW)*( (OHD|VC|DSNT|AT AP))? [NSEW]{1,2}(-[NSEW]{1,2})* AND [NSEW]{1,2}(-[NSEW]{1,2})*( |$)"
      "115-vis-sector-or-second-location|(^| )VIS (([NSEW]{1,2}(-[NSEW]{1,2})*) [0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)?|[0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)? ([NSEW]{1,2}(-[NSEW]{1,2})*|RWY[0-9]{2}[LRC]?))( |$)"
+     # #173 — main-body groups rejected since #138 (1.28.0) stay in unparsedMainBody and are
+     # REJECTED parseIssues (#166); confirm both on live reports in UAT.
+     "130-zero-denominator-visibility|(^|\"| )([0-9]+ )?[0-9]+/0SM( |\"|\$)"
+     "138-vv-without-height|(^|\"| )VV///( |\"|\$)"
+     # Pressure accepts 25.00-35.00 inHg and 850-1085 hPa; anything outside is rejected.
+     # These also match a secondary altimeter in the remarks (#132).
+     "138-altimeter-out-of-range|(^|\"| )A(0[0-9]{3}|1[0-9]{3}|2[0-4][0-9]{2}|350[1-9]|35[1-9][0-9]|3[6-9][0-9]{2}|[4-9][0-9]{3})( |\"|\$)"
+     "138-qnh-out-of-range|(^|\"| )Q(0[0-7][0-9]{2}|08[0-4][0-9]|108[6-9]|109[0-9]|1[1-9][0-9]{2}|[2-9][0-9]{3})( |\"|\$)"
+     # #132 — remark values that cannot be parsed are REJECTED parseIssues and stay in freeText.
+     "132-remark-variable-visibility-zero-denominator|(^|\"| )VIS ([NSEW]{1,2} )?(([0-9]+ )?[0-9]+/0V|([0-9]+ )?[0-9]+(/[0-9]+)?V([0-9]+ )?[0-9]+/0( |\"|\$))"
+     "132-remark-twr-sfc-visibility-zero-denominator|(^|\"| )(TWR|SFC) VIS ([0-9]+ )?[0-9]+/0( |\"|\$)"
+     "132-remark-hail-size-invalid|(^|\"| )GR (0|0/[0-9]+|([0-9]+ )?[0-9]+/0)( |\"|\$)"
 )
 
 for entry in "${PATTERNS[@]}"; do
