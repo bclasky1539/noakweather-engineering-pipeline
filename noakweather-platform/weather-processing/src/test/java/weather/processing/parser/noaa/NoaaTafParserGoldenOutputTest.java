@@ -25,8 +25,7 @@ import weather.processing.parser.common.ParseResult;
 import java.io.IOException;
 import java.util.List;
 
-import static weather.processing.parser.noaa.GoldenOutput.expand;
-import static weather.processing.parser.noaa.GoldenOutput.field;
+import static weather.processing.parser.noaa.GoldenOutput.*;
 
 /**
  * Golden-output regression test for {@link NoaaTafParser} (#153 phase 4).
@@ -94,6 +93,8 @@ class NoaaTafParserGoldenOutputTest {
             field(sb, prefix + ".probability", period.probability());
             expand(sb, prefix + ".conditions", period.conditions());
         }
+
+        parseIssues(sb, data.getParseIssues());
         return sb.toString();
     }
 }

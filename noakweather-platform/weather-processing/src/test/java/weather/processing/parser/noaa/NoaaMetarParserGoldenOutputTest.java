@@ -23,8 +23,7 @@ import weather.processing.parser.common.ParseResult;
 
 import java.io.IOException;
 
-import static weather.processing.parser.noaa.GoldenOutput.expand;
-import static weather.processing.parser.noaa.GoldenOutput.field;
+import static weather.processing.parser.noaa.GoldenOutput.*;
 
 /**
  * Golden-output regression test for {@link NoaaMetarParser} (#137).
@@ -94,6 +93,7 @@ class NoaaMetarParserGoldenOutputTest {
         field(sb, "icing", data.getIcing());
 
         expand(sb, "remarks", data.getRemarks());
+        parseIssues(sb, data.getParseIssues());
         return sb.toString();
     }
 }

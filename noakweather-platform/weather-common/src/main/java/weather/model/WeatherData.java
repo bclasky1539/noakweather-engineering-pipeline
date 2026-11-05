@@ -19,8 +19,11 @@ package weather.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+
 import java.time.Instant;
 import java.util.*;
+
+import weather.model.components.ParseIssueRecord;
 
 /**
  * Universal base class for all weather data in the platform.
@@ -36,7 +39,7 @@ import java.util.*;
  * accept data from any source system. The actual weather conditions are stored in
  * subclass-specific structures (e.g., WeatherConditions for observations/forecasts).
  * <p>
- * Sealed class: Only permits known weather data types
+ * Sealed class: Only permits the known weather data types
  *
  * @author bclasky1539
  *
@@ -112,6 +115,14 @@ public abstract sealed class WeatherData
      */
     private Map<String, Object> metadata;
 
+
+    /**
+     * Problems the parser found in this report (#166): rejected groups, groups a handler
+     * failed on, and handlers disabled by their circuit breaker. Empty when the report
+     * parsed cleanly, and for records written before this field existed.
+     */
+    private List<ParseIssueRecord> parseIssues = new ArrayList<>();
+
     /**
      * Protected constructor for subclasses.
      * Automatically generates ID and sets ingestion time.
@@ -124,8 +135,9 @@ public abstract sealed class WeatherData
 
     /**
      * Constructor with required fields
-     * @param source The WeatherDataSource
-     * @param stationId The Station ID
+     *
+     * @param source          The WeatherDataSource
+     * @param stationId       The Station ID
      * @param observationTime The observation time
      */
     protected WeatherData(WeatherDataSource source, String stationId, Instant observationTime) {
@@ -214,7 +226,8 @@ public abstract sealed class WeatherData
 
     /**
      * Add a single metadata entry
-     * @param key The metadata key
+     *
+     * @param key   The metadata key
      * @param value The metadata value
      */
     public void addMetadata(String key, Object value) {
@@ -225,6 +238,20 @@ public abstract sealed class WeatherData
     }
 
     // ==================== Abstract Methods ====================
+
+    /**
+     * @return the problems the parser found in this report; empty if none (read-only)
+     */
+    public List<ParseIssueRecord> getParseIssues() {
+        return Collections.unmodifiableList(parseIssues);
+    }
+
+    /**
+     * @param parseIssues the problems the parser found in this report; null means none
+     */
+    public void setParseIssues(List<ParseIssueRecord> parseIssues) {
+        this.parseIssues = parseIssues == null ? new ArrayList<>() : new ArrayList<>(parseIssues);
+    }
 
     /**
      * Determines if this weather data is considered current/valid.

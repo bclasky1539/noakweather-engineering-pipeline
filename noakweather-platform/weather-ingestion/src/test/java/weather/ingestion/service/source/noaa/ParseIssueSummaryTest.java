@@ -18,6 +18,7 @@ package weather.ingestion.service.source.noaa;
 
 import org.apache.logging.log4j.Level;
 import org.junit.jupiter.api.Test;
+import weather.model.enums.ParseIssueKind;
 import weather.processing.parser.common.ParseIssue;
 
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ class ParseIssueSummaryTest {
     private static final String SECTION = "METAR main body";
 
     private static ParseIssue rejected(String handler) {
-        return new ParseIssue(ParseIssue.Kind.REJECTED, SECTION, handler, "x", null, null, "bad");
+        return new ParseIssue(ParseIssueKind.REJECTED, SECTION, handler, "x", null, null, "bad");
     }
 
     @Test
@@ -56,8 +57,8 @@ class ParseIssueSummaryTest {
 
         assertEquals(3, summary.reports());
         assertEquals(2, summary.reportsWithIssues());
-        assertEquals(3, summary.count(ParseIssue.Kind.REJECTED));
-        assertEquals(0, summary.count(ParseIssue.Kind.FAILED));
+        assertEquals(3, summary.count(ParseIssueKind.REJECTED));
+        assertEquals(0, summary.count(ParseIssueKind.FAILED));
         assertFalse(summary.hasParserBugs());
         assertEquals(Level.INFO, summary.level());
         assertEquals(
@@ -73,7 +74,7 @@ class ParseIssueSummaryTest {
         summary.add(List.of(ParseIssue.failed("TAF forecast period", "wind", "28016KT",
                 new IllegalStateException("boom"))));
 
-        assertEquals(1, summary.count(ParseIssue.Kind.FAILED));
+        assertEquals(1, summary.count(ParseIssueKind.FAILED));
         assertTrue(summary.hasParserBugs());
         assertEquals(Level.WARN, summary.level());
         // Failures are counted, not listed with the rejecting handlers
@@ -87,7 +88,7 @@ class ParseIssueSummaryTest {
 
         summary.add(List.of(ParseIssue.handlerDisabled("METAR remarks", "peakWind")));
 
-        assertEquals(1, summary.count(ParseIssue.Kind.HANDLER_DISABLED));
+        assertEquals(1, summary.count(ParseIssueKind.HANDLER_DISABLED));
         assertEquals(Level.WARN, summary.level());
     }
 

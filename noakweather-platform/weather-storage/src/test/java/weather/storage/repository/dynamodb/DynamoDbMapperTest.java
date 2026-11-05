@@ -23,11 +23,14 @@ import weather.model.NoaaMetarData;
 import weather.model.NoaaTafData;
 import weather.model.NoaaWeatherData;
 import weather.model.WeatherData;
+import weather.model.components.ParseIssueRecord;
+import weather.model.enums.ParseIssueKind;
 import weather.storage.exception.WeatherDataMappingException;
 
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -405,5 +408,48 @@ class DynamoDbMapperTest {
         assertThatThrownBy(() -> mapper.fromAttributeMap(attributeMap))
                 .isInstanceOf(WeatherDataMappingException.class)
                 .hasMessageContaining("Failed to deserialize weather data from JSON");
+    }
+
+    // ========== PARSE ISSUES TESTS ==========
+
+    private static final ParseIssueRecord HAIL_ISSUE = new ParseIssueRecord(ParseIssueKind.REJECTED,
+            "METAR remarks", "hail size", "GR 1/0", "Visibility.distanceValue", "1/0",
+            "Fraction denominator cannot be zero");
+
+    private static NoaaMetarData metar() {
+        NoaaMetarData metar = new NoaaMetarData();
+        metar.setStationId("KJFK");
+        metar.setObservationTime(Instant.parse("2026-01-20T12:00:00Z"));
+        metar.setReportType("METAR");
+        return metar;
+    }
+
+    @Test
+    void shouldRoundTripParseIssues() {
+        // Given
+        NoaaMetarData original = metar();
+        original.setParseIssues(List.of(HAIL_ISSUE));
+
+        // When
+        WeatherData deserialized = mapper.fromAttributeMap(mapper.toAttributeMap(original));
+
+        // Then
+        assertThat(deserialized.getParseIssues()).containsExactly(HAIL_ISSUE);
+    }
+
+    @Test
+    void shouldReadItemWrittenBeforeParseIssuesAsEmpty() {
+        // Given - an item whose dataJson predates the parseIssues field
+        Map<String, AttributeValue> attributeMap = mapper.toAttributeMap(metar());
+        String json = attributeMap.get("dataJson").s();
+        assertThat(json).contains(",\"parseIssues\":[]");
+        attributeMap.put("dataJson",
+                AttributeValue.builder().s(json.replace(",\"parseIssues\":[]", "")).build());
+
+        // When
+        WeatherData deserialized = mapper.fromAttributeMap(attributeMap);
+
+        // Then
+        assertThat(deserialized.getParseIssues()).isEmpty();
     }
 }

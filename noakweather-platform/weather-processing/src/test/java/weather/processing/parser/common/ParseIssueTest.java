@@ -18,12 +18,14 @@ package weather.processing.parser.common;
 
 import org.junit.jupiter.api.Test;
 import weather.exception.InvalidObservationException;
+import weather.model.components.ParseIssueRecord;
+import weather.model.enums.ParseIssueKind;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Tests for {@link ParseIssue} (#139).
+ * Tests for {@link ParseIssue}.
  */
 class ParseIssueTest {
 
@@ -36,7 +38,7 @@ class ParseIssueTest {
 
         ParseIssue issue = ParseIssue.rejected(SECTION, "skyCondition", "VV///", rejection);
 
-        assertThat(issue).isEqualTo(new ParseIssue(ParseIssue.Kind.REJECTED, SECTION, "skyCondition", "VV///",
+        assertThat(issue).isEqualTo(new ParseIssue(ParseIssueKind.REJECTED, SECTION, "skyCondition", "VV///",
                 "SkyCondition.heightFeet", "///", "Vertical visibility must have height specified"));
         assertThat(issue.isParserBug()).isFalse();
     }
@@ -46,7 +48,7 @@ class ParseIssueTest {
         ParseIssue issue = ParseIssue.rejected(SECTION, "visibility", "M12X4",
                 new NumberFormatException("For input string: \"12X4\""));
 
-        assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+        assertThat(issue.kind()).isEqualTo(ParseIssueKind.REJECTED);
         assertThat(issue.component()).isNull();
         assertThat(issue.rejectedValue()).isNull();
         assertThat(issue.reason()).isEqualTo("For input string: \"12X4\"");
@@ -56,7 +58,7 @@ class ParseIssueTest {
     void testFailed_KeepsMessageAndIsParserBug() {
         ParseIssue issue = ParseIssue.failed(SECTION, "wind", "28016KT", new IllegalStateException("boom"));
 
-        assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.FAILED);
+        assertThat(issue.kind()).isEqualTo(ParseIssueKind.FAILED);
         assertThat(issue.text()).isEqualTo("28016KT");
         assertThat(issue.reason()).isEqualTo("boom");
         assertThat(issue.isParserBug()).isTrue();
@@ -73,7 +75,7 @@ class ParseIssueTest {
     void testHandlerDisabled_HasNoTextAndIsParserBug() {
         ParseIssue issue = ParseIssue.handlerDisabled("METAR remarks", "peakWind");
 
-        assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.HANDLER_DISABLED);
+        assertThat(issue.kind()).isEqualTo(ParseIssueKind.HANDLER_DISABLED);
         assertThat(issue.handler()).isEqualTo("peakWind");
         assertThat(issue.text()).isNull();
         assertThat(issue.reason()).isEqualTo("Handler disabled for the rest of the section");
@@ -85,5 +87,16 @@ class ParseIssueTest {
         assertThatThrownBy(() -> new ParseIssue(null, SECTION, "wind", "28016KT", null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Parse issue kind cannot be null");
+    }
+
+    @Test
+    void testToRecord_CopiesAllValues() {
+        ParseIssue issue = ParseIssue.rejected("METAR remarks", "hail size", "GR 1/0",
+                new InvalidObservationException("Visibility.distanceValue", "1/0",
+                        "Fraction denominator cannot be zero"));
+
+        assertThat(issue.toRecord()).isEqualTo(new ParseIssueRecord(ParseIssueKind.REJECTED,
+                "METAR remarks", "hail size", "GR 1/0", "Visibility.distanceValue", "1/0",
+                "Fraction denominator cannot be zero"));
     }
 }

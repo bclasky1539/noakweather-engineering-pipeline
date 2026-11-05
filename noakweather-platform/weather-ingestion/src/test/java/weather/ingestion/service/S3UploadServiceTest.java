@@ -26,6 +26,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -39,10 +44,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+import java.io.InputStream;
+import java.util.HashSet;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import weather.model.components.ParseIssueRecord;
+import weather.model.enums.ParseIssueKind;
 
 /**
  * Unit tests for S3UploadService using Mockito.
@@ -812,6 +821,53 @@ class S3UploadServiceTest {
                 () -> uploadService.uploadWeatherDataBatch(weatherDataList));
 
         assertTrue(exception.getMessage().contains("All uploads in batch failed"));
+    }
+
+    // ===== Parse issues in the Bronze JSON (#166) =====
+
+    @Test
+    void testUploadWeatherData_JsonHasEmptyParseIssuesWhenNone() throws IOException {
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().eTag("test").build());
+
+        uploadService.uploadWeatherData(createTestWeatherData("KJFK"));
+
+        verify(s3Client).putObject(any(PutObjectRequest.class), requestBodyCaptor.capture());
+        JsonNode parseIssues = writtenJson().get("parseIssues");
+        assertNotNull(parseIssues, "parseIssues should always be present");
+        assertTrue(parseIssues.isArray());
+        assertEquals(0, parseIssues.size());
+    }
+
+    @Test
+    void testUploadWeatherData_JsonIncludesParseIssues() throws IOException {
+        WeatherData weatherData = createTestWeatherData("KJFK");
+        weatherData.setParseIssues(List.of(new ParseIssueRecord(ParseIssueKind.REJECTED, "METAR remarks",
+                "hail size", "GR 1/0", "Visibility.distanceValue", "1/0",
+                "Fraction denominator cannot be zero")));
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+                .thenReturn(PutObjectResponse.builder().eTag("test").build());
+
+        uploadService.uploadWeatherData(weatherData);
+
+        verify(s3Client).putObject(any(PutObjectRequest.class), requestBodyCaptor.capture());
+        JsonNode parseIssues = writtenJson().get("parseIssues");
+        assertEquals(1, parseIssues.size());
+
+        JsonNode issue = parseIssues.get(0);
+        Set<String> keys = new HashSet<>();
+        issue.fieldNames().forEachRemaining(keys::add);
+        assertEquals(Set.of("kind", "section", "handler", "text", "component", "rejectedValue", "reason"), keys,
+                "Only the seven issue values, no derived keys");
+        assertEquals("REJECTED", issue.get("kind").asText());
+        assertEquals("GR 1/0", issue.get("text").asText());
+        assertEquals("1/0", issue.get("rejectedValue").asText());
+    }
+
+    private JsonNode writtenJson() throws IOException {
+        try (InputStream in = requestBodyCaptor.getValue().contentStreamProvider().newStream()) {
+            return new ObjectMapper().readTree(in);
+        }
     }
 
     // ===== Helper Methods =====
