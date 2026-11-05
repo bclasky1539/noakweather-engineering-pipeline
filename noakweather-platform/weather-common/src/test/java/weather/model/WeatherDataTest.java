@@ -19,9 +19,13 @@ package weather.model;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeEach;
+import weather.model.components.ParseIssueRecord;
+import weather.model.enums.ParseIssueKind;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -283,6 +287,52 @@ class WeatherDataTest {
         assertEquals(0, data.getMetadata().size());
     }
 
+    // ========== PARSE ISSUES TESTS ==========
+
+    private static final ParseIssueRecord HAIL_ISSUE = new ParseIssueRecord(ParseIssueKind.REJECTED,
+            "METAR remarks", "hail size", "GR 1/0", "Visibility.distanceValue", "1/0",
+            "Fraction denominator cannot be zero");
+
+    @Test
+    @DisplayName("Should have no parse issues by default")
+    void testParseIssuesEmptyByDefault() {
+        TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
+
+        assertTrue(data.getParseIssues().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should keep a copy of the parse issues it is given")
+    void testSetParseIssuesCopiesList() {
+        TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
+        List<ParseIssueRecord> issues = new ArrayList<>(List.of(HAIL_ISSUE));
+
+        data.setParseIssues(issues);
+        issues.clear();
+
+        assertEquals(List.of(HAIL_ISSUE), data.getParseIssues());
+    }
+
+    @Test
+    @DisplayName("Should treat null parse issues as none")
+    void testSetParseIssuesNullIsEmpty() {
+        TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
+        data.setParseIssues(List.of(HAIL_ISSUE));
+
+        data.setParseIssues(null);
+
+        assertTrue(data.getParseIssues().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should return parse issues read-only")
+    void testGetParseIssuesIsReadOnly() {
+        TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
+        List<ParseIssueRecord> issues = data.getParseIssues();
+
+        assertThrows(UnsupportedOperationException.class, () -> issues.add(HAIL_ISSUE));
+    }
+
     // ========== NULL HANDLING TESTS ==========
 
     @Test
@@ -314,7 +364,8 @@ class WeatherDataTest {
 
     @Test
     @DisplayName("Should return false when comparing with null")
-    @SuppressWarnings({"java:S5838", "java:S3415"}) // Intentional: argument order needed to test equals() implementation
+    @SuppressWarnings({"java:S5838", "java:S3415"})
+        // Intentional: argument order needed to test equals() implementation
     void testEqualsWithNull() {
         TestWeatherData data = new TestWeatherData(WeatherDataSource.NOAA, "KJFK", now);
 
