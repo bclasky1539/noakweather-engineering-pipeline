@@ -17,6 +17,7 @@
 package weather.processing.parser.common;
 
 import weather.exception.InvalidObservationException;
+import weather.model.enums.ParseIssueKind;
 
 /**
  * One problem found while parsing a report (#139).
@@ -25,8 +26,8 @@ import weather.exception.InvalidObservationException;
  * item leaving the line, so the pipeline can count and alert on them instead of relying
  * on logs alone.
  * <p>
- * {@link Kind#REJECTED} is bad data in the report: expected, and a metric.
- * {@link Kind#FAILED} and {@link Kind#HANDLER_DISABLED} are parser bugs: unexpected, and
+ * {@link ParseIssueKind#REJECTED} is bad data in the report: expected, and a metric.
+ * {@link ParseIssueKind#FAILED} and {@link ParseIssueKind#HANDLER_DISABLED} are parser bugs: unexpected, and
  * worth an alert.
  *
  * @param kind          what kind of problem this is
@@ -38,31 +39,13 @@ import weather.exception.InvalidObservationException;
  * @param reason        why the group was rejected, or the failure's message
  * @author bclasky1539
  */
-public record ParseIssue(Kind kind,
+public record ParseIssue(ParseIssueKind kind,
                          String section,
                          String handler,
                          String text,
                          String component,
                          String rejectedValue,
                          String reason) {
-
-    /**
-     * Kind of parse issue.
-     */
-    public enum Kind {
-        /**
-         * A group the parser recognized but rejected as invalid data.
-         */
-        REJECTED,
-        /**
-         * A group a handler failed on with an unexpected exception (a parser bug).
-         */
-        FAILED,
-        /**
-         * A handler disabled for the rest of a section by its circuit breaker (a parser bug).
-         */
-        HANDLER_DISABLED
-    }
 
     public ParseIssue {
         if (kind == null) {
@@ -83,10 +66,10 @@ public record ParseIssue(Kind kind,
     public static ParseIssue rejected(String section, String handler, String text,
                                       IllegalArgumentException rejection) {
         if (rejection instanceof InvalidObservationException ioe) {
-            return new ParseIssue(Kind.REJECTED, section, handler, text,
+            return new ParseIssue(ParseIssueKind.REJECTED, section, handler, text,
                     ioe.getComponent(), ioe.getRejectedValue(), ioe.getReason());
         }
-        return new ParseIssue(Kind.REJECTED, section, handler, text, null, null, messageOf(rejection));
+        return new ParseIssue(ParseIssueKind.REJECTED, section, handler, text, null, null, messageOf(rejection));
     }
 
     /**
@@ -99,7 +82,7 @@ public record ParseIssue(Kind kind,
      * @return the issue
      */
     public static ParseIssue failed(String section, String handler, String text, RuntimeException cause) {
-        return new ParseIssue(Kind.FAILED, section, handler, text, null, null, messageOf(cause));
+        return new ParseIssue(ParseIssueKind.FAILED, section, handler, text, null, null, messageOf(cause));
     }
 
     /**
@@ -110,15 +93,15 @@ public record ParseIssue(Kind kind,
      * @return the issue
      */
     public static ParseIssue handlerDisabled(String section, String handler) {
-        return new ParseIssue(Kind.HANDLER_DISABLED, section, handler, null, null, null,
+        return new ParseIssue(ParseIssueKind.HANDLER_DISABLED, section, handler, null, null, null,
                 "Handler disabled for the rest of the section");
     }
 
     /**
-     * @return true for parser bugs ({@link Kind#FAILED}, {@link Kind#HANDLER_DISABLED})
+     * @return true for parser bugs ({@link ParseIssueKind#FAILED}, {@link ParseIssueKind#HANDLER_DISABLED})
      */
     public boolean isParserBug() {
-        return kind != Kind.REJECTED;
+        return kind.isParserBug();
     }
 
     private static String messageOf(Exception e) {

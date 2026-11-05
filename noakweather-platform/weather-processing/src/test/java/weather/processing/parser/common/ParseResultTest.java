@@ -21,6 +21,7 @@ import org.junit.jupiter.api.DisplayName;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import weather.model.enums.ParseIssueKind;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -314,7 +315,7 @@ class ParseResultTest {
 
     // ==================== Parse issues ====================
 
-    private static final ParseIssue REJECTED_SKY = new ParseIssue(ParseIssue.Kind.REJECTED, "METAR main body",
+    private static final ParseIssue REJECTED_SKY = new ParseIssue(ParseIssueKind.REJECTED, "METAR main body",
             "skyCondition", "VV///", "SkyCondition.heightFeet", "///", "Vertical visibility must have height specified");
 
     @Test

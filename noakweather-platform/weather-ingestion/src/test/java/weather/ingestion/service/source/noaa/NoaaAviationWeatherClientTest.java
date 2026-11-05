@@ -21,6 +21,7 @@ import weather.model.WeatherDataSource;
 import weather.exception.WeatherServiceException;
 import weather.exception.ErrorType;
 import weather.ingestion.config.NoaaConfiguration;
+import weather.model.enums.ParseIssueKind;
 import weather.processing.parser.common.ParseIssue;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -403,7 +404,7 @@ class NoaaAviationWeatherClientTest {
         assertEquals("KJFK", report.data().getStationId());
         assertEquals(1, report.issues().size());
         ParseIssue issue = report.issues().get(0);
-        assertEquals(ParseIssue.Kind.REJECTED, issue.kind());
+        assertEquals(ParseIssueKind.REJECTED, issue.kind());
         assertEquals("tempDewpoint", issue.handler());
         assertEquals("10/15", issue.text());
     }

@@ -11300,7 +11300,7 @@ class NoaaMetarParserTest {
                 parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 10/15 A3012");
 
         assertThat(result.getIssues()).singleElement().satisfies(issue -> {
-            assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+            assertThat(issue.kind()).isEqualTo(ParseIssueKind.REJECTED);
             assertThat(issue.section()).isEqualTo("METAR main body");
             assertThat(issue.handler()).isEqualTo("tempDewpoint");
             assertThat(issue.text()).isEqualTo("10/15");
@@ -11315,7 +11315,7 @@ class NoaaMetarParserTest {
                 parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 22/12 A3012 RMK PK WND 40035/42");
 
         assertThat(result.getIssues()).singleElement().satisfies(issue -> {
-            assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+            assertThat(issue.kind()).isEqualTo(ParseIssueKind.REJECTED);
             assertThat(issue.section()).isEqualTo("METAR remarks");
             assertThat(issue.handler()).isEqualTo("peak wind");
         });
@@ -11420,7 +11420,7 @@ class NoaaMetarParserTest {
             // A failed group is kept for unparsedMainBody rather than dropped (#138)
             assertThat(data.getUnparsedMainBody()).isEqualTo("28016KT");
             assertThat(result.getIssues()).singleElement().satisfies(issue -> {
-                assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.FAILED);
+                assertThat(issue.kind()).isEqualTo(ParseIssueKind.FAILED);
                 assertThat(issue.text()).isEqualTo("28016KT");
             });
             assertThat(logs.events()).singleElement().satisfies(event -> {
@@ -11613,7 +11613,7 @@ class NoaaMetarParserTest {
         List<ParseIssue> issues = result.getIssues();
         assertEquals(1, issues.size(), issues::toString);
         ParseIssue issue = issues.get(0);
-        assertEquals(ParseIssue.Kind.REJECTED, issue.kind());
+        assertEquals(ParseIssueKind.REJECTED, issue.kind());
         assertEquals(handler, issue.handler());
         assertEquals(remark, issue.text().trim());
     }

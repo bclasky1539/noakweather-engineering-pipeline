@@ -22,6 +22,7 @@ import weather.model.NoaaWeatherData;
 import weather.model.WeatherData;
 import weather.exception.WeatherServiceException;
 import weather.exception.ErrorType;
+import weather.model.enums.ParseIssueKind;
 import weather.processing.parser.common.ParseIssue;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -540,7 +541,7 @@ class AbstractNoaaIngestionOrchestratorTest {
 
     // ===== Parse Issue Tests (#139) =====
 
-    private static final ParseIssue REJECTED_TEMP = new ParseIssue(ParseIssue.Kind.REJECTED,
+    private static final ParseIssue REJECTED_TEMP = new ParseIssue(ParseIssueKind.REJECTED,
             "METAR main body", "tempDewpoint", "10/15", "Temperature.dewpointCelsius", "15.0", "bad");
 
     @Test

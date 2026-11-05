@@ -20,6 +20,7 @@ import weather.ingestion.service.S3UploadService;
 import weather.ingestion.service.SpeedLayerProcessor;
 import weather.model.WeatherData;
 import weather.exception.WeatherServiceException;
+import weather.model.enums.ParseIssueKind;
 import weather.processing.parser.common.ParseIssue;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -461,10 +462,10 @@ public abstract class AbstractNoaaIngestionOrchestrator {
         private final AtomicLong noDataCount = new AtomicLong(0);
         private final AtomicLong uploadSuccesses = new AtomicLong(0);
         private final AtomicLong uploadFailures = new AtomicLong(0);
-        private final Map<ParseIssue.Kind, AtomicLong> parseIssues = new EnumMap<>(ParseIssue.Kind.class);
+        private final Map<ParseIssueKind, AtomicLong> parseIssues = new EnumMap<>(ParseIssueKind.class);
 
         public MetricsCollector() {
-            for (ParseIssue.Kind kind : ParseIssue.Kind.values()) {
+            for (ParseIssueKind kind : ParseIssueKind.values()) {
                 parseIssues.put(kind, new AtomicLong(0));
             }
         }
@@ -514,9 +515,9 @@ public abstract class AbstractNoaaIngestionOrchestrator {
                     Map.entry("fetch_success_rate", calculateRate(fetchSuccesses.get(), fetchAttempts.get())),
                     Map.entry("upload_success_rate", calculateRate(uploadSuccesses.get(),
                             uploadSuccesses.get() + uploadFailures.get())),
-                    Map.entry("parse_rejected", parseIssues.get(ParseIssue.Kind.REJECTED).get()),
-                    Map.entry("parse_failed", parseIssues.get(ParseIssue.Kind.FAILED).get()),
-                    Map.entry("parse_handler_disabled", parseIssues.get(ParseIssue.Kind.HANDLER_DISABLED).get())
+                    Map.entry("parse_rejected", parseIssues.get(ParseIssueKind.REJECTED).get()),
+                    Map.entry("parse_failed", parseIssues.get(ParseIssueKind.FAILED).get()),
+                    Map.entry("parse_handler_disabled", parseIssues.get(ParseIssueKind.HANDLER_DISABLED).get())
             );
         }
 

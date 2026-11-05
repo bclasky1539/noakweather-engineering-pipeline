@@ -28,8 +28,8 @@ import weather.model.NoaaTafData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.*;
 import weather.model.enums.ChangeIndicator;
+import weather.model.enums.ParseIssueKind;
 import weather.model.enums.SkyCoverage;
-import weather.processing.parser.common.ParseIssue;
 import weather.processing.parser.common.ParseResult;
 
 import java.time.LocalDateTime;
@@ -1455,7 +1455,7 @@ class NoaaTafParserTest {
 
             assertThat(result.isSuccess()).isTrue();
             assertThat(result.getIssues()).singleElement().satisfies(issue -> {
-                assertThat(issue.kind()).isEqualTo(ParseIssue.Kind.REJECTED);
+                assertThat(issue.kind()).isEqualTo(ParseIssueKind.REJECTED);
                 assertThat(issue.section()).isEqualTo("TAF forecast period");
                 assertThat(issue.handler()).isEqualTo("wind");
                 assertThat(issue.text()).isEqualTo("40012KT");

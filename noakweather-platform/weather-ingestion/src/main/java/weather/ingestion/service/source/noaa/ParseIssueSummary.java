@@ -17,6 +17,7 @@
 package weather.ingestion.service.source.noaa;
 
 import org.apache.logging.log4j.Level;
+import weather.model.enums.ParseIssueKind;
 import weather.processing.parser.common.ParseIssue;
 
 import java.util.Comparator;
@@ -48,7 +49,7 @@ final class ParseIssueSummary {
     static final int TOP_REJECTED_HANDLERS = 5;
 
     private final String reportType;
-    private final Map<ParseIssue.Kind, Integer> countsByKind = new EnumMap<>(ParseIssue.Kind.class);
+    private final Map<ParseIssueKind, Integer> countsByKind = new EnumMap<>(ParseIssueKind.class);
     private final Map<String, Integer> rejectedByHandler = new HashMap<>();
     private int reports;
     private int reportsWithIssues;
@@ -72,7 +73,7 @@ final class ParseIssueSummary {
         }
         for (ParseIssue issue : issues) {
             countsByKind.merge(issue.kind(), 1, Integer::sum);
-            if (issue.kind() == ParseIssue.Kind.REJECTED) {
+            if (issue.kind() == ParseIssueKind.REJECTED) {
                 rejectedByHandler.merge(issue.handler(), 1, Integer::sum);
             }
         }
@@ -96,7 +97,7 @@ final class ParseIssueSummary {
      * @param kind the kind of issue
      * @return how many issues of that kind the batch had
      */
-    synchronized int count(ParseIssue.Kind kind) {
+    synchronized int count(ParseIssueKind kind) {
         return countsByKind.getOrDefault(kind, 0);
     }
 
@@ -104,7 +105,7 @@ final class ParseIssueSummary {
      * @return true if any report had a failed group or a disabled handler
      */
     synchronized boolean hasParserBugs() {
-        return count(ParseIssue.Kind.FAILED) + count(ParseIssue.Kind.HANDLER_DISABLED) > 0;
+        return count(ParseIssueKind.FAILED) + count(ParseIssueKind.HANDLER_DISABLED) > 0;
     }
 
     /**
@@ -124,8 +125,8 @@ final class ParseIssueSummary {
     synchronized String toLogLine() {
         return "ParseIssueSummary type=%s reports=%d reportsWithIssues=%d rejected=%d failed=%d handlerDisabled=%d topRejected=%s"
                 .formatted(reportType, reports, reportsWithIssues,
-                        count(ParseIssue.Kind.REJECTED), count(ParseIssue.Kind.FAILED),
-                        count(ParseIssue.Kind.HANDLER_DISABLED), topRejected());
+                        count(ParseIssueKind.REJECTED), count(ParseIssueKind.FAILED),
+                        count(ParseIssueKind.HANDLER_DISABLED), topRejected());
     }
 
     /**
