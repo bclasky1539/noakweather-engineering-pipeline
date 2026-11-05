@@ -5,7 +5,29 @@ All notable changes to the NoakWeather Engineering Pipeline project will be docu
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## Unreleased
+
+## Version 1.30.0-SNAPSHOT - November 5, 2026
+
+### Added
+- `parseIssues` on the weather data record: each report carries the problems the parser
+  found (rejected groups, groups a handler failed on, handlers disabled by their circuit
+  breaker) as `ParseIssueRecord` (kind, section, handler, text, component, rejectedValue,
+  reason) (#166).
+- Bronze JSON always includes `parseIssues` (`[]` when the report parsed cleanly); the
+  DynamoDB `dataJson` carries it too, and items written before this read back with an
+  empty list.
+- `ParseIssue.toRecord()`; the base parser's `withParseIssues` attaches the issues to the
+  data of a successful METAR or TAF parse.
+- Golden-output tests render each report's parse issues, so a change in what the parser
+  rejects fails the golden test.
+
+### Changed
+- `ParseIssue.Kind` moved to `weather.model.enums.ParseIssueKind`, shared by the parser and
+  the stored record; `isParserBug()` is on the enum.
+
+Bronze JSON shape change: Silver Glue/Athena to read `parseIssues` with an explicit schema,
+to be reviewed in the Silver pre-UAT review.
 
 ## Version 1.29.1-SNAPSHOT - November 3, 2026
 
@@ -265,7 +287,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   so main-body layers such as `BKN030ACC`, `SCT045ACSL`, `FEW020CF` and
   `OVC010SF` are now stored instead of rejected. The rejection reason
   lists the valid codes from the enum. (#140)
-- `CloudType` (okta remarks) validates and describes against the same
+- `CloudType` (Okta remarks) validates and describes against the same
   enum; its accepted codes and messages are unchanged. (#140)
 - `AviationWeatherDecoder.decodeCloudType` reads descriptions from the
   enum, so `CF`, `SF`, `ACC` and `ACSL` decode (e.g. `ACC` →
@@ -1437,7 +1459,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
 
 **Fixed:**
 - **`weather-processing` / `RegExprConst.java`**: `CLOUD_OKTA_PATTERN`
-  - Widened okta range `[1-8]` → `[0-8]` so zero-okta cloud types (e.g.
+  - Widened Okta range `[1-8]` → `[0-8]` so zero-okta cloud types (e.g.
     `CI0`, observed in Canadian METAR conventions) are captured
   - Added `CB` to the cloud-type alternation (previously present only in
     `TS_CLD_LOC_PATTERN`)
@@ -1460,7 +1482,7 @@ Parsed output is unchanged; the golden-output test passes without re-recording.
   - `VALID_CLOUD_TYPES`: added `CB`
   - `VALID_LOCATIONS`: added `EMBDD`
   - `validateOktas`: lower bound relaxed from `oktas < 1` to `oktas < 0`,
-    allowing zero as a valid (if not yet semantically interpreted) okta
+    allowing zero as a valid (if not yet semantically interpreted) Okta
     value
   - `getCloudTypeDescription()`: added `"CB" -> "Cumulonimbus"`
 
@@ -2045,7 +2067,7 @@ not to a versioned Maven artifact. Current artifact version remains
     Pressure)
   - Added `ACC` and `ACSL` to `VALID_CLOUD_TYPES` and
     `getCloudTypeDescription()` in `CloudType.java`
-  - Broadened `CLOUD_OKTA_PATTERN`'s okta lookahead
+  - Broadened `CLOUD_OKTA_PATTERN`'s Okta lookahead
     (`(?=\s|$)` → `(?=\s|$|[A-Z])`) to correctly capture oktas digits in
     chained, no-space-separated cloud type sequences (e.g. `AC1AC1CI1`)
   - Reordered the cloud type alternation so `ACC`/`ACSL` are checked before
@@ -3380,7 +3402,7 @@ not to a versioned Maven artifact. Current artifact version remains
 16. **6-Hour Max/Min Temperature (1/2sTTT)** (NEW)
 17. **24-Hour Max/Min Temperature (4sTTTsTTT)** (NEW)
 18. **Variable Ceiling (CIG minVmax)** (NEW)
-19. **Ceiling Second Site (CIG height [LOC])** (NEW)
+19. **Ceiling Second Site (CIG height \[LOC\])** (NEW)
 20. **Obscuration Layers (FEW FG, etc.)** (NEW)
 21. **Cloud Types in Oktas (SC1, CI, etc.)** (NEW)
 22. **Automated Maintenance Indicators (RVRNO, $, etc.)** (NEW)
@@ -3894,7 +3916,7 @@ not to a versioned Maven artifact. Current artifact version remains
 
 ---
 
-## [Legacy Versions]
+## Legacy Versions
 
 ## Version 0.0.5 - Date: October 1, 2025
 - Added classes for noaa_api/model
