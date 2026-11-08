@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.30.1-SNAPSHOT - November 8, 2026
+
+### Removed
+- Unused `NoaaAviationWeatherClient` methods: the batch methods `fetchMetarReports` and
+  `fetchTafReports` (with `fetchReports` and `FetchFunction`), and the single-station
+  `fetchMetarReport`, `fetchTafReport` and `dataOf` (#168). Ingestion fetches through
+  `fetchMetar`/`fetchTaf` (`ParsedReport`), which the client and orchestrator tests now use.
+
+### Added
+- Tests for the client's TAF network-error path and for an interrupted METAR or TAF fetch.
+- UAT discovery watch patterns for rejected main-body groups (zero-denominator visibility,
+  `VV///`, altimeter/QNH out of range) and rejected remark values (variable and
+  tower/surface visibility with a zero denominator, invalid hail size) (#173).
+
+No change to stored data.
+
 ## Version 1.30.0-SNAPSHOT - November 5, 2026
 
 ### Added
