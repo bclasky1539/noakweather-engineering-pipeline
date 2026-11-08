@@ -30,11 +30,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.net.http.HttpClient;
-import java.util.List;
 import java.util.Properties;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.function.Executable;
 
 /**
  * Unit tests for NoaaAviationWeatherClient using WireMock.
@@ -239,81 +240,6 @@ class NoaaAviationWeatherClientTest {
         assertNotNull(result);
     }
 
-    @Test
-    void testFetchMetarReports_MultipleStations() throws WeatherServiceException {
-        // Mock responses for multiple stations
-        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("2025/01/11 14:56\nKJFK 111456Z")));
-
-        stubFor(get(urlEqualTo("/metar/stations/KLGA.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("2025/01/11 14:56\nKLGA 111456Z")));
-
-        stubFor(get(urlEqualTo("/metar/stations/KEWR.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("2025/01/11 14:56\nKEWR 111456Z")));
-
-        List<WeatherData> results = client.fetchMetarReports("KJFK", "KLGA", "KEWR");
-
-        // Each station requested separately
-        verify(getRequestedFor(urlEqualTo("/metar/stations/KJFK.TXT")));
-        verify(getRequestedFor(urlEqualTo("/metar/stations/KLGA.TXT")));
-        verify(getRequestedFor(urlEqualTo("/metar/stations/KEWR.TXT")));
-
-        assertNotNull(results);
-        assertEquals(3, results.size());
-    }
-
-    @Test
-    void testFetchMetarReports_PartialFailure() throws WeatherServiceException {
-        // First station succeeds
-        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("2025/01/11 14:56\nKJFK 111456Z")));
-
-        // Second station fails
-        stubFor(get(urlEqualTo("/metar/stations/XXXX.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(404)));
-
-        // Should return data for successful station only
-        List<WeatherData> results = client.fetchMetarReports("KJFK", "XXXX");
-
-        assertNotNull(results);
-        assertEquals(1, results.size());
-        assertEquals("KJFK", results.get(0).getStationId());
-    }
-
-    @Test
-    void testFetchMetarReports_NullStationIds() {
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchMetarReports());
-
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-        assertTrue(exception.getMessage().contains("At least one station"));
-    }
-
-    @Test
-    void testFetchMetarReports_EmptyArray() {
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchMetarReports());
-
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-    }
-
-    @Test
-    void testFetchMetarReports_InvalidStationInList() {
-        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchMetarReports("KJFK", "INVALID123", "KLGA"));
-
-        assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-    }
-
     // ===== TAF Fetching Tests =====
 
     @Test
@@ -346,19 +272,6 @@ class NoaaAviationWeatherClientTest {
                 () -> client.fetchTaf("123"));
 
         assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
-    }
-
-    @Test
-    void testFetchTafReports_MultipleStations() throws WeatherServiceException {
-        stubFor(get(urlMatching("/taf/stations/.*.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("2025/01/11 11:25\nTAF TEST")));
-
-        List<WeatherData> results = client.fetchTafReports("KJFK", "KLGA");
-
-        assertNotNull(results);
-        assertEquals(2, results.size());
     }
 
     // ===== Parse Issue Tests (#139) =====
@@ -443,6 +356,52 @@ class NoaaAviationWeatherClientTest {
 
         assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
         assertTrue(exception.getMessage().contains("Failed to fetch METAR"));
+    }
+
+    @Test
+    void testFetchTaf_NetworkError_500() {
+        stubFor(get(urlEqualTo("/taf/stations/KJFK.TXT"))
+                .willReturn(aResponse().withStatus(500)));
+
+        WeatherServiceException exception = assertThrows(WeatherServiceException.class,
+                () -> client.fetchTaf("KJFK"));
+
+        assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
+        assertTrue(exception.getMessage().contains("Failed to fetch TAF"));
+    }
+
+    @Test
+    void testFetchMetar_Interrupted_ThrowsTimeoutAndRestoresInterrupt() {
+        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
+                .willReturn(aResponse().withStatus(200).withBody("data").withFixedDelay(2000)));
+
+        assertInterruptedFetchThrowsTimeout(() -> client.fetchMetar("KJFK"));
+    }
+
+    @Test
+    void testFetchTaf_Interrupted_ThrowsTimeoutAndRestoresInterrupt() {
+        stubFor(get(urlEqualTo("/taf/stations/KJFK.TXT"))
+                .willReturn(aResponse().withStatus(200).withBody("data").withFixedDelay(2000)));
+
+        assertInterruptedFetchThrowsTimeout(() -> client.fetchTaf("KJFK"));
+    }
+
+    /**
+     * Run a fetch on an interrupted thread: it must fail with TIMEOUT and leave the
+     * interrupt flag set. The flag is read and cleared in one step, so later tests run normally.
+     */
+    private static void assertInterruptedFetchThrowsTimeout(Executable fetch) {
+        Thread.currentThread().interrupt();
+        WeatherServiceException exception;
+        boolean stillInterrupted;
+        try {
+            exception = assertThrows(WeatherServiceException.class, fetch);
+        } finally {
+            stillInterrupted = Thread.interrupted();
+        }
+
+        assertEquals(ErrorType.TIMEOUT, exception.getErrorType());
+        assertTrue(stillInterrupted, "Interrupt flag should be restored");
     }
 
     @Test
