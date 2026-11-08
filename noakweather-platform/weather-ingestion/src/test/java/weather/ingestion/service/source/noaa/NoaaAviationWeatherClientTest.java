@@ -118,7 +118,7 @@ class NoaaAviationWeatherClientTest {
     @Test
     void testInvalidStationCode_ThrowsException() {
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchMetarReport("INVALID123"));
+                () -> client.fetchMetar("INVALID123"));
 
         assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
         assertTrue(exception.getMessage().contains("3-4 alphabetic characters"));
@@ -127,7 +127,7 @@ class NoaaAviationWeatherClientTest {
     // ========== HEADER LINE PRESERVATION TESTS ==========
 
     @Test
-    void testFetchMetarReport_HeaderLinePreserved() throws WeatherServiceException {
+    void testFetchMetar_HeaderLinePreserved() throws WeatherServiceException {
         String mockResponse = "2026/09/08 16:00\nKCLT 081600Z 27008KT 10SM FEW250 06/M07 A3034 RMK AO2 SLP278";
 
         stubFor(get(urlEqualTo("/metar/stations/KCLT.TXT"))
@@ -135,7 +135,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody(mockResponse)));
 
-        WeatherData result = client.fetchMetarReport("KCLT");
+        WeatherData result = client.fetchMetar("KCLT").data();
 
         assertNotNull(result);
         // The header date should now be preserved in rawData (space-joined),
@@ -145,7 +145,7 @@ class NoaaAviationWeatherClientTest {
     }
 
     @Test
-    void testFetchMetarReport_NoHeaderLine_UnchangedBehavior() throws WeatherServiceException {
+    void testFetchMetar_NoHeaderLine_UnchangedBehavior() throws WeatherServiceException {
         // No header — just the bare METAR line
         String mockResponse = "KCLT 081600Z 27008KT 10SM FEW250 06/M07 A3034 RMK AO2 SLP278";
 
@@ -154,7 +154,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody(mockResponse)));
 
-        WeatherData result = client.fetchMetarReport("KCLT");
+        WeatherData result = client.fetchMetar("KCLT").data();
 
         assertNotNull(result);
         assertEquals(mockResponse, result.getRawData(),
@@ -162,7 +162,7 @@ class NoaaAviationWeatherClientTest {
     }
 
     @Test
-    void testFetchMetarReport_StationLineNotFound_FallsBackToFullResponse() throws WeatherServiceException {
+    void testFetchMetar_StationLineNotFound_FallsBackToFullResponse() throws WeatherServiceException {
         // Station ID doesn't appear in either line — should hit the fallback branch
         String mockResponse = "2026/09/08 16:00\nSOME OTHER TEXT NOT STARTING WITH KCLT";
 
@@ -171,7 +171,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody(mockResponse)));
 
-        WeatherData result = client.fetchMetarReport("KCLT");
+        WeatherData result = client.fetchMetar("KCLT").data();
 
         assertNotNull(result);
         // Fallback joins all lines with a space
@@ -183,7 +183,7 @@ class NoaaAviationWeatherClientTest {
     // ===== METAR Fetching Tests =====
 
     @Test
-    void testFetchMetarReport_Success() throws WeatherServiceException {
+    void testFetchMetar_Success() throws WeatherServiceException {
         // Mock NOAA TG FTP response (raw text format)
         String mockResponse = """
                 2025/01/11 14:56
@@ -197,7 +197,7 @@ class NoaaAviationWeatherClientTest {
                         .withBody(mockResponse)));
 
         // Execute
-        WeatherData result = client.fetchMetarReport("KCLT");
+        WeatherData result = client.fetchMetar("KCLT").data();
 
         // Verify request
         verify(getRequestedFor(urlEqualTo("/metar/stations/KCLT.TXT")));
@@ -213,34 +213,18 @@ class NoaaAviationWeatherClientTest {
     }
 
     @Test
-    void testFetchMetarReport_NoData() throws WeatherServiceException {
-        // Empty response
-        stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("")));
-
-        WeatherData result = client.fetchMetarReport("KJFK");
-
-        assertNull(result, "Should return null when no data available");
-    }
-
-    @Test
-    void testFetchMetarReport_404NotFound() throws WeatherServiceException {
+    void testFetchMetar_404NotFound() throws WeatherServiceException {
         // Station file doesn't exist - should return null, not throw exception
         stubFor(get(urlEqualTo("/metar/stations/XXXX.TXT"))
                 .willReturn(aResponse()
                         .withStatus(404)));
 
-        // Act
-        WeatherData result = client.fetchMetarReport("XXXX");
-
         // Assert
-        assertNull(result, "Should return null when station file not found");
+        assertNull(client.fetchMetar("XXXX"), "Should return null when station file not found");
     }
 
     @Test
-    void testFetchMetarReport_LowercaseConversion() throws WeatherServiceException {
+    void testFetchMetar_LowercaseConversion() throws WeatherServiceException {
         String mockResponse = "2025/01/11 14:56\nKJFK 111456Z 28016KT";
 
         stubFor(get(urlEqualTo("/metar/stations/KJFK.TXT"))
@@ -249,7 +233,7 @@ class NoaaAviationWeatherClientTest {
                         .withBody(mockResponse)));
 
         // Pass lowercase, should convert to uppercase
-        WeatherData result = client.fetchMetarReport("kjfk");
+        WeatherData result = client.fetchMetar("kjfk").data();
 
         verify(getRequestedFor(urlEqualTo("/metar/stations/KJFK.TXT")));
         assertNotNull(result);
@@ -333,7 +317,7 @@ class NoaaAviationWeatherClientTest {
     // ===== TAF Fetching Tests =====
 
     @Test
-    void testFetchTafReport_Success() throws WeatherServiceException {
+    void testFetchTaf_Success() throws WeatherServiceException {
         String mockResponse = """
                 2025/01/11 11:25
                 TAF KBUF 111125Z 1112/1212 31012G20KT P6SM BKN030
@@ -345,7 +329,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody(mockResponse)));
 
-        WeatherData result = client.fetchTafReport("KBUF");
+        WeatherData result = client.fetchTaf("KBUF").data();
 
         verify(getRequestedFor(urlEqualTo("/taf/stations/KBUF.TXT")));
 
@@ -357,21 +341,9 @@ class NoaaAviationWeatherClientTest {
     }
 
     @Test
-    void testFetchTafReport_NoData() throws WeatherServiceException {
-        stubFor(get(urlEqualTo("/taf/stations/KJFK.TXT"))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withBody("")));
-
-        WeatherData result = client.fetchTafReport("KJFK");
-
-        assertNull(result, "Should return null when no TAF data available");
-    }
-
-    @Test
-    void testFetchTafReport_InvalidStation() {
+    void testFetchTaf_InvalidStation() {
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchTafReport("123"));
+                () -> client.fetchTaf("123"));
 
         assertEquals(ErrorType.INVALID_STATION_CODE, exception.getErrorType());
     }
@@ -467,7 +439,7 @@ class NoaaAviationWeatherClientTest {
                         .withBody("Internal Server Error")));
 
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchMetarReport("KJFK"));
+                () -> client.fetchMetar("KJFK"));
 
         assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
         assertTrue(exception.getMessage().contains("Failed to fetch METAR"));
@@ -483,7 +455,7 @@ class NoaaAviationWeatherClientTest {
                         .withFixedDelay(6000)));
 
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
-                () -> client.fetchMetarReport("KJFK"));
+                () -> client.fetchMetar("KJFK"));
 
         assertTrue(
                 exception.getErrorType() == ErrorType.TIMEOUT ||
@@ -510,7 +482,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody("2025/01/11 14:56\nKJFK 111456Z")));
 
-        WeatherData result = client.fetchMetarReport("KJFK");
+        WeatherData result = client.fetchMetar("KJFK").data();
 
         assertNotNull(result, "Should succeed after retry");
         verify(2, getRequestedFor(urlEqualTo("/metar/stations/KJFK.TXT")));
@@ -545,7 +517,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody(complexMetar)));
 
-        WeatherData result = client.fetchMetarReport("KJFK");
+        WeatherData result = client.fetchMetar("KJFK").data();
 
         assertNotNull(result);
         assertTrue(result.getRawData().contains("+TSRA"));
@@ -565,7 +537,7 @@ class NoaaAviationWeatherClientTest {
                         .withStatus(200)
                         .withBody(multiLineMetar)));
 
-        WeatherData result = client.fetchMetarReport("KJFK");
+        WeatherData result = client.fetchMetar("KJFK").data();
 
         assertNotNull(result);
         assertTrue(result.getRawData().contains("RMK"));
