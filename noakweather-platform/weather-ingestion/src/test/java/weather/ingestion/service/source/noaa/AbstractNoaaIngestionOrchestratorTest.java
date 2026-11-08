@@ -75,8 +75,8 @@ class AbstractNoaaIngestionOrchestratorTest {
     /**
      * Concrete implementation for testing purposes.
      * <p>
-     * Fetches through the mocked client's fetchMetarReport, so the stubs below stay
-     * simple, and attaches {@link #issuesToReturn} as the report's parse issues (#139).
+     * Fetches through the mocked client's fetchMetar and replaces the report's parse issues
+     * with {@link #issuesToReturn}, so the stubs below stay simple.
      */
     private class TestNoaaOrchestrator extends AbstractNoaaIngestionOrchestrator {
 
@@ -90,8 +90,8 @@ class AbstractNoaaIngestionOrchestratorTest {
 
         @Override
         protected ParsedReport fetchFromNoaa(String stationId) throws WeatherServiceException {
-            WeatherData data = mockNoaaClient.fetchMetarReport(stationId);
-            return data != null ? new ParsedReport(data, issuesToReturn) : null;
+            ParsedReport report = mockNoaaClient.fetchMetar(stationId);
+            return report != null ? new ParsedReport(report.data(), issuesToReturn) : null;
         }
     }
 
@@ -105,7 +105,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         WeatherData processedData = createMockWeatherData(stationId);
         processedData.addMetadata("s3_key", "test-key");
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(mockData);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(report(mockData));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenReturn(processedData);
 
@@ -120,7 +120,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         assertEquals(stationId, result.getStationId());
         assertTrue(result.getMetadata().containsKey("ingestion_duration_ms"));
 
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
         verify(mockSpeedLayerProcessor, times(1)).processWeatherData(any(WeatherData.class));
     }
 
@@ -128,7 +128,7 @@ class AbstractNoaaIngestionOrchestratorTest {
     void testIngestStation_NoData() throws Exception {
         // Arrange
         String stationId = "KJFK";
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(null);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(null);
 
         // Act & Assert
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
@@ -137,7 +137,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         assertEquals(ErrorType.NO_DATA, exception.getErrorType());
         assertTrue(exception.getMessage().contains("No TEST data available"));
 
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
         verify(mockSpeedLayerProcessor, never()).processWeatherData(any());
     }
 
@@ -145,7 +145,7 @@ class AbstractNoaaIngestionOrchestratorTest {
     void testIngestStation_FetchFailure() throws Exception {
         // Arrange
         String stationId = "KJFK";
-        when(mockNoaaClient.fetchMetarReport(stationId))
+        when(mockNoaaClient.fetchMetar(stationId))
                 .thenThrow(new WeatherServiceException(ErrorType.NETWORK_ERROR, "Connection failed"));
 
         // Act & Assert
@@ -154,7 +154,7 @@ class AbstractNoaaIngestionOrchestratorTest {
 
         assertEquals(ErrorType.NETWORK_ERROR, exception.getErrorType());
 
-        verify(mockNoaaClient, times(1)).fetchMetarReport(stationId);
+        verify(mockNoaaClient, times(1)).fetchMetar(stationId);
         verify(mockSpeedLayerProcessor, never()).processWeatherData(any());
     }
 
@@ -164,7 +164,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         String stationId = "KJFK";
         WeatherData invalidData = createMockWeatherData(null); // null stationId
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(invalidData);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(report(invalidData));
 
         // Act & Assert
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
@@ -181,7 +181,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         WeatherData invalidData = createMockWeatherData(stationId);
         invalidData.setRawData(null); // null rawData
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(invalidData);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(report(invalidData));
 
         // Act & Assert
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
@@ -197,7 +197,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         String stationId = "KJFK";
         WeatherData mockData = createMockWeatherData(stationId);
 
-        when(mockNoaaClient.fetchMetarReport(stationId)).thenReturn(mockData);
+        when(mockNoaaClient.fetchMetar(stationId)).thenReturn(report(mockData));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenThrow(new IOException("S3 upload failed"));
 
@@ -219,9 +219,9 @@ class AbstractNoaaIngestionOrchestratorTest {
         List<String> stationIds = Arrays.asList("KJFK", "KLGA", "KEWR");
 
         // Mock to return different data based on station ID
-        when(mockNoaaClient.fetchMetarReport(anyString())).thenAnswer(invocation -> {
+        when(mockNoaaClient.fetchMetar(anyString())).thenAnswer(invocation -> {
             String stationId = invocation.getArgument(0);
-            return createMockWeatherData(stationId);
+            return report(createMockWeatherData(stationId));
         });
 
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class))).thenAnswer(invocation -> {
@@ -238,7 +238,7 @@ class AbstractNoaaIngestionOrchestratorTest {
 
         // Assert
         assertEquals(3, results.size());
-        verify(mockNoaaClient, times(3)).fetchMetarReport(anyString());
+        verify(mockNoaaClient, times(3)).fetchMetar(anyString());
     }
 
     @Test
@@ -251,10 +251,10 @@ class AbstractNoaaIngestionOrchestratorTest {
         WeatherData mockData3 = createMockWeatherData("KLGA");
         WeatherData processedData = createMockWeatherData("TEST");
 
-        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(mockData1);
-        when(mockNoaaClient.fetchMetarReport("INVALID"))
+        when(mockNoaaClient.fetchMetar("KJFK")).thenReturn(report(mockData1));
+        when(mockNoaaClient.fetchMetar("INVALID"))
                 .thenThrow(new WeatherServiceException(ErrorType.INVALID_STATION_CODE, "Invalid"));
-        when(mockNoaaClient.fetchMetarReport("KLGA")).thenReturn(mockData3);
+        when(mockNoaaClient.fetchMetar("KLGA")).thenReturn(report(mockData3));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenReturn(processedData);
 
@@ -274,9 +274,9 @@ class AbstractNoaaIngestionOrchestratorTest {
         // Arrange
         List<String> stationIds = Arrays.asList("KJFK", "KLGA");
 
-        when(mockNoaaClient.fetchMetarReport(anyString())).thenAnswer(invocation -> {
+        when(mockNoaaClient.fetchMetar(anyString())).thenAnswer(invocation -> {
             String stationId = invocation.getArgument(0);
-            return createMockWeatherData(stationId);
+            return report(createMockWeatherData(stationId));
         });
 
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class))).thenAnswer(invocation -> {
@@ -308,10 +308,10 @@ class AbstractNoaaIngestionOrchestratorTest {
         WeatherData mockData3 = createMockWeatherData("KLGA");
         WeatherData processedData = createMockWeatherData("TEST");
 
-        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(mockData1);
-        when(mockNoaaClient.fetchMetarReport("INVALID"))
+        when(mockNoaaClient.fetchMetar("KJFK")).thenReturn(report(mockData1));
+        when(mockNoaaClient.fetchMetar("INVALID"))
                 .thenThrow(new WeatherServiceException(ErrorType.INVALID_STATION_CODE, "Invalid"));
-        when(mockNoaaClient.fetchMetarReport("KLGA")).thenReturn(mockData3);
+        when(mockNoaaClient.fetchMetar("KLGA")).thenReturn(report(mockData3));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenReturn(processedData);
 
@@ -437,9 +437,9 @@ class AbstractNoaaIngestionOrchestratorTest {
 
         // Use lenient() for stubs that may not be called during async execution
         // (test verifies scheduling, not full execution)
-        lenient().when(mockNoaaClient.fetchMetarReport(anyString())).thenAnswer(invocation -> {
+        lenient().when(mockNoaaClient.fetchMetar(anyString())).thenAnswer(invocation -> {
             String stationId = invocation.getArgument(0);
-            return createMockWeatherData(stationId);
+            return report(createMockWeatherData(stationId));
         });
 
         lenient().when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class))).thenAnswer(invocation -> {
@@ -522,7 +522,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         WeatherData mockData = createMockWeatherData("KJFK");
         WeatherData processedData = createMockWeatherData("KJFK");
 
-        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(mockData);
+        when(mockNoaaClient.fetchMetar("KJFK")).thenReturn(report(mockData));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenReturn(processedData);
 
@@ -549,7 +549,7 @@ class AbstractNoaaIngestionOrchestratorTest {
         orchestrator.issuesToReturn = List.of(REJECTED_TEMP, REJECTED_TEMP,
                 ParseIssue.failed("METAR main body", "wind", "28016KT", new IllegalStateException("boom")),
                 ParseIssue.handlerDisabled("METAR remarks", "peakWind"));
-        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(createMockWeatherData("KJFK"));
+        when(mockNoaaClient.fetchMetar("KJFK")).thenReturn(report(createMockWeatherData("KJFK")));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenReturn(createMockWeatherData("KJFK"));
         setSpeedLayerProcessor(orchestrator, mockSpeedLayerProcessor);
@@ -565,7 +565,7 @@ class AbstractNoaaIngestionOrchestratorTest {
     @Test
     void testGetMetrics_ParseIssuesCountedEvenWhenUploadFails() throws Exception {
         orchestrator.issuesToReturn = List.of(REJECTED_TEMP);
-        when(mockNoaaClient.fetchMetarReport("KJFK")).thenReturn(createMockWeatherData("KJFK"));
+        when(mockNoaaClient.fetchMetar("KJFK")).thenReturn(report(createMockWeatherData("KJFK")));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenThrow(new IOException("S3 upload failed"));
         setSpeedLayerProcessor(orchestrator, mockSpeedLayerProcessor);
@@ -579,8 +579,8 @@ class AbstractNoaaIngestionOrchestratorTest {
     @Test
     void testIngestStationsBatch_CountsParseIssuesAcrossStations() throws Exception {
         orchestrator.issuesToReturn = List.of(REJECTED_TEMP);
-        when(mockNoaaClient.fetchMetarReport(anyString()))
-                .thenAnswer(invocation -> createMockWeatherData(invocation.getArgument(0)));
+        when(mockNoaaClient.fetchMetar(anyString()))
+                .thenAnswer(invocation -> report(createMockWeatherData(invocation.getArgument(0))));
         when(mockSpeedLayerProcessor.processWeatherData(any(WeatherData.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         setSpeedLayerProcessor(orchestrator, mockSpeedLayerProcessor);
@@ -636,7 +636,7 @@ class AbstractNoaaIngestionOrchestratorTest {
 
         invalidData.setRawData(rawData);
 
-        when(mockNoaaClient.fetchMetarReport(anyString())).thenReturn(invalidData);
+        when(mockNoaaClient.fetchMetar(anyString())).thenReturn(report(invalidData));
 
         // Act & Assert
         WeatherServiceException exception = assertThrows(WeatherServiceException.class,
@@ -660,6 +660,13 @@ class AbstractNoaaIngestionOrchestratorTest {
         NoaaWeatherData data = new NoaaWeatherData(stationId, Instant.now(), "TEST");
         data.setRawData("Test raw data for " + stationId);
         return data;
+    }
+
+    /**
+     * Wrap data as the client's fetchMetar returns it, with no parse issues.
+     */
+    private static ParsedReport report(WeatherData data) {
+        return new ParsedReport(data, List.of());
     }
 
     /**

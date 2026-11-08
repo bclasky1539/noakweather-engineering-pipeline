@@ -23,7 +23,6 @@ import weather.ingestion.config.NoaaConfiguration;
 import weather.processing.parser.noaa.NoaaMetarParser;
 import weather.processing.parser.noaa.NoaaTafParser;
 import weather.processing.parser.common.ParseResult;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,8 +33,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -103,18 +100,14 @@ public class NoaaAviationWeatherClient {
      */
     public NoaaAviationWeatherClient(NoaaConfiguration config) {
         this.config = config;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(config.getTimeoutSeconds()))
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
+        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(config.getTimeoutSeconds())).followRedirects(HttpClient.Redirect.NORMAL).build();
 
         // Validate configuration on startup
         if (!config.validateConfiguration()) {
             logger.warn("Configuration validation failed - check noaa.properties");
         }
 
-        logger.info("NoaaAviationWeatherClient initialized with parsing enabled: {}",
-                config.getConfigurationSummary());
+        logger.info("NoaaAviationWeatherClient initialized with parsing enabled: {}", config.getConfigurationSummary());
     }
 
     /**
@@ -149,18 +142,6 @@ public class NoaaAviationWeatherClient {
     }
 
     /**
-     * Fetches current METAR report for a single station.
-     * NEW: Returns fully parsed NoaaMetarData with all weather conditions populated!
-     *
-     * @param stationId ICAO station identifier (e.g., "KJFK", "KCLT")
-     * @return WeatherData object containing fully parsed METAR report, or null if no data available
-     * @throws WeatherServiceException if station code is invalid or request fails
-     */
-    public WeatherData fetchMetarReport(String stationId) throws WeatherServiceException {
-        return dataOf(fetchMetar(stationId));
-    }
-
-    /**
      * Fetches and parses the current METAR for a single station, keeping the parse
      * issues alongside the data (#139). Used by the ingestion orchestrators.
      *
@@ -170,11 +151,7 @@ public class NoaaAviationWeatherClient {
      */
     ParsedReport fetchMetar(String stationId) throws WeatherServiceException {
         if (!isValidStationCode(stationId)) {
-            throw new WeatherServiceException(
-                    ErrorType.INVALID_STATION_CODE,
-                    "Station code must be 3-4 alphabetic characters",
-                    stationId
-            );
+            throw new WeatherServiceException(ErrorType.INVALID_STATION_CODE, "Station code must be 3-4 alphabetic characters", stationId);
         }
 
         String url = config.buildMetarUrl(stationId);
@@ -191,45 +168,11 @@ public class NoaaAviationWeatherClient {
             return parseMetarResponse(rawText, stationId);
 
         } catch (IOException e) {
-            throw new WeatherServiceException(
-                    ErrorType.NETWORK_ERROR,
-                    MSG_FAILED_METAR,
-                    stationId,
-                    e
-            );
+            throw new WeatherServiceException(ErrorType.NETWORK_ERROR, MSG_FAILED_METAR, stationId, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new WeatherServiceException(
-                    ErrorType.TIMEOUT,
-                    MSG_REQUEST_INTERRUPTED,
-                    stationId,
-                    e
-            );
+            throw new WeatherServiceException(ErrorType.TIMEOUT, MSG_REQUEST_INTERRUPTED, stationId, e);
         }
-    }
-
-    /**
-     * Fetches METAR reports for multiple stations.
-     * More efficient than calling fetchMetarReport repeatedly.
-     *
-     * @param stationIds ICAO station identifiers
-     * @return list of WeatherData objects (excludes stations with no data)
-     * @throws WeatherServiceException if any station code is invalid
-     */
-    public List<WeatherData> fetchMetarReports(String... stationIds) throws WeatherServiceException {
-        return fetchReports(stationIds, this::fetchMetarReport, "METAR");
-    }
-
-    /**
-     * Fetches current TAF (Terminal Aerodrome Forecast) for a single station.
-     * NEW: Returns fully parsed NoaaTafData with forecast periods!
-     *
-     * @param stationId ICAO station identifier (e.g., "KJFK", "KCLT")
-     * @return WeatherData object containing fully parsed TAF forecast, or null if no data available
-     * @throws WeatherServiceException if station code is invalid or request fails
-     */
-    public WeatherData fetchTafReport(String stationId) throws WeatherServiceException {
-        return dataOf(fetchTaf(stationId));
     }
 
     /**
@@ -242,11 +185,7 @@ public class NoaaAviationWeatherClient {
      */
     ParsedReport fetchTaf(String stationId) throws WeatherServiceException {
         if (!isValidStationCode(stationId)) {
-            throw new WeatherServiceException(
-                    ErrorType.INVALID_STATION_CODE,
-                    "Station code must be 3-4 alphabetic characters",
-                    stationId
-            );
+            throw new WeatherServiceException(ErrorType.INVALID_STATION_CODE, "Station code must be 3-4 alphabetic characters", stationId);
         }
 
         String url = config.buildTafUrl(stationId);
@@ -263,101 +202,11 @@ public class NoaaAviationWeatherClient {
             return parseTafResponse(rawText, stationId);
 
         } catch (IOException e) {
-            throw new WeatherServiceException(
-                    ErrorType.NETWORK_ERROR,
-                    MSG_FAILED_TAF,
-                    stationId,
-                    e
-            );
+            throw new WeatherServiceException(ErrorType.NETWORK_ERROR, MSG_FAILED_TAF, stationId, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new WeatherServiceException(
-                    ErrorType.TIMEOUT,
-                    MSG_REQUEST_INTERRUPTED,
-                    stationId,
-                    e
-            );
+            throw new WeatherServiceException(ErrorType.TIMEOUT, MSG_REQUEST_INTERRUPTED, stationId, e);
         }
-    }
-
-    /**
-     * Fetches TAF reports for multiple stations.
-     *
-     * @param stationIds ICAO station identifiers
-     * @return list of WeatherData objects (excludes stations with no data)
-     * @throws WeatherServiceException if any station code is invalid
-     */
-    public List<WeatherData> fetchTafReports(String... stationIds) throws WeatherServiceException {
-        return fetchReports(stationIds, this::fetchTafReport, "TAF");
-    }
-
-    /**
-     * Shared implementation for fetching multiple reports (METAR or TAF).
-     * Validates station codes, fetches each one individually, and continues
-     * past per-station failures rather than aborting the whole batch.
-     *
-     * @param stationIds      ICAO station identifiers
-     * @param singleFetch     the per-station fetch method to invoke (fetchMetarReport or fetchTafReport)
-     * @param reportTypeLabel label used in log/error messages ("METAR" or "TAF")
-     * @return list of WeatherData objects (excludes stations with no data)
-     * @throws WeatherServiceException if any station code is invalid
-     */
-    private List<WeatherData> fetchReports(String[] stationIds,
-                                           FetchFunction singleFetch,
-                                           String reportTypeLabel) throws WeatherServiceException {
-        if (stationIds == null || stationIds.length == 0) {
-            throw new WeatherServiceException(
-                    ErrorType.INVALID_STATION_CODE,
-                    "At least one station ID must be provided"
-            );
-        }
-
-        // Validate all station codes first
-        for (String stationId : stationIds) {
-            if (!isValidStationCode(stationId)) {
-                throw new WeatherServiceException(
-                        ErrorType.INVALID_STATION_CODE,
-                        "Invalid station code: " + stationId
-                );
-            }
-        }
-
-        List<WeatherData> results = new ArrayList<>();
-
-        for (String stationId : stationIds) {
-            try {
-                WeatherData data = singleFetch.fetch(stationId);
-                if (data != null) {
-                    results.add(data);
-                }
-            } catch (WeatherServiceException e) {
-                // Log error but continue with other stations
-                logger.error("Failed to fetch {} for {}: {}", reportTypeLabel, stationId, e.getMessage());
-            }
-        }
-
-        logger.info("Fetched {} {} reports out of {} stations",
-                results.size(), reportTypeLabel, stationIds.length);
-
-        return results;
-    }
-
-    /**
-     * Functional interface for a single-station fetch call that may throw
-     * WeatherServiceException (java.util.function.Function doesn't allow
-     * checked exceptions).
-     */
-    @FunctionalInterface
-    private interface FetchFunction {
-        WeatherData fetch(String stationId) throws WeatherServiceException;
-    }
-
-    /**
-     * @param report a fetched report, or null when the station had no data
-     * @return the report's data, or null when there was none
-     */
-    private static WeatherData dataOf(ParsedReport report) {
-        return report != null ? report.data() : null;
     }
 
     /**
@@ -370,8 +219,7 @@ public class NoaaAviationWeatherClient {
      * @throws IOException          if all retry attempts fail
      * @throws InterruptedException if request is interrupted
      */
-    private String fetchRawData(String url, String stationId)
-            throws IOException, InterruptedException {
+    private String fetchRawData(String url, String stationId) throws IOException, InterruptedException {
 
         int attempts = 0;
         int maxAttempts = config.getRetryAttempts();
@@ -381,24 +229,14 @@ public class NoaaAviationWeatherClient {
             attempts++;
 
             try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(url))
-                        .header("Accept", "text/plain")
-                        .header("User-Agent", "NoakWeather-Platform/2.0")
-                        .timeout(Duration.ofSeconds(config.getTimeoutSeconds()))
-                        .GET()
-                        .build();
+                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).header("Accept", "text/plain").header("User-Agent", "NoakWeather-Platform/2.0").timeout(Duration.ofSeconds(config.getTimeoutSeconds())).GET().build();
 
-                HttpResponse<String> response = httpClient.send(
-                        request,
-                        HttpResponse.BodyHandlers.ofString()
-                );
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
                 // HTTP 200 = success
                 if (response.statusCode() == 200) {
                     String body = response.body();
-                    logger.debug("Fetched {} bytes for station {}",
-                            body.length(), stationId);
+                    logger.debug("Fetched {} bytes for station {}", body.length(), stationId);
                     return body;
                 }
 
@@ -409,15 +247,11 @@ public class NoaaAviationWeatherClient {
                 }
 
                 // Other error codes
-                throw new IOException(String.format(
-                        "NOAA request failed: HTTP %d for station %s",
-                        response.statusCode(), stationId
-                ));
+                throw new IOException(String.format("NOAA request failed: HTTP %d for station %s", response.statusCode(), stationId));
 
             } catch (IOException e) {
                 lastException = e;
-                logger.warn("Attempt {}/{} failed for station {}: {}",
-                        attempts, maxAttempts, stationId, e.getMessage());
+                logger.warn("Attempt {}/{} failed for station {}: {}", attempts, maxAttempts, stationId, e.getMessage());
 
                 // If not last attempt, wait before retry
                 if (attempts < maxAttempts) {
@@ -427,10 +261,7 @@ public class NoaaAviationWeatherClient {
         }
 
         // All attempts failed
-        throw new IOException(
-                String.format("Failed to fetch data after %d attempts", maxAttempts),
-                lastException
-        );
+        throw new IOException(String.format("Failed to fetch data after %d attempts", maxAttempts), lastException);
     }
 
     /**
@@ -461,9 +292,7 @@ public class NoaaAviationWeatherClient {
         NoaaMetarParser metarParser = new NoaaMetarParser();
         ParseResult<NoaaWeatherData> parseResult = metarParser.parse(metarLine);
 
-        return new ParsedReport(
-                buildWeatherData(rawText, stationId, metarLine, parseResult, NoaaMetarData::new, "METAR"),
-                parseResult.getIssues());
+        return new ParsedReport(buildWeatherData(rawText, stationId, metarLine, parseResult, NoaaMetarData::new, "METAR"), parseResult.getIssues());
     }
 
     /**
@@ -492,9 +321,7 @@ public class NoaaAviationWeatherClient {
         NoaaTafParser tafParser = new NoaaTafParser();
         ParseResult<NoaaWeatherData> parseResult = tafParser.parse(tafText);
 
-        return new ParsedReport(
-                buildWeatherData(rawText, stationId, tafText, parseResult, NoaaTafData::new, "TAF"),
-                parseResult.getIssues());
+        return new ParsedReport(buildWeatherData(rawText, stationId, tafText, parseResult, NoaaTafData::new, "TAF"), parseResult.getIssues());
     }
 
     /**
@@ -523,10 +350,7 @@ public class NoaaAviationWeatherClient {
      * @param reportTypeLabel  label used in log messages ("METAR" or "TAF")
      * @return the parsed WeatherData, or a fallback populated with unparsed data
      */
-    private WeatherData buildWeatherData(String rawText, String stationId, String extractedText,
-                                         ParseResult<NoaaWeatherData> parseResult,
-                                         Supplier<NoaaWeatherData> fallbackSupplier,
-                                         String reportTypeLabel) {
+    private WeatherData buildWeatherData(String rawText, String stationId, String extractedText, ParseResult<NoaaWeatherData> parseResult, Supplier<NoaaWeatherData> fallbackSupplier, String reportTypeLabel) {
         if (parseResult.isSuccess()) {
             Optional<NoaaWeatherData> optionalData = parseResult.getData();
             if (optionalData.isPresent()) {
@@ -540,8 +364,7 @@ public class NoaaAviationWeatherClient {
         }
 
         // Parsing failed - fallback to unparsed data
-        logger.warn("Failed to parse {} for {}: {}. Falling back to unparsed data.",
-                reportTypeLabel, stationId, parseResult.getErrorMessage());
+        logger.warn("Failed to parse {} for {}: {}. Falling back to unparsed data.", reportTypeLabel, stationId, parseResult.getErrorMessage());
 
         NoaaWeatherData fallbackData = fallbackSupplier.get();
         fallbackData.setStationId(stationId.toUpperCase());

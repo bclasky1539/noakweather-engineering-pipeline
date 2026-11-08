@@ -52,7 +52,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @DisplayName("METAR parsing integration - should return fully parsed NoaaMetarData")
     void testMetarParsingIntegration() throws WeatherServiceException {
         // Fetch METAR for Charlotte Douglas International Airport
-        WeatherData data = client.fetchMetarReport("KCLT");
+        WeatherData data = client.fetchMetar("KCLT").data();
 
         // Basic assertions
         assertNotNull(data, "Weather data should not be null");
@@ -77,7 +77,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @Test
     @DisplayName("METAR should have temperature data when parsed")
     void testMetarTemperatureParsing() throws WeatherServiceException {
-        WeatherData data = client.fetchMetarReport("KJFK");
+        WeatherData data = client.fetchMetar("KJFK").data();
 
         assertNotNull(data);
         assertInstanceOf(NoaaMetarData.class, data);
@@ -101,7 +101,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @Test
     @DisplayName("METAR should have wind data when parsed")
     void testMetarWindParsing() throws WeatherServiceException {
-        WeatherData data = client.fetchMetarReport("KLAX");
+        WeatherData data = client.fetchMetar("KLAX").data();
 
         assertNotNull(data);
         assertInstanceOf(NoaaMetarData.class, data);
@@ -117,7 +117,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @Test
     @DisplayName("METAR should have METAR-specific fields parsed")
     void testMetarSpecificFieldsParsing() throws WeatherServiceException {
-        WeatherData data = client.fetchMetarReport("KORD");
+        WeatherData data = client.fetchMetar("KORD").data();
 
         assertNotNull(data);
         assertInstanceOf(NoaaMetarData.class, data);
@@ -127,7 +127,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @DisplayName("TAF parsing integration - should return fully parsed NoaaTafData")
     void testTafParsingIntegration() throws WeatherServiceException {
         // Fetch TAF for Charlotte
-        WeatherData data = client.fetchTafReport("KCLT");
+        WeatherData data = client.fetchTaf("KCLT").data();
 
         // Basic assertions
         assertNotNull(data, "Weather data should not be null");
@@ -154,17 +154,10 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     void testMultipleStationsParsing() throws WeatherServiceException {
         String[] stations = {"KCLT", "KJFK", "KLAX", "KORD"};
 
-        var results = client.fetchMetarReports(stations);
-
-        assertFalse(results.isEmpty(), "Should fetch at least one station");
-
         int parsedCount = 0;
-
-        for (WeatherData data : results) {
-            assertInstanceOf(NoaaMetarData.class, data);
-            NoaaMetarData metar = (NoaaMetarData) data;
-
-            if (metar.getConditions() != null) {
+        for (String station : stations) {
+            ParsedReport report = client.fetchMetar(station);
+            if (report != null && report.data() instanceof NoaaMetarData metar && metar.getConditions() != null) {
                 parsedCount++;
             }
         }
@@ -180,7 +173,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
         // (with parsed=false in metadata)
 
         // Fetch real data (should parse successfully)
-        WeatherData data = client.fetchMetarReport("KATL");
+        WeatherData data = client.fetchMetar("KATL").data();
 
         assertNotNull(data);
 
@@ -192,7 +185,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @Test
     @DisplayName("Raw data should always be preserved regardless of parsing")
     void testRawDataPreservation() throws WeatherServiceException {
-        WeatherData data = client.fetchMetarReport("KSEA");
+        WeatherData data = client.fetchMetar("KSEA").data();
 
         assertNotNull(data);
         assertInstanceOf(NoaaMetarData.class, data);
@@ -210,7 +203,7 @@ class NoaaAviationWeatherClientParserIntegrationTest {
     @Test
     @DisplayName("Parser version should be tracked in metadata")
     void testParserVersionTracking() throws WeatherServiceException {
-        WeatherData data = client.fetchMetarReport("KBOS");
+        WeatherData data = client.fetchMetar("KBOS").data();
 
         assertNotNull(data);
 
