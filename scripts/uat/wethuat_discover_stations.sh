@@ -83,13 +83,13 @@ declare -a PATTERNS=(
      # (directionalWeather is single-valued). Not tied to an issue yet.
      "Two-directional-weather (single-valued field)|RMK.*(VCSH|VCTS|VCFG|VCRA|HZ|FG|BR) [NSEW]{1,2}.*(VCSH|VCTS|VCFG|VCRA|HZ|FG|BR) [NSEW]{1,2}"
      "Recent-weather-main-body (RE groups)| (A|Q)[0-9]{4} RE[A-Z+-]+( |\"|\$)"
-     "113-rvr-ft-trend-suffix|(^| )R[0-9]{2}[LRC]?/[MP]?[0-9]{4}(V[MP]?[0-9]{4})?FT/[UDN]( |$)"
-     "121-runway-state-group|(^| )R[0-9]{2}[LRC]?/([0-9/][1259/]([0-8][0-9]|90|9[2-9]|//)|CLRD)(0[1-9]|[1-8][0-9]|90|9[1-5]|99|//)( |$)"
-     "116-recent-weather|(^| )RE(//|[A-Z]{2,8})( |$)"
-     "118-directional-weather-compass-follower|(^| )(VC[A-Z]{2}|HZ|FG|BR|FU|DU)( (N|NE|E|SE|S|SW|W|NW))+ ([NSEW][A-Z0-9]{2,}|NE|NW|SW)( |$)"
-     "114-ts-location-space-separated-points|(^| )(TS|CB|TCU|ACC|CBMAM|VIRGA)( (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS))? (N|NE|E|SE|S|SW|W|NW) (N|NE|E|SE|S|SW|W|NW)( |$)"
-     "117-lightning-and-chain|(^| )LTG(IC|CC|CG|CA|CW)*( (OHD|VC|DSNT|AT AP))? [NSEW]{1,2}(-[NSEW]{1,2})* AND [NSEW]{1,2}(-[NSEW]{1,2})*( |$)"
-     "115-vis-sector-or-second-location|(^| )VIS (([NSEW]{1,2}(-[NSEW]{1,2})*) [0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)?|[0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)? ([NSEW]{1,2}(-[NSEW]{1,2})*|RWY[0-9]{2}[LRC]?))( |$)"
+     "113-rvr-ft-trend-suffix|(^| )R[0-9]{2}[LRC]?/[MP]?[0-9]{4}(V[MP]?[0-9]{4})?FT/[UDN]( |\"|\$)"
+     "121-runway-state-group|(^| )R[0-9]{2}[LRC]?/([0-9/][1259/]([0-8][0-9]|90|9[2-9]|//)|CLRD)(0[1-9]|[1-8][0-9]|90|9[1-5]|99|//)( |\"|\$)"
+     "116-recent-weather|(^| )RE(//|[A-Z]{2,8})( |\"|\$)"
+     "118-directional-weather-compass-follower|(^| )(VC[A-Z]{2}|HZ|FG|BR|FU|DU)( (N|NE|E|SE|S|SW|W|NW))+ ([NSEW][A-Z0-9]{2,}|NE|NW|SW)( |\"|\$)"
+     "114-ts-location-space-separated-points|(^| )(TS|CB|TCU|ACC|CBMAM|VIRGA)( (OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS))? (N|NE|E|SE|S|SW|W|NW) (N|NE|E|SE|S|SW|W|NW)( |\"|\$)"
+     "117-lightning-and-chain|(^| )LTG(IC|CC|CG|CA|CW)*( (OHD|VC|DSNT|AT AP))? [NSEW]{1,2}(-[NSEW]{1,2})* AND [NSEW]{1,2}(-[NSEW]{1,2})*( |\"|\$)"
+     "115-vis-sector-or-second-location|(^| )VIS (([NSEW]{1,2}(-[NSEW]{1,2})*) [0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)?|[0-9]+(/[0-9]+)?( [0-9]+/[0-9]+)? ([NSEW]{1,2}(-[NSEW]{1,2})*|RWY[0-9]{2}[LRC]?))( |\"|\$)"
      # #173 — main-body groups rejected since #138 (1.28.0) stay in unparsedMainBody and are
      # REJECTED parseIssues (#166); confirm both on live reports in UAT.
      "130-zero-denominator-visibility|(^|\"| )([0-9]+ )?[0-9]+/0SM( |\"|\$)"
@@ -102,6 +102,10 @@ declare -a PATTERNS=(
      "132-remark-variable-visibility-zero-denominator|(^|\"| )VIS ([NSEW]{1,2} )?(([0-9]+ )?[0-9]+/0V|([0-9]+ )?[0-9]+(/[0-9]+)?V([0-9]+ )?[0-9]+/0( |\"|\$))"
      "132-remark-twr-sfc-visibility-zero-denominator|(^|\"| )(TWR|SFC) VIS ([0-9]+ )?[0-9]+/0( |\"|\$)"
      "132-remark-hail-size-invalid|(^|\"| )GR (0|0/[0-9]+|([0-9]+ )?[0-9]+/0)( |\"|\$)"
+     # #140 — cloud types SkyCondition used to reject, on a main-body sky group or a remark okta.
+     "140-cloud-type-vocabulary|(^|\"| )((FEW|SCT|BKN|OVC)[0-9]{3}(CF|SF|ACC|ACSL)|(CF|SF|ACC|ACSL)[0-9])( |\"|\$)"
+     # #92 — bare cloud-type code (no okta) in the remarks.
+     "92-bare-cloud-type|RMK.* (SC|AC|AS|CI|CU|ST|NS|CC|CS|SF|CF)( |\"|\$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

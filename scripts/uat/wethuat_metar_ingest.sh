@@ -95,6 +95,9 @@ TODAY=$(date -u +%Y-%m-%d)
 # - Automated vs staffed stations
 # ----------------------------------------------------------------------------
 STATIONS=(
+   # --- UAT round 2026-11-08: Pending UAT shapes ---
+  CYYQ UHPP UEEE BGGH EHJR EGBB EDQM MHLC MHTE TJPS CYQB CYGT CYBK CYEG CYWK CYDC CYKD CZFM CYHI
+
   # --- Others 2 ---
   KCRP KSPG KNQI MMCB ETOU K24A K1DN K0J4 K04V KFSI KDJT K46D KFMY KLKR KTPA KNGP KSLC KDPG
   MBSC LEGE ETHS CYLK CYCG
