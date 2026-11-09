@@ -23,6 +23,7 @@ import weather.model.components.PresentWeather;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,16 +36,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class DirectionalWeatherTest {
 
+    private static List<DirectionSegment> segments(String... points) {
+        return Arrays.stream(points).map(p -> new DirectionSegment(List.of(p))).toList();
+    }
+
     @Test
     @DisplayName("Should create directional weather with directions via canonical constructor")
     void testConstructor_WithDirections() {
         PresentWeather weather = PresentWeather.parse("VCSH");
-        List<String> directions = List.of("E", "SE");
+        List<DirectionSegment> directionSegments = segments("E", "SE");
 
-        DirectionalWeather directionalWeather = new DirectionalWeather(weather, directions);
+        DirectionalWeather directionalWeather = new DirectionalWeather(weather, directionSegments);
 
         assertThat(directionalWeather.presentWeather()).isEqualTo(weather);
-        assertThat(directionalWeather.directions()).containsExactly("E", "SE");
+        assertThat(directionalWeather.directionSegments())
+                .extracting(DirectionSegment::getSummary).containsExactly("E", "SE");
     }
 
     @Test
@@ -55,7 +61,7 @@ class DirectionalWeatherTest {
         DirectionalWeather directionalWeather = new DirectionalWeather(weather, null);
 
         assertThat(directionalWeather.presentWeather()).isEqualTo(weather);
-        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.directionSegments()).isNull();
     }
 
     @Test
@@ -65,15 +71,15 @@ class DirectionalWeatherTest {
 
         DirectionalWeather directionalWeather = new DirectionalWeather(weather, List.of());
 
-        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.directionSegments()).isNull();
     }
 
     @Test
     @DisplayName("Should throw when presentWeather is null")
     void testConstructor_NullPresentWeather_Throws() {
-        List<String> directions = List.of("E");
+        List<DirectionSegment> directionSegments = segments("E");
 
-        assertThatThrownBy(() -> new DirectionalWeather(null, directions))
+        assertThatThrownBy(() -> new DirectionalWeather(null, directionSegments))
                 .isInstanceOf(IllegalArgumentException.class)
                 .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("Present weather cannot be null");
@@ -83,21 +89,22 @@ class DirectionalWeatherTest {
     @DisplayName("Should make defensive copy of directions list")
     void testConstructor_DefensiveCopyOfDirections() {
         PresentWeather weather = PresentWeather.parse("VCSH");
-        List<String> originalList = new ArrayList<>();
-        originalList.add("E");
+        List<DirectionSegment> originalList = new ArrayList<>(segments("E"));
 
         DirectionalWeather directionalWeather = new DirectionalWeather(weather, originalList);
 
-        originalList.add("SE");
+        originalList.addAll(segments("SE"));
 
-        assertThat(directionalWeather.directions()).containsExactly("E");
+        assertThat(directionalWeather.directionSegments())
+                .extracting(DirectionSegment::getSummary)
+                .containsExactly("E");
     }
 
     @Test
     @DisplayName("hasDirections should return true when directions are present")
     void testHasDirections_True() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         assertThat(directionalWeather.hasDirections()).isTrue();
     }
@@ -115,10 +122,10 @@ class DirectionalWeatherTest {
     @DisplayName("Should generate correct summary with directions")
     void testGetSummary_WithDirections() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         assertThat(directionalWeather.getSummary())
-                .isEqualTo(PresentWeather.parse("VCSH").getDescription() + ": E, SE");
+                .isEqualTo(PresentWeather.parse("VCSH").getDescription() + ": E AND SE");
     }
 
     @Test
@@ -135,9 +142,9 @@ class DirectionalWeatherTest {
     @DisplayName("Should be equal when presentWeather and directions match")
     void testEquality() {
         DirectionalWeather directionalWeather1 = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
         DirectionalWeather directionalWeather2 = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         assertThat(directionalWeather1)
                 .isEqualTo(directionalWeather2)
@@ -148,9 +155,9 @@ class DirectionalWeatherTest {
     @DisplayName("Should not be equal when directions differ")
     void testInequality_DifferentDirections() {
         DirectionalWeather directionalWeather1 = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
         DirectionalWeather directionalWeather2 = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("N", "NE"));
+                PresentWeather.parse("VCSH"), segments("N", "NE"));
 
         assertThat(directionalWeather1).isNotEqualTo(directionalWeather2);
     }
@@ -159,9 +166,9 @@ class DirectionalWeatherTest {
     @DisplayName("Should not be equal when presentWeather differs")
     void testInequality_DifferentPresentWeather() {
         DirectionalWeather directionalWeather1 = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E"));
+                PresentWeather.parse("VCSH"), segments("E"));
         DirectionalWeather directionalWeather2 = new DirectionalWeather(
-                PresentWeather.parse("TSRA"), List.of("E"));
+                PresentWeather.parse("TSRA"), segments("E"));
 
         assertThat(directionalWeather1).isNotEqualTo(directionalWeather2);
     }
@@ -170,7 +177,7 @@ class DirectionalWeatherTest {
     @DisplayName("Should not be equal when one has directions and the other does not")
     void testInequality_OneWithDirectionsOneWithout() {
         DirectionalWeather directionalWeather1 = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E"));
+                PresentWeather.parse("VCSH"), segments("E"));
         DirectionalWeather directionalWeather2 = new DirectionalWeather(
                 PresentWeather.parse("VCSH"), null);
 
@@ -185,7 +192,7 @@ class DirectionalWeatherTest {
         DirectionalWeather directionalWeather = new DirectionalWeather(weather, null, true);
 
         assertThat(directionalWeather.allQuadrants()).isTrue();
-        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.directionSegments()).isNull();
         assertThat(directionalWeather.hasDirections()).isFalse();
     }
 
@@ -193,7 +200,7 @@ class DirectionalWeatherTest {
     @DisplayName("Two-argument constructor should default allQuadrants to false")
     void testConstructor_TwoArgDefaultsAllQuadrantsFalse() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E"));
+                PresentWeather.parse("VCSH"), segments("E"));
 
         assertThat(directionalWeather.allQuadrants()).isFalse();
     }
@@ -202,9 +209,9 @@ class DirectionalWeatherTest {
     @DisplayName("Should reject allQuadrants combined with directions")
     void testConstructor_AllQuadrantsWithDirections_Throws() {
         PresentWeather weather = PresentWeather.parse("VCSH");
-        List<String> directions = List.of("E");
+        List<DirectionSegment> directionSegments = segments("E");
 
-        assertThatThrownBy(() -> new DirectionalWeather(weather, directions, true))
+        assertThatThrownBy(() -> new DirectionalWeather(weather, directionSegments, true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .isNotInstanceOf(InvalidObservationException.class)
                 .hasMessageContaining("mutually exclusive");
@@ -217,7 +224,7 @@ class DirectionalWeatherTest {
                 PresentWeather.parse("VCSH"), List.of(), true);
 
         assertThat(directionalWeather.allQuadrants()).isTrue();
-        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.directionSegments()).isNull();
     }
 
     @Test
@@ -239,6 +246,23 @@ class DirectionalWeatherTest {
         assertThat(withFlag).isNotEqualTo(withoutFlag);
     }
 
+    @Test
+    @DisplayName("getDirectionsSummary joins segments with AND, keeping ranges")
+    void testGetDirectionsSummary() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(PresentWeather.parse("VCSH"),
+                List.of(new DirectionSegment(List.of("S", "SW")), new DirectionSegment(List.of("W"))));
+
+        assertThat(directionalWeather.getDirectionsSummary()).isEqualTo("S-SW AND W");
+    }
+
+    @Test
+    @DisplayName("getDirectionsSummary is empty without directions")
+    void testGetDirectionsSummary_NoDirections() {
+        DirectionalWeather directionalWeather = new DirectionalWeather(PresentWeather.parse("VCSH"), null);
+
+        assertThat(directionalWeather.getDirectionsSummary()).isEmpty();
+    }
+
     // ==================== Location qualifier ====================
 
     @Test
@@ -246,11 +270,13 @@ class DirectionalWeatherTest {
     void testConstructor_LocationWithDirections() {
         PresentWeather weather = PresentWeather.parse("SH");
 
-        DirectionalWeather directionalWeather = new DirectionalWeather(weather, "DSNT", List.of("N"), false);
+        DirectionalWeather directionalWeather = new DirectionalWeather(weather, "DSNT",
+                segments("N"), false);
 
         assertThat(directionalWeather.location()).isEqualTo("DSNT");
         assertThat(directionalWeather.hasLocation()).isTrue();
-        assertThat(directionalWeather.directions()).containsExactly("N");
+        assertThat(directionalWeather.directionSegments())
+                .extracting(DirectionSegment::getSummary).containsExactly("N");
     }
 
     @Test
@@ -268,7 +294,7 @@ class DirectionalWeatherTest {
     void testConstructor_ConvenienceConstructorsDefaultLocationNull() {
         PresentWeather weather = PresentWeather.parse("VCSH");
 
-        assertThat(new DirectionalWeather(weather, List.of("E")).location()).isNull();
+        assertThat(new DirectionalWeather(weather, segments("E")).location()).isNull();
         assertThat(new DirectionalWeather(weather, null, true).location()).isNull();
         assertThat(new DirectionalWeather(weather, null, true).hasLocation()).isFalse();
     }
@@ -277,9 +303,9 @@ class DirectionalWeatherTest {
     @DisplayName("Should reject an unknown location qualifier as invalid report data")
     void testConstructor_InvalidLocation_Throws() {
         PresentWeather weather = PresentWeather.parse("SH");
-        List<String> directions = List.of("N");
+        List<DirectionSegment> directionSegments = segments("N");
 
-        assertThatThrownBy(() -> new DirectionalWeather(weather, "FAR", directions, false))
+        assertThatThrownBy(() -> new DirectionalWeather(weather, "FAR", directionSegments, false))
                 .isInstanceOfSatisfying(InvalidObservationException.class, e -> {
                     assertThat(e.getComponent()).isEqualTo("DirectionalWeather.location");
                     assertThat(e.getRejectedValue()).isEqualTo("FAR");
@@ -292,7 +318,7 @@ class DirectionalWeatherTest {
     @DisplayName("Should generate summary with location and directions")
     void testGetSummary_WithLocationAndDirections() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("SH"), "DSNT", List.of("N"), false);
+                PresentWeather.parse("SH"), "DSNT", segments("N"), false);
 
         assertThat(directionalWeather.getSummary())
                 .isEqualTo(PresentWeather.parse("SH").getDescription() + " (DSNT): N");
@@ -311,8 +337,10 @@ class DirectionalWeatherTest {
     @Test
     @DisplayName("Should not be equal when location differs")
     void testInequality_DifferentLocation() {
-        DirectionalWeather distant = new DirectionalWeather(PresentWeather.parse("SH"), "DSNT", List.of("N"), false);
-        DirectionalWeather noLocation = new DirectionalWeather(PresentWeather.parse("SH"), null, List.of("N"), false);
+        DirectionalWeather distant = new DirectionalWeather(
+                PresentWeather.parse("SH"), "DSNT", segments("N"), false);
+        DirectionalWeather noLocation = new DirectionalWeather(
+                PresentWeather.parse("SH"), null, segments("N"), false);
 
         assertThat(distant).isNotEqualTo(noLocation);
     }

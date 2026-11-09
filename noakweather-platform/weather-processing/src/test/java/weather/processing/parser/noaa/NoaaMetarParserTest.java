@@ -3998,7 +3998,8 @@ class NoaaMetarParserTest {
 
         assertThat(directionalWeather.presentWeather()).isNotNull();
         assertThat(directionalWeather.hasDirections()).isTrue();
-        assertThat(directionalWeather.directions()).containsExactly("E", "SE");
+        assertThat(directionalWeather.directionSegments()).
+                extracting(DirectionSegment::getSummary).containsExactly("E", "SE");
 
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -4018,7 +4019,7 @@ class NoaaMetarParserTest {
 
         assertThat(directionalWeather.presentWeather()).isNotNull();
         assertThat(directionalWeather.hasDirections()).isFalse();
-        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.directionSegments()).isNull();
 
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -4042,9 +4043,10 @@ class NoaaMetarParserTest {
         assertThat(dw.presentWeather()).isEqualTo(PresentWeather.parse(weather));
         assertThat(dw.location()).isEqualTo(location);
         if (directions == null) {
-            assertThat(dw.directions()).isNull();
+            assertThat(dw.directionSegments()).isNull();
         } else {
-            assertThat(dw.directions()).containsExactly(directions.split(" "));
+            assertThat(dw.directionSegments()).
+                    extracting(DirectionSegment::getSummary).containsExactly(directions.split(" "));
         }
         assertThat(dw.allQuadrants()).isEqualTo(allQuadrants);
         assertThat(data.getRemarks().freeText()).as(remark).isNull();
@@ -7367,7 +7369,7 @@ class NoaaMetarParserTest {
         DirectionalWeather dw = data.getRemarks().directionalWeather();
         assertThat(dw).isNotNull();
         assertThat(dw.allQuadrants()).isTrue();
-        assertThat(dw.directions()).isNull();
+        assertThat(dw.directionSegments()).isNull();
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -7406,7 +7408,7 @@ class NoaaMetarParserTest {
         DirectionalWeather dw = extractMetarData(result).getRemarks().directionalWeather();
 
         assertThat(dw.allQuadrants()).isFalse();
-        assertThat(dw.directions()).containsExactly("E", "SE");
+        assertThat(dw.directionSegments()).extracting(DirectionSegment::getSummary).containsExactly("E", "SE");
     }
 
     @Test
@@ -11694,7 +11696,7 @@ class NoaaMetarParserTest {
 
         DirectionalWeather weather = data.getRemarks().directionalWeather();
         assertThat(weather).isNotNull();
-        assertThat(weather.directions()).containsExactly("S");
+        assertThat(weather.directionSegments()).extracting(DirectionSegment::getSummary).containsExactly("S");
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -11742,7 +11744,8 @@ class NoaaMetarParserTest {
 
         DirectionalWeather weather = data.getRemarks().directionalWeather();
         assertThat(weather).isNotNull();
-        assertThat(weather.directions()).containsExactly(expectedDirection);
+        assertThat(weather.directionSegments()).extracting(DirectionSegment::getSummary).containsExactly(expectedDirection);
+
         assertThat(data.getRemarks().freeText()).isEqualTo(expectedFreeText);
     }
 
@@ -11759,7 +11762,7 @@ class NoaaMetarParserTest {
     void testDirectionList_MultiplePoints(String remark, String expectedDirections) {
         NoaaMetarData data = parseData(KDPG_BODY + remark);
 
-        assertThat(data.getRemarks().directionalWeather().directions())
+        assertThat(data.getRemarks().directionalWeather().directionSegments()).extracting(DirectionSegment::getSummary)
                 .containsExactly(expectedDirections.split(","));
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -11769,7 +11772,7 @@ class NoaaMetarParserTest {
     void testNoDirection_StnryOnly() {
         NoaaMetarData data = parseData(KDPG_BODY + "RMK VCSH STNRY");
 
-        assertThat(data.getRemarks().directionalWeather().directions()).isNull();
+        assertThat(data.getRemarks().directionalWeather().directionSegments()).isNull();
         assertThat(data.getRemarks().freeText()).isEqualTo("STNRY");
     }
 

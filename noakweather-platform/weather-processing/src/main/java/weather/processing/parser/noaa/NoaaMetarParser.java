@@ -1295,14 +1295,14 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             afterWeather = afterWeather.substring(locationMatcher.end()).trim();
         }
 
-        List<String> directions = null;
+        List<DirectionSegment> directionSegments = null;
         boolean allQuadrants = false;
         String finalRemaining = afterWeather;
 
         Matcher directionMatcher = DIRECTION_LIST_PATTERN.matcher(afterWeather);
         Matcher allQuadrantsMatcher = ALL_QUADRANTS_PATTERN.matcher(afterWeather);
         if (directionMatcher.find() && directionMatcher.start() == 0) {
-            directions = Arrays.asList(directionMatcher.group(1).split("\\s+"));
+            directionSegments = parseDirectionChain(directionMatcher.group(1));
             finalRemaining = afterWeather.substring(directionMatcher.end()).trim();
         } else if (allQuadrantsMatcher.find() && allQuadrantsMatcher.start() == 0) {
             allQuadrants = true;
@@ -1314,14 +1314,14 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         // of a rejected "GR 0") it is a fragment of another group: leave it for freeText (#129).
         String intensity = weatherMatcher.group("int");
         boolean vicinity = intensity != null && intensity.contains("VC");
-        if (location == null && directions == null && !allQuadrants && !vicinity) {
+        if (location == null && directionSegments == null && !allQuadrants && !vicinity) {
             return remaining;
         }
 
         try {
             PresentWeather presentWeather = PresentWeather.parse(weatherCode);
             DirectionalWeather directionalWeather =
-                    new DirectionalWeather(presentWeather, location, directions, allQuadrants);
+                    new DirectionalWeather(presentWeather, location, directionSegments, allQuadrants);
             remarks.directionalWeather(directionalWeather);
 
             if (LOGGER.isDebugEnabled()) {

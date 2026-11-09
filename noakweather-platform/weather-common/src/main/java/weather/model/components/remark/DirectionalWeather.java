@@ -20,31 +20,36 @@ import weather.exception.InvalidObservationException;
 import weather.model.components.PresentWeather;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Immutable value object representing a present-weather phenomenon reported
  * in remarks with where it is: a location qualifier, compass direction(s),
  * all quadrants, or the vicinity (VC) prefix of the weather code itself.
  * <p>
+ * Directions use the same {@link DirectionSegment}s as thunderstorm locations and
+ * lightning remarks: a segment is a single point or a range.
+ * <p>
  * Examples:
- * - "VCSH E SE" → DirectionalWeather(VCSH, null, ["E", "SE"], false)
- * - "VCSH-NE"   → DirectionalWeather(VCSH, null, ["NE"], false)
- * - "SH DSNT N" → DirectionalWeather(SH, "DSNT", ["N"], false)
- * - "SHRA OHD"  → DirectionalWeather(SHRA, "OHD", null, false)
- * - "-RA ALQDS" → DirectionalWeather(-RA, null, null, true)
- * - "VCSH"      → DirectionalWeather(VCSH, null, null, false); VC is the location
+ * - "VCSH E SE"  → DirectionalWeather(VCSH, null, [E], [SE], false)
+ * - "VCSH S-SW"  → DirectionalWeather(VCSH, null, [S-SW], false)
+ * - "VCSH-NE"    → DirectionalWeather(VCSH, null, [NE], false)
+ * - "SH DSNT N"  → DirectionalWeather(SH, "DSNT", [N], false)
+ * - "SHRA OHD"   → DirectionalWeather(SHRA, "OHD", null, false)
+ * - "-RA ALQDS"  → DirectionalWeather(-RA, null, null, true)
+ * - "VCSH"       → DirectionalWeather(VCSH, null, null, false); VC is the location
  *
- * @param presentWeather The present-weather phenomenon (reuses existing PresentWeather parsing)
- * @param location       Location qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR), or null if none given
- * @param directions     One or more compass directions associated with the phenomenon, or null if none given
- * @param allQuadrants   True if reported in all quadrants (ALQDS); mutually exclusive with directions
+ * @param presentWeather    The present-weather phenomenon (reuses existing PresentWeather parsing)
+ * @param location          Location qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR), or null if none given
+ * @param directionSegments One or more direction segments (points or ranges), or null if none given
+ * @param allQuadrants      True if reported in all quadrants (ALQDS); mutually exclusive with directions
  * @author bclasky1539
  *
  */
 public record DirectionalWeather(
         PresentWeather presentWeather,
         String location,
-        List<String> directions,
+        List<DirectionSegment> directionSegments,
         boolean allQuadrants
 ) {
 
@@ -68,8 +73,9 @@ public record DirectionalWeather(
             throw new InvalidObservationException("DirectionalWeather.location", location,
                     "Invalid location qualifier (valid: " + String.join(", ", VALID_LOCATIONS) + ")");
         }
-        directions = directions != null && !directions.isEmpty() ? List.copyOf(directions) : null;
-        if (allQuadrants && directions != null) {
+        directionSegments = directionSegments != null && !directionSegments.isEmpty()
+                ? List.copyOf(directionSegments) : null;
+        if (allQuadrants && directionSegments != null) {
             throw new IllegalArgumentException("Directions and all-quadrants are mutually exclusive");
         }
     }
@@ -77,29 +83,26 @@ public record DirectionalWeather(
     /**
      * Convenience constructor without a location qualifier.
      */
-    public DirectionalWeather(PresentWeather presentWeather, List<String> directions, boolean allQuadrants) {
-        this(presentWeather, null, directions, allQuadrants);
+    public DirectionalWeather(PresentWeather presentWeather, List<DirectionSegment> directionSegments,
+                              boolean allQuadrants) {
+        this(presentWeather, null, directionSegments, allQuadrants);
     }
 
     /**
      * Convenience constructor for the common case: directions only (or none).
      */
-    public DirectionalWeather(PresentWeather presentWeather, List<String> directions) {
-        this(presentWeather, null, directions, false);
+    public DirectionalWeather(PresentWeather presentWeather, List<DirectionSegment> directionSegments) {
+        this(presentWeather, null, directionSegments, false);
     }
 
     /**
-     * Check if direction information is present.
-     *
-     * @return true if one or more directions are recorded
+     * @return true if one or more direction segments are recorded
      */
     public boolean hasDirections() {
-        return directions != null;
+        return directionSegments != null;
     }
 
     /**
-     * Check if a location qualifier is present.
-     *
      * @return true if a location qualifier (e.g. DSNT, OHD) is recorded
      */
     public boolean hasLocation() {
@@ -107,8 +110,20 @@ public record DirectionalWeather(
     }
 
     /**
+     * The directions as reported, segments joined with AND, as for thunderstorm locations
+     * and lightning remarks: e.g. "E AND SE", "S-SW AND W".
+     *
+     * @return the directions summary, or an empty string if there are none
+     */
+    public String getDirectionsSummary() {
+        return hasDirections()
+                ? directionSegments.stream().map(DirectionSegment::getSummary).collect(Collectors.joining(" AND "))
+                : "";
+    }
+
+    /**
      * Get a human-readable summary.
-     * Examples: "Showers in vicinity: E, SE", "Showers (DSNT): N", "Showers in vicinity"
+     * Examples: "Vicinity Showers: E AND SE", "Showers (DSNT): N", "Vicinity Showers: all quadrants"
      *
      * @return formatted summary string
      */
@@ -120,6 +135,6 @@ public record DirectionalWeather(
         if (allQuadrants) {
             return base + ": all quadrants";
         }
-        return hasDirections() ? base + ": " + String.join(", ", directions) : base;
+        return hasDirections() ? base + ": " + getDirectionsSummary() : base;
     }
 }

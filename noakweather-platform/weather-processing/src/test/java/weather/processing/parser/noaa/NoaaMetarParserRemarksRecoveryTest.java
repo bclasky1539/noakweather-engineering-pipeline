@@ -809,7 +809,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2026/10/08 16:50 KDPG 081650Z 34002KT 50SM VCSH SCT110 BKN140 BKN200 17/03 A3019 " +
                                 "RMK VCSH S STNRY SLP186 T01720026",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getRemarks().directionalWeather().directions())
+                            assertThat(data.getRemarks().directionalWeather().directionSegments()).extracting(DirectionSegment::getSummary)
                                     .as("S must be kept even though the next token (STNRY) starts with a compass letter (#118)")
                                     .containsExactly("S");
                             assertThat(data.getRemarks().freeText())
@@ -904,7 +904,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2026/10/08 17:00 MBSC 081700Z 12010KT 9999 VCSH SCT015 31/25 Q1011 RMK VCSH-NE",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isNull();
-                            assertThat(data.getRemarks().directionalWeather().directions()).containsExactly("NE");
+                            assertThat(data.getRemarks().directionalWeather().directionSegments()).
+                                    extracting(DirectionSegment::getSummary).containsExactly("NE");
                         }),
 
                 arguments("KBBF-OldFormatA01Alone",
