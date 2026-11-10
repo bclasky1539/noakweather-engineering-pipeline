@@ -910,7 +910,7 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         // Okta group should not capture "9" - pattern falls back to bare
-        // cloud type match with no okta
+        // cloud type match with no Okta
         assertThat(matcher.group("okta")).isNull();
     }
 
@@ -1632,7 +1632,7 @@ class RegExprConstTest {
         // "/760" cannot satisfy the pattern: pressmb is nested inside pressmm's
         // optional wrapper, so pressmm must match first. Here pressmm fails
         // (next char is "/", not a digit), the optional group is skipped
-        // entirely, and the pattern then requires \s+ immediately after "QNH" -
+        // entirely. So, the pattern then requires \s+ immediately after "QNH" -
         // but the next character is "/", not whitespace, so the whole match
         // fails outright (no partial "QNH"-only match occurs).
         String input = "QNH/760 ";
@@ -2580,6 +2580,41 @@ class RegExprConstTest {
     @ValueSource(strings = {"STNRY", "SLP186", "NOSPECI", "SSW", "ALQDS", "NNE SLP"})
     @DisplayName("DIRECTION_LIST_PATTERN should not match a token that only starts with a compass letter")
     void testDirectionListPattern_Rejects(String input) {
+        assertThat(RegExprConst.DIRECTION_LIST_PATTERN.matcher(input).find()).isFalse();
+    }
+
+    @ParameterizedTest(name = "[{index}] \"{0}\" -> \"{1}\"")
+    @DisplayName("DIRECTION_LIST_PATTERN captures points and ranges up to a token boundary")
+    @CsvSource(delimiter = '|', value = {
+            "E SE              | E SE",
+            "N NE S SW         | N NE S SW",
+            "S-SW              | S-SW",
+            "S-SW W            | S-SW W",
+            "W S-SW            | W S-SW",
+            "N-NE-E            | N-NE-E",
+            "S-SW STNRY        | S-SW",
+            "S STNRY           | S",
+            "SE SLP186         | SE",
+            "NW-N WSHFT 1530   | NW-N"
+    })
+    void testDirectionListPattern_Matches(String input, String expected) {
+        Matcher matcher = RegExprConst.DIRECTION_LIST_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group(1)).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "[{index}] \"{0}\"")
+    @DisplayName("DIRECTION_LIST_PATTERN rejects malformed or non-direction text")
+    @ValueSource(strings = {
+            "S-",          // dangling hyphen
+            "S-SLP186",    // range into a non-point token
+            "-SW",         // leading hyphen
+            "STNRY",       // starts with a compass letter, not a point
+            "SLP186",
+            "X SW"
+    })
+    void testDirectionListPattern_NoMatch(String input) {
         assertThat(RegExprConst.DIRECTION_LIST_PATTERN.matcher(input).find()).isFalse();
     }
 

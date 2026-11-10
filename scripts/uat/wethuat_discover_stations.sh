@@ -106,6 +106,11 @@ declare -a PATTERNS=(
      "140-cloud-type-vocabulary|(^|\"| )((FEW|SCT|BKN|OVC)[0-9]{3}(CF|SF|ACC|ACSL)|(CF|SF|ACC|ACSL)[0-9])( |\"|\$)"
      # #92 — bare cloud-type code (no okta) in the remarks.
      "92-bare-cloud-type|RMK.* (SC|AC|AS|CI|CU|ST|NS|CC|CS|SF|CF)( |\"|\$)"
+     # #92 — bare cloud-type code (no okta) in the remarks.
+     "92-bare-cloud-type|RMK.* (SC|AC|AS|CI|CU|ST|NS|CC|CS|SF|CF)( |\"|\$)"
+     # #179 — directional weather with a hyphenated direction range (VCSH S-SW). The range must be
+     # stored as one direction segment, with nothing left in freeText; also covers a location qualifier (SH DSNT S-SW).
+     "179-directional-weather-direction-range|(^|\"| )(VC[A-Z]{2,4}|HZ|FG|BR|FU|DU|SH[A-Z]{0,4})( (OHD|VC|DSNT|DSIPTD|TOP|TR))?( [NSEW]{1,2}(-[NSEW]{1,2})*)* [NSEW]{1,2}(-[NSEW]{1,2})+( |\"|\$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

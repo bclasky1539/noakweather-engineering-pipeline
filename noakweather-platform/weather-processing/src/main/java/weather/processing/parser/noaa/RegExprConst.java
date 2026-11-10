@@ -38,6 +38,9 @@ public final class RegExprConst {
     // One of the 8 compass points that DirectionSegment accepts, standing alone as a token
     private static final String COMPASS_POINT = "(?:NE|NW|SE|SW|N|E|S|W)(?![A-Z0-9])";
     private static final String COMPASS_SEGMENT = COMPASS_POINT + "(?:-" + COMPASS_POINT + ")*+";
+    // A point or hyphenated range (S, S-SW, N-NE-E), ending at a token boundary
+    private static final String DIRECTION_SEGMENT =
+            COMPASS_POINT + "(?:-" + COMPASS_POINT + ")*+(?=\\s|$)";
 
     /**
      * Month, Day and Year (optional at start of METAR/TAF)
@@ -201,15 +204,16 @@ public final class RegExprConst {
     );
 
     /**
-     * One or more space-separated compass directions following a present-weather
-     * remark, e.g. "E SE", "N NE S SW".
-     * Each continuation point must end at a token boundary. So a following token that
-     * starts with a compass letter (SLP186, STNRY, WSHFT, NOSPECI) is never partly consumed,
-     * and a two-letter point (NE, NW, SW) is matched in full rather than as its first letter.
+     * One or more space-separated direction segments following a present-weather
+     * remark, e.g. "E SE", "N NE S SW", "S-SW", "S-SW W".
+     * Each segment is a compass point or a hyphenated range and must end at a token
+     * boundary. So a following token that starts with a compass letter (SLP186, STNRY,
+     * WSHFT, NOSPECI) is never partly consumed (#118), and a range is kept whole
+     * rather than leaving "-SW" behind in free text (#179).
      */
     @SuppressWarnings("java:S5843") // Complex regex required for compass direction list
     public static final Pattern DIRECTION_LIST_PATTERN = Pattern.compile(
-            "^((?:N|NE|E|SE|S|SW|W|NW)(?:\\s+(?:N|NE|E|SE|S|SW|W|NW)(?=\\s|$))*+)(?=\\s|$)"
+            "^(" + DIRECTION_SEGMENT + "(?:\\s+" + DIRECTION_SEGMENT + ")*+)"
     );
 
     /**
