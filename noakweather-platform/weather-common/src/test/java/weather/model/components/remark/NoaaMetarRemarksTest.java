@@ -41,6 +41,7 @@ import weather.model.enums.LowCloudType;
 import weather.model.enums.MiddleCloudType;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -54,6 +55,10 @@ import static org.assertj.core.api.Assertions.within;
  *
  */
 class NoaaMetarRemarksTest {
+
+    private static List<DirectionSegment> segments(String... points) {
+        return Arrays.stream(points).map(p -> new DirectionSegment(List.of(p))).toList();
+    }
 
     @Test
     void testEmptyRemarks() {
@@ -629,7 +634,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be empty when only directionalWeather is present")
     void testIsEmptyWithOnlyDirectionalWeather() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .directionalWeather(directionalWeather)
@@ -642,7 +647,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should build remarks with directionalWeather via builder")
     void testBuilder_DirectionalWeather() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .directionalWeather(directionalWeather)
@@ -683,7 +688,7 @@ class NoaaMetarRemarksTest {
         AutomatedStationType stationType = AutomatedStationType.AO2;
         Pressure slp = Pressure.hectopascals(1013.2);
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .automatedStationType(stationType)
@@ -701,7 +706,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should include directionalWeather in toString()")
     void testToString_DirectionalWeather() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .directionalWeather(directionalWeather)
@@ -710,14 +715,14 @@ class NoaaMetarRemarksTest {
         String str = remarks.toString();
         assertThat(str)
                 .contains("directionalWeather")
-                .contains("E, SE");
+                .contains("E AND SE");
     }
 
     @Test
     @DisplayName("Should be equal when directionalWeather is the same")
     void testEqualityWithDirectionalWeather() {
         DirectionalWeather directionalWeather = new DirectionalWeather(
-                PresentWeather.parse("VCSH"), List.of("E", "SE"));
+                PresentWeather.parse("VCSH"), segments("E", "SE"));
 
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
                 .automatedStationType(AutomatedStationType.AO2)
@@ -738,11 +743,11 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should not be equal when directionalWeather differs")
     void testInequalityWithDifferentDirectionalWeather() {
         NoaaMetarRemarks remarks1 = NoaaMetarRemarks.builder()
-                .directionalWeather(new DirectionalWeather(PresentWeather.parse("VCSH"), List.of("E", "SE")))
+                .directionalWeather(new DirectionalWeather(PresentWeather.parse("VCSH"), segments("E", "SE")))
                 .build();
 
         NoaaMetarRemarks remarks2 = NoaaMetarRemarks.builder()
-                .directionalWeather(new DirectionalWeather(PresentWeather.parse("VCSH"), List.of("N", "NW")))
+                .directionalWeather(new DirectionalWeather(PresentWeather.parse("VCSH"), segments("N", "NW")))
                 .build();
 
         assertNotEquals(remarks1, remarks2);
@@ -5377,7 +5382,7 @@ class NoaaMetarRemarksTest {
         );
         DirectionalWeather directionalWeather = new DirectionalWeather(
                 PresentWeather.parse("VCSH"),
-                List.of("E", "SE")
+                segments("E", "SE")
         );
         Visibility min = Visibility.statuteMiles(0.5);
         Visibility max = Visibility.statuteMiles(2.0);
@@ -5488,7 +5493,7 @@ class NoaaMetarRemarksTest {
         );
         DirectionalWeather directionalWeather = new DirectionalWeather(
                 PresentWeather.parse("VCSH"),
-                List.of("E", "SE")
+                segments("E", "SE")
         );
         Visibility min = Visibility.statuteMiles(0.5);
         Visibility max = Visibility.statuteMiles(2.0);

@@ -3998,7 +3998,8 @@ class NoaaMetarParserTest {
 
         assertThat(directionalWeather.presentWeather()).isNotNull();
         assertThat(directionalWeather.hasDirections()).isTrue();
-        assertThat(directionalWeather.directions()).containsExactly("E", "SE");
+        assertThat(directionalWeather.directionSegments()).
+                extracting(DirectionSegment::getSummary).containsExactly("E", "SE");
 
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -4018,7 +4019,7 @@ class NoaaMetarParserTest {
 
         assertThat(directionalWeather.presentWeather()).isNotNull();
         assertThat(directionalWeather.hasDirections()).isFalse();
-        assertThat(directionalWeather.directions()).isNull();
+        assertThat(directionalWeather.directionSegments()).isNull();
 
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -4030,7 +4031,9 @@ class NoaaMetarParserTest {
             "'VCSH E SE',  VCSH, ,     'E SE', false",
             "'-RA ALQDS',  -RA,  ,     ,      true",
             "VCSH,         VCSH, ,     ,      false",
-            "VCSH-NE,      VCSH, ,     NE,    false"
+            "VCSH-NE,      VCSH, ,     NE,    false",
+            "VCSH-NE,      VCSH, ,     NE,    false",
+            "'SH DSNT S-SW', SH, DSNT, S-SW,  false"
     })
     @DisplayName("Should store a remark weather code with its location, directions or ALQDS")
     void testDirectionalWeatherLocationForms(String remark, String weather, String location,
@@ -4042,9 +4045,10 @@ class NoaaMetarParserTest {
         assertThat(dw.presentWeather()).isEqualTo(PresentWeather.parse(weather));
         assertThat(dw.location()).isEqualTo(location);
         if (directions == null) {
-            assertThat(dw.directions()).isNull();
+            assertThat(dw.directionSegments()).isNull();
         } else {
-            assertThat(dw.directions()).containsExactly(directions.split(" "));
+            assertThat(dw.directionSegments()).
+                    extracting(DirectionSegment::getSummary).containsExactly(directions.split(" "));
         }
         assertThat(dw.allQuadrants()).isEqualTo(allQuadrants);
         assertThat(data.getRemarks().freeText()).as(remark).isNull();
@@ -7367,7 +7371,7 @@ class NoaaMetarParserTest {
         DirectionalWeather dw = data.getRemarks().directionalWeather();
         assertThat(dw).isNotNull();
         assertThat(dw.allQuadrants()).isTrue();
-        assertThat(dw.directions()).isNull();
+        assertThat(dw.directionSegments()).isNull();
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -7406,7 +7410,7 @@ class NoaaMetarParserTest {
         DirectionalWeather dw = extractMetarData(result).getRemarks().directionalWeather();
 
         assertThat(dw.allQuadrants()).isFalse();
-        assertThat(dw.directions()).containsExactly("E", "SE");
+        assertThat(dw.directionSegments()).extracting(DirectionSegment::getSummary).containsExactly("E", "SE");
     }
 
     @Test
@@ -11694,7 +11698,7 @@ class NoaaMetarParserTest {
 
         DirectionalWeather weather = data.getRemarks().directionalWeather();
         assertThat(weather).isNotNull();
-        assertThat(weather.directions()).containsExactly("S");
+        assertThat(weather.directionSegments()).extracting(DirectionSegment::getSummary).containsExactly("S");
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -11734,7 +11738,11 @@ class NoaaMetarParserTest {
             "RMK VCSH NE SLP186,                  NE, NULL",
             "RMK VCSH NE STNRY,                   NE, STNRY",
             "RMK VCSH S NOSPECI,                  S,  NOSPECI",
-            "RMK VCSH S SNINCR 1/10,              S,  'SNINCR 1/10'"
+            "RMK VCSH S SNINCR 1/10,              S,  'SNINCR 1/10'",
+            "RMK VCSH S SNINCR 1/10,              S,  'SNINCR 1/10'",
+            // A range followed by a compass-letter token
+            "RMK VCSH S-SW STNRY,                 S-SW, STNRY",
+            "RMK VCSH S-SW WSHFT 1726,            S-SW, NULL"
     }, nullValues = "NULL")
     @DisplayName("Should keep the direction when the next remark token starts with a compass letter")
     void testDirectionKept_BeforeCompassLetterToken(String remark, String expectedDirection, String expectedFreeText) {
@@ -11742,7 +11750,8 @@ class NoaaMetarParserTest {
 
         DirectionalWeather weather = data.getRemarks().directionalWeather();
         assertThat(weather).isNotNull();
-        assertThat(weather.directions()).containsExactly(expectedDirection);
+        assertThat(weather.directionSegments()).extracting(DirectionSegment::getSummary).containsExactly(expectedDirection);
+
         assertThat(data.getRemarks().freeText()).isEqualTo(expectedFreeText);
     }
 
@@ -11753,13 +11762,20 @@ class NoaaMetarParserTest {
             "'RMK VCSH SE NE',             'SE,NE'",
             "'RMK VCSH E SW',              'E,SW'",
             "'RMK VCSH NW SW SLP101',      'NW,SW'",
-            "'RMK VCSH E SE S SLP186',     'E,SE,S'"
+            "'RMK VCSH E SE S SLP186',     'E,SE,S'",
+            "'RMK VCSH E SE S SLP186',     'E,SE,S'",
+            // Hyphenated ranges stay whole as one segment
+            "'RMK VCSH S-SW',              'S-SW'",
+            "'RMK VCSH S-SW W',            'S-SW,W'",
+            "'RMK VCSH W S-SW',            'W,S-SW'",
+            "'RMK VCSH N-NE-E',            'N-NE-E'",
+            "'RMK VCSH S-SW SLP186',       'S-SW'"
     })
     @DisplayName("Should keep every point of a multi-point direction list, including NE/NW/SW after the first")
     void testDirectionList_MultiplePoints(String remark, String expectedDirections) {
         NoaaMetarData data = parseData(KDPG_BODY + remark);
 
-        assertThat(data.getRemarks().directionalWeather().directions())
+        assertThat(data.getRemarks().directionalWeather().directionSegments()).extracting(DirectionSegment::getSummary)
                 .containsExactly(expectedDirections.split(","));
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -11769,7 +11785,7 @@ class NoaaMetarParserTest {
     void testNoDirection_StnryOnly() {
         NoaaMetarData data = parseData(KDPG_BODY + "RMK VCSH STNRY");
 
-        assertThat(data.getRemarks().directionalWeather().directions()).isNull();
+        assertThat(data.getRemarks().directionalWeather().directionSegments()).isNull();
         assertThat(data.getRemarks().freeText()).isEqualTo("STNRY");
     }
 

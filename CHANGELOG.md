@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.31.0-SNAPSHOT - November 9, 2026
+
+### Fixed
+- Directional weather with a hyphenated direction range (e.g. `VCSH S-SW`) is
+  now stored with its direction instead of no direction and `-SW` left in
+  freeText (#179). `DIRECTION_LIST_PATTERN` accepts ranges, and each point or
+  range must still end at a token boundary, so the #118 guard is unchanged.
+
+### Changed
+- `DirectionalWeather.directions` (`List<String>`) is replaced by
+  `directionSegments` (`List<DirectionSegment>`), using the same segment model
+  as thunderstorm locations, lightning and except-directions (#179).
+- Added `DirectionalWeather.getDirectionsSummary()`; summaries now join
+  segments with `AND` (e.g. `S-SW AND W`) instead of commas.
+- METAR golden output re-recorded for the `directionSegments` field.
+
+### Added
+- `RegExprConstTest` and `NoaaMetarParserTest` cases for direction ranges,
+  including a range followed by a compass-letter token (#118).
+- UAT discovery pattern `179-directional-weather-direction-range`.
+
+Data impact: the Bronze JSON shape of `remarks.directionalWeather` changes:
+`directions` (array of strings) becomes `directionSegments` (array of
+`{points: [...]}`) plus `directionsSummary`. Reports with a direction range now
+keep the range and no longer leave it in freeText. Reprocessing affected dates
+is needed for consistent history.
+
 ## Version 1.30.1-SNAPSHOT - November 8, 2026
 
 ### Removed

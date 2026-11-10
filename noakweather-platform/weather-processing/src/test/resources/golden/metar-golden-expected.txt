@@ -2288,7 +2288,7 @@
   remarks.preciseTemperature: null
   remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
-  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=HZ, other=null, rawCode=HZ], location=null, directions=null, allQuadrants=true]
+  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=HZ, other=null, rawCode=HZ], location=null, directionSegments=null, allQuadrants=true]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
@@ -2349,7 +2349,7 @@
   remarks.preciseTemperature: Temperature[celsius=27.8, dewpointCelsius=25.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.preciseDewpoint: Temperature[celsius=27.8, dewpointCelsius=25.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
-  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directions=null, allQuadrants=true]
+  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directionSegments=null, allQuadrants=true]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
@@ -2410,7 +2410,7 @@
   remarks.preciseTemperature: Temperature[celsius=17.2, dewpointCelsius=2.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.preciseDewpoint: Temperature[celsius=17.2, dewpointCelsius=2.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
-  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directions=[S], allQuadrants=false]
+  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directionSegments=[DirectionSegment[points=[S]]], allQuadrants=false]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
@@ -2776,7 +2776,7 @@
   remarks.preciseTemperature: null
   remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
-  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directions=[NE], allQuadrants=false]
+  remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directionSegments=[DirectionSegment[points=[NE]]], allQuadrants=false]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
