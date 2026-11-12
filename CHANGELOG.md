@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.32.0-SNAPSHOT - November 12, 2026
+
+### Fixed
+- A temperature/dewpoint group whose temperature or dewpoint does not have
+  exactly two digits (e.g. the truncated `04/0` at EGKK) is now rejected instead
+  of storing a false value (#180). The group stays in `unparsedMainBody` as a
+  REJECTED `tempDewpoint` parse issue (`Temperature.celsius` or
+  `Temperature.dewpointCelsius`), and no temperature or dewpoint is stored.
+  Missing values (`//`, `XX`, `MM`, `15/`) are unchanged.
+
+### Added
+- `NoaaMetarParserTest` cases for one- and three-digit values, the live EGKK
+  report, and the valid `04/00`, `04/M01` and `04///` forms.
+- UAT discovery patterns `180-temp-dewpoint-truncated-dewpoint` and
+  `180-temp-dewpoint-bad-temperature`.
+
+Data impact: reports with a truncated or malformed temperature/dewpoint group
+no longer store a false temperature, dewpoint or relative humidity; the group
+is now visible in `unparsedMainBody` and in `parseIssues`.
+
 ## Version 1.31.0-SNAPSHOT - November 9, 2026
 
 ### Fixed
