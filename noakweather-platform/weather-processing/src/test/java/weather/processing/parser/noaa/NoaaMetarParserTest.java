@@ -1846,7 +1846,11 @@ class NoaaMetarParserTest {
 
             // Single digit temperatures
             "'METAR KJFK 251651Z 19005KT 10SM 08/05 A3015', 8.0, 5.0, 'Single digit positive'",
-            "'METAR KJFK 251651Z 19005KT 10SM M08/M12 A3015', -8.0, -12.0, 'Single digit negative'"
+            "'METAR KJFK 251651Z 19005KT 10SM M08/M12 A3015', -8.0, -12.0, 'Single digit negative'",
+            // #180 - two-digit forms next to the rejected truncated ones
+            "'METAR KJFK 251651Z 19005KT 10SM 04/00 A3015', 4.0, 0.0, 'Two-digit zero dewpoint'",
+            "'METAR KJFK 251651Z 19005KT 10SM 04/M01 A3015', 4.0, -1.0, 'Two-digit negative dewpoint'",
+            "'METAR KJFK 251651Z 19005KT 10SM 04/// A3015', 4.0, , 'Missing dewpoint (//) keeps temperature'"
     })
     @DisplayName("Should parse temperature and dewpoint correctly")
     void testParseTemperature(String metar, Double expectedTemp, Double expectedDewpoint, String scenario) {
@@ -11310,6 +11314,48 @@ class NoaaMetarParserTest {
             assertThat(issue.text()).isEqualTo("10/15");
             assertThat(issue.component()).isEqualTo("Temperature.dewpointCelsius");
         });
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "04/0,   Temperature.dewpointCelsius, 0",
+            "M04/0,  Temperature.dewpointCelsius, 0",
+            "04/M0,  Temperature.dewpointCelsius, M0",
+            "04/100, Temperature.dewpointCelsius, 100",
+            "4/04,   Temperature.celsius,         4",
+            "M104/05, Temperature.celsius,        M104"
+    })
+    @DisplayName("Should reject a temperature/dewpoint group without two digits per value")
+    void testTempDewpoint_WrongDigitCount_Rejected(String group, String component, String rejectedValue) {
+        ParseResult<NoaaWeatherData> result =
+                parser.parse("METAR KJFK 151751Z 27012KT 10SM FEW250 " + group + " A3012");
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+        assertThat(data.getTemperature()).as("no false temperature or dewpoint stored").isNull();
+        assertThat(data.getUnparsedMainBody()).isEqualTo(group);
+
+        assertThat(result.getIssues()).singleElement().satisfies(issue -> {
+            assertThat(issue.kind()).isEqualTo(ParseIssueKind.REJECTED);
+            assertThat(issue.handler()).isEqualTo("tempDewpoint");
+            assertThat(issue.text()).isEqualTo(group);
+            assertThat(issue.component()).isEqualTo(component);
+            assertThat(issue.rejectedValue()).isEqualTo(rejectedValue);
+        });
+    }
+
+    @Test
+    @DisplayName("Should reject the truncated temperature/dewpoint group from the live EGKK report")
+    void testTempDewpoint_TruncatedReport_EGKK() {
+        ParseResult<NoaaWeatherData> result = parser.parse(
+                "METAR EGKK 081950Z VRB01KT 3200 1200W R26L/P1500N BR PRFG FEW007 04/0");
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+        assertThat(data.getTemperature()).isNull();
+        assertThat(data.getUnparsedMainBody()).isEqualTo("04/0");
+        assertThat(result.getIssues()).singleElement()
+                .satisfies(issue -> assertThat(issue.component()).isEqualTo("Temperature.dewpointCelsius"));
     }
 
     @Test

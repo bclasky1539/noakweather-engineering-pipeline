@@ -111,6 +111,9 @@ declare -a PATTERNS=(
      # #179 — directional weather with a hyphenated direction range (VCSH S-SW). The range must be
      # stored as one direction segment, with nothing left in freeText; also covers a location qualifier (SH DSNT S-SW).
      "179-directional-weather-direction-range|(^|\"| )(VC[A-Z]{2,4}|HZ|FG|BR|FU|DU|SH[A-Z]{0,4})( (OHD|VC|DSNT|DSIPTD|TOP|TR))?( [NSEW]{1,2}(-[NSEW]{1,2})*)* [NSEW]{1,2}(-[NSEW]{1,2})+( |\"|\$)"
+     # #180 — temperature/dewpoint with a one- or three-digit value; rejected and kept in unparsedMainBody.
+     "180-temp-dewpoint-truncated-dewpoint|(^|\"| )M?[0-9]{2}/M?([0-9]|[0-9]{3})( |\"|\$)"
+     "180-temp-dewpoint-bad-temperature|(^|\"| )M?([0-9]|[0-9]{3})/M?[0-9]{2}( (A|Q)[0-9]{4}|\"|\$)"
 )
 
 for entry in "${PATTERNS[@]}"; do
