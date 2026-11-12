@@ -173,6 +173,10 @@ public final class RegExprConst {
      * Temperature and Dewpoint
      * Example: "22/12", "M05/M12", "15/", "//12"
      * M prefix indicates negative temperature
+     * <p>
+     * Digits are matched as \d+ on purpose: the handler requires exactly two and rejects
+     * any other count (e.g. a truncated "04/0") as a REJECTED tempDewpoint issue, keeping
+     * the group in unparsedMainBody (#180).
      */
     @SuppressWarnings("java:S5843") // Complex regex required for weather phenomena combinations
     public static final Pattern TEMP_DEWPOINT_PATTERN = Pattern.compile(

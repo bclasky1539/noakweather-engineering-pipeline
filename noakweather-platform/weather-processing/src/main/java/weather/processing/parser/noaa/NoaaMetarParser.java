@@ -83,6 +83,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     private static final String DIRECTION_CHAIN_CODE = "dirchain";
     private static final String VISIBILITY_DISTANCE_COMPONENT = "Visibility.distanceValue";
 
+    private static final String TEMPERATURE_COMPONENT = "Temperature.celsius";
+    private static final String DEWPOINT_COMPONENT = "Temperature.dewpointCelsius";
+    // METAR temperature and dewpoint are always two digits (00-99), optionally with an M prefix
+    private static final int TEMPERATURE_DIGITS = 2;
+
     // Splits a direction chain into segments: segments are separated by
     // whitespace, optionally with the word AND (e.g. "N AND SW" or "N NE S SW")
     private static final Pattern SEGMENT_SEPARATOR_PATTERN = Pattern.compile("\\s+(?:AND\\s+)?");
@@ -600,6 +605,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * <p>
      * The 'M' prefix indicates negative (minus) temperature.
      * Special values (//, XX, MM) indicate missing data.
+     * <p>
+     * Each value must have exactly two digits. A group such as "04/0" is incomplete
+     * (typically a report cut off at the source), so the whole group is rejected and
+     * kept in unparsedMainBody instead of storing a false value (#180).
      */
     private void handleTempDewpoint(Matcher matcher) {
         if (weatherData == null) {
@@ -612,10 +621,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String dewpointDigits = matcher.group("dewpt");
 
         // Parse temperature
-        Double temperatureCelsius = parseTemperatureValue(tempSign, tempDigits);
+        Double temperatureCelsius = parseTemperatureValue(tempSign, tempDigits, TEMPERATURE_COMPONENT);
 
         // Parse dewpoint (optional)
-        Double dewpointCelsius = parseTemperatureValue(dewpointSign, dewpointDigits);
+        Double dewpointCelsius = parseTemperatureValue(dewpointSign, dewpointDigits, DEWPOINT_COMPONENT);
 
         // Only create Temperature object if we have at least temperature
         if (temperatureCelsius != null) {
@@ -639,15 +648,22 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * - Missing indicators (//, XX, MM) → null
      * - Null or blank → null
      *
-     * @param sign   the sign indicator ("M", "-", or null)
-     * @param digits the temperature digits (e.g., "05", "22")
+     * @param sign      the sign indicator ("M", "-", or null)
+     * @param digits    the temperature digits (e.g., "05", "22")
+     * @param component the field being parsed, for a rejection
      * @return temperature in Celsius, or null if missing/unknown
+     * @throws InvalidObservationException if the value does not have exactly two digits (#180)
      */
-    private Double parseTemperatureValue(String sign, String digits) {
+    private Double parseTemperatureValue(String sign, String digits, String component) {
         // Handle missing/unknown values
         if (digits == null || digits.isBlank() ||
                 "//".equals(digits) || "XX".equals(digits) || "MM".equals(digits)) {
             return null;
+        }
+
+        if (digits.length() != TEMPERATURE_DIGITS) {
+            throw new InvalidObservationException(component, sign == null ? digits : sign + digits,
+                    "Temperature and dewpoint must have two digits");
         }
 
         // The pattern guarantees digits here
@@ -1489,7 +1505,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * @return the value
      * @throws InvalidObservationException if the text is not a valid distance
      */
-     static double parseDistance(String distStr) {
+    static double parseDistance(String distStr) {
         if (distStr == null || distStr.isBlank()) {
             throw new InvalidObservationException(VISIBILITY_DISTANCE_COMPONENT, distStr,
                     "Visibility distance is blank");
