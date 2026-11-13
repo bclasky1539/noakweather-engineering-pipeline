@@ -97,3 +97,4 @@ application-local.properties
 /noakweather-platform/weather-processing/nbproject/
 /noakweather-platform/weather-ingestion/nbproject/
 /noakweather-platform/weather-storage/nbproject/
+__pycache__/
