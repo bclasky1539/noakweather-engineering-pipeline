@@ -48,6 +48,10 @@ The platform implements two complementary architectural patterns for different a
 - **Batch Layer**: Historical data processing and reprocessing
 - **Serving Layer**: Unified query interface combining real-time and batch views
 
+Today, ingestion runs from the UAT scripts in `scripts/uat/` (there is no Lambda or
+scheduler yet), and the Bronze → Silver Glue job is deployed but started manually for
+each date. See [Project Status](#project-status).
+
 **Medallion Architecture** handles batch analytics and historical querying:
 - **Bronze**: Raw ingested JSON in S3 (`bronze/speed-layer/...`)
 - **Silver**: AWS Glue-transformed, standardized Parquet data, queryable via Amazon Athena with partition projection
@@ -57,13 +61,13 @@ The platform implements two complementary architectural patterns for different a
 
 - **Java 17+**: Modern Java features and performance
 - **Maven**: Multi-module build management
-- **AWS Services**: S3, Lambda, DynamoDB, Glue, Athena, CloudWatch
+- **AWS Services**: S3, DynamoDB, Glue, Athena (Lambda and scheduled orchestration planned)
 - **Apache Spark (PySpark)**: AWS Glue ETL transformations (Bronze → Silver)
 - **Snowflake**: Data warehouse for analytics
 - **JUnit 5**: Comprehensive testing framework
 - **JaCoCo**: Code coverage analysis
-- **SonarQube**: Code quality and security scanning
-- **Log4j2/Logback**: Enterprise logging with centralized configuration
+- **SonarCloud**: Code quality and security scanning (quality gate enforced in CI)
+- **Log4j2**: Logging with centralized configuration
 - **GitHub Actions**: CI/CD pipeline
 - **LocalStack**: Local DynamoDB testing with Testcontainers
 
@@ -107,6 +111,18 @@ Scripts live in `scripts/` and can be run from any directory. The paths below ar
 | `./scripts/wethp.sh`               | Package into jars (`mvn clean package -DskipTests`) - only needed when jars are actually required, e.g. running an app locally                                       |
 | `./scripts/wethv.sh <new-version>` | Bump the project version across `noakweather-platform` and its submodules. `noakweather-legacy` has its own independent version and is never touched by this script. |
 
+
+UAT and discovery scripts live in `scripts/uat/`. Scripts that touch S3 take the bucket as
+a parameter (`-b <bucket>` or the `NOAKWEATHER_S3_BUCKET` environment variable); no bucket
+name is hardcoded.
+
+| Script                                          | Purpose                                                                                                                                         |
+|-------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| `./scripts/uat/wethuat_discover_stations.sh`    | Downloads the current worldwide METAR snapshot and greps it for watch patterns (one per issue) to find live stations for a UAT round            |
+| `./scripts/uat/wethuat_metar_ingest.sh`         | UAT sweep: ingests METARs for a station list into Bronze and runs `glue-jobs/tools/analyze_bronze_station.py` on each station                   |
+| `./scripts/uat/wethuat_review_stations.sh`      | Downloads a UAT date's Bronze JSON and writes a per-report summary to `logs/uat/review/<YYYYMMDD>/summary.jsonl` for review                     |
+| `./scripts/uat/weths_discover-historical-metars.sh <LETTER>` | Exploratory, not part of a UAT round: searches NOAA's per-station METAR files for rare grammar forms that the current snapshot is unlikely to contain |
+
 ### Building the Project
 
 ```bash
@@ -134,15 +150,72 @@ cd noakweather-engineering-pipeline
 open noakweather-platform/weather-common/target/site/jacoco/index.html
 ```
 
-### Code Quality
+Run Maven from the repository root. To run one test class (or a few) while working on a
+change:
 
 ```bash
-# Run SonarQube analysis
+mvn test -pl noakweather-platform/weather-processing -am \
+  -Dtest='NoaaMetarParserTest' -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+**Golden output tests.** `NoaaMetarParserGoldenOutputTest` and `NoaaTafParserGoldenOutputTest`
+compare parser output for a fixed set of real reports against
+`weather-processing/src/test/resources/golden/`. When a change is meant to alter that output,
+re-record it, review the diff, and commit it with the change:
+
+```bash
+mvn test -pl noakweather-platform/weather-processing -am \
+  -Dtest='*Golden*' -Dgolden.record=true -Dsurefire.failIfNoSpecifiedTests=false
+git diff -- '*golden*'
+```
+
+**Coverage of new code.** The SonarCloud quality gate requires 80% coverage on new code. Check
+it before pushing with [diff-cover](https://github.com/Bachmann1234/diff_cover), after
+`./scripts/wetht.sh`:
+
+```bash
+git fetch origin
+diff-cover \
+  noakweather-platform/weather-processing/target/site/jacoco/jacoco.xml \
+  noakweather-platform/weather-common/target/site/jacoco/jacoco.xml \
+  noakweather-platform/weather-ingestion/target/site/jacoco/jacoco.xml \
+  --compare-branch=origin/main \
+  --src-roots noakweather-platform/weather-processing/src/main/java \
+              noakweather-platform/weather-common/src/main/java \
+              noakweather-platform/weather-ingestion/src/main/java \
+  --fail-under=80
+```
+
+Stage any new source files first, so diff-cover includes them.
+
+### Code Quality
+
+SonarCloud analysis runs in CI on every push and pull request. To run it locally:
+
+```bash
 mvn clean verify sonar:sonar \
   -Dsonar.organization=bclasky1539 \
   -Dsonar.host.url=https://sonarcloud.io \
-  -Dsonar.login=$SONAR_TOKEN
+  -Dsonar.token=$SONAR_TOKEN
 ```
+
+## Parse Quality: What Was Not Parsed
+
+The parser never silently drops report text. Anything it cannot store as a value is kept, and
+each Bronze record says why:
+
+| Field                     | Holds                                                                                                                                                       |
+|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `unparsedMainBody`        | Main-body groups that were rejected (e.g. a truncated `04/0`) and any text after the first group no handler recognizes                                      |
+| `remarks.freeText`        | Remark text that no handler parsed, including rejected remark groups                                                                                        |
+| `parseIssues`             | One entry per problem: `kind` (e.g. `REJECTED`), `section`, `handler`, the `text`, the `component` and `rejectedValue` that failed, and the `reason`        |
+
+A **rejected** group matched a known format but held a value that is not valid in the real world
+or cannot be interpreted (a zero denominator, an out-of-range altimeter, a one-digit dewpoint).
+It is recorded in `parseIssues` and left in `unparsedMainBody` or `remarks.freeText`, and no value
+is stored for it, so bad data never looks like good data. See
+[CONTRIBUTING.md](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/CONTRIBUTING.md)
+for the conventions behind this.
 
 ## Documentation
 
@@ -231,6 +304,15 @@ mvn clean verify sonar:sonar \
 
 ## Recent Milestones
 
+**METAR UAT Remediation (September – November 2026)**
+- Repeated UAT rounds against live worldwide METARs, each followed by one issue, branch and PR per finding, with fixes kept in Pending UAT until confirmed on live data
+- One shared group-parsing engine for the METAR main body and remarks, with explicit policies for rejected and unrecognized text
+- Parse issues (`parseIssues`) recorded on every Bronze record, so rejected groups are visible instead of silently dropped or stored as false values
+- Much broader international and remarks coverage, including runway state groups, recent weather (`RE`), direction ranges and chains, lightning, thunderstorm locations, cloud types and observation-program remarks
+- Stricter validation of main-body values (visibility, altimeter, vertical visibility, temperature/dewpoint)
+- Permanent golden-output regression tests for the METAR and TAF parsers
+- UAT tooling in `scripts/uat/` (discovery, ingestion sweep, review)
+
 **Bronze-to-Silver Glue ETL Pipeline Complete (August 2026)**
 - AWS Glue PySpark ETL job transforming Bronze METAR JSON to standardized Silver Parquet
 - Explicit read schema, eliminating Spark JSON schema-inference failures on empty arrays (present weather, sky conditions, runway visual range)
@@ -255,10 +337,13 @@ This project follows a phased migration approach:
 3. **Phase 3** (Complete): Universal ingestion layer with S3 upload
 4. **Phase 4** (Complete): DynamoDB storage with time-bucket GSI and comprehensive testing
 5. **Phase 5** (In Progress): Analytics and serving layer
-  - Bronze-to-Silver Glue ETL and Athena querying (Complete)
-  - Gold layer aggregation tables (Planned)
-  - Analytics dashboard and API endpoints (Planned)
-  - Real-time + batch view reconciliation (Planned)
+    - Bronze-to-Silver Glue ETL and Athena querying (Complete; run manually, not yet scheduled)
+    - METAR Bronze UAT remediation (In Progress)
+    - Silver layer review against the Bronze model changes from UAT (Planned, after Bronze UAT)
+    - Scheduled ingestion and Glue orchestration (Planned)
+    - Gold layer aggregation tables (Planned)
+    - Analytics dashboard and API endpoints (Planned)
+    - Real-time + batch view reconciliation (Planned)
 6. **Phase 6** (Planned): Additional data sources
 7. **Phase 7** (Planned): Legacy deprecation
 
@@ -300,6 +385,8 @@ See [AWS IAM User Setup Guide](https://github.com/bclasky1539/noakweather-engine
 
 ## Running the Bronze-to-Silver Glue ETL Job
 
+The job is deployed but not scheduled: start it manually for each date to be processed.
+
 ```bash
 # Upload the transformation script (only needed after script changes)
 aws s3 cp glue-jobs/bronze_to_silver_metar.py s3://noakweather-glue-scripts/
@@ -317,10 +404,15 @@ See the [Glue Deployment Guide](https://github.com/bclasky1539/noakweather-engin
 
 ## Contributing
 
-1. Create a feature branch from `main`
-2. Make your changes following the code standards
-3. Ensure all tests pass and coverage meets requirements
-4. Submit a pull request
+See [CONTRIBUTING.md](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/CONTRIBUTING.md)
+and the [Code Standards](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/CODE_STANDARDS.md).
+In short:
+
+1. Create a branch from `main` (`feature/`, `fix/`, `refactor/`, `test/` or `docs/`)
+2. Make your changes following the code standards, with tests
+3. Run `./scripts/wethb.sh` and `./scripts/wetht.sh`, and check new-code coverage with diff-cover
+4. Bump the version with `./scripts/wethv.sh` and add a CHANGELOG.md entry
+5. Submit a pull request
 
 ## License
 
@@ -328,7 +420,7 @@ Apache License 2.0 - See [LICENSE](https://github.com/bclasky1539/noakweather-en
 
 ## Project Status
 
-**Active Development** - Phase 4 Complete, Phase 5 In Progress (Bronze-to-Silver ETL complete, Gold layer next)
+**Active Development** - Phase 4 Complete, Phase 5 In Progress: METAR Bronze UAT remediation is under way; the Silver layer review, scheduling and the Gold layer follow it. TAF parsing work is tracked separately.
 
 See [CHANGELOG.md](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/CHANGELOG.md) for the complete, detailed version history.
 

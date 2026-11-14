@@ -1,441 +1,209 @@
-# Single Station Integration Test - KCLT (Charlotte Douglas International)
+# Single Station Ingestion Test
 
 ## Overview
 
-This test will verify the complete dual storage pipeline with **real NOAA METAR data** from Charlotte Douglas International Airport (KCLT).
-This is an example case. Certain information could be different for other test cases.
+This guide runs the METAR ingestion for **one station** and checks, by hand, everything it
+writes to the Bronze layer in S3: the raw report text and the parsed JSON. KCLT (Charlotte
+Douglas International) is used as the example; any active station works.
+
+Use it to check a change end to end on live data, or to look closely at one report. For many
+stations at once (a UAT round), use `scripts/uat/wethuat_metar_ingest.sh`, which runs the same
+ingestion and the automated check in Step 3 for each station; see
+[CONTRIBUTING.md](../CONTRIBUTING.md#uat).
+
+Run all commands from the repository root.
 
 ---
 
-## Pre-Flight Checklist
+## Step 1: Prepare
 
-### Environment Setup
-
-**1. Set Environment Variables:**
+**AWS credentials.** The ingestion writes to S3, so the AWS CLI profile you use needs S3 access:
 
 ```bash
-export AWS_REGION=us-east-1
-export S3_BUCKET=noakweather-data
-```
-
-**2. Verify AWS Credentials:**
-
-```bash
-# Check AWS authentication
 aws sts get-caller-identity
-
-# Expected output:
-# {
-#     "UserId": "...",
-#     "Account": "...",
-#     "Arn": "..."
-# }
 ```
 
-**3. Verify S3 Bucket Access:**
+**Environment variables.** The ingestion apps read these, with the defaults shown:
+
+| Variable     | Default            | Purpose                 |
+|--------------|--------------------|-------------------------|
+| `S3_BUCKET`  | `noakweather-data` | Bucket to write Bronze to |
+| `AWS_REGION` | `us-east-1`        | AWS region              |
+
+Set them explicitly so the commands below use the same values:
 
 ```bash
-# Check bucket exists and is accessible
-aws s3 ls s3://noakweather-data/
-
-# Expected: Bucket listing (may be empty)
+export S3_BUCKET=noakweather-data
+export AWS_REGION=us-east-1
+aws s3 ls "s3://$S3_BUCKET/bronze/"
 ```
 
-**4. Build the Application:**
+**Build the jars.** The ingestion runs from the packaged jar:
 
 ```bash
-cd ~/Development/Projects/Java/noakweather-engineering-pipeline/weather-ingestion
-
-# Build without running tests (already passed)
-mvn clean package -DskipTests
-
-# Expected output: BUILD SUCCESS
+./scripts/wethp.sh
+ls noakweather-platform/weather-ingestion/target/weather-ingestion-*-SNAPSHOT.jar
 ```
 
 ---
 
-## Test Execution
-
-### Step 1: Run Single Station Ingestion
+## Step 2: Run the Ingestion
 
 ```bash
-cd ~/Development/Projects/Java/noakweather-engineering-pipeline/weather-ingestion
-
-# Run the METAR ingestion for KCLT
-java -cp target/weather-ingestion-1.13.0-SNAPSHOT.jar \
-    weather.ingestion.service.source.noaa.MetarIngestionApp KCLT
+JAR=$(ls noakweather-platform/weather-ingestion/target/weather-ingestion-*-SNAPSHOT.jar)
+java -cp "$JAR" weather.ingestion.service.source.noaa.MetarIngestionApp KCLT
 ```
 
-### Expected Console Output
+The app fetches the station's latest report from
+`https://tgftp.nws.noaa.gov/data/observations/metar/stations/KCLT.TXT`, parses it, and uploads
+two files. In the output, look for:
 
-```
-=== METAR Ingestion Application Started ===
+- the configuration (bucket and region) you set in Step 1;
+- a successful health check (NOAA reachable, bucket accessible);
+- `Successfully ingested METAR for KCLT`;
+- the S3 keys of the raw-text file and the JSON file.
 
-Configuration:
-  S3 Bucket: noakweather-data
-  AWS Region: us-east-1
-  
-System Health Check:
-  ✓ NOAA API accessible
-  ✓ S3 bucket accessible
-  
-Starting METAR ingestion for station: KCLT
-Fetching METAR report for station: KCLT from https://tgftp.nws.noaa.gov/data/observations/metar/stations/KCLT.TXT
+Other ways to run the app:
 
-Successfully ingested METAR for KCLT in XXms
-Processed weather data for station KCLT in XXms (Raw: raw-data/noaa/metar/2026/02/03/KCLT_20260203_XXXX.txt, JSON: speed-layer/noaa/metar/2026/02/03/KCLT_20260203_XXXX.json)
+| Command | Does |
+|---------|------|
+| `MetarIngestionApp KCLT KJFK KLAX` | Several stations in one run |
+| `MetarIngestionApp --schedule 10 KCLT KJFK` | Repeats every 10 minutes until stopped |
+| `MetarIngestionApp --interactive` | Prompts for stations |
+| `TafIngestionApp KCLT` | The same for TAF reports |
 
-=== METAR Ingestion Application Completed ===
-```
-
-**Key things to look for:**
-- "System Health Check" passes
-- "Successfully ingested METAR for KCLT"
-- Shows both raw and JSON file paths
-- Date partitioning: `2026/02/03/`
-- Timestamp in filename matches
+Running the app with no arguments prints its usage.
 
 ---
 
-## Step 2: Verify Files in S3
+## Step 3: Automated Check
 
-### Check Raw Text File
-
-```bash
-# List raw text files for today
-aws s3 ls s3://noakweather-data/raw-data/noaa/metar/2026/02/03/ --recursive
-
-# Expected output (example):
-# 2026-02-02 19:56:22         70 raw-data/noaa/metar/2026/02/03/KCLT_20260203_0056.txt
-```
-
-**Download and inspect raw file:**
+`glue-jobs/tools/analyze_bronze_station.py` checks the station's files for one date: both
+files present, valid JSON, no duplicate JSON keys, required fields present, and any unparsed
+content. Use the UTC date of the run:
 
 ```bash
-# Download the file (adjust timestamp as needed)
-aws s3 cp s3://noakweather-data/raw-data/noaa/metar/2026/02/03/KCLT_20260203_0056.txt - | cat
-
-# Expected content (example):
-# KCLT 030052Z 00000KT 10SM FEW060 00/M08 A3023 RMK AO2 SLP262 T00001083%
+python3 glue-jobs/tools/analyze_bronze_station.py KCLT "$(date -u +%Y-%m-%d)" --bucket "$S3_BUCKET"
 ```
 
-**What to verify:**
-- File contains raw METAR text
-- Timestamp in filename matches observation time
-- Station ID is KCLT
-- Data format is plain text
-
-### Check JSON File
-
-```bash
-# List JSON files for today
-aws s3 ls s3://noakweather-data/speed-layer/noaa/metar/2026/02/03/ --recursive
-
-# Expected output (example):
-# 2026-02-02 19:56:22       1275 speed-layer/noaa/metar/2026/02/03/KCLT_20260203_0056.json
-```
-
-**Download and inspect JSON file:**
-
-```bash
-# Download the file (adjust timestamp as needed)
-aws s3 cp s3://noakweather-data/speed-layer/noaa/metar/2026/02/03/KCLT_20260203_0056.json - | jq .
-
-# Expected JSON structure:
-{
-  "dataType": "METAR",
-  "id": "52b7ba3b-40bb-4c6b-a0f1-50eed2ccbd80",
-  "ingestionTime": 1770080181.692608000,
-  "source": "NOAA",
-  "processingLayer": "SPEED_LAYER",
-  "stationId": "KCLT",
-  "observationTime": 1770080181.691918000,
-  "location": null,
-  "rawData": "KCLT 030052Z 00000KT 10SM FEW060 00/M08 A3023 RMK AO2 SLP262 T00001083",
-  "qualityFlags": null,
-  "metadata": {
-    "fetch_timestamp": "2026-02-03T00:56:21.693224Z",
-    "validated": "true",
-    "processor_version": "2.1",
-    "format": "TEXT",
-    "full_response": "2026/02/03 00:52\nKCLT 030052Z 00000KT 10SM FEW060 00/M08 A3023 RMK AO2 SLP262 T00001083\n",
-    "storage_format": "dual",
-    "processor": "SpeedLayerProcessor",
-    "validation_timestamp": "2026-02-02T19:56:21.693370"
-  },
-  "reportType": "METAR",
-  "conditions": {
-    "wind": null,
-    "visibility": null,
-    "presentWeather": [],
-    "skyConditions": [],
-    "temperature": null,
-    "pressure": null,
-    "likelyIMC": false,
-    "clearAndCalm": false,
-    "likelyVMC": true,
-    "ceilingFeet": null
-  },
-  "runwayVisualRange": [],
-  "rawText": null,
-  "reportModifier": null,
-  "latitude": null,
-  "longitude": null,
-  "elevationFeet": null,
-  "qualityControlFlags": null,
-  "remarks": null,
-  "ceilingFeet": null,
-  "visibility": null,
-  "temperature": null,
-  "pressure": null,
-  "skyConditions": [],
-  "presentWeather": [],
-  "minimumRvrFeet": null,
-  "current": true,
-  "summary": "METAR from KCLT at 2026-02-03T00:56:21.691918Z",
-  "wind": null
-}
-```
-
-**What to verify:**
-- Valid JSON format
-- `stationId` = "KCLT"
-- `rawText` matches raw file content
-- `reportType` = "METAR"
-- `source` = "NOAA"
-- **Metadata contains BOTH S3 keys:**
-  - `s3_raw_key` points to raw text file
-  - `s3_json_key` points to JSON file
-  - `s3_key` (legacy) points to JSON file
-- `storage_format` = "dual"
-- `processor_version` = "2.1"
+Exit codes: `0` = PASS, `2` = WARN (noteworthy but not a bug, e.g. unrecognized remarks
+content), `1` = FAIL (structural problem). Run it in the `glue_env` conda environment (it needs
+`boto3`).
 
 ---
 
-## Step 3: Verify Dual Storage Consistency
+## Step 4: Inspect the Files
 
-### Check File Timestamps Match
-
-```bash
-# Get metadata for both files
-aws s3api head-object --bucket noakweather-data \
-    --key raw-data/noaa/metar/2026/02/03/KCLT_20260203_0056.txt
-
-{
-    "AcceptRanges": "bytes",
-    "LastModified": "2026-02-03T00:56:22+00:00",
-    "ContentLength": 70,
-    "ETag": "\"aa52b69b5746acd4731d5d64ff522d45\"",
-    "VersionId": ".THWYWC0Tq_YENfRY1W6F.d.LtO.6hSJ",
-    "ContentType": "text/plain",
-    "ServerSideEncryption": "AES256",
-    "Metadata": {
-        "station-id": "KCLT",
-        "source": "NOAA",
-        "ingestion-time": "2026-02-03T00:56:21.692608Z",
-        "data-type": "METAR"
-    }
-}
-
-aws s3api head-object --bucket noakweather-data \
-    --key speed-layer/noaa/metar/2026/02/03/KCLT_20260203_0056.json
-
-{
-    "AcceptRanges": "bytes",
-    "Expiration": "expiry-date=\"Fri, 06 Mar 2026 00:00:00 GMT\", rule-id=\"DeleteOldSpeedLayerData\"",
-    "LastModified": "2026-02-03T00:56:22+00:00",
-    "ContentLength": 1275,
-    "ETag": "\"eac5c6eb6c4f3cbe220a69ae7f725419\"",
-    "VersionId": "c7cWOcBZKCW24bbhZ51nOeOtY3keNzN8",
-    "ContentType": "application/json",
-    "ServerSideEncryption": "AES256",
-    "Metadata": {
-        "station-id": "KCLT",
-        "report-type": "METAR",
-        "source": "NOAA",
-        "ingestion-time": "2026-02-03T00:56:21.692608Z"
-    }
-}
-```
-
-**What to verify:**
-- Both files have same (or very close) `LastModified` timestamp
-- Both files uploaded within seconds of each other
-
-### Verify Content Consistency
+Files are partitioned by **UTC** date, so a run in the evening (US time) may land in the next
+day's folder. File names are `<STATION>_<YYYYMMDD>_<HHMM>.<ext>`, with the time of the
+ingestion run (UTC), not the observation time in the report.
 
 ```bash
-# Extract raw text from both sources
-RAW_FROM_TXT=$(aws s3 cp s3://noakweather-data/raw-data/noaa/metar/2026/02/03/KCLT_20260203_0056.txt - | tail -n 1)
-RAW_FROM_JSON=$(aws s3 cp s3://noakweather-data/speed-layer/noaa/metar/2026/02/03/KCLT_20260203_0056.json - | jq -r '.rawData')
-
-# Compare
-echo "Raw file: $RAW_FROM_TXT"
-echo "JSON rawText: $RAW_FROM_JSON"
-
-# They should match!
-Raw file: KCLT 030052Z 00000KT 10SM FEW060 00/M08 A3023 RMK AO2 SLP262 T00001083
-JSON rawText: KCLT 030052Z 00000KT 10SM FEW060 00/M08 A3023 RMK AO2 SLP262 T00001083
+DAY=$(date -u +%Y/%m/%d)
+aws s3 ls "s3://$S3_BUCKET/bronze/raw-data/noaa/metar/$DAY/" | grep KCLT
+aws s3 ls "s3://$S3_BUCKET/bronze/speed-layer/noaa/metar/$DAY/" | grep KCLT
 ```
 
-**What to verify:**
-- Raw METAR text is identical in both files
-
----
-
-## Step 4: Verify Date Partitioning
+Set the base name of the files you want to look at (from the listing):
 
 ```bash
-# List all partitions
-aws s3 ls  s3://noakweather-data/raw-data/noaa/metar/ --recursive
-aws s3 ls s3://noakweather-data/speed-layer/noaa/metar/ --recursive
-
-# Expected structure:
-# 2026-02-02 19:56:22         70 raw-data/noaa/metar/2026/02/03/KCLT_20260203_0056.txt
-# 2026-02-02 19:56:22       1275 speed-layer/noaa/metar/2026/02/03/KCLT_20260203_0056.json
+NAME=KCLT_20261113_1530    # example: use the name from your listing
 ```
 
-**What to verify:**
-- Files are partitioned by date: `YYYY/MM/DD/`
-- Same partitioning in both `raw-data` and `speed-layer` paths
+### Raw text
+
+```bash
+aws s3 cp "s3://$S3_BUCKET/bronze/raw-data/noaa/metar/$DAY/$NAME.txt" -
+```
+
+It holds NOAA's response as fetched: a date/timeline, then the report.
+
+### Parsed JSON
+
+The full record is long. These are the fields that tell you whether the report parsed well:
+
+```bash
+aws s3 cp "s3://$S3_BUCKET/bronze/speed-layer/noaa/metar/$DAY/$NAME.json" - | jq '{
+  stationId, reportType, observationTime, rawText,
+  unparsedMainBody,
+  remarksFreeText: .remarks.freeText,
+  parseIssues,
+  metadata: (.metadata | {parser_version, processor_version, storage_format, validated})
+}'
+```
+
+**What to check:**
+
+- `stationId` is `KCLT` and `rawText` is the report from the raw-text file.
+- `unparsedMainBody` is null. If it is not, each group in it should have a matching entry in
+  `parseIssues` (a rejected group), or be text that no handler recognizes.
+- `remarks.freeText` holds only remark text the parser does not model.
+- `parseIssues` is empty, or every entry is explainable: `kind`, `handler`, the `text`, and
+  for a rejection the `component`, `rejectedValue` and `reason`. See
+  [README.md](../README.md#parse-quality-what-was-not-parsed).
+- The decoded values match the report. Compare the sections that apply, for example:
+  ```bash
+  aws s3 cp "s3://$S3_BUCKET/bronze/speed-layer/noaa/metar/$DAY/$NAME.json" - \
+    | jq '{wind: .conditions.wind, visibility: .conditions.visibility,
+           sky: .conditions.skyConditions, temperature: .conditions.temperature,
+           pressure: .conditions.pressure}'
+  ```
+
+To see every top-level field, use `jq 'keys'`.
+
+### Raw text and JSON agree
+
+```bash
+RAW_FROM_TXT=$(aws s3 cp "s3://$S3_BUCKET/bronze/raw-data/noaa/metar/$DAY/$NAME.txt" - | tail -n 1)
+RAW_FROM_JSON=$(aws s3 cp "s3://$S3_BUCKET/bronze/speed-layer/noaa/metar/$DAY/$NAME.json" - | jq -r '.rawText')
+[ "$RAW_FROM_TXT" = "$RAW_FROM_JSON" ] && echo "MATCH" || printf 'DIFFER\n%s\n%s\n' "$RAW_FROM_TXT" "$RAW_FROM_JSON"
+```
 
 ---
 
 ## Success Criteria
 
-### All Must Pass:
-
-1. **Application Run:**
-   - [ ] Application starts without errors
-   - [ ] Health check passes
-   - [ ] METAR data fetched successfully
-   - [ ] Both file paths logged with same timestamp
-
-2. **Raw Text File:**
-   - [ ] File exists in S3
-   - [ ] Contains actual METAR observation
-   - [ ] Filename timestamp matches observation time
-   - [ ] Date partitioned correctly
-
-3. **JSON File:**
-   - [ ] File exists in S3
-   - [ ] Valid JSON structure
-   - [ ] Contains all required fields
-   - [ ] `rawText` matches raw file content
-   - [ ] Metadata contains both S3 keys
-   - [ ] `storage_format` = "dual"
-   - [ ] `processor_version` = "2.1"
-
-4. **Dual Storage Consistency:**
-   - [ ] Both files created within seconds
-   - [ ] Same timestamp in filenames
-   - [ ] Same date partitioning
-   - [ ] Raw text content matches
+1. **Run:** the app starts, the health check passes, and both S3 keys are printed.
+2. **Automated check:** `analyze_bronze_station.py` exits `0` (or `2` with an explainable
+   warning).
+3. **Files:** the raw-text and JSON files exist under the same UTC date folder, with the same
+   base name.
+4. **Content:** the report text is the same in both files, decoded values match the report,
+   and anything in `unparsedMainBody`, `remarks.freeText` or `parseIssues` is explainable.
 
 ---
 
 ## Troubleshooting
 
-### Issue: "S3 bucket not accessible"
+### "S3 bucket not accessible"
 
-**Cause:** AWS credentials not configured or insufficient permissions
+The AWS profile in use lacks S3 access, or `S3_BUCKET` names the wrong bucket. Check
+`aws sts get-caller-identity`, `echo $S3_BUCKET`, and `aws s3 ls "s3://$S3_BUCKET/"`.
 
-**Solution:**
-```bash
-# Re-configure AWS credentials
-aws configure
+### "NOAA request failed"
 
-# Or use environment variables
-export AWS_ACCESS_KEY_ID=your_key
-export AWS_SECRET_ACCESS_KEY=your_secret
-```
+NOAA may be temporarily unavailable. Wait a few minutes and retry, and check the station file
+directly: <https://tgftp.nws.noaa.gov/data/observations/metar/stations/KCLT.TXT>.
 
-### Issue: "NOAA request failed"
+### "No 'METAR' data available for station"
 
-**Cause:** NOAA API may be temporarily unavailable or network issues
+The station has no recent report. Try another active station (e.g. `KJFK`, `KATL`, `KORD`).
 
-**Solution:**
-- Wait a few minutes and retry
-- Check network connectivity
-- Verify NOAA URL: https://tgftp.nws.noaa.gov
+### No jar found
 
-### Issue: "No METAR data available for station"
+Run `./scripts/wethp.sh` first; `./scripts/wetht.sh` and `./scripts/wethb.sh` clean the
+`target` folders and do not leave jars behind.
 
-**Cause:** KCLT may not have recent data (unlikely, major airport)
+### Only one file in S3
 
-**Solution:**
-- Try another major airport: `KJFK`, `KLAX`, `KORD`
-- Check NOAA directly: https://tgftp.nws.noaa.gov/data/observations/metar/stations/KCLT.TXT
-
-### Issue: Only one file appears in S3
-
-**Cause:** Dual storage implementation error
-
-**Solution:**
-- Check logs for upload errors
-- Verify both `uploadWeatherDataDual()` calls succeeded
-- Check S3 permissions (need PutObject on both paths)
+Check the application log (`$NOAKWEATHER_LOG_DIR/noakweather.log`, see
+[LOGGING_SETUP.md](LOGGING_SETUP.md)) for upload errors.
 
 ---
 
-## Validation Commands Summary
+## Data Retention Note
 
-```bash
-# 1. Run ingestion
-java -cp target/weather-ingestion-1.13.0-SNAPSHOT.jar \
-    weather.ingestion.service.source.noaa.MetarIngestionApp KCLT
-
-# 2. Check raw file exists
-aws s3 ls s3://noakweather-data/raw-data/noaa/metar/2026/02/03/ --recursive
-
-# 3. Check JSON file exists
-aws s3 ls s3://noakweather-data/speed-layer/noaa/metar/2026/02/03/ --recursive
-
-# 4. Download and inspect raw file
-aws s3 cp s3://noakweather-data/raw-data/noaa/metar/2026/02/03/KCLT_20260203_XXXX.txt -
-
-# 5. Download and inspect JSON file (with pretty printing)
-aws s3 cp s3://noakweather-data/speed-layer/noaa/metar/2026/02/03/KCLT_20260203_XXXX.json - | jq .
-
-# 6. Verify metadata
-aws s3 cp s3://noakweather-data/speed-layer/noaa/metar/2026/02/03/KCLT_20260203_XXXX.json - | jq '.metadata'
-
-# 7. Count files created
-aws s3 ls s3://noakweather-data/ --recursive | grep KCLT | wc -l
-# Expected: At least 2 (raw + JSON)
-```
-
----
-
-## Next Steps After Success
-
-Once the single station test passes:
-
-1. **Test Multiple Stations:**
-   ```bash
-   java -cp target/weather-ingestion-1.13.0-SNAPSHOT.jar \
-       weather.ingestion.service.source.noaa.MetarIngestionApp KCLT KJFK KLAX
-   ```
-
-2. **Test Scheduled Ingestion:**
-   ```bash
-   # Run every 10 minutes
-   java -cp target/weather-ingestion-1.13.0-SNAPSHOT.jar \
-       weather.ingestion.service.source.noaa.MetarIngestionApp \
-       --schedule 10 KCLT KJFK
-   ```
-
-3. **Verify TAF Dual Storage:**
-   ```bash
-   java -cp target/weather-ingestion-1.13.0-SNAPSHOT.jar \
-       weather.ingestion.service.source.noaa.TafIngestionApp KCLT
-   ```
-
-4. **Production Deployment:**
-   - Deploy to production environment
-   - Monitor S3 costs (now storing 2x files)
-   - Set up alerts for ingestion failures
-   - Configure CloudWatch logs
-
----
-
+The bucket's lifecycle rules were written for an older layout (`speed-layer/` and `raw-data/`
+at the bucket root). Data under `bronze/` is currently neither expired nor archived. Files under
+the legacy root `raw-data/` move to Glacier after 90 days and must be restored before they can
+be read. A review of these rules is tracked in the Platform Operations project.

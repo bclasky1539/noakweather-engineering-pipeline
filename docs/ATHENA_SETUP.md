@@ -10,6 +10,22 @@ This document describes the complete data lakehouse implementation for NoakWeath
 **Transformation Engine:** AWS Glue + PySpark  
 **Use Cases:** Historical analysis, ML feature engineering, BI reporting
 
+
+### Current Status (November 2026)
+
+| Component | Status |
+|-----------|--------|
+| Glue database `noakweather` | Deployed |
+| Bronze table `bronze_metar_noaa` | Deployed (`sql/bronze/create_bronze_metar_noaa.sql`) |
+| Silver table `silver_observations` | Deployed (`sql/silver/create_silver_observations.sql`) |
+| Glue job `bronze-to-silver-metar` | Deployed; started manually per date, not scheduled |
+| Scheduled orchestration (Step Functions / EventBridge) | Planned |
+| Gold layer (Part 4 onward) | Planned: the Gold sections below are a design, not deployed |
+
+Bronze is populated by the Java ingestion pipeline, which currently runs from the UAT scripts in
+`scripts/uat/`. The Silver layer is reviewed against the Bronze model changes from METAR UAT
+once Bronze UAT is complete.
+
 ---
 
 ## Architecture Overview
@@ -83,50 +99,36 @@ This document describes the complete data lakehouse implementation for NoakWeath
 
 ### Step 1: Create S3 Bucket Structure
 
-Reorganize your existing S3 bucket to follow Medallion Architecture:
-```bash
-# View current structure
-aws s3 ls s3://noakweather-data/ --recursive | head -20
+The data bucket follows the Medallion Architecture. Items marked *(planned)* do not exist yet.
 
-# Recommended structure (migrate gradually)
-s3://noakweather-data/
-├── bronze/                          # Raw ingested data (JSON)
-│   ├──batch-layer
-│   │   ├── noaa/
-│   │   │   ├── metar/YYYY/MM/DD/
-│   │   │   └── taf/YYYY/MM/DD/
-│   │   ├── openweathermap/YYYY/MM/DD/
-│   └── └── weatherapi/YYYY/MM/DD/
-│   ├──raw-data
-│   │   ├── noaa/
-│   │   │   ├── metar/YYYY/MM/DD/
-│   │   │   └── taf/YYYY/MM/DD/
-│   │   ├── openweathermap/YYYY/MM/DD/
-│   └── └── weatherapi/YYYY/MM/DD/
-│   ├──speed-layer
-│   │   ├── noaa/
-│   │   │   ├── metar/YYYY/MM/DD/
-│   │   │   └── taf/YYYY/MM/DD/
-│   │   ├── openweathermap/YYYY/MM/DD/
-│   └── └── weatherapi/YYYY/MM/DD/
-├── silver/                          # Standardized data (Parquet)
-│   ├── observations/
-│   │   └── source=noaa/year=YYYY/month=MM/day=DD/
-│   └── forecasts/
-│       └── source=noaa/year=YYYY/month=MM/day=DD/
-├── gold/                            # Analytics-ready (Iceberg)
-│   ├── current_conditions/
-│   ├── observations_historical/
-│   ├── daily_stats/
-│   ├── ml_features/
-│   └── stations/
-└── athena-results/                  # Query results
+```bash
+# View the current top-level structure
+aws s3 ls s3://noakweather-data/
 ```
 
-**Migration Note:** Your current `speed-layer` directory maps to `bronze`. You can:
-- **Option A:** Copy existing data to new structure
-- **Option B:** Create symlinks (S3 doesn't support true symlinks, but Athena can point to multiple locations)
-- **Option C:** Update Java ingestion code to write to `bronze/` going forward
+```
+s3://noakweather-data/
+├── bronze/                                  # Raw ingested data
+│   ├── raw-data/                            # Report text as fetched (.txt)
+│   │   └── noaa/{metar,taf}/YYYY/MM/DD/
+│   ├── speed-layer/                         # Parsed records (.json)
+│   │   └── noaa/{metar,taf}/YYYY/MM/DD/
+│   └── batch-layer/                         # Reserved for batch processing results
+├── silver/                                  # Standardized data (Parquet)
+│   ├── observations/
+│   │   └── data_source=noaa/year=YYYY/month=MM/day=DD/
+│   └── forecasts/                           # (planned)
+├── gold/                                    # Analytics-ready (Iceberg) (planned)
+└── raw-data/                                # Legacy: raw text from the original root layout
+```
+
+Other sources (for example OpenWeatherMap) are planned and would follow the same
+`<source>/<type>/YYYY/MM/DD/` layout under `bronze/`. Athena query results go to a separate
+bucket, `noakweather-athena-results` (Step 2).
+
+**Layout note:** Data was originally written to `speed-layer/` and `raw-data/` at the bucket root.
+Ingestion now writes under `bronze/`, and the tables and the Glue job read from there. The root
+`raw-data/` folder still holds older raw text; see [S3_BUCKET_SETUP.md](S3_BUCKET_SETUP.md).
 
 ### Step 2: Create Athena Query Results Bucket
 ```bash
@@ -164,7 +166,7 @@ aws s3api get-bucket-lifecycle-configuration \
 
 ### Step 3: Create Athena Workgroup
 
-AWS Athena workgroups help organize queries and control costs. We'll create a workgroup with Athena engine version 3 for Apache Iceberg support.
+AWS Athena workgroups help organize queries and control costs. Create a workgroup with Athena engine version 3 for Apache Iceberg support.
 
 #### Option A: Using AWS Console (Recommended)
 
@@ -296,7 +298,7 @@ An error occurred (AccessDeniedException) when calling the CreateWorkGroup opera
 
 ### Step 4: Create Glue Database
 
-Athena uses AWS Glue Data Catalog to store table metadata. We will create a database to organize our Bronze, Silver, and Gold layer tables.
+Athena uses the AWS Glue Data Catalog to store table metadata. Create a `noakweather` database to organize the Bronze, Silver, and Gold layer tables.
 
 #### Option A: Using Athena Query Editor (Recommended)
 
@@ -331,11 +333,11 @@ You should see both `default` and `noakweather` in the results.
 
 5. **Select the database:**
     - In the left sidebar under **"Database"**, select **"noakweather"** from the dropdown
-    - You don't need to run `USE noakweather;` in the Console - just select it from the dropdown
+    - You do not need to run `USE noakweather;` in the Console - just select it from the dropdown
 
 **Expected Result:**
 - Database appears in the left sidebar dropdown
-- "Tables and views" section shows "(0)" tables (we'll add tables in the next step)
+- "Tables and views" section shows "(0)" tables (add tables in the next step)
 - Query results show the database was created
 
 #### Option B: Using AWS CLI
@@ -388,7 +390,7 @@ aws glue get-database --name noakweather
 An error occurred (AccessDeniedException) when calling the CreateDatabase operation
 ```
 
-**Solution:** Your IAM user doesn't have `glue:CreateDatabase` permission. Use **Option A (Athena Query Editor)** or **Option C (Glue Console)** instead.
+**Solution:** Your IAM user does not have `glue:CreateDatabase` permission. Use **Option A (Athena Query Editor)** or **Option C (Glue Console)** instead.
 
 **Database already exists:**
 ```
@@ -401,7 +403,7 @@ AlreadyExistsException: Database noakweather already exists
 
 **Solution:**
 1. Refresh the page
-2. Make sure you're using the correct workgroup (`noakweather-workgroup`)
+2. Make sure you are using the correct workgroup (`noakweather-workgroup`)
 3. Click the refresh icon next to "Data" in the left sidebar
 
 ---
@@ -418,264 +420,14 @@ AlreadyExistsException: Database noakweather already exists
 
 ### DDL: Bronze METAR Observations
 
-Save as `sql/bronze/create_bronze_metar_noaa.sql`:
-```sql
--- Bronze Layer: Raw NOAA METAR data
--- Purpose: Immutable source of truth, exact JSON from ingestion pipeline
--- Location: s3://noakweather-data/bronze/speed-layer/noaa/metar/
--- Medallion Architecture: Bronze (Raw) → Silver (Standardized) → Gold (Analytics)
+The table definition is kept in [`sql/bronze/create_bronze_metar_noaa.sql`](../sql/bronze/create_bronze_metar_noaa.sql).
+That file is the source of truth; this document no longer copies it, so the two cannot drift
+apart.
 
-CREATE TABLE IF NOT EXISTS noakweather.bronze_metar_noaa (
-    -- Core identification (as ingested)
-    id STRING COMMENT 'Unique observation ID (UUID)',
-    dataType STRING COMMENT 'Data type identifier',
-    source STRING COMMENT 'Data source',
-    processingLayer STRING COMMENT 'Processing layer identifier',
-    stationId STRING COMMENT 'ICAO station identifier',
-    observationTime BIGINT COMMENT 'Unix timestamp (seconds)',
-    ingestionTime DOUBLE COMMENT 'Pipeline ingestion timestamp',
-
-    -- Raw data preservation
-    rawData STRING COMMENT 'Original METAR text from source',
-    rawText STRING COMMENT 'Parsed METAR text',
-    unparsedMainBody STRING COMMENT 'Tokens not recognized by parser',
-
-    -- Complete JSON structure (preserves all fields)
-    metadata STRUCT
-        fetch_timestamp:STRING,
-        validated:STRING,
-        processor_version:STRING,
-        parser_version:STRING,
-        full_response:STRING,
-        storage_format:STRING,
-        parsed:STRING,
-        processor:STRING,
-        validation_timestamp:STRING
-    >,
-
-    reportType STRING,
-    reportModifier STRING,
-
-    -- Weather conditions (as parsed)
-    conditions STRUCT
-        wind:STRUCT
-            directionDegrees:INT,
-            speedValue:INT,
-            gustValue:INT,
-            variabilityFrom:INT,
-            variabilityTo:INT,
-            unit:STRING,
-            speedKnots:INT,
-            cardinalDirection:STRING,
-            summary:STRING,
-            calm:BOOLEAN,
-            strongWind:BOOLEAN,
-            speedMps:INT,
-            speedKmh:DOUBLE,
-            beaufortScale:INT,
-            gale:BOOLEAN,
-            variable:BOOLEAN
-        >,
-        visibility:STRUCT
-            distanceValue:DOUBLE,
-            unit:STRING,
-            lessThan:BOOLEAN,
-            greaterThan:BOOLEAN,
-            specialCondition:BOOLEAN,
-            summary:STRING,
-            cavok:BOOLEAN,
-            lowVisibility:BOOLEAN,
-            vfr:BOOLEAN,
-            ifr:BOOLEAN,
-            unlimited:BOOLEAN
-        >,
-        temperature:STRUCT
-            celsius:DOUBLE,
-            dewpointCelsius:DOUBLE,
-            relativeHumidity:DOUBLE,
-            heatIndex:DOUBLE,
-            spread:DOUBLE,
-            freezing:BOOLEAN,
-            summary:STRING,
-            maxCelsius:DOUBLE,
-            minCelsius:DOUBLE,
-            belowFreezing:BOOLEAN,
-            aboveFreezing:BOOLEAN,
-            fogLikely:BOOLEAN,
-            icingLikely:BOOLEAN,
-            veryCold:BOOLEAN,
-            veryHot:BOOLEAN,
-            currentObservation:BOOLEAN,
-            forecast:BOOLEAN
-        >,
-        pressure:STRUCT
-            value:DOUBLE,
-            unit:STRING,
-            pressureAltitudeFeet:DOUBLE,
-            formattedValue:STRING,
-            deviationFromStandard:DOUBLE,
-            summary:STRING,
-            belowStandard:BOOLEAN,
-            aboveStandard:BOOLEAN,
-            lowPressure:BOOLEAN,
-            highPressure:BOOLEAN,
-            extremelyLow:BOOLEAN,
-            extremelyHigh:BOOLEAN
-        >,
-        skyConditions:ARRAY<STRUCT
-            coverage:STRING,
-            heightFeet:INT,
-            heightMeters:INT,
-            cloudType:STRING,
-            ceiling:BOOLEAN,
-            cumulonimbus:BOOLEAN,
-            toweringCumulus:BOOLEAN,
-            convective:BOOLEAN,
-            summary:STRING,
-            clear:BOOLEAN
-        >>,
-        presentWeather:ARRAY<STRUCT
-            intensity:STRING,
-            descriptor:STRING,
-            precipitation:STRING,
-            obscuration:STRING,
-            other:STRING,
-            rawCode:STRING,
-            description:STRING,
-            thunderstorm:BOOLEAN,
-            freezing:BOOLEAN,
-            light:BOOLEAN,
-            heavy:BOOLEAN,
-            vicinity:BOOLEAN,
-            showers:BOOLEAN,
-            noSignificantWeather:BOOLEAN,
-            intensityDescription:STRING
-        >>,
-        ceilingFeet:INT,
-        likelyVMC:BOOLEAN,
-        likelyIMC:BOOLEAN,
-        clearAndCalm:BOOLEAN
-    >,
-
-    -- Runway visual range
-    runwayVisualRange ARRAY<STRUCT
-        runway:STRING,
-        visualRangeFeet:INT,
-        variableLow:INT,
-        variableHigh:INT,
-        trend:STRING
-    >>,
-
-    -- Remarks
-    remarks STRUCT
-        automatedStationType:STRING,
-        seaLevelPressure:STRUCT
-            value:DOUBLE,
-            unit:STRING,
-            summary:STRING
-        >,
-        preciseTemperature:STRUCT
-            celsius:DOUBLE,
-            dewpointCelsius:DOUBLE
-        >,
-        peakWind:STRUCT
-            directionDegrees:INT,
-            speedKnots:INT,
-            hour:INT,
-            minute:INT
-        >,
-        windShift:STRUCT
-            hour:INT,
-            minute:INT,
-            frontalPassage:BOOLEAN
-        >,
-        maintenanceRequired:BOOLEAN,
-        freeText:STRING
-    >,
-
-    -- Flattened fields (duplicated for convenience)
-    latitude DOUBLE,
-    longitude DOUBLE,
-    elevationFeet INT,
-    peakWind STRUCT
-        directionDegrees:INT,
-        speedKnots:INT,
-        hour:INT,
-        minute:INT
-    >,
-    seaLevelPressure DOUBLE,
-    automatedStation STRING,
-    noSignificantChange BOOLEAN,
-    automated BOOLEAN,
-    summary STRING,
-    current BOOLEAN,
-    minimumRvrFeet INT,
-    
-    -- Convenience accessors (duplicated from conditions for easier queries)
-    temperature STRUCT
-        celsius:DOUBLE,
-        dewpointCelsius:DOUBLE,
-        relativeHumidity:DOUBLE,
-        summary:STRING
-    >,
-    visibility STRUCT
-        distanceValue:DOUBLE,
-        unit:STRING,
-        vfr:BOOLEAN,
-        summary:STRING
-    >,
-    pressure STRUCT
-        value:DOUBLE,
-        unit:STRING,
-        summary:STRING
-    >,
-    wind STRUCT
-        directionDegrees:INT,
-        speedKnots:INT,
-        cardinalDirection:STRING,
-        summary:STRING
-    >,
-    skyConditions ARRAY<STRUCT
-        coverage:STRING,
-        heightFeet:INT,
-        cloudType:STRING,
-        ceiling:BOOLEAN
-    >>,
-    presentWeather ARRAY<STRUCT
-        rawCode:STRING,
-        description:STRING
-    >>,
-    ceilingFeet INT
-)
-COMMENT 'Bronze: Raw NOAA METAR observations (immutable source of truth)'
-PARTITIONED BY (
-    year STRING,
-    month STRING,
-    day STRING
-)
-ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
-WITH SERDEPROPERTIES (
-    'ignore.malformed.json' = 'true',
-    'case.insensitive' = 'true'
-)
-STORED AS INPUTFORMAT 'org.apache.hadoop.mapred.TextInputFormat'
-OUTPUTFORMAT 'org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat'
-LOCATION 's3://noakweather-data/bronze/speed-layer/noaa/metar/'
-TBLPROPERTIES (
-    'projection.enabled' = 'true',
-    'projection.year.type' = 'integer',
-    'projection.year.range' = '2020,2030',
-    'projection.year.digits' = '4',
-    'projection.month.type' = 'integer',
-    'projection.month.range' = '01,12',
-    'projection.month.digits' = '2',
-    'projection.day.type' = 'integer',
-    'projection.day.range' = '01,31',
-    'projection.day.digits' = '2',
-    'storage.location.template' = 's3://noakweather-data/bronze/speed-layer/noaa/metar/${year}/${month}/${day}',
-    'classification' = 'json'
-);
-```
+The table is an external table over the JSON files written by the ingestion pipeline. It does
+not list every Bronze field: fields missing from the DDL (for example `parseIssues` and
+`remarks.directionalWeather`) are simply not queryable through Athena and do not cause errors.
+Adding `parseIssues` to the table is part of the Silver layer review that follows Bronze UAT.
 
 #### Using AWS Console (Recommended)
 
@@ -685,7 +437,7 @@ TBLPROPERTIES (
    - Database:noakweather
 
 2. **Execution of SQL:**
-   - Copy the entire SQL from the file and paste it into the query editor
+   - Copy the entire SQL from `sql/bronze/create_bronze_metar_noaa.sql` and paste it into the query editor
    - Click "Run"
 
 3. **Expected result:**
@@ -779,565 +531,23 @@ ORDER BY stationId
 
 ### DDL: Silver Observations (Unified)
 
-Save as `sql/silver/create_silver_observations.sql`:
-```sql
--- Silver Layer: Standardized Weather Observations
--- Purpose: Clean, validated, standardized data for analytics
--- Source: bronze_metar_noaa (and future: bronze_taf_noaa, bronze_openweather, etc.)
--- Format: Parquet with Snappy compression
--- Units: Celsius, knots, hPa, meters (standardized)
-
-CREATE EXTERNAL TABLE IF NOT EXISTS noakweather.silver_observations (
-    -- Core identification
-    observation_id STRING COMMENT 'Unique observation ID',
-    observation_type STRING COMMENT 'METAR, TAF, SYNOP, etc.',
-    station_id STRING COMMENT 'ICAO or WMO station identifier',
-    observation_time TIMESTAMP COMMENT 'Observation timestamp (UTC)',
-    ingestion_time TIMESTAMP COMMENT 'When ingested into Bronze layer',
-    processing_time TIMESTAMP COMMENT 'When transformed to Silver layer',
-
-    -- Location
-    latitude DOUBLE COMMENT 'Station latitude (decimal degrees)',
-    longitude DOUBLE COMMENT 'Station longitude (decimal degrees)',
-    elevation_meters INT COMMENT 'Station elevation (meters)',
-    
-    -- Temperature (all in Celsius)
-    temperature_celsius DOUBLE COMMENT 'Air temperature',
-    dewpoint_celsius DOUBLE COMMENT 'Dewpoint temperature',
-    temperature_spread_celsius DOUBLE COMMENT 'Temperature-dewpoint spread',
-    relative_humidity_percent DOUBLE COMMENT 'Relative humidity (0-100)',
-    heat_index_celsius DOUBLE COMMENT 'Heat index',
-    
-    -- Wind (all in knots and degrees)
-    wind_direction_degrees INT COMMENT 'Wind direction (0-360)',
-    wind_speed_knots INT COMMENT 'Wind speed',
-    wind_gust_knots INT COMMENT 'Wind gust speed',
-    wind_cardinal_direction STRING COMMENT 'Cardinal direction (N, NE, E, etc.)',
-    is_wind_calm BOOLEAN COMMENT 'Calm winds',
-    is_wind_variable BOOLEAN COMMENT 'Variable wind direction',
-    
-    -- Visibility (all in meters)
-    visibility_meters DOUBLE COMMENT 'Prevailing visibility',
-    is_visibility_less_than BOOLEAN COMMENT 'Visibility is less than reported value',
-    is_cavok BOOLEAN COMMENT 'Ceiling and visibility OK',
-    
-    -- Pressure (all in hPa)
-    pressure_hpa DOUBLE COMMENT 'Altimeter setting',
-    pressure_altitude_feet DOUBLE COMMENT 'Pressure altitude',
-    sea_level_pressure_hpa DOUBLE COMMENT 'Sea level pressure (from remarks)',
-    
-    -- Sky conditions
-    ceiling_feet INT COMMENT 'Ceiling height',
-    ceiling_meters INT COMMENT 'Ceiling height (meters)',
-    lowest_cloud_base_feet INT COMMENT 'Lowest cloud layer base',
-    sky_coverage STRING COMMENT 'Overall sky coverage (CLR, FEW, SCT, BKN, OVC)',
-    has_cumulonimbus BOOLEAN COMMENT 'Cumulonimbus present',
-    has_towering_cumulus BOOLEAN COMMENT 'Towering cumulus present',
-    
-    -- Weather phenomena
-    present_weather STRING COMMENT 'Current weather (codes)',
-    weather_intensity STRING COMMENT 'Intensity (light, moderate, heavy)',
-    has_thunderstorm BOOLEAN COMMENT 'Thunderstorm in vicinity or at station',
-    has_precipitation BOOLEAN COMMENT 'Any precipitation occurring',
-    has_fog BOOLEAN COMMENT 'Fog or mist present',
-    
-    -- Flight categories
-    flight_category STRING COMMENT 'VFR, MVFR, IFR, LIFR',
-    is_vfr BOOLEAN COMMENT 'Visual flight rules conditions',
-    is_ifr BOOLEAN COMMENT 'Instrument flight rules conditions',
-    is_marginal_vfr BOOLEAN COMMENT 'Marginal VFR conditions',
-    is_low_ifr BOOLEAN COMMENT 'Low IFR conditions',
-    
-    -- Runway Visual Range (flattened from array)
-    rvr_runway_id STRING COMMENT 'RVR runway identifier',
-    rvr_visual_range_feet INT COMMENT 'RVR visibility',
-    rvr_variable_low_feet INT COMMENT 'RVR variable low',
-    rvr_variable_high_feet INT COMMENT 'RVR variable high',
-    
-    -- Raw data preservation
-    raw_text STRING COMMENT 'Original observation text',
-    unparsed_tokens STRING COMMENT 'Tokens not recognized by parser',
-    
-    -- Metadata
-    processor_version STRING COMMENT 'Parser/processor version',
-    is_automated BOOLEAN COMMENT 'Automated station',
-    automated_station_type STRING COMMENT 'Type of automation',
-    
-    -- Data quality
-    quality_score DOUBLE COMMENT 'Overall quality score (0-100)',
-    completeness_score DOUBLE COMMENT 'Data completeness (0-100)',
-    has_temperature BOOLEAN COMMENT 'Temperature field present',
-    has_wind BOOLEAN COMMENT 'Wind field present',
-    has_pressure BOOLEAN COMMENT 'Pressure field present',
-    has_visibility BOOLEAN COMMENT 'Visibility field present',
-    validation_flags STRING COMMENT 'Validation issues (comma-separated)',
-    
-    -- Summary
-    observation_summary STRING COMMENT 'Human-readable summary'
-)
-COMMENT 'Silver: Standardized weather observations (all sources, validated, Parquet)'
-PARTITIONED BY (
-    data_source STRING COMMENT 'Source system (NOAA, OpenWeatherMap, etc.)',
-    year STRING,
-    month STRING,
-    day STRING
-)
-STORED AS PARQUET
-LOCATION 's3://noakweather-data/silver/observations/'
-TBLPROPERTIES (
-    'parquet.compression'='SNAPPY',
-    'projection.enabled'='true',
-    'projection.data_source.type'='enum',
-    'projection.data_source.values'='noaa,openweathermap,weatherapi',
-    'projection.year.type'='integer',
-    'projection.year.range'='2020,2030',
-    'projection.year.digits'='4',
-    'projection.month.type'='integer',
-    'projection.month.range'='01,12',
-    'projection.month.digits'='2',
-    'projection.day.type'='integer',
-    'projection.day.range'='01,31',
-    'projection.day.digits'='2',
-    'storage.location.template'='s3://noakweather-data/silver/observations/data_source=${data_source}/year=${year}/month=${month}/day=${day}'
-);
-```
+The table definition is kept in [`sql/silver/create_silver_observations.sql`](../sql/silver/create_silver_observations.sql),
+which is the source of truth for the Silver schema.
 
 ### AWS Glue Job: Bronze → Silver Transformation
 
-Create file: `glue-jobs/bronze_to_silver_metar.py`
-```python
-"""
-AWS Glue ETL Job: Bronze to Silver - METAR Observations
-Purpose: Transform raw NOAA METAR data into standardized, validated Parquet format
-Author: NoakWeather Engineering Team
-Last Updated: 2026-08-27
-
-Transformations:
-- Flatten nested JSON structures
-- Standardize units (all temps in Celsius, winds in knots, pressure in hPa)
-- Calculate flight categories (VFR/MVFR/IFR/LIFR)
-- Compute data quality scores
-- Convert to Parquet with Snappy compression
-
-Notes:
-- Uses an explicit schema on read instead of relying on Spark's JSON schema
-  inference. Present weather, sky conditions, and runway visual range are
-  frequently empty arrays in real-world METARs (clear skies, no significant
-  weather, no RVR reported). Spark cannot infer an element type from an
-  empty array and silently falls back to array<string>, which then fails
-  later when the transformation tries to access struct fields on those
-  elements. An explicit schema avoids this entirely, regardless of whether
-  the arrays are empty or populated in any given file.
-- Flight category thresholds (VFR/MVFR/IFR/LIFR) must be evaluated against
-  visibility already converted to meters. The raw conditions.visibility.
-  distanceValue field is in whatever unit the source reported (commonly
-  statute miles "SM" for NOAA), so it cannot be compared directly against
-  meter-based thresholds. visibility_meters_expr performs the same M/SM
-  conversion used for the visibility_meters output column; it is defined
-  as its own expression (not referenced by the visibility_meters alias)
-  because Spark evaluates every expression in a single select() against
-  the original input columns, not against sibling expressions being
-  computed in that same select() call.
-"""
-
-import sys
-from awsglue.utils import getResolvedOptions
-from pyspark.context import SparkContext
-from awsglue.context import GlueContext
-from awsglue.job import Job
-from pyspark.sql.functions import (
-    col, lit, when, from_unixtime,
-    current_timestamp, size, concat_ws, expr
-)
-from pyspark.sql.types import (
-    StructType, StructField, StringType, DoubleType,
-    IntegerType, BooleanType, ArrayType
-)
-
-# Initialize Glue context
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'source_date'])
-sc = SparkContext()
-glueContext = GlueContext(sc)
-spark = glueContext.spark_session
-
-# Set Spark to be case-sensitive to avoid column name conflicts
-spark.conf.set("spark.sql.caseSensitive", "true")
-
-job = Job(glueContext)
-job.init(args['JOB_NAME'], args)
-
-# Parameters
-SOURCE_DATE = args['source_date']  # Format: YYYY-MM-DD
-year, month, day = SOURCE_DATE.split('-')
-
-print(f"Processing Bronze METAR data for date: {SOURCE_DATE}")
-
-# ============================================================================
-# EXPLICIT SCHEMA
-# Only fields actually used by the transformation below are included.
-# Any fields present in the JSON but not listed here are simply ignored
-# by Spark - this is not an exhaustive schema of the full Bronze record.
-# ============================================================================
-
-wind_schema = StructType([
-    StructField("directionDegrees", IntegerType(), True),
-    StructField("speedKnots", IntegerType(), True),
-    StructField("gustValue", IntegerType(), True),
-    StructField("cardinalDirection", StringType(), True),
-    StructField("calm", BooleanType(), True),
-    StructField("variable", BooleanType(), True),
-])
-
-visibility_schema = StructType([
-    StructField("distanceValue", DoubleType(), True),
-    StructField("unit", StringType(), True),
-    StructField("lessThan", BooleanType(), True),
-    StructField("cavok", BooleanType(), True),
-    StructField("vfr", BooleanType(), True),
-    StructField("ifr", BooleanType(), True),
-])
-
-present_weather_element_schema = StructType([
-    StructField("rawCode", StringType(), True),
-    StructField("intensityDescription", StringType(), True),
-    StructField("thunderstorm", BooleanType(), True),
-])
-
-sky_condition_element_schema = StructType([
-    StructField("heightFeet", IntegerType(), True),
-    StructField("coverage", StringType(), True),
-    StructField("cumulonimbus", BooleanType(), True),
-    StructField("toweringCumulus", BooleanType(), True),
-])
-
-temperature_schema = StructType([
-    StructField("celsius", DoubleType(), True),
-    StructField("dewpointCelsius", DoubleType(), True),
-    StructField("spread", DoubleType(), True),
-    StructField("relativeHumidity", DoubleType(), True),
-    StructField("heatIndex", DoubleType(), True),
-])
-
-pressure_schema = StructType([
-    StructField("value", DoubleType(), True),
-    StructField("unit", StringType(), True),
-    StructField("pressureAltitudeFeet", DoubleType(), True),
-])
-
-conditions_schema = StructType([
-    StructField("wind", wind_schema, True),
-    StructField("visibility", visibility_schema, True),
-    StructField("presentWeather", ArrayType(present_weather_element_schema), True),
-    StructField("skyConditions", ArrayType(sky_condition_element_schema), True),
-    StructField("temperature", temperature_schema, True),
-    StructField("pressure", pressure_schema, True),
-    StructField("ceilingFeet", IntegerType(), True),
-])
-
-rvr_element_schema = StructType([
-    StructField("runway", StringType(), True),
-    StructField("visualRangeFeet", IntegerType(), True),
-    StructField("variableLow", IntegerType(), True),
-    StructField("variableHigh", IntegerType(), True),
-])
-
-metadata_schema = StructType([
-    StructField("processor_version", StringType(), True),
-])
-
-remarks_schema = StructType([
-    StructField("seaLevelPressure", StructType([
-        StructField("value", DoubleType(), True),
-    ]), True),
-    StructField("automatedStationType", StringType(), True),
-])
-
-bronze_schema = StructType([
-    StructField("dataType", StringType(), True),
-    StructField("id", StringType(), True),
-    StructField("stationId", StringType(), True),
-    StructField("observationTime", DoubleType(), True),
-    StructField("ingestionTime", DoubleType(), True),
-    StructField("latitude", DoubleType(), True),
-    StructField("longitude", DoubleType(), True),
-    StructField("elevationFeet", IntegerType(), True),
-    StructField("rawText", StringType(), True),
-    StructField("summary", StringType(), True),
-    StructField("unparsedMainBody", StringType(), True),
-    StructField("automated", BooleanType(), True),
-    StructField("metadata", metadata_schema, True),
-    StructField("remarks", remarks_schema, True),
-    StructField("conditions", conditions_schema, True),
-    StructField("runwayVisualRange", ArrayType(rvr_element_schema), True),
-])
-
-# ============================================================================
-# READ FROM BRONZE LAYER
-# ============================================================================
-
-bronze_df = spark.read \
-    .schema(bronze_schema) \
-    .json(f"s3://noakweather-data/bronze/speed-layer/noaa/metar/{year}/{month}/{day}/")
-
-# Rename dataType to observation_type_raw immediately
-bronze_df = bronze_df.withColumnRenamed("dataType", "observation_type_raw")
-
-print(f"Loaded {bronze_df.count()} records from Bronze layer")
-
-# ============================================================================
-# TRANSFORMATION: Flatten and standardize
-# ============================================================================
-
-# Define column references (these are already Column objects - do NOT wrap
-# them in col() again anywhere below, just use the variable directly)
-present_weather_col = col("conditions.presentWeather")
-sky_conditions_col = col("conditions.skyConditions")
-runway_visual_range_col = col("runwayVisualRange")
-ceiling_feet_col = col("conditions.ceilingFeet")
-pressure_value_col = col("conditions.pressure.value")
-visibility_distanceValue_col = col("conditions.visibility.distanceValue")
-visibility_unit_col = col("conditions.visibility.unit")
-
-# Visibility converted to meters, for use in flight category / fog / marginal
-# VFR / low IFR threshold comparisons below. Must match the conversion logic
-# used for the visibility_meters output column (see select() below) - see
-# module docstring for why this can't just reference visibility_meters by name.
-visibility_meters_expr = (
-    when(visibility_unit_col == "M", visibility_distanceValue_col)
-    .when(visibility_unit_col == "SM", visibility_distanceValue_col * lit(1609.34))
-    .otherwise(visibility_distanceValue_col)
-)
-
-# noinspection PyTypeChecker
-silver_df = bronze_df.select(
-    # Core identification
-    col("id").alias("observation_id"),
-    col("observation_type_raw").alias("observation_type"),
-    col("stationId").alias("station_id"),
-
-    # Timestamps
-    from_unixtime(col("observationTime")).cast("timestamp").alias("observation_time"),
-    from_unixtime(col("ingestionTime")).cast("timestamp").alias("ingestion_time"),
-    current_timestamp().alias("processing_time"),
-
-    # Location
-    col("latitude"),
-    col("longitude"),
-    (col("elevationFeet") * lit(0.3048)).cast(IntegerType()).alias("elevation_meters"),
-
-    # Temperature (already in Celsius from Bronze)
-    col("conditions.temperature.celsius").cast(DoubleType()).alias("temperature_celsius"),
-    col("conditions.temperature.dewpointCelsius").cast(DoubleType()).alias("dewpoint_celsius"),
-    col("conditions.temperature.spread").cast(DoubleType()).alias("temperature_spread_celsius"),
-    col("conditions.temperature.relativeHumidity").cast(DoubleType()).alias("relative_humidity_percent"),
-    col("conditions.temperature.heatIndex").cast(DoubleType()).alias("heat_index_celsius"),
-
-    # Wind (already in knots from Bronze)
-    col("conditions.wind.directionDegrees").cast(IntegerType()).alias("wind_direction_degrees"),
-    col("conditions.wind.speedKnots").cast(IntegerType()).alias("wind_speed_knots"),
-    col("conditions.wind.gustValue").cast(IntegerType()).alias("wind_gust_knots"),
-    col("conditions.wind.cardinalDirection").alias("wind_cardinal_direction"),
-    col("conditions.wind.calm").cast(BooleanType()).alias("is_wind_calm"),
-    col("conditions.wind.variable").cast(BooleanType()).alias("is_wind_variable"),
-
-    # Visibility (convert to meters if needed)
-    when(visibility_unit_col == "M",
-         visibility_distanceValue_col)
-    .when(visibility_unit_col == "SM",
-          visibility_distanceValue_col * lit(1609.34))  # statute miles to meters
-    .otherwise(visibility_distanceValue_col)
-    .cast(DoubleType()).alias("visibility_meters"),
-
-    col("conditions.visibility.lessThan").cast(BooleanType()).alias("is_visibility_less_than"),
-    col("conditions.visibility.cavok").cast(BooleanType()).alias("is_cavok"),
-
-    # Pressure (convert to hPa if needed)
-    when(col("conditions.pressure.unit") == "HECTOPASCALS",
-         pressure_value_col)
-    .when(col("conditions.pressure.unit") == "INCHES_HG",
-          pressure_value_col * lit(33.8639))  # inHg to hPa
-    .otherwise(pressure_value_col)
-    .cast(DoubleType()).alias("pressure_hpa"),
-
-    col("conditions.pressure.pressureAltitudeFeet").cast(DoubleType()).alias("pressure_altitude_feet"),
-    col("remarks.seaLevelPressure.value").cast(DoubleType()).alias("sea_level_pressure_hpa"),
-    col("summary").alias("observation_summary"),
-
-    # Sky conditions
-    ceiling_feet_col.cast(IntegerType()).alias("ceiling_feet"),
-    (ceiling_feet_col * lit(0.3048)).cast(IntegerType()).alias("ceiling_meters"),
-
-    # Get the lowest cloud base from skyConditions array
-    when(size(sky_conditions_col) > lit(0),
-         sky_conditions_col[0].heightFeet)
-    .otherwise(None).cast(IntegerType()).alias("lowest_cloud_base_feet"),
-
-    # Determine overall sky coverage
-    when(size(sky_conditions_col) == lit(0), lit("CLR"))
-    .otherwise(sky_conditions_col[0].coverage)
-    .alias("sky_coverage"),
-
-    # Check for significant cloud types
-    when(size(sky_conditions_col) > lit(0),
-         sky_conditions_col[0].cumulonimbus)
-    .otherwise(lit(False)).cast(BooleanType()).alias("has_cumulonimbus"),
-
-    when(size(sky_conditions_col) > lit(0),
-         sky_conditions_col[0].toweringCumulus)
-    .otherwise(lit(False)).cast(BooleanType()).alias("has_towering_cumulus"),
-
-    # Weather phenomena
-    when(size(present_weather_col) > lit(0),
-         concat_ws(",", col("conditions.presentWeather.rawCode")))
-    .otherwise(None).alias("present_weather"),
-
-    when(size(present_weather_col) > lit(0),
-         present_weather_col[0].intensityDescription)
-    .otherwise(None).alias("weather_intensity"),
-
-    when(size(present_weather_col) > lit(0),
-         present_weather_col[0].thunderstorm)
-    .otherwise(lit(False)).cast(BooleanType()).alias("has_thunderstorm"),
-
-    (size(present_weather_col) > lit(0)).cast(BooleanType()).alias("has_precipitation"),
-
-    # Check for fog based on visibility (meters)
-    (visibility_meters_expr < lit(1000)).cast(BooleanType()).alias("has_fog"),
-
-    # Flight category calculation (thresholds are in meters)
-    when((visibility_meters_expr < lit(1609)) |
-         (ceiling_feet_col < lit(500)), lit("LIFR"))
-    .when((visibility_meters_expr < lit(4828)) |
-          (ceiling_feet_col < lit(1000)), lit("IFR"))
-    .when((visibility_meters_expr < lit(8045)) |
-          (ceiling_feet_col < lit(3000)), lit("MVFR"))
-    .otherwise(lit("VFR")).alias("flight_category"),
-
-    # Flight category booleans
-    col("conditions.visibility.vfr").cast(BooleanType()).alias("is_vfr"),
-    col("conditions.visibility.ifr").cast(BooleanType()).alias("is_ifr"),
-
-    # Marginal VFR and Low IFR (derived, thresholds in meters)
-    when((visibility_meters_expr >= lit(4828)) &
-         (visibility_meters_expr < lit(8045)), lit(True))
-    .otherwise(lit(False)).cast(BooleanType()).alias("is_marginal_vfr"),
-
-    when((visibility_meters_expr < lit(1609)) |
-         (ceiling_feet_col < lit(500)), lit(True))
-    .otherwise(lit(False)).cast(BooleanType()).alias("is_low_ifr"),
-
-    # RVR (take first element if array exists)
-    when(size(runway_visual_range_col) > lit(0),
-         runway_visual_range_col[0].runway)
-    .otherwise(None).alias("rvr_runway_id"),
-
-    when(size(runway_visual_range_col) > lit(0),
-         runway_visual_range_col[0].visualRangeFeet)
-    .otherwise(None).cast(IntegerType()).alias("rvr_visual_range_feet"),
-
-    when(size(runway_visual_range_col) > lit(0),
-         runway_visual_range_col[0].variableLow)
-    .otherwise(None).cast(IntegerType()).alias("rvr_variable_low_feet"),
-
-    when(size(runway_visual_range_col) > lit(0),
-         runway_visual_range_col[0].variableHigh)
-    .otherwise(None).cast(IntegerType()).alias("rvr_variable_high_feet"),
-
-    # Raw data preservation
-    col("rawText").alias("raw_text"),
-    col("unparsedMainBody").alias("unparsed_tokens"),
-
-    # Metadata
-    col("metadata.processor_version").alias("processor_version"),
-    col("automated").cast(BooleanType()).alias("is_automated"),
-    col("remarks.automatedStationType").alias("automated_station_type"),
-
-    # Partitions
-    lit(year).alias("year"),
-    lit(month).alias("month"),
-    lit(day).alias("day")
-)
-
-# ============================================================================
-# DATA QUALITY SCORING
-# ============================================================================
-
-# Calculate completeness score (0-100)
-silver_df = silver_df.withColumn(
-    "has_temperature",
-    expr("temperature_celsius IS NOT NULL").cast(BooleanType())
-).withColumn(
-    "has_wind",
-    expr("wind_speed_knots IS NOT NULL").cast(BooleanType())
-).withColumn(
-    "has_pressure",
-    expr("pressure_hpa IS NOT NULL").cast(BooleanType())
-).withColumn(
-    "has_visibility",
-    expr("visibility_meters IS NOT NULL").cast(BooleanType())
-).withColumn(
-    "completeness_score",
-    (
-            when(col("has_temperature"), lit(25)).otherwise(lit(0)) +
-            when(col("has_wind"), lit(25)).otherwise(lit(0)) +
-            when(col("has_pressure"), lit(25)).otherwise(lit(0)) +
-            when(col("has_visibility"), lit(25)).otherwise(lit(0))
-    ).cast(DoubleType())
-)
-
-# Calculate quality score (0-100)
-silver_df = silver_df.withColumn(
-    "quality_score",
-    (
-        # Start with completeness
-        col("completeness_score") * lit(0.6) +
-        # Bonus for valid ranges
-        when((col("temperature_celsius") >= lit(-90)) &
-             (col("temperature_celsius") <= lit(60)), lit(10)).otherwise(lit(0)) +
-        when((col("wind_speed_knots") >= lit(0)) &
-             (col("wind_speed_knots") <= lit(200)), lit(10)).otherwise(lit(0)) +
-        when((col("pressure_hpa") >= lit(870)) &
-             (col("pressure_hpa") <= lit(1085)), lit(10)).otherwise(lit(0)) +
-        # Penalty for unparsed tokens
-        when(expr("unparsed_tokens IS NOT NULL"), lit(-10)).otherwise(lit(0))
-    ).cast(DoubleType())
-)
-
-# Validation flags
-silver_df = silver_df.withColumn(
-    "validation_flags",
-    concat_ws(",",
-              when((col("temperature_celsius") < lit(-90)) |
-                   (col("temperature_celsius") > lit(60)), lit("TEMP_OUT_OF_RANGE")).otherwise(None),
-              when((col("wind_speed_knots") < lit(0)) |
-                   (col("wind_speed_knots") > lit(200)), lit("WIND_OUT_OF_RANGE")).otherwise(None),
-              when((col("pressure_hpa") < lit(870)) |
-                   (col("pressure_hpa") > lit(1085)), lit("PRESSURE_OUT_OF_RANGE")).otherwise(None),
-              when(expr("unparsed_tokens IS NOT NULL"), lit("HAS_UNPARSED_TOKENS")).otherwise(None)
-              )
-)
-
-# Data source
-silver_df = silver_df.withColumn(
-    "data_source",
-    lit("noaa")
-)
-
-# ============================================================================
-# WRITE TO SILVER LAYER
-# ============================================================================
-
-output_path = "s3://noakweather-data/silver/observations/"
-
-silver_df.write \
-    .mode("overwrite") \
-    .partitionBy("data_source", "year", "month", "day") \
-    .parquet(output_path, compression="snappy")
-
-print(f"Successfully wrote {silver_df.count()} records to Silver layer: {output_path}")
-
-job.commit()
-```
+The job script is [`glue-jobs/bronze_to_silver_metar.py`](../glue-jobs/bronze_to_silver_metar.py).
+See [`glue-jobs/README.md`](../glue-jobs/README.md) for what it does, how to deploy it, and how to
+test it locally. In short, it:
+
+- reads one day of Bronze JSON with an explicit schema (only the fields it uses);
+- flattens and standardizes units (Celsius, knots, hPa, meters);
+- derives flight category, fog and quality fields, and the `validation_flags` column;
+- writes Snappy Parquet to `s3://noakweather-data/silver/observations/`, partitioned by
+  `data_source`, `year`, `month` and `day`.
+
+The job is deployed as `bronze-to-silver-metar` but is **not scheduled**: start it manually for
+each date (below).
 
 ### Create AWS Glue Job
 ```bash
@@ -1348,7 +558,7 @@ aws s3 cp glue-jobs/bronze_to_silver_metar.py \
 # Create Glue job
 aws glue create-job \
     --name bronze-to-silver-metar \
-    --role AWSGlueServiceRole-NoakWeather \
+    --role GlueServiceRole-NoakWeather \
     --command "Name=glueetl,ScriptLocation=s3://noakweather-glue-scripts/bronze_to_silver_metar.py,PythonVersion=3" \
     --default-arguments '{
         "--job-language":"python",
@@ -1383,7 +593,7 @@ WHERE data_source = 'noaa'
 -- Quality metrics
 SELECT 
     AVG(quality_score) as avg_quality,
-    SUM(CASE WHEN validation_passed THEN 1 ELSE 0 END) as passed_validation,
+    SUM(CASE WHEN validation_flags = '' THEN 1 ELSE 0 END) as passed_validation,
     COUNT(*) as total
 FROM noakweather.silver_observations
 WHERE year = '2026' AND month = '02' AND day = '08';
@@ -1406,6 +616,9 @@ LIMIT 10;
 ## Part 4: Gold Layer Setup (Data Lakehouse)
 
 ### Gold Layer Characteristics
+
+> **Planned, not deployed.** The Gold tables and jobs in this part are a design for later work.
+> None of them exist in the `noakweather` database yet.
 
 - **Purpose:** Analytics-ready, pre-aggregated, feature-engineered
 - **Format:** Apache Iceberg (ACID transactions, time travel)
@@ -1950,7 +1163,7 @@ SELECT
     year, month, day,
     COUNT(*) as total_observations,
     AVG(quality_score) as avg_quality,
-    SUM(CASE WHEN validation_passed THEN 1 ELSE 0 END) as passed_validation,
+    SUM(CASE WHEN validation_flags = '' THEN 1 ELSE 0 END) as passed_validation,
     ROUND(AVG(data_completeness_pct), 2) as avg_completeness
 FROM noakweather.silver_observations
 WHERE year = '2026' AND month = '02'
@@ -2237,30 +1450,26 @@ if not validation_results["success"]:
 
 ## Part 10: Next Steps
 
-### Immediate (Week 1-2)
-1. ✅ Run Bronze table DDL
-2. ✅ Verify Bronze queries work
-3. ✅ Create Silver table DDL
-4. ✅ Deploy first Glue job (Bronze → Silver)
-5. ✅ Test Silver transformations
+### Done
+1. ✅ Glue database `noakweather`, and the Bronze and Silver tables (`sql/`)
+2. ✅ Bronze queries verified
+3. ✅ Bronze → Silver Glue job deployed (`bronze-to-silver-metar`) and verified end to end
 
-### Short-term (Week 3-4)
-1. Create Gold tables (Iceberg)
-2. Deploy Silver → Gold Glue jobs
-3. Set up Step Functions orchestration
-4. Enable EventBridge scheduling
+### Next (after METAR Bronze UAT)
+1. Review the Silver layer against the Bronze model changes made during UAT (for example
+   `parseIssues`, rejected groups in `unparsedMainBody`, and the validation ranges used in the
+   quality score)
+2. Add `parseIssues` to the Bronze table
+3. Schedule ingestion and the Glue job (Step Functions and/or EventBridge)
 
-### Medium-term (Month 2)
-1. Add data quality checks (Great Expectations)
-2. Build ML feature store
-3. Create BI dashboards (QuickSight/Tableau)
+### Later
+1. Create Gold tables (Iceberg) and Silver → Gold Glue jobs
+2. Add data quality checks (Great Expectations)
+3. Build ML feature store and BI dashboards (QuickSight/Tableau)
 4. Optimize query performance
-
-### Long-term (Month 3+)
-1. Add additional data sources (OpenWeatherMap, etc.)
-2. Implement SCD Type 2 for stations
-3. Build automated retraining pipelines
-4. Add real-time streaming (Kinesis → Bronze)
+5. Add additional data sources (OpenWeatherMap, etc.)
+6. Implement SCD Type 2 for stations
+7. Add real-time streaming (Kinesis → Bronze)
 
 ---
 
@@ -2361,7 +1570,7 @@ if not validation_results["success"]:
 
 ---
 
-**Last Updated:** 2026-02-08  
-**Version:** 1.16.0-SNAPSHOT  
+**Last Updated:** 2026-11-13  
+**Version:** 1.32.0-SNAPSHOT  
 **Architecture:** Medallion (Bronze → Silver → Gold)  
 **Maintained By:** NoakWeather Engineering Team

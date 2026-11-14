@@ -1,274 +1,97 @@
-# NoakWeather Java - Code Standards Documentation
+# NoakWeather Engineering Pipeline - Code Standards
 
 ## Overview
-This document establishes coding standards for the NoakWeather Java library, which parses METAR and TAF weather reports. These standards ensure consistency, maintainability, and clarity throughout the codebase.
 
-## Project Structure & Package Organization
+This document sets the code-level standards for the NoakWeather Engineering Pipeline: how the
+code is organized, how classes and tests are written, and which tools and libraries are used.
 
-### Package Hierarchy
-The NoakWeather Engineering Pipeline follows a multi-module Lambda Architecture. Each module has a specific responsibility in the data processing pipeline.
+The **workflow** (issues, branches, commits, versioning, pull requests, UAT) and the **parser
+rules** (rejections, parse issues, logging) are in
+[CONTRIBUTING.md](../CONTRIBUTING.md). This document does not repeat them.
+
+## Project Structure
+
+### Repository Layout
 
 ```
 noakweather-engineering-pipeline/
-├── docs/                                        # Project-wide documentation
-│   ├── ATHENA_SETUP.md                          # AWS Athena Data Lakehouse Setup - Medallion Architecture Guide
-│   ├── AWS_IAM_DYNAMODB_SETUP.md                # AWS IAM setup Guide
-│   ├── CODE_STANDARDS.md                        # Development guidelines (this file)
-│   ├── GLUE-DEPLOYMENT-GUIDE.md                 # AWS Glue Deployment Guide
-│   ├── LOGGING_SETUP.md                         # Centralized logging configuration
-│   ├── PHASE_4_GSI_DEPLOYMENT_GUIDE.md          # DynamoDB GSI deployment
-│   ├── S3_BUCKET_SETUP.md                       # S3 Bucket Setup
-│   ├── SINGLE_STATION_TEST_GUIDE.md             # Single Station Integration Test Guikd
-│   └── WEATHER_FORMAT_REFERENCES.md             # METAR/TAF specifications
-├── glue-jobs/                                   # AWS Glue jobs
-│   ├── tools/                                   # AWS Glue tools
-│   │   └── analyze_bronze_station.py            # UAT validation tool for single station's Bronze-layer output
-│   ├── bronze_to_silver_metar.py                # Transform raw NOAA METAR data into standardized, validated format
-│   ├── README.md                                # AWS Glue ETL Jobs README
-│   ├── requirements.txt                         # AWS Glue ETL Job Dependencies
-│   └── test_bronze_to_silver_local.py           # Local test version - NO AWS Glue dependencies
-├── noakweather-legacy/                          # Legacy single-module implementation
-│   └── [legacy codebase]                        # Original noakweather-java code
-└── noakweather-platform/                        # Multi-module Lambda Architecture
-    ├── src/main/resources/
-    │   └── log4j2.xml                           # Master logging configuration
-    │
-    ├── logs/                                    # Centralized platform-level logs
-    │   ├── noakweather.log                      # All application logs
-    │   ├── noakweather-error.log                # Error-level logs
-    │   ├── dynamodb.log                         # DynamoDB operations
-    │   └── archive/                             # Rolled/compressed logs
-    │
-    ├── weather-analytics/                       # Analytics and reporting services
-    │   └── src/main/java/com/weather/analytics/
-    │       └── service/                         # Analytics services
-    │           └── [analytics implementations]
-    │
-    ├── weather-common/                          # Shared models, interfaces, utilities
-    │   └── src/main/java/weather/
-    │       ├── exception/                       # Common exception hierarchy
-    │       │   ├── ErrorType.java               # Enumeration of error types
-    │       │   ├── WeatherParseException.java   # Parsing errors
-    │       │   └── WeatherServiceException.java # Service layer errors
-    │       ├── model/                           # Domain model - shared data structures
-    │       │   ├── components/                  # Weather data components
-    │       │   │   │   ├── ForecastPeriod.java      # Single forecast period
-    │       │   │   │   ├── PresentWeather.java      # Present weather phenomena
-    │       │   │   │   ├── Pressure.java            # Atmospheric pressure
-    │       │   │   │   ├── RunwayVisualRange.java   # Runway visual range (RVR) conditions
-    │       │   │   │   ├── SkyCondition.java        # Sky condition (cloud layer)
-    │       │   │   │   ├── Temperature.java         # Temperature information
-    │       │   │   │   ├── ValidityPeriod.java      # TAF validity period
-    │       │   │   │   ├── Visibility.java          # Visibility conditions
-    │       │   │   │   └── Wind.java                # Wind conditions
-    │       │   │   └── remark/                  # Remark-specific components
-    │       │   │   │   │   ├── CloudType.java                  # Cloud type observation
-    │       │   │   │   │   ├── DirectionalWeather.java         # Direction of present-weather phenomenon
-    │       │   │   │   │   ├── DirectionSegment.java           # Directional segment within TS/cloud location
-    │       │   │   │   │   ├── HailSize.java                   # Representing hail size
-    │       │   │   │   │   ├── Icing.java                      # Icing observed in clouds
-    │       │   │   │   │   ├── LightningFrequency.java         # Lightning frequency
-    │       │   │   │   │   ├── LightningRemark.java            # Lightning remark
-    │       │   │   │   │   ├── NoaaMetarRemarks.java           # Remarks from a METAR or SPECI report
-    │       │   │   │   │   ├── ObscurationLayer.java           # Obscuration layer in the atmosphere
-    │       │   │   │   │   ├── ObservationProgramStatus.java   # Observation-program status remark
-    │       │   │   │   │   ├── PrecipitationAmount.java        # Precipitation amount from METAR remarks
-    │       │   │   │   │   ├── PredominantCloudTypes.java      # Predominant cloud type remarks
-    │       │   │   │   │   ├── ThunderstormLocation.java       # Thunderstorms and significant cloud types
-    │       │   │   │   │   └── WeatherEvent.java               # Weather phenomenon's begin/end time
-    │       │   │   │   └── ceilingremarks/           # Ceiling Remark-specific components
-    │       │   │   │   │   ├── CeilingRemarks.java                   # Groups ceiling-related remarks
-    │       │   │   │   │   ├── CeilingSecondSite.java                # Ceiling height at a second observation site
-    │       │   │   │   │   └── VariableCeiling.java                  # Variable ceiling height observation
-    │       │   │   │   └── maintenanceremarks/       # Maintenance Remark-specific components
-    │       │   │   │   │   ├── AutomatedMaintenanceIndicator.java    # Automated maintenance indicator
-    │       │   │   │   │   └── MaintenanceRemarks.java               # Groups automated-station maintenance remarks
-    │       │   │   │   └── pressureremarks/          # Pressure Remark-specific components
-    │       │   │   │   │   ├── PressureRapidChange.java              # Type of pressure rising or falling rapidly
-    │       │   │   │   │   ├── PressureRemarks.java                  # Groups pressure-anomaly remarks  
-    │       │   │   │   │   └── PressureTendency.java                 # 3-hour pressure tendency 
-    │       │   │   │   └── visibilityremarks/        # Visibility Remark-specific components
-    │       │   │   │   │   ├── VariableVisibility.java               # Variable visibility 
-    │       │   │   │   │   └── VisibilityRemarks.java                # Groups visibility-related remarks
-    │       │   │   │   └── windremarks/              # Wind Remark-specific components
-    │       │   │   │   │   ├── PeakWind.java                         # Peak wind
-    │       │   │   │   │   ├── WindAtLocation.java                   # Wind conditions reported 
-    │       │   │   │   │   ├── WindRemarks.java                      # Groups wind-related remarks 
-    │       │   │   │   │   └── WindShift.java                        # Wind shift
-    │       │   ├── enums/                         # Enumerations
-    │       │   │   ├── AutomatedStationType.java    # Type of automated weather station
-    │       │   │   ├── ChangeIndicator.java         # Types of forecast change indicators
-    │       │   │   ├── HighCloudType.java           # Predominant high cloud type
-    │       │   │   ├── LowCloudType.java            # Predominant low cloud type
-    │       │   │   ├── MiddleCloudType.java         # Predominant middle cloud type
-    │       │   │   ├── PressureUnit.java            # Enumeration of atmospheric pressure units
-    │       │   │   └── SkyCoverage.java             # Sky coverage enumeration
-    │       │   ├── GeoLocation.java             # Geographic locations
-    │       │   ├── ProcessingLayer.java         # Lambda layer types
-    │       │   ├── WeatherDataSource.java       # Data source identifiers
-    │       │   ├── NoaaMetarData.java           # NOAA METAR data model
-    │       │   ├── NoaaTafData.java             # NOAA TAF data model
-    │       │   ├── NoaaWeatherData.java         # Base NOAA weather data
-    │       │   ├── TestWeatherData.java         # Test data model
-    │       │   ├── WeatherConditions.java       # Weather conditions model
-    │       │   └── WeatherData.java             # Universal weather data interface
-    │       ├── service/                         # Common service interfaces
-    │       │   ├── ValidationResult.java        # Validation result model
-    │       │   ├── ValidationResultBuilder.java # Builder for validation results
-    │       │   ├── WeatherParser.java           # Universal parser interface
-    │       │   ├── WeatherService.java          # Main service interface
-    │       │   └── WeatherValidator.java        # Validation interface
-    │       └── utils/                           # Common utilities
-    │           ├── AviationWeatherDecoder.java  # METAR/TAF decoder utilities
-    │           ├── IndexedLinkedHashMap.java    # Custom collection
-    │           └── ValidationPatterns.java      # Validation regex patterns
-    │
-    ├── weather-infrastructure/                  # Infrastructure as Code (AWS CDK)
-    │   └── src/main/java/com/weather/infra/
-    │       └── [CDK stack definitions]
-    │
-    ├── weather-ingestion/                       # Speed Layer - Real-time data collection
-    │   └── src/main/java/weather/ingestion/
-    │   │   ├── config/                          # Ingestion configuration
-    │   │   │   └── NoaaConfiguration.java       # NOAA API configuration
-    │   │   └── service/                         # Ingestion services
-    │   │       └── source/                      # Source-specific implementations
-    │   │           └── noaa/                    # NOAA data source
-    │   │           │   ├── AbstractNoaaIngestionApp.java            # Abstract base class for NOAA weather data ingestion
-    │   │           │   ├── AbstractNoaaIngestionOrchestrator.java   # Abstract base class for NOAA weather data ingestion orchestrators
-    │   │           │   ├── MetarIngestionApp.java                   # Command-line application for METAR data ingestion from NOAA
-    │   │           │   ├── MetarIngestionOrchestrator.java          # Orchestrates METAR data ingestion from NOAA to S3 storage
-    │   │           │   ├── NoaaAviationWeatherClient.java           # Client for NOAA Aviation Weather TG FTP service
-    │   │           │   ├── TafIngestionApp.java                     # Command-line application for TAF data ingestion from NOAA
-    │   │           │   ├── TafIngestionOrchestrator.java            # Orchestrates TAF data ingestion from NOAA to S3 storage
-    │   │           │   ├── openweathermap/      # OpenWeatherMap integration
-    │   │           │   └── weathergov/          # Weather.gov integration
-    │   │           ├── S3UploadService.java       # Service for uploading weather data to Amazon S3
-    │   │           └── SpeedLayerProcessor.java   # Speed Layer Processor for Lambda Architecture
-    │   └── src/main/resources/
-    │       └── noaa.properties          # NOAA text data service endpoints
-    │
-    ├── weather-processing/                      # Batch Layer - Data parsing/transformation
-    │   └── src/main/java/weather/processing/
-    │   │   ├── config/                          # Parser configuration
-    │   │   │   └── ParserConfiguration.java     # Parser settings
-    │   │   ├── parser/                          # Parser implementations
-    │   │   │   ├── common/                      # Common parser interfaces
-    │   │   │   │   ├── ParseResult.java         # Parser result wrapper
-    │   │   │   │   ├── ParserException.java     # Parser exceptions
-    │   │   │   │   └── WeatherParser.java       # Base parser interface
-    │   │   │   └── noaa/                        # NOAA-specific parsers
-    │   │   │       ├── LightningMatcher.java                    # Lightning data parsing
-    │   │   │       ├── NoaaAviationWeatherParser.java           # Base NOAA parser
-    │   │   │       ├── NoaaAviationWeatherPatternRegistry.java  # Registry of regex patterns and their handlers
-    │   │   │       ├── NoaaMetarParser.java                     # METAR parser
-    │   │   │       ├── NoaaTafParser.java                       # TAF parser
-    │   │   │       └── RegExprConst.java                        # Regular expression constants
-    │   │   ├── service/                         # Processing services
-    │   │   │   └── UniversalWeatherParserService.java  # Universal parser service
-    │   └── src/main/resources/
-    │       └── parser.properties            # Parser configuration
-    │
-    ├── weather-storage/                         # Serving Layer - Multi-backend storage
-    │   └── src/main/java/weather/storage/
-    │       ├── config/                          # Storage configuration
-    │       │   ├── DynamoDbConfig.java          # DynamoDB AWS SDK configuration
-    │       │   └── DynamoDbTableConfig.java     # Table and GSI definitions
-    │       ├── examples/                        # Example/demo code (excluded from coverage)
-    │       │   └── QuickDynamoDbTest.java       # Quick DynamoDB test
-    │       ├── exception/                       # Storage exceptions
-    │       │   ├── RepositoryException.java     # Repository layer exceptions
-    │       │   └── WeatherDataMappingException.java  # Mapping errors
-    │       ├── repository/                      # Repository pattern implementations
-    │       │   ├── dynamodb/                    # DynamoDB repository
-    │       │   │   ├── DynamoDbMapper.java      # Bidirectional object mapping
-    │       │   │   └── DynamoDbRepository.java  # DynamoDB CRUD + GSI queries
-    │       │   └── snowflake/                   # Snowflake repository (future)
-    │       │   │   └── SnowflakeRepository.java # Snowflake implementation
-    │       │   ├── AbstractStubRepository.java
-    │       │   ├── RepositoryStats.java
-    │       │   └── UniversalWeatherRepository.java
-    │       ├── service/                         # Storage services
-    │       │   ├── source/                      # Source-specific processing
-    │       │   ├── BatchLayerProcessor.java
-    │       │   ├── BatchProcessingResult.java
-    │       │   └── BatchProcessingStats.java
-    │       └── tools/                           # Operational tools (excluded from coverage)
-    │       │   ├── AddGSIsToAwsTable.java       # Production GSI deployment tool
-    │       │   └── TestLogRollover.java         # Log rollover testing
-    │       └── src/main/resources/
-    │           └── athena.ddl/
-    └── sql/                         # SQL Code for the Medallion Architecture
-    │   ├── bronze/                          # Bronze Layer
-    │   │   └── create_bronze_metar_noaa.sql      # DDL to create bronze layer
-    │   ├── gold/                            # Gold Layer
-    │   └── silver/                          # Silver Layer
-    └──     └── create_silver_observations.sql    # DDL to create silver layer
+├── docs/                    # Project documentation
+├── glue-jobs/               # AWS Glue PySpark ETL (Bronze → Silver) and tools/
+├── noakweather-legacy/      # Legacy application, frozen at v0.0.5 (never modified)
+├── noakweather-platform/    # Multi-module Maven platform (see below)
+├── scripts/                 # Build, test, packaging and version scripts
+│   └── uat/                 # UAT and discovery scripts
+└── sql/                     # Athena DDL: bronze/, silver/
+```
+
+### Platform Packages
+
+Package-level only: individual classes change too often to list here.
+
+```
+noakweather-platform/
+├── src/main/resources/log4j2.xml           # Master logging configuration (copied into each module)
+├── weather-common/                         # weather.*
+│   ├── exception/                          # Shared exceptions (see Error Handling)
+│   ├── model/                              # WeatherData hierarchy: NoaaWeatherData, NoaaMetarData, NoaaTafData
+│   │   ├── components/                     # Main-body components: Wind, Visibility, Temperature, Pressure, ...
+│   │   │   └── remark/                     # Remark components, with grouped sub-packages:
+│   │   │       ├── ceilingremarks/
+│   │   │       ├── maintenanceremarks/
+│   │   │       ├── pressureremarks/
+│   │   │       ├── visibilityremarks/
+│   │   │       └── windremarks/
+│   │   └── enums/                          # Enumerations (SkyCoverage, PressureUnit, ParseIssueKind, ...)
+│   ├── service/                            # Shared service, parser and validation interfaces
+│   └── utils/                              # Shared utilities
+├── weather-ingestion/                      # weather.ingestion.*
+│   ├── config/                             # Source configuration (e.g. NOAA endpoints)
+│   └── service/                            # S3 upload, speed-layer processing
+│       └── source/noaa/                    # NOAA METAR/TAF ingestion apps, orchestrators and client
+├── weather-processing/                     # weather.processing.*
+│   ├── config/                             # Parser configuration
+│   ├── parser/common/                      # ParseResult, ParserException, parser interface
+│   ├── parser/noaa/                        # NOAA METAR/TAF parsers, group parsing engine, RegExprConst
+│   └── service/                            # Universal parser service
+├── weather-storage/                        # weather.storage.*
+│   ├── config/                             # DynamoDB configuration and table/GSI definitions
+│   ├── exception/                          # Storage exceptions
+│   ├── repository/                         # Repository abstraction
+│   │   ├── dynamodb/                       # DynamoDB repository and mapper
+│   │   └── snowflake/                      # Snowflake repository (planned)
+│   ├── service/                            # Batch-layer processing
+│   ├── examples/                           # Demo code (excluded from coverage)
+│   └── tools/                              # Operational tools, e.g. GSI deployment (excluded from coverage)
+├── weather-analytics/                      # Placeholder module
+└── weather-infrastructure/                 # Placeholder module (AWS CDK planned)
 ```
 
 ### Module Responsibilities
 
 **weather-common**
-- Shared domain models and interfaces
-- Common exception hierarchy
-- Validation utilities and patterns
-- Universal parser and service interfaces
+- Domain model shared by every module: the `WeatherData` hierarchy and its components
+- Shared exceptions and enumerations
+- Shared service, parser and validation interfaces
 
 **weather-ingestion** (Speed Layer)
-- Real-time data collection from multiple sources
-- NOAA Aviation Weather API client
-- OpenWeatherMap integration
-- Data source orchestration
+- Fetches METAR and TAF reports from NOAA
+- Uploads raw text and parsed JSON to the Bronze layer in S3
 
 **weather-processing** (Batch Layer)
-- METAR/TAF parsing
-- Data transformation and validation
-- Format-specific parsers (NOAA, Weather.gov, etc.)
+- METAR and TAF parsing, built on one group parsing engine
 - Universal parser service
 
 **weather-storage** (Serving Layer)
-- Multi-backend storage abstraction
-- DynamoDB repository with GSI support
-- Snowflake integration (planned)
-- Batch processing services
+- Repository abstraction, with DynamoDB (time-bucket GSI) implemented and Snowflake planned
+- Batch-layer processing
 
-**weather-analytics**
-- Analytics and reporting
-- Data aggregation
-- Statistical analysis
-
-**weather-infrastructure**
-- AWS CDK infrastructure definitions
-- Cloud resource management
-- Deployment automation
-
-### Architecture Principles
-- **Provider Pattern**: Each weather API (NOAA, OpenWeatherMap) is self-contained
-- **Inheritance Hierarchy**: METAR/TAF extend NoaaAviationWeatherData base class
-- **Clean Separation**: No cross-dependencies between weather providers
-- **Layered Structure**: service → client → model → exception within each provider
-
-### Class Organization Principles
-- **Domain-first approach**: Start with domain models before implementation
-- **Single Responsibility**: Each class has one clear purpose
-- **Layered architecture**: Domain → Parser → Service → Util
-- **Immutable domain objects**: Weather data should be immutable once parsed
-
-## Naming Conventions
-
-### Package Naming Conventions
-
-Follow these conventions for package names:
-
-1. **Use lowercase only**: `weather.storage.repository`
-2. **Use singular nouns**: `weather.model` not `weather.models`
-3. **Organize by feature/layer**: Group related functionality
-4. **Keep depth reasonable**: 3-5 levels maximum
-5. **Use meaningful names**: Avoid abbreviations unless standard
+**weather-analytics**, **weather-infrastructure**
+- Reserved for the analytics/serving layer and AWS CDK infrastructure. Both are in the reactor
+  but have no sources yet.
 
 ### Cross-Module Dependencies
 
-Modules should follow this dependency hierarchy (dependencies flow downward):
+Dependencies flow downward:
 
 ```
 weather-analytics ──────┐
@@ -277,308 +100,212 @@ weather-ingestion ──────┘                         ├──> weath
 weather-infrastructure ───────────────────────────┘
 ```
 
-**Rules:**
-- All modules depend on `weather-common`
-- Higher layers can depend on lower layers
-- No circular dependencies allowed
-- Use interfaces from `weather-common` for cross-module communication
+- Every module may depend on `weather-common`; `weather-common` depends on no other module.
+- No circular dependencies.
+- Cross-module communication goes through the types and interfaces in `weather-common`.
+
+## Design Principles
+
+- **Domain model first.** Model the weather element (a record with validated fields) before
+  writing the pattern or handler that fills it.
+- **One parsing mechanism.** METAR main body, remarks and TAF groups are all parsed by the same
+  group parsing engine; see [CONTRIBUTING.md](../CONTRIBUTING.md#parsers-weatherprocessingparsernoaa).
+  New report sources should reuse it rather than add a parser loop of their own.
+- **Immutable once parsed.** Parsed data is immutable: records for components, defensive copies
+  for collections.
+- **Bad data is never stored as good data.** A value that fails validation is rejected and kept
+  visible, not replaced or dropped.
+- **Lightweight, explicit dependencies.** No Spring Boot; no dependency injection framework.
+
+## Naming Conventions
+
+### Packages
+1. Lowercase only: `weather.storage.repository`
+2. Singular nouns: `weather.model`, not `weather.models`
+3. Organized by layer, then by feature (`model.components.remark.windremarks`)
+4. Keep depth reasonable: 3–5 levels
+5. Meaningful names; avoid abbreviations unless standard (METAR, TAF, RVR)
 
 ### Classes
-- **Base Classes**: Abstract base with common aviation methods
-  - `NoaaAviationWeatherData` (abstract base class)
-- **Weather Data Models**: Extend base class appropriately
-  - `NoaaMetarData extends NoaaAviationWeatherData`
-  - `NoaaTafData extends NoaaAviationWeatherData`
-  - `OpenWeatherCurrentData`, `OpenWeatherForecastData`
-- **Service Classes**: End with "Service"
-  - `WeatherService`, `NoaaWeatherService`, `OpenWeatherMapService`
-- **Client Classes**: End with "Client"
-  - `NoaaApiClient`, `NoaaHttpClient`, `OpenWeatherApiClient`
-- **Configuration Classes**: Descriptive names
-  - `WeatherConfigurationService`, `WeatherConfigurationFactory`
-- **Exceptions**: End with "Exception"
-  - `WeatherServiceException`, `NoaaApiException`, `OpenWeatherApiException`
+- **Records** for value types, named for the weather element: `Wind`, `Temperature`,
+  `DirectionSegment`, `PeakWind`.
+- **Grouping records** end with the group they collect: `WindRemarks`, `CeilingRemarks`.
+- **Data classes** follow the hierarchy: `WeatherData` → `NoaaWeatherData` →
+  `NoaaMetarData` / `NoaaTafData`.
+- **Services** end with `Service` (`S3UploadService`), **repositories** with `Repository`,
+  **configuration** with `Config` or `Configuration`.
+- **Exceptions** end with `Exception`.
 
-### Methods
-- **Service methods**: Business-oriented naming
-  - `getWeatherData()`, `getCurrentConditions()`, `getForecast()`
-- **API client methods**: API-specific operations
-  - `fetchMetarData()`, `fetchTafData()`, `callNoaaEndpoint()`
-- **Model methods**: Data access and common aviation operations
-  - `getWindDirection()`, `getWindSpeed()`, `getVisibility()`
-  - `getTemperature()`, `getDewPoint()`, `getCloudLayers()`
-- **Configuration methods**: Setup and factory patterns
-  - `createConfiguration()`, `buildWeatherService()`
+### Methods and Fields
+- Accessors follow the record or field name (`directionSegments()`, `getTemperature()`).
+- Use standard meteorological terms consistently, and spell them out in code except for
+  well-known abbreviations.
+- Units belong in the name when a value has one: `heightFeet`, `speedKnots`, `celsius`.
+- Constants are `UPPER_SNAKE_CASE`. Regex patterns end with `_PATTERN`.
 
-### Variables
-- **Weather data fields**: Based on aviation weather elements
-  - `stationCode`, `rawData`, `retrievedAt` (base class fields)
-  - `windDirection`, `windSpeed`, `windGust`, `visibility`
-  - `temperature`, `dewPoint`, `altimeter`, `weatherConditions`, `cloudLayers`
-- **Service fields**: Clear service-oriented naming
-  - `weatherService`, `noaaApiClient`, `configurationFactory`
-- **API fields**: Provider-specific naming
-  - `noaaEndpointUrl`, `openWeatherApiKey`, `httpTimeout`
-- **Constants**: ALL_CAPS with underscores
-  - `DEFAULT_TIMEOUT`, `NOAA_BASE_URL`, `METAR_ENDPOINT`
+## Code Structure
 
-### Weather Domain Terminology
-- Use standard meteorological terms consistently
-- Avoid abbreviations in code (except for well-known ones like METAR, TAF)
-- Document any aviation-specific terminology
-
-## Code Structure Standards
-
-### Class Structure Order
+### Class Member Order
 1. Static constants
-2. Instance fields
-3. Constructors
+2. Instance fields (or record components)
+3. Constructors (for a record: the compact constructor, then convenience constructors)
 4. Public methods
 5. Package-private methods
 6. Private methods
-7. Static methods
-8. Inner classes
+7. Static factory and helper methods
+8. Nested types
 
-### Method Design
-- **Maximum method length**: 20 lines
-- **Parameter limit**: 5 parameters max
-- **Return early**: Use guard clauses to reduce nesting
-- **Immutable parameters**: Prefer final parameters
+### Records and Validation
+- Validate in the compact constructor. Invalid **report data** throws
+  `InvalidObservationException`; a **programming error** (null required argument, inconsistent
+  combination) throws `IllegalArgumentException`. See
+  [CONTRIBUTING.md](../CONTRIBUTING.md#parsers-weatherprocessingparsernoaa) for how to fill in
+  the component, value and reason.
+- Copy collections defensively (`List.copyOf`) and normalize an empty collection to the
+  record's chosen "absent" value (for example `null`) in one place.
+- Convenience getters that only delegate to a nested object are annotated `@JsonIgnore`, so
+  Bronze JSON does not contain duplicate keys.
 
-### Inheritance and Abstraction Standards
-```java
-// Base class example following the established pattern
-public abstract class NoaaAviationWeatherData {
-    // Common fields for all aviation weather data
-    protected final String stationCode;
-    protected final String rawData;
-    protected final LocalDateTime retrievedAt;
-    
-    // Common aviation methods (as shown in inheritance diagram)
-    public abstract String getWindDirection();
-    public abstract String getWindSpeed();
-    public abstract String getWindGust();
-    public abstract String getVisibility();
-    public abstract String getTemperature();
-    public abstract String getDewPoint();
-    public abstract String getAltimeter();
-    public abstract List<String> getWeatherConditions();
-    public abstract List<String> getCloudLayers();
-    
-    // Abstract method for report type identification
-    public abstract String getReportType();
-}
+### Methods
+- Keep methods short and focused, and use guard clauses to reduce nesting.
+- **Sonar cognitive complexity (S3776) is the enforced limit.** When a handler grows, extract
+  helpers rather than suppress the rule.
+- Prefer few parameters; if a method needs many, introduce a record for them.
+- A suppression (for example `java:S5843` on a complex regex) is allowed only with a comment
+  saying why the complexity is needed.
 
-// Concrete implementation example
-public final class NoaaMetarData extends NoaaAviationWeatherData {
-    // METAR-specific fields and methods
-    private final String reportTime;
-    private final String flightCategory;
-    private final boolean isAutomatedReport;
-    private final boolean isCorrectedReport;
-    
-    // METAR-specific methods
-    public String getReportTime() { return reportTime; }
-    public String getFlightCategory() { return flightCategory; }
-    // ... implement all abstract methods from base class
-}
-```
+### Regular Expressions
+- See [CONTRIBUTING.md](../CONTRIBUTING.md#general): end groups with a lookahead such as
+  `(?=\s|$)`, use possessive quantifiers, and keep shape in the pattern and value checks in the
+  handler.
+- Document each pattern in `RegExprConst` with examples, and reference the issue that shaped
+  it (`#118`, `#179`).
 
-## Error Handling Standards
+## Error Handling
 
-### Exception Hierarchy
-Based on the provider pattern architecture:
-```
-WeatherServiceException (base)
-├── NoaaApiException
-│   ├── InvalidMetarException
-│   ├── InvalidTafException
-│   └── NoaaEndpointException
-├── OpenWeatherApiException
-│   ├── InvalidApiKeyException
-│   └── OpenWeatherEndpointException
-└── ConfigurationException
-    ├── InvalidConfigurationException
-    └── MissingConfigurationException
-```
+### Exceptions in Use
 
-### Provider-Specific Error Handling
-- **Service Layer**: Handle cross-provider errors and coordination
-- **API Layer**: Handle provider-specific API errors (timeouts, invalid responses)
-- **Model Layer**: Handle data validation and parsing errors
-- **Configuration Layer**: Handle setup and initialization errors
+| Exception | Module | Purpose |
+|-----------|--------|---------|
+| `InvalidObservationException` | weather-common | Report data that is invalid or cannot be interpreted. Expected: becomes a REJECTED parse issue |
+| `WeatherParseException` | weather-common | Parsing errors |
+| `WeatherServiceException` | weather-common | Service-layer errors |
+| `ErrorType` | weather-common | Enumeration of error types |
+| `ParserException` | weather-processing | Parser errors |
+| `RepositoryException` | weather-storage | Repository-layer errors |
+| `WeatherDataMappingException` | weather-storage | Errors mapping weather data to and from storage |
 
-### Error Handling Patterns
-- **Fail fast**: Validate inputs immediately
-- **Descriptive messages**: Include context about what failed
-- **Preserve original data**: Include raw input in error messages
-- **Log at appropriate levels**: ERROR for failures, WARN for unparsed data
-
-### Example Error Handling
-```java
-public WindInformation parseWind(String windGroup) {
-    if (windGroup == null || windGroup.trim().isEmpty()) {
-        throw new InvalidMetarException("Wind group cannot be null or empty");
-    }
-    
-    try {
-        return parseWindInternal(windGroup);
-    } catch (NumberFormatException e) {
-        throw new InvalidMetarException(
-            "Invalid wind format: " + windGroup, e);
-    }
-}
-```
+### Rules
+- **Rejection is not failure.** Bad report data is expected: it is rejected, recorded in
+  `parseIssues`, and logged at DEBUG. Any other exception during parsing is a parser bug and is
+  logged at ERROR. Never log bad report data at WARN.
+- **Keep the cause.** When converting text fails, wrap the original exception
+  (`new InvalidObservationException(component, value, reason, e)`).
+- **Messages carry context.** Name the field and include the rejected text, so the parse issue
+  or log line is enough to find the problem.
 
 ## Testing Standards
 
-### Test Class Organization
-- **Test class naming**: `ClassNameTest`
-- **Test method naming**: `should_DoSomething_When_Condition()`
-- **Test structure**: Arrange, Act, Assert pattern
+### Organization
+- One test class per class: `ClassNameTest`, in the same package.
+- Test methods are named `testMethodOrBehavior_Case` (for example
+  `testTempDewpoint_WrongDigitCount_Rejected`) with a `@DisplayName` stating the expected
+  behavior in plain words, and the issue number when the test guards a fix (`(#180)`).
+- Use the Arrange / Act / Assert structure.
 
-### Test Categories
-- **Unit tests**: Test individual classes in isolation
-- **Integration tests**: Test parser with real METAR/TAF data
-- **Edge case tests**: Test boundary conditions and error cases
+### Style
+- **AssertJ** for assertions (`assertThat(...)`, `singleElement()`, `extracting(...)`,
+  `satisfies(...)`).
+- **Parameterized tests** (`@CsvSource`, `@ValueSource`) for families of similar inputs. Add a
+  row rather than a new method when a case fits an existing table.
+- **Real report text** for parser tests, including the live report that exposed a problem.
+- Test both directions of a fix: the case it rejects and the valid neighbors it must still
+  accept.
 
-### Test Data Management
-- **Use test data files**: Store sample METAR/TAF reports in resources
-- **Parameterized tests**: For testing multiple similar inputs
-- **Mock external dependencies**: Keep tests focused and fast
+### Test Types
+- **Unit tests** for records and helpers, including their validation.
+- **Parser tests** that parse full reports and assert on the result, its
+  `unparsedMainBody`/`freeText`, and its `parseIssues`.
+- **Golden-output tests** (`NoaaMetarParserGoldenOutputTest`, `NoaaTafParserGoldenOutputTest`):
+  a permanent regression guard over a fixed set of real reports. See
+  [CONTRIBUTING.md](../CONTRIBUTING.md) for re-recording.
+- **Logging tests** with `LogCapture` for code that only runs when DEBUG is enabled.
+- **Integration tests**: WireMock for HTTP sources, Testcontainers with LocalStack for DynamoDB.
+  These need Docker and run in `scripts/wetht.sh`.
 
-### Example Test Structure
-```java
-class MetarParserTest {
-    
-    @Test
-    void should_ParseWindCorrectly_When_ValidWindGroup() {
-        // Arrange
-        String windGroup = "25012KT";
-        
-        // Act
-        WindInformation result = parser.parseWind(windGroup);
-        
-        // Assert
-        assertThat(result.getDirection()).isEqualTo(250);
-        assertThat(result.getSpeed()).isEqualTo(12);
-        assertThat(result.getGustSpeed()).isEmpty();
-    }
-}
-```
+### Test Doubles
+Prefer real objects, WireMock and Testcontainers. Mockito is available in `weather-ingestion`
+and `weather-storage` for collaborators that cannot be run for real; parser and model tests do
+not use mocks.
 
 ## Documentation Standards
 
-### JavaDoc Requirements
-- **All public classes and methods**: Must have JavaDoc
-- **Package-private methods**: JavaDoc recommended
-- **Private methods**: JavaDoc for complex logic only
+### Javadoc
+- All public classes and methods have Javadoc; package-private methods where useful; private
+  methods for non-obvious logic only.
+- Explain **why**, not only what: a rule that came from a real report or an issue says so, with
+  the issue number (`(#180)`).
+- Document examples of the report text a pattern, handler or record accepts and rejects.
+- `@throws InvalidObservationException` on methods that reject report data.
 
-### JavaDoc Format
 ```java
 /**
- * Parses METAR wind information from a wind group string.
- * 
- * @param windGroup the wind group string (e.g., "25012KT", "VRB03G15KT")
- * @return parsed wind information including direction, speed, and gust
- * @throws InvalidMetarException if the wind group format is invalid
+ * Parse a temperature or dewpoint value from METAR format.
+ *
+ * @param sign      the sign indicator ("M", "-", or null)
+ * @param digits    the temperature digits (e.g., "05", "22")
+ * @param component the field being parsed, for a rejection
+ * @return temperature in Celsius, or null if missing/unknown
+ * @throws InvalidObservationException if the value does not have exactly two digits (#180)
  */
-public WindInformation parseWind(String windGroup) {
-    // Implementation
-}
 ```
 
-### README Updates
-- Update main README.md when adding new features
-- Include code examples for new parsing capabilities
-- Document any new command-line options or parameters
-
-## Git Workflow Standards
-
-### Branch Naming
-- **Feature branches**: `feature/wind-parsing-enhancement`
-- **Bug fixes**: `fix/visibility-parsing-bug`
-- **Documentation**: `docs/update-readme`
-
-### Commit Messages
-```
-type: short description (50 chars max)
-
-Longer explanation if needed (72 chars per line)
-
-- Bullet points for details
-- Reference issues: Fixes #123
-```
-
-### Commit Types
-- `feat`: New features
-- `fix`: Bug fixes
-- `docs`: Documentation updates
-- `test`: Test additions/updates
-- `refactor`: Code refactoring
-- `style`: Code style changes
-
-### Pull Request Standards
-- **Title**: Clear, descriptive summary
-- **Description**: Explain what and why
-- **Testing**: Describe testing performed
-- **Checklist**: Use PR template checklist
-
-### Future Extensions Architecture
-Following the established provider pattern for extensibility:
-
-**New Weather Provider Template:**
-```
-future_provider_api/               # e.g., weather_gov_api/, accuweather_api/
-├── service/                       # Provider-specific service
-├── client/                        # API client & HTTP client
-├── model/                         # Provider-specific data models
-└── exception/                     # Provider-specific exceptions
-```
-
-**Integration Points:**
-- **Main WeatherService**: Coordinate between multiple providers
-- **Configuration**: Add new provider configurations
-- **Consistent Interface**: All providers follow same service pattern
-- **Independent Development**: Providers can be developed and tested separately
-
-This architecture supports the planned extensions (Weather.gov API, AccuWeather API, National Weather Service) while maintaining clean separation and consistent patterns.
+### Project Documentation
+- Update `README.md` and the relevant document in `docs/` when a change affects how the project
+  is built, run or understood.
+- Link to source files (`sql/`, `glue-jobs/`) instead of copying them into documents.
 
 ## Quality Metrics
 
-### Code Coverage
-- **Minimum coverage**: 80% line coverage
-- **Critical paths**: 95% coverage for parsing logic
-- **Exclude from coverage**: DTOs, simple getters/setters
-
-### Static Analysis
-- **Use SpotBugs/PMD**: Configure in Maven build
-- **Checkstyle**: Enforce coding standards automatically
-- **SonarQube**: Monitor code quality metrics
+- **SonarCloud quality gate**, enforced in CI: at least 80% coverage on new code, no new issues,
+  A ratings. The project aims for about 98% overall coverage and 100% of changed lines, with no
+  duplication.
+- **JaCoCo** produces coverage per module; `diff-cover` checks changed lines locally.
+- **Excluded from coverage:** demo and operational code (`weather.storage.examples`,
+  `weather.storage.tools`) and test-only models.
+- **SonarLint** in the IDE, connected to the SonarCloud project, for feedback before CI.
 
 ## Dependencies and Libraries
 
-### Allowed Dependencies
-- **Testing**: JUnit 5, AssertJ
-- **Utilities**: Apache Commons Lang, Google Guava (if needed)
-- **Logging**: SLF4J with Logback
-- **Build tools**: Maven, standard plugins
+### In Use
+- **Logging:** SLF4J API backed by Log4j2 (`log4j-slf4j2-impl`), configured by the shared
+  `log4j2.xml`.
+- **Testing:** JUnit 5, AssertJ, WireMock, Testcontainers (with LocalStack); Mockito in
+  `weather-ingestion` and `weather-storage`.
+- **AWS:** AWS SDK for Java v2 (S3, DynamoDB).
+- **Build:** Maven, with versions managed in the parent `pom.xml`.
 
-### Dependency Guidelines
-- **Minimize dependencies**: Only add what is truly needed
-- **Version consistency**: Use dependency management
-- **Security**: Regular dependency updates
-- **License compatibility**: Ensure compatible licenses
+### Guidelines
+- Add a dependency only when it is truly needed, and manage its version in the parent POM.
+- Check a new dependency for known vulnerabilities (for example on MVNRepository) before
+  adding it. A library with open vulnerabilities is not added (JavaTuples was rejected for this
+  reason; Java records replace it).
+- No Spring Boot.
+- Ensure licenses are compatible with Apache 2.0.
 
 ## Continuous Integration
 
-### Build Requirements
-- **All tests pass**: Zero test failures
-- **Code coverage**: Meet minimum thresholds
-- **Static analysis**: No high-priority violations
-- **Documentation**: All public APIs documented
+- **GitHub Actions:** `maven.yml` builds and tests on Java 17, 21 and 25; `sonarcloud.yml` runs
+  the SonarCloud analysis and enforces the quality gate.
+- A pull request merges only when CI passes on every Java version and the quality gate passes
+  with no new issues.``
+- Before pushing, run `scripts/wethb.sh` and `scripts/wetht.sh` and check new-code coverage;
+  see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
-### Pre-commit Checks
-- **Format code**: Consistent formatting
-- **Run tests**: Quick smoke tests
-- **Check dependencies**: No vulnerable dependencies
+## Future Data Sources
+
+The project plans more data sources (for example Weather.gov) beyond NOAA METAR/TAF. A new
+source:
+- adds its ingestion under `weather.ingestion.service.source.<source>`;
+- maps into the shared `WeatherData` model in `weather-common`;
+- parses report groups with the shared group parsing engine rather than its own loop.

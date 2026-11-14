@@ -34,7 +34,7 @@ Complete guide for creating an IAM user with DynamoDB permissions for the weathe
 
 ### User Configuration
 
-**User name:** `noakweather-platform-dev` (or your preferred name)
+**Username:** `noakweather-platform-dev` (or your preferred name)
 
 **Console access options:**
 - **Select:** `"Provide user access to the AWS Management Console"`
@@ -78,7 +78,7 @@ If you already have a "Developers" group with appropriate permissions:
 
 ### Option B: Attach Policies Directly (Alternative)
 
-If you don't have an appropriate group:
+If you do not have an appropriate group:
 
 1. **Select:** `"Attach policies directly"`
 2. Search for and select: **`AmazonDynamoDBFullAccess`**
@@ -115,7 +115,8 @@ For production or restricted environments:
         "dynamodb:ListTables"
       ],
       "Resource": [
-        "arn:aws:dynamodb:*:*:table/weather-*"
+        "arn:aws:dynamodb:*:*:table/noakweather-*",
+        "arn:aws:dynamodb:*:*:table/noakweather-*/index/*"
       ]
     }
   ]
@@ -128,7 +129,8 @@ For production or restricted environments:
 7. Return to user creation and attach the new policy
 
 **This custom policy:**
-- Limits access to tables starting with `weather-*`
+- Limits access to tables starting with `noakweather-` (the table is `noakweather-data`) and
+  their indexes (queries on the time-bucket GSI need the `/index/*` resource)
 - Includes only necessary DynamoDB operations
 - More secure than full access
 
@@ -137,7 +139,7 @@ For production or restricted environments:
 ## Step 5: Review and Create
 
 1. Review all user details:
-    - User name
+    - Username
     - Console access settings
     - Permissions (group or policies)
 2. Click **"Create user"**
@@ -148,7 +150,7 @@ For production or restricted environments:
 
 After user creation, you need access keys for the AWS SDK:
 
-1. In the user list, click on your new user: **`weather-platform-dev`**
+1. In the user list, click on your new user: **`noakweather-platform-dev`**
 2. Click the **"Security credentials"** tab
 3. Scroll down to **"Access keys"** section
 4. Click **"Create access key"**
@@ -168,7 +170,7 @@ After user creation, you need access keys for the AWS SDK:
 
 ## Step 7: Download and Save Credentials CRITICAL
 
-You'll see a screen displaying:
+You will see a screen displaying:
 - **Access key ID:** `AKIAIOSFODNN7EXAMPLE`
 - **Secret access key:** `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`
 
@@ -364,6 +366,16 @@ Before proceeding with development, verify:
 
 ---
 
+## Other Permissions This User Needs
+
+This guide covers DynamoDB only. The same user also needs:
+
+- **S3** access to the data bucket for ingestion; see [S3_BUCKET_SETUP.md](S3_BUCKET_SETUP.md).
+- **Glue** job management, only if it creates or runs the Glue job; see the inline policy in
+  [GLUE-DEPLOYMENT-GUIDE.md](GLUE-DEPLOYMENT-GUIDE.md#step-4-add-glue-management-to-user).
+
+---
+
 ## Troubleshooting
 
 ### "Unable to load credentials from any provider"
@@ -488,11 +500,14 @@ aws dynamodb list-tables --region us-east-1
     ]
 }
 ```
+The time-bucket GSI used for time-range queries is added afterward; see
+[PHASE_4_GSI_DEPLOYMENT_GUIDE.md](PHASE_4_GSI_DEPLOYMENT_GUIDE.md).
+
 ---
 
 ## Maintenance
 
-**Document Version:** 1.0  
-**Last Updated:** January 25, 2026,  
+**Document Version:** 1.1  
+**Last Updated:** November 13, 2026,  
 **Author:** NoakWeather Engineering Team  
 **Project:** NoakWeather Engineering Pipeline (weather-storage module)
