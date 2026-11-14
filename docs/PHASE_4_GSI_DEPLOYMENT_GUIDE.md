@@ -1,5 +1,15 @@
 # Phase 4 GSI Deployment Guide
 
+> **Status (November 2026).** This guide records how the Phase 4 `time-bucket-index` GSI is
+> deployed, verified and rolled back. **The live table does not currently have this index**: it
+> has two older indexes (`StationIndex`, `TimeIndex`), so time-range queries use the table-scan
+> fallback. Creating the index is tracked in the Platform Operations project.
+>
+> Some steps describe a deployment target that does not exist in this project: there is no
+> Lambda function and no query API (`your-api`). The index itself is created with the
+> `AddGSIsToAwsTable` tool or the AWS CLI (Step 2). Version numbers, test counts and timings
+> below are from January 2026.
+
 ## Overview
 
 This guide provides step-by-step instructions for deploying the Phase 4 `time-bucket-index` Global Secondary Index (GSI) to the production DynamoDB table with **zero downtime**.
@@ -57,36 +67,19 @@ graph TD
 
 ## Pre-Deployment Checklist
 
-### 1. Verify Code Version
+### 1. Run the Test Suite
+
+From the repository root (Docker must be running for the DynamoDB integration tests):
 
 ```bash
-# Check that weather-storage module is version 1.13.0-SNAPSHOT
-cd noakweather-platform/weather-storage
-grep "<version>" pom.xml | head -1
-
-# Should output: <version>1.13.0-SNAPSHOT</version>
+./scripts/wetht.sh
 ```
 
-### 2. Run Test Suite
+All tests must pass. The tests that cover the GSI are:
+- `DynamoDbRepositoryTableScanFallbackTest`: the table-scan fallback when the GSI is missing
+- `DynamoDbRepositoryTest`: queries through the GSI
 
-```bash
-# Run all tests to ensure code is ready
-cd noakweather-platform/weather-storage
-mvn clean test
-
-# Expected results:
-# Tests run: 221
-# Failures: 0
-# Errors: 0
-# Skipped: 0
-```
-
-**Critical tests:**
-- `DynamoDbRepositoryTableScanFallbackTest` - Verifies fallback behavior (13 tests)
-- `DynamoDbRepositoryTest` - Verifies GSI queries
-- All integration tests pass
-
-### 3. Verify AWS Access
+### 2. Verify AWS Access
 
 ```bash
 # Test AWS credentials
@@ -101,9 +94,9 @@ aws dynamodb describe-table --table-name noakweather-data --region us-east-1
 - `dynamodb:Query`
 - `dynamodb:Scan`
 
-See [AWS IAM User Setup Guide](https://github.com/bclasky1539/noakweather-engineering-pipeline/blob/main/docs/AWS_IAM_User_Setup_DynamoDB.md) for full setup.
+See the [AWS IAM User Setup Guide](AWS_IAM_DYNAMODB_SETUP.md) for full setup.
 
-### 4. Create Backup (Recommended)
+### 3. Create Backup (Recommended)
 
 ```bash
 # Create on-demand backup
@@ -116,7 +109,7 @@ aws dynamodb create-backup \
 aws dynamodb list-backups --table-name noakweather-data --region us-east-1
 ```
 
-### 5. Document Current Performance
+### 4. Document Current Performance
 
 ```bash
 # Test current query performance (before GSI)
@@ -131,6 +124,9 @@ time curl -X POST https://your-api/weather/query \
 ## Deployment Procedure
 
 ### Step 1: Deploy Application Code (5 minutes)
+
+> Example only: this project has no Lambda function or query API. Locally, the code is built
+> with `./scripts/wethp.sh` and the repository is exercised by the `weather-storage` tests.
 
 **What happens:** Application deployed with GSI support + table scan fallback
 
@@ -218,10 +214,12 @@ aws dynamodb update-table \
     }]' \
   --region us-east-1
 
-# Wait for ACTIVE status
-aws dynamodb wait table-exists \
-  --table-name noakweather-data \
-  --region us-east-1
+# Wait for the index to become ACTIVE (checks every 30 seconds)
+until [ "$(aws dynamodb describe-table --table-name noakweather-data --region us-east-1 \
+  --query "Table.GlobalSecondaryIndexes[?IndexName=='time-bucket-index'].IndexStatus | [0]" \
+  --output text)" = "ACTIVE" ]; do
+  echo "Waiting for time-bucket-index..."; sleep 30
+done
 ```
 
 **GSI Creation Timeline:**
@@ -269,6 +267,9 @@ aws dynamodb describe-table --table-name noakweather-data --region us-east-1 \
 
 ### 2. Test Query Performance
 
+> Example only: this project has no Lambda function or query API. Locally, the code is built
+> with `./scripts/wethp.sh` and the repository is exercised by the `weather-storage` tests.
+
 ```bash
 # Test time-range query performance
 time curl -X POST https://your-api/weather/query \
@@ -286,7 +287,7 @@ time curl -X POST https://your-api/weather/query \
 
 ```bash
 # Look for GSI usage confirmation
-tail -f /var/log/noakweather/application.log
+tail -f $NOAKWEATHER_LOG_DIR/dynamodb.log
 
 # Should see messages like:
 # "Using GSI time-bucket-index for time-range query"
@@ -319,9 +320,8 @@ aws cloudwatch get-metric-statistics \
 ### 5. Run Integration Tests
 
 ```bash
-# Run full test suite against production (optional)
-cd noakweather-platform/weather-storage
-mvn verify -Pintegration-tests
+# Run the storage module's tests, including the LocalStack integration tests
+mvn test -pl noakweather-platform/weather-storage -am
 
 # All tests should pass
 ```
@@ -363,10 +363,10 @@ aws dynamodb update-table \
 
 ```bash
 # Check if GSI is being used
-grep "Using GSI" /var/log/noakweather/application.log
+grep "Using GSI" $NOAKWEATHER_LOG_DIR/dynamodb.log
 
 # Check for errors
-grep "ERROR" /var/log/noakweather/application.log | tail -20
+grep "ERROR" $NOAKWEATHER_LOG_DIR/dynamodb.log | tail -20
 
 # Verify GSI health
 aws dynamodb describe-table --table-name noakweather-data --region us-east-1
@@ -382,13 +382,20 @@ aws dynamodb update-table \
     '[{"Delete": {"IndexName": "time-bucket-index"}}]' \
   --region us-east-1
 
-# Wait for deletion
-aws dynamodb wait table-exists --table-name noakweather-data --region us-east-1
+# Wait for deletion (the index disappears from describe-table when it is gone)
+until [ "$(aws dynamodb describe-table --table-name noakweather-data --region us-east-1 \
+  --query "Table.GlobalSecondaryIndexes[?IndexName=='time-bucket-index'] | length(@)" \
+  --output text)" = "0" ]; do
+  echo "Waiting for time-bucket-index to be deleted..."; sleep 30
+done
 ```
 
 **Impact:** Application reverts to table scan (slower but stable)
 
 ### Scenario 3: Need to Rollback Code
+
+> Example only: this project has no Lambda function or query API. Locally, the code is built
+> with `./scripts/wethp.sh` and the repository is exercised by the `weather-storage` tests.
 
 **Symptoms:**
 - Application errors
@@ -441,7 +448,7 @@ aws dynamodb describe-table --table-name noakweather-data --region us-east-1
 
 ```bash
 # Check application logs for GSI usage
-grep "Using GSI\|table scan" /var/log/noakweather/application.log | tail -20
+grep "Using GSI\|table scan" $NOAKWEATHER_LOG_DIR/dynamodb.log | tail -20
 
 # Should see: "Using GSI time-bucket-index"
 # Should NOT see: "falling back to table scan"
@@ -527,7 +534,7 @@ Monitor these metrics closely:
 # Check CloudWatch for query latency trends
 
 # 2. Error rates
-grep "ERROR" /var/log/noakweather/application.log | wc -l
+grep "ERROR" $NOAKWEATHER_LOG_DIR/dynamodb.log | wc -l
 
 # 3. RCU consumption
 # Should see significant decrease
@@ -550,7 +557,7 @@ curl https://your-api/health
 Deployment is successful when:
 
 - ✅ GSI status is ACTIVE
-- ✅ All 221 tests passing
+- ✅ All tests passing (`./scripts/wetht.sh`)
 - ✅ Query times reduced by 40x+ (200ms → <10ms)
 - ✅ RCU consumption reduced by 10x+
 - ✅ Zero errors in application logs
@@ -586,9 +593,10 @@ Deployment is successful when:
 | Version   | Date       | Changes                             |
 |-----------|------------|-------------------------------------|
 | 1.0       | 2026-01-28 | Initial production deployment guide |
+| 1.1       | 2026-11-13 | Status note; fixed GSI wait commands, log paths and links; marked Lambda/API steps as examples |
 
 ---
 
 **Prepared by:** NoakWeather Engineering Team  
-**Last Updated:** January 28, 2026  
-**Version:** 1.13.0-SNAPSHOT
+**Last Updated:** November 13, 2026,  
+**Written for:** 1.13.0-SNAPSHOT (January 2026)

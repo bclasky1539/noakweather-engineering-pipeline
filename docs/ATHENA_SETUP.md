@@ -99,50 +99,36 @@ once Bronze UAT is complete.
 
 ### Step 1: Create S3 Bucket Structure
 
-Reorganize your existing S3 bucket to follow Medallion Architecture:
-```bash
-# View current structure
-aws s3 ls s3://noakweather-data/ --recursive | head -20
+The data bucket follows the Medallion Architecture. Items marked *(planned)* do not exist yet.
 
-# Recommended structure (migrate gradually)
-s3://noakweather-data/
-├── bronze/                          # Raw ingested data (JSON)
-│   ├──batch-layer
-│   │   ├── noaa/
-│   │   │   ├── metar/YYYY/MM/DD/
-│   │   │   └── taf/YYYY/MM/DD/
-│   │   ├── openweathermap/YYYY/MM/DD/
-│   └── └── weatherapi/YYYY/MM/DD/
-│   ├──raw-data
-│   │   ├── noaa/
-│   │   │   ├── metar/YYYY/MM/DD/
-│   │   │   └── taf/YYYY/MM/DD/
-│   │   ├── openweathermap/YYYY/MM/DD/
-│   └── └── weatherapi/YYYY/MM/DD/
-│   ├──speed-layer
-│   │   ├── noaa/
-│   │   │   ├── metar/YYYY/MM/DD/
-│   │   │   └── taf/YYYY/MM/DD/
-│   │   ├── openweathermap/YYYY/MM/DD/
-│   └── └── weatherapi/YYYY/MM/DD/
-├── silver/                          # Standardized data (Parquet)
-│   ├── observations/
-│   │   └── source=noaa/year=YYYY/month=MM/day=DD/
-│   └── forecasts/
-│       └── source=noaa/year=YYYY/month=MM/day=DD/
-├── gold/                            # Analytics-ready (Iceberg)
-│   ├── current_conditions/
-│   ├── observations_historical/
-│   ├── daily_stats/
-│   ├── ml_features/
-│   └── stations/
-└── athena-results/                  # Query results
+```bash
+# View the current top-level structure
+aws s3 ls s3://noakweather-data/
 ```
 
-**Migration Note:** Your current `speed-layer` directory maps to `bronze`. You can:
-- **Option A:** Copy existing data to new structure
-- **Option B:** Create symlinks (S3 doesn't support true symlinks, but Athena can point to multiple locations)
-- **Option C:** Update Java ingestion code to write to `bronze/` going forward
+```
+s3://noakweather-data/
+├── bronze/                                  # Raw ingested data
+│   ├── raw-data/                            # Report text as fetched (.txt)
+│   │   └── noaa/{metar,taf}/YYYY/MM/DD/
+│   ├── speed-layer/                         # Parsed records (.json)
+│   │   └── noaa/{metar,taf}/YYYY/MM/DD/
+│   └── batch-layer/                         # Reserved for batch processing results
+├── silver/                                  # Standardized data (Parquet)
+│   ├── observations/
+│   │   └── data_source=noaa/year=YYYY/month=MM/day=DD/
+│   └── forecasts/                           # (planned)
+├── gold/                                    # Analytics-ready (Iceberg) (planned)
+└── raw-data/                                # Legacy: raw text from the original root layout
+```
+
+Other sources (for example OpenWeatherMap) are planned and would follow the same
+`<source>/<type>/YYYY/MM/DD/` layout under `bronze/`. Athena query results go to a separate
+bucket, `noakweather-athena-results` (Step 2).
+
+**Layout note:** Data was originally written to `speed-layer/` and `raw-data/` at the bucket root.
+Ingestion now writes under `bronze/`, and the tables and the Glue job read from there. The root
+`raw-data/` folder still holds older raw text; see [S3_BUCKET_SETUP.md](S3_BUCKET_SETUP.md).
 
 ### Step 2: Create Athena Query Results Bucket
 ```bash
@@ -180,7 +166,7 @@ aws s3api get-bucket-lifecycle-configuration \
 
 ### Step 3: Create Athena Workgroup
 
-AWS Athena workgroups help organize queries and control costs. We'll create a workgroup with Athena engine version 3 for Apache Iceberg support.
+AWS Athena workgroups help organize queries and control costs. Create a workgroup with Athena engine version 3 for Apache Iceberg support.
 
 #### Option A: Using AWS Console (Recommended)
 
@@ -312,7 +298,7 @@ An error occurred (AccessDeniedException) when calling the CreateWorkGroup opera
 
 ### Step 4: Create Glue Database
 
-Athena uses AWS Glue Data Catalog to store table metadata. We will create a database to organize our Bronze, Silver, and Gold layer tables.
+Athena uses the AWS Glue Data Catalog to store table metadata. Create a `noakweather` database to organize the Bronze, Silver, and Gold layer tables.
 
 #### Option A: Using Athena Query Editor (Recommended)
 
@@ -347,11 +333,11 @@ You should see both `default` and `noakweather` in the results.
 
 5. **Select the database:**
     - In the left sidebar under **"Database"**, select **"noakweather"** from the dropdown
-    - You don't need to run `USE noakweather;` in the Console - just select it from the dropdown
+    - You do not need to run `USE noakweather;` in the Console - just select it from the dropdown
 
 **Expected Result:**
 - Database appears in the left sidebar dropdown
-- "Tables and views" section shows "(0)" tables (we'll add tables in the next step)
+- "Tables and views" section shows "(0)" tables (add tables in the next step)
 - Query results show the database was created
 
 #### Option B: Using AWS CLI
@@ -404,7 +390,7 @@ aws glue get-database --name noakweather
 An error occurred (AccessDeniedException) when calling the CreateDatabase operation
 ```
 
-**Solution:** Your IAM user doesn't have `glue:CreateDatabase` permission. Use **Option A (Athena Query Editor)** or **Option C (Glue Console)** instead.
+**Solution:** Your IAM user does not have `glue:CreateDatabase` permission. Use **Option A (Athena Query Editor)** or **Option C (Glue Console)** instead.
 
 **Database already exists:**
 ```
@@ -417,7 +403,7 @@ AlreadyExistsException: Database noakweather already exists
 
 **Solution:**
 1. Refresh the page
-2. Make sure you're using the correct workgroup (`noakweather-workgroup`)
+2. Make sure you are using the correct workgroup (`noakweather-workgroup`)
 3. Click the refresh icon next to "Data" in the left sidebar
 
 ---
@@ -572,7 +558,7 @@ aws s3 cp glue-jobs/bronze_to_silver_metar.py \
 # Create Glue job
 aws glue create-job \
     --name bronze-to-silver-metar \
-    --role AWSGlueServiceRole-NoakWeather \
+    --role GlueServiceRole-NoakWeather \
     --command "Name=glueetl,ScriptLocation=s3://noakweather-glue-scripts/bronze_to_silver_metar.py,PythonVersion=3" \
     --default-arguments '{
         "--job-language":"python",
@@ -1584,7 +1570,7 @@ if not validation_results["success"]:
 
 ---
 
-**Last Updated:** 2026-02-08  
-**Version:** 1.16.0-SNAPSHOT  
+**Last Updated:** 2026-11-13  
+**Version:** 1.32.0-SNAPSHOT  
 **Architecture:** Medallion (Bronze → Silver → Gold)  
 **Maintained By:** NoakWeather Engineering Team

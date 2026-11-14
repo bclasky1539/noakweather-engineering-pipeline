@@ -79,7 +79,7 @@ To create the job from scratch:
 ```bash
 aws glue create-job \
   --name bronze-to-silver-metar \
-  --role AWSGlueServiceRole-NoakWeather \
+  --role GlueServiceRole-NoakWeather \
   --command "Name=glueetl,ScriptLocation=s3://noakweather-glue-scripts/bronze_to_silver_metar.py" \
   --default-arguments '{"--source_date":"2026-02-10"}' \
   --glue-version "4.0" \

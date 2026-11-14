@@ -2,8 +2,11 @@
 
 **Purpose:** Deploy the Bronze → Silver METAR transformation job to AWS Glue  
 **Author:** NoakWeather Engineering Team  
-**Last Updated:** 2026-02-13  
+**Last Updated:** 2026-11-13  
 **Glue Version:** 4.0 (Python 3.10, PySpark 3.3.0)
+
+> **Current state (November 2026).** The job `bronze-to-silver-metar` is deployed and is run
+> manually for each date; it is not scheduled. The script requires `--source_date`.
 
 ---
 
@@ -226,7 +229,8 @@ aws iam attach-role-policy \
         "glue:GetJobRun",
         "glue:GetJobRuns",
         "glue:BatchStopJobRun",
-        "glue:ListJobs"
+        "glue:ListJobs",
+        "glue:GetJobs"
       ],
       "Resource": "*"
     },
@@ -235,7 +239,7 @@ aws iam attach-role-policy \
       "Action": [
         "iam:PassRole"
       ],
-      "Resource": "arn:aws:iam::975050008849:role/GlueServiceRole-NoakWeather"
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/GlueServiceRole-NoakWeather"
     }
   ]
 }
@@ -270,7 +274,8 @@ cat > glue-user-policy.json << 'EOF'
         "glue:GetJobRun",
         "glue:GetJobRuns",
         "glue:BatchStopJobRun",
-        "glue:ListJobs"
+        "glue:ListJobs",
+        "glue:GetJobs"
       ],
       "Resource": "*"
     },
@@ -279,7 +284,7 @@ cat > glue-user-policy.json << 'EOF'
       "Action": [
         "iam:PassRole"
       ],
-      "Resource": "arn:aws:iam::975050008849:role/GlueServiceRole-NoakWeather"
+      "Resource": "arn:aws:iam::ACCOUNT_ID:role/GlueServiceRole-NoakWeather"
     }
   ]
 }
@@ -421,10 +426,10 @@ aws glue start-job-run \
 
 ```bash
 # List Silver layer output
-aws s3 ls s3://noakweather-data/silver/observations/noaa/2026/02/10/ --recursive
+aws s3 ls s3://noakweather-data/silver/observations/data_source=noaa/year=2026/month=02/day=10/
 
 # Expected output:
-# 2026-02-13 XX:XX:XX  XXXXX data_source=noaa/year=2026/month=02/day=10/part-00000-xxx.snappy.parquet
+# 2026-02-13 XX:XX:XX  XXXXX part-00000-xxx.c000.snappy.parquet
 ```
 
 ### Step 2: Query Silver Data in Athena
@@ -524,7 +529,7 @@ aws logs tail /aws-glue/jobs/output \
 ```
 Processing Bronze METAR data for date: 2026-02-10
 Loaded 12 records from Bronze layer
-Successfully wrote 12 records to Silver layer: s3://noakweather-data/silver/observations/noaa/2026/02/10/
+Successfully wrote 12 records to Silver layer: s3://noakweather-data/silver/observations/
 ```
 
 ### CloudWatch Metrics
@@ -710,12 +715,15 @@ aws events put-targets \
 
 After successful deployment:
 
-1. ✅ **Set up monitoring alerts** (CloudWatch Alarms)
-2. ✅ **Create Gold layer tables** (analytics-ready data)
-3. ✅ **Build Silver → Gold transformation**
-4. ✅ **Set up orchestration** (AWS Step Functions)
-5. ✅ **Configure data quality checks** (AWS Glue Data Quality)
-6. ✅ **Implement incremental processing** (process only new data)
+None of these are done yet; see [ATHENA_SETUP.md](ATHENA_SETUP.md#part-10-next-steps) for the
+current order.
+
+1. **Set up orchestration and scheduling** (Step Functions or EventBridge)
+2. **Set up monitoring alerts** (CloudWatch Alarms)
+3. **Create Gold layer tables** (analytics-ready data)
+4. **Build Silver → Gold transformation**
+5. **Configure data quality checks** (AWS Glue Data Quality)
+6. **Implement incremental processing** (process only new data)
 
 ---
 
@@ -724,9 +732,10 @@ After successful deployment:
 - [AWS Glue Documentation](https://docs.aws.amazon.com/glue/)
 - [PySpark SQL Functions](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/functions.html)
 - [Parquet Format Specification](https://parquet.apache.org/docs/)
-- [NoakWeather Architecture Docs](./athena-setup.md)
+- [Athena Data Lakehouse Setup](ATHENA_SETUP.md)
+- [Glue job script and README](../glue-jobs/README.md)
 
 ---
 
-**Last Updated:** 2026-02-13  
+**Last Updated:** 2026-11-13  
 **Maintainer:** NoakWeather Data Engineering Team

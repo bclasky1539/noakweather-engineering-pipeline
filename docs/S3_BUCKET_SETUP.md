@@ -1,5 +1,11 @@
 # S3 Bucket Setup for NoakWeather Platform
 
+> **Current state (November 2026).** Data is now written under `bronze/` (`bronze/raw-data/`,
+> `bronze/speed-layer/`, `bronze/batch-layer/`), with `silver/` and `gold/` alongside. The
+> lifecycle rules below still target the original root prefixes, so they no longer affect
+> current data: nothing under `bronze/` is expired or archived. Reviewing the rules is tracked
+> in the Platform Operations project; this guide will be updated with that change.
+
 ## Create the S3 Bucket
 
 ### Option 1: Using AWS CLI (Recommended)
@@ -93,9 +99,12 @@ aws s3api put-bucket-lifecycle-configuration \
 aws s3api get-bucket-lifecycle-configuration --bucket noakweather-data
 ```
 
-**What this does**:
-- Speed layer data (JSON): Deleted after 30 days (recent data only)
-- Raw data (text): Moved to Glacier after 90 days (long-term archive)
+**What this does** (for the original root layout):
+- `speed-layer/` JSON: deleted after 30 days
+- `raw-data/` text: moved to Glacier after 90 days (Glacier files must be restored before they
+  can be read)
+
+These prefixes do not match the current `bronze/` layout; see the note at the top.
 
 ### Add Bucket Tags (for cost tracking)
 
@@ -109,13 +118,15 @@ aws s3api put-bucket-tagging \
 
 ## Create Folder Structure (Optional)
 
-S3 doesn't have real folders, but we can create the prefix structure for clarity:
+S3 does not have real folders, but we can create the prefix structure for clarity:
 
 ```bash
 # Create marker files to establish folder structure
-aws s3api put-object --bucket noakweather-data --key raw-data/
-aws s3api put-object --bucket noakweather-data --key speed-layer/
-aws s3api put-object --bucket noakweather-data --key batch-layer/
+aws s3api put-object --bucket noakweather-data --key bronze/raw-data/
+aws s3api put-object --bucket noakweather-data --key bronze/speed-layer/
+aws s3api put-object --bucket noakweather-data --key bronze/batch-layer/
+aws s3api put-object --bucket noakweather-data --key silver/
+aws s3api put-object --bucket noakweather-data --key gold/
 ```
 
 ---
@@ -155,43 +166,24 @@ aws s3 rm s3://noakweather-data/test/test.txt
 
 ## Expected Final Bucket Structure
 
-After the ingestion system runs, your bucket will look like this:
+After the ingestion system and the Glue job run, the bucket looks like this:
 
 ```
 s3://noakweather-data/
-├── raw-data/                    # Raw text files from sources
-│   └── noaa/
-│       ├── metar/
-│       │   └── 2025/
-│       │       └── 02/
-│       │           └── 02/
-│       │               ├── KCLT_20250202_1430.txt
-│       │               ├── KJFK_20250202_1431.txt
-│       │               └── ...
-│       └── taf/
-│           └── 2025/
-│               └── 02/
-│                   └── 02/
-│                       └── KBUF_20250202_1430.txt
-│
-├── speed-layer/                 # JSON files for fast querying
-│   └── noaa/
-│       ├── metar/
-│       │   └── 2025/
-│       │       └── 02/
-│       │           └── 02/
-│       │               ├── KCLT_20250202_1430.json
-│       │               ├── KJFK_20250202_1431.json
-│       │               └── ...
-│       └── taf/
-│           └── 2025/
-│               └── 02/
-│                   └── 02/
-│                       └── KBUF_20250202_1430.json
-│
-└── batch-layer/                 # Future: Batch processing results
-    └── (future use)
+├── bronze/
+│   ├── raw-data/                    # Raw report text, as fetched
+│   │   └── noaa/{metar,taf}/YYYY/MM/DD/<STATION>_<YYYYMMDD>_<HHMM>.txt
+│   ├── speed-layer/                 # Parsed JSON (Bronze records)
+│   │   └── noaa/{metar,taf}/YYYY/MM/DD/<STATION>_<YYYYMMDD>_<HHMM>.json
+│   └── batch-layer/                 # Reserved for batch processing results
+├── silver/
+│   └── observations/                # Parquet written by the Glue job
+│       └── data_source=noaa/year=YYYY/month=MM/day=DD/part-*.snappy.parquet
+├── gold/                            # Reserved for the Gold layer (planned)
+└── raw-data/                        # Legacy: raw text from the original root layout
 ```
+
+Dates are UTC, and `<HHMM>` is the time of the ingestion run (UTC).
 
 ---
 
@@ -207,8 +199,8 @@ s3://noakweather-data/
 
 **Cost Optimization**:
 - Lifecycle policy moves old raw data to Glacier ($0.004/GB vs $0.023/GB)
-- Deletes speed layer data after 30 days (only need recent data)
-- Use PAY_PER_REQUEST billing (no wasted capacity)
+- Deletes old speed-layer data
+- (Both apply only once the rules target the current prefixes; see the note at the top.)
 
 ---
 
@@ -270,6 +262,9 @@ source ~/.zshrc
 echo $S3_BUCKET
 echo $AWS_REGION
 ```
+
+The Java ingestion apps read `S3_BUCKET` and `AWS_REGION`. The UAT scripts in `scripts/uat/`
+take the bucket from `-b <bucket>` or `NOAKWEATHER_S3_BUCKET` instead.
 
 ---
 

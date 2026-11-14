@@ -66,8 +66,8 @@ echo $NOAKWEATHER_LOG_DIR
 ### Step 2: Create Log Directory
 
 ```bash
-mkdir -p noakweather-engineering-pipeline/noakweather-platform/logs
-mkdir -p noakweather-engineering-pipeline/noakweather-platform/logs/archive
+mkdir -p $NOAKWEATHER_LOG_DIR
+mkdir -p $NOAKWEATHER_LOG_DIR/archive
 ```
 
 ### Step 3: Verify Master Configuration Exists
@@ -148,139 +148,48 @@ cd weather-storage
 mvn exec:java -Dexec.mainClass="weather.storage.tools.AddGSIsToAwsTable"
 
 # Test 2: Verify logs are in the correct location
-ls -la noakweather-engineering-pipeline/noakweather-platform/logs/
+ls -la $NOAKWEATHER_LOG_DIR/
 
 # Test 3: View logs
-tail -f noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+tail -f $NOAKWEATHER_LOG_DIR/noakweather.log
 ```
 
 **Expected:** Logs should appear in `noakweather-platform/logs/`, NOT in `weather-storage/logs/`.
 
 ## Master Configuration File
 
-Location: `noakweather-platform/src/main/resources/log4j2.xml`
+The configuration is [`noakweather-platform/src/main/resources/log4j2.xml`](../noakweather-platform/src/main/resources/log4j2.xml).
+That file is the source of truth; this guide summarizes it rather than copying it.
 
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN">
-   <Properties>
-      <!-- Define log directory location
-           Priority: 1. NOAKWEATHER_LOG_DIR env var (recommended)
-                    2. maven.multiModuleProjectDirectory (when running from parent)
-                    3. user.dir/../logs (fallback when running from child) -->
-      <Property name="log.dir">${env:NOAKWEATHER_LOG_DIR:-${sys:maven.multiModuleProjectDirectory:-${sys:user.dir}/..}/logs}</Property>
-      <Property name="log.pattern">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%t] %logger{36} - %msg%n</Property>
-   </Properties>
+The log directory is `${env:NOAKWEATHER_LOG_DIR}`, falling back as described in
+[Configuration Priority Chain](#configuration-priority-chain).
 
-   <Appenders>
-      <!-- Console output for all modules -->
-      <Console name="Console" target="SYSTEM_OUT">
-         <PatternLayout pattern="%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n"/>
-      </Console>
+### Appenders
 
-      <!-- Main application log file (all modules) -->
-      <RollingFile name="RollingFile"
-                   fileName="${log.dir}/noakweather.log"
-                   filePattern="${log.dir}/archive/noakweather-%d{yyyy-MM-dd-HH-mm-ss}-%i.log.gz"
-                   immediateFlush="true">
-         <PatternLayout pattern="${log.pattern}"/>
-         <Policies>
-            <!-- Roll over on application startup -->
-            <OnStartupTriggeringPolicy />
-            <!-- Roll over daily at midnight -->
-            <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-            <!-- Roll over when file reaches 10MB -->
-            <SizeBasedTriggeringPolicy size="10MB"/>
-         </Policies>
-         <DefaultRolloverStrategy max="30">
-            <Delete basePath="${log.dir}/archive" maxDepth="1">
-               <IfFileName glob="noakweather-*.log.gz"/>
-               <IfLastModified age="30d"/>
-            </Delete>
-         </DefaultRolloverStrategy>
-      </RollingFile>
+| Appender       | Writes to               | Rolls over                       | Old files                                                         |
+|----------------|-------------------------|----------------------------------|-------------------------------------------------------------------|
+| `Console`      | standard output         | n/a                              | n/a                                                               |
+| `RollingFile`  | `noakweather.log`       | on startup, daily, and at 10 MB  | archived as `.gz`; deleted after 30 days                          |
+| `ErrorFile`    | `noakweather-error.log` | on startup, daily, and at 10 MB  | archived as `.gz`; at most 30 per rollover period, not deleted by age |
+| `DynamoDbFile` | `dynamodb.log`          | on startup, daily, and at 5 MB   | archived as `.gz`; at most 7 per rollover period, not deleted by age  |
 
-      <!-- Error log file (only ERROR and FATAL) -->
-      <RollingFile name="ErrorFile"
-                   fileName="${log.dir}/noakweather-error.log"
-                   filePattern="${log.dir}/archive/noakweather-error-%d{yyyy-MM-dd-HH-mm-ss}-%i.log.gz">
-         <PatternLayout pattern="${log.pattern}"/>
-         <Policies>
-            <OnStartupTriggeringPolicy />
-            <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-            <SizeBasedTriggeringPolicy size="10MB"/>
-         </Policies>
-         <DefaultRolloverStrategy max="30"/>
-         <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
-      </RollingFile>
+`ErrorFile` accepts only ERROR and FATAL events.
 
-      <!-- DynamoDB operations log (optional - for debugging) -->
-      <RollingFile name="DynamoDbFile"
-                   fileName="${log.dir}/dynamodb.log"
-                   filePattern="${log.dir}/archive/dynamodb-%d{yyyy-MM-dd-HH-mm-ss}-%i.log.gz">
-         <PatternLayout pattern="${log.pattern}"/>
-         <Policies>
-            <OnStartupTriggeringPolicy />
-            <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
-            <SizeBasedTriggeringPolicy size="5MB"/>
-         </Policies>
-         <DefaultRolloverStrategy max="7"/>
-      </RollingFile>
-   </Appenders>
+### Loggers
 
-   <Loggers>
-      <!-- Root logger - all modules (console + file) -->
-      <Root level="info">
-         <AppenderRef ref="Console"/>
-         <AppenderRef ref="RollingFile"/>
-         <AppenderRef ref="ErrorFile"/>
-      </Root>
+| Logger                               | Level | Appenders                         |
+|--------------------------------------|-------|-----------------------------------|
+| Root                                 | INFO  | Console, RollingFile, ErrorFile   |
+| `weather` (all platform code)        | INFO  | Console, RollingFile, ErrorFile   |
+| `weather.storage.repository.dynamodb`| DEBUG | Console, DynamoDbFile, ErrorFile  |
+| `weather.storage.tools`              | INFO  | Console, RollingFile, ErrorFile   |
+| `software.amazon.awssdk`             | WARN  | Console, ErrorFile                |
+| `org.apache.http`                    | WARN  | Console, ErrorFile                |
+| `org.testcontainers`                 | WARN  | Console                           |
+| `com.github.dockerjava`              | WARN  | Console                           |
 
-      <!-- Weather platform modules -->
-      <Logger name="weather" level="info" additivity="false">
-         <AppenderRef ref="Console"/>
-         <AppenderRef ref="RollingFile"/>
-         <AppenderRef ref="ErrorFile"/>
-      </Logger>
-
-      <!-- DynamoDB repository operations (detailed logging) -->
-      <Logger name="weather.storage.repository.dynamodb" level="debug" additivity="false">
-         <AppenderRef ref="Console"/>
-         <AppenderRef ref="DynamoDbFile"/>
-         <AppenderRef ref="ErrorFile"/>
-      </Logger>
-
-      <!-- Tools (like AddGSIsToAwsTable) -->
-      <Logger name="weather.storage.tools" level="info" additivity="false">
-         <AppenderRef ref="Console"/>
-         <AppenderRef ref="RollingFile"/>
-         <AppenderRef ref="ErrorFile"/>
-      </Logger>
-
-      <!-- Quiet down AWS SDK (only warnings and errors) -->
-      <Logger name="software.amazon.awssdk" level="warn" additivity="false">
-         <AppenderRef ref="Console"/>
-         <AppenderRef ref="ErrorFile"/>
-      </Logger>
-
-      <!-- Quiet down Apache HTTP client -->
-      <Logger name="org.apache.http" level="warn" additivity="false">
-         <AppenderRef ref="Console"/>
-         <AppenderRef ref="ErrorFile"/>
-      </Logger>
-
-      <!-- Quiet down Testcontainers (only in tests, but config applies) -->
-      <Logger name="org.testcontainers" level="warn" additivity="false">
-         <AppenderRef ref="Console"/>
-      </Logger>
-
-      <!-- Quiet down Docker client used by Testcontainers -->
-      <Logger name="com.github.dockerjava" level="warn" additivity="false">
-         <AppenderRef ref="Console"/>
-      </Logger>
-   </Loggers>
-</Configuration>
-```
+All named loggers use `additivity="false"`, so an event is written only by the appenders listed
+for its logger.
 
 ## How It Works
 
@@ -316,12 +225,53 @@ Maven doesn't set `maven.multiModuleProjectDirectory`, so logs would incorrectly
 
 ## Log File Descriptions
 
-| File                    | Purpose                               | Retention                           |
-|-------------------------|---------------------------------------|-------------------------------------|
-| `noakweather.log`       | All application logs (INFO and above) | 30 days                             |
-| `noakweather-error.log` | Error-level logs only                 | 30 days                             |
-| `dynamodb.log`          | DynamoDB operations (DEBUG level)     | 7 days                              |
-| `archive/*.log.gz`      | Compressed rolled logs                | Auto-deleted after retention period |
+| File                    | Purpose                                         | Archives                                                    |
+|-------------------------|-------------------------------------------------|-------------------------------------------------------------|
+| `noakweather.log`       | Application logs (INFO and above by default)    | Deleted after 30 days                                       |
+| `noakweather-error.log` | ERROR and FATAL only                            | Up to 30 per rollover period; not deleted by age            |
+| `dynamodb.log`          | DynamoDB repository operations (DEBUG and above)| Up to 7 per rollover period; not deleted by age             |
+| `archive/*.log.gz`      | Compressed rolled logs                          | See above; clean up error and DynamoDB archives manually    |
+
+`DefaultRolloverStrategy max` limits how many numbered archives are kept within one rollover
+period; it is not a number of days. Only `noakweather.log` has an age-based `Delete` rule.
+
+## Logging in Code
+
+The rules for writing log statements are in [CONTRIBUTING.md](../CONTRIBUTING.md#logging):
+SLF4J placeholders, when to guard a debug call, and how rejected report data is logged. In
+short, a group rejected as bad data is logged at DEBUG on the shared category
+`weather.processing.parser.noaa.Rejected`, never at WARN.
+
+With the default configuration, everything under `weather` logs at INFO, so DEBUG output
+(including rejections) is **not** written.
+
+### Turning on DEBUG for an investigation
+
+Log levels are read from `log4j2.xml` when the application starts, and the file is copied into
+each module at build time. To see DEBUG output for part of the code:
+
+1. Add a logger for that package or category to
+   `noakweather-platform/src/main/resources/log4j2.xml`, inside `<Loggers>`. For example, for
+   the METAR/TAF parsers and for rejected groups:
+   ```xml
+   <Logger name="weather.processing.parser.noaa" level="debug" additivity="false">
+       <AppenderRef ref="Console"/>
+       <AppenderRef ref="RollingFile"/>
+       <AppenderRef ref="ErrorFile"/>
+   </Logger>
+   ```
+   (`weather.processing.parser.noaa` also covers the `...noaa.Rejected` category; use that
+   name alone to see only rejections.)
+2. Rebuild (`scripts/wethb.sh`, or `scripts/wethp.sh` if you run the packaged jars), then run.
+3. Remove the logger again afterward; do not commit it.
+
+Switching a stage to DEBUG at run time, without a rebuild, is planned in issue #174.
+
+### Logging in Tests
+
+There is no separate test configuration: tests use the same `log4j2.xml`. To test code that
+only runs when DEBUG is enabled (inside a debug guard), use `LogCapture`, which enables DEBUG
+for one logger during the test and lets the test assert on the messages.
 
 ## Adding a New Module
 
@@ -399,7 +349,7 @@ mvn clean install -DskipTests
 # Test again
 cd weather-storage
 mvn exec:java -Dexec.mainClass="weather.storage.tools.AddGSIsToAwsTable"
-ls -la noakweather-engineering-pipeline/noakweather-platform/logs/
+ls -la $NOAKWEATHER_LOG_DIR/
 ```
 
 ### Issue 2: log4j2.xml Not Found
@@ -492,10 +442,10 @@ mvn clean install -DskipTests
 ls -la noakweather-engineering-pipeline/noakweather-platform/ | grep logs
 
 # Create directory if missing
-mkdir -p noakweather-engineering-pipeline/noakweather-platform/logs
+mkdir -p $NOAKWEATHER_LOG_DIR
 
 # Fix permissions if needed
-chmod 755 noakweather-engineering-pipeline/noakweather-platform/logs
+chmod 755 $NOAKWEATHER_LOG_DIR
 ```
 
 ## Testing Different Scenarios
@@ -522,7 +472,7 @@ mvn exec:java -Dexec.mainClass="weather.storage.tools.AddGSIsToAwsTable"
 
 # Verify logs are still in parent
 ls -la ../logs/noakweather.log
-ls -la noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+ls -la $NOAKWEATHER_LOG_DIR/noakweather.log
 ```
 
 ### Test 3: Running Tests
@@ -540,10 +490,9 @@ tail -f logs/noakweather.log
 ## Benefits of This Approach
 
 ### 1. **Location Independence**
-- Logs always go to the same place regardless of where Maven is invoked
-- Works from parent directory:
-- Works from child directory:
-- Works from anywhere with env var:
+- Logs always go to the same place regardless of where Maven is invoked: from the
+  repository root, from `noakweather-platform`, or from a child module, as long as
+  `NOAKWEATHER_LOG_DIR` is set
 
 ### 2. **Single Source of Truth**
 - One master `log4j2.xml` file
@@ -563,7 +512,7 @@ tail -f logs/noakweather.log
 ### 5. **Production Ready**
 - Automatic log rotation (daily + size-based)
 - Compression of old logs (`.gz`)
-- Automatic cleanup (30-day retention)
+- Automatic cleanup of main-log archives after 30 days
 - Separate error log for alerts
 
 ## Monitoring and Maintenance
@@ -572,39 +521,39 @@ tail -f logs/noakweather.log
 
 ```bash
 # Tail main log
-tail -f noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+tail -f $NOAKWEATHER_LOG_DIR/noakweather.log
 
 # Tail error log
-tail -f noakweather-engineering-pipeline/noakweather-platform/logs/noakweather-error.log
+tail -f $NOAKWEATHER_LOG_DIR/noakweather-error.log
 
 # Tail DynamoDB operations
-tail -f noakweather-engineering-pipeline/noakweather-platform/logs/dynamodb.log
+tail -f $NOAKWEATHER_LOG_DIR/dynamodb.log
 
 # Follow last 100 lines
-tail -n 100 -f noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+tail -n 100 -f $NOAKWEATHER_LOG_DIR/noakweather.log
 ```
 
 ### Search Logs
 
 ```bash
 # Search for errors
-grep ERROR noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+grep ERROR $NOAKWEATHER_LOG_DIR/noakweather.log
 
 # Search with context
-grep -C 5 "Exception" noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+grep -C 5 "Exception" $NOAKWEATHER_LOG_DIR/noakweather.log
 
 # Search archived logs
-zgrep "ERROR" noakweather-engineering-pipeline/noakweather-platform/logs/archive/*.gz
+zgrep "ERROR" $NOAKWEATHER_LOG_DIR/archive/*.gz
 ```
 
 ### Clean Old Logs Manually
 
 ```bash
 # List old logs
-ls -lh noakweather-engineering-pipeline/noakweather-platform/logs/archive/
+ls -lh $NOAKWEATHER_LOG_DIR/archive/
 
 # Remove logs older than 30 days (automatic, but manual if needed)
-find noakweather-engineering-pipeline/noakweather-platform/logs/archive/ -name "*.gz" -mtime +30 -delete
+find $NOAKWEATHER_LOG_DIR/archive/ -name "*.gz" -mtime +30 -delete
 ```
 
 ## Quick Reference
@@ -616,7 +565,7 @@ find noakweather-engineering-pipeline/noakweather-platform/logs/archive/ -name "
 export NOAKWEATHER_LOG_DIR="$HOME/Development/Projects/Java/noakweather-engineering-pipeline/noakweather-platform/logs"
 
 # Create log directory
-mkdir -p noakweather-engineering-pipeline/noakweather-platform/logs
+mkdir -p $NOAKWEATHER_LOG_DIR
 
 # Build all modules
 cd noakweather-engineering-pipeline/noakweather-platform
@@ -627,10 +576,10 @@ cd weather-storage
 mvn exec:java -Dexec.mainClass="weather.storage.tools.AddGSIsToAwsTable"
 
 # View logs
-tail -f noakweather-engineering-pipeline/noakweather-platform/logs/noakweather.log
+tail -f $NOAKWEATHER_LOG_DIR/noakweather.log
 
 # Verify log location
-ls -la noakweather-engineering-pipeline/noakweather-platform/logs/
+ls -la $NOAKWEATHER_LOG_DIR/
 ```
 
 ### File Locations
@@ -653,7 +602,7 @@ ls -la noakweather-engineering-pipeline/noakweather-platform/logs/
 
 ## Maintenance
 
-**Document Version:** 2.0  
-**Last Updated:** January 25, 2026,  
+**Document Version:** 2.1  
+**Last Updated:** November 13, 2026,  
 **Author:** NoakWeather Engineering Team  
 **Project:** NoakWeather Engineering Pipeline
