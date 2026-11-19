@@ -928,22 +928,23 @@ class NoaaMetarParserTest {
     }
 
     /**
-     * Known gap: the main body stops at the first token no handler matches (STOP policy),
-     * so every token after it is stranded in unparsedMainBody (the #113 failure mode, for any
-     * unrecognized token). This test asserts the current behavior and is expected to fail
-     * once the main-body loop skips unmatched tokens and continues; flip it then.
+     * An unrecognized main-body token is skipped to unparsedMainBody and the tokens
+     * after it are parsed (previously a known gap, the main body stopped there).
      */
     @Test
-    @DisplayName("Known gap: unrecognized main-body token strands the tokens after it")
-    void knownGap_unrecognizedMainBodyTokenStrandsLaterTokens() {
+    @DisplayName("#211 Unrecognized main-body token is skipped; the tokens after it parse")
+    void unrecognizedMainBodyTokenIsSkippedAndLaterTokensParse() {
         String metar = "METAR CYVR 081500Z 11004KT 1/2SM R28L/1200FT/X FG VV002 10/10 A3009";
 
         ParseResult<NoaaWeatherData> result = parser.parse(metar);
         assertThat(result.isSuccess()).isTrue();
         NoaaMetarData data = extractMetarData(result);
 
-        assertThat(data.getUnparsedMainBody())
-                .isEqualTo("R28L/1200FT/X FG VV002 10/10 A3009");
+        assertThat(data.getUnparsedMainBody()).isEqualTo("R28L/1200FT/X");
+        assertThat(data.getConditions().presentWeather()).hasSize(1);
+        assertThat(data.getConditions().skyConditions()).hasSize(1);
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(10.0);
+        assertThat(data.getConditions().pressure()).isNotNull();
     }
 
     // ========== RUNWAY STATE GROUP TESTS (Issue #121) ==========
@@ -11734,7 +11735,82 @@ class NoaaMetarParserTest {
         assertTrue(result.getData().orElseThrow().getParseIssues().isEmpty());
     }
 
-    // --- Correct behavior (regression) ---
+    // ========== UNRECOGNIZED MAIN-BODY TOKEN TESTS ==========
+
+    @Test
+    @DisplayName("KTRK: malformed wind 2606KT is skipped; visibility, clouds, temp and altimeter parse")
+    void malformedWindIsSkipped() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR KTRK 162348Z 2606KT 10SM SCT030 OVC090 01/M01 A2998"));
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("2606KT");
+        assertThat(data.getConditions().wind()).isNull();
+        assertThat(data.getConditions().visibility()).isNotNull();
+        assertThat(data.getConditions().skyConditions()).hasSize(2);
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(1.0);
+        assertThat(data.getConditions().temperature().dewpointCelsius()).isEqualTo(-1.0);
+        assertThat(data.getConditions().pressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("KGUS: bare M sky condition is skipped; temp and altimeter parse (#207)")
+    void bareMissingSkyConditionIsSkipped() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR KGUS 161755Z AUTO 23004KT 10SM M 10/04 A3052"));
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("M");
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(10.0);
+        assertThat(data.getConditions().temperature().dewpointCelsius()).isEqualTo(4.0);
+        assertThat(data.getConditions().pressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("EIDW: wind shear group WS R10L is skipped; NOSIG parses")
+    void windShearGroupIsSkipped() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR EIDW 170000Z 13018G32KT 4500 -RADZ FEW004 BKN006 07/07 Q0982 WS R10L NOSIG"));
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("WS R10L");
+        assertThat(data.isNoSignificantChange()).isTrue();
+    }
+
+    @Test
+    @DisplayName("MHLC: cloud typo BKNN070 is unparsed as a whole token, not split at BKN")
+    void cloudTypoIsNotSplit() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR MHLC 181800Z 32004KT 9999 SCT015 BKNN070 27/24 Q1014 A2994 NOSIG"));
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("BKNN070");
+        assertThat(data.getConditions().skyConditions()).hasSize(1);   // SCT015 only, no bare BKN
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(27.0);
+        assertThat(data.getConditions().pressure()).isNotNull();
+        assertThat(data.isNoSignificantChange()).isTrue();
+    }
+
+    @Test
+    @DisplayName("DNMM: run-together 8000-RA is skipped; clouds, temp and QNH parse; trend stays unparsed")
+    void runTogetherVisibilityWeatherIsSkipped() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR DNMM 171500Z 17006KT 8000-RA BKN014 FEW020CB 32/26 Q1011 TEMPO 5000-TSRA RMK CB N-SE"));
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("8000-RA TEMPO 5000-TSRA");
+        assertThat(data.getConditions().skyConditions()).hasSize(2);
+        assertThat(data.getConditions().temperature().celsius()).isEqualTo(32.0);
+        assertThat(data.getConditions().pressure()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Trend groups are not parsed as current conditions (guard for #55)")
+    void trendGroupsAreNotParsedAsObservation() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR EGLL 191020Z 24015KT 9999 SCT030 12/08 Q1012 TEMPO 3000 SHRA BKN010"));
+
+        assertThat(data.getUnparsedMainBody()).isEqualTo("TEMPO 3000 SHRA BKN010");
+        assertThat(data.getConditions().skyConditions()).hasSize(1);   // SCT030 only
+        assertThat(data.getConditions().presentWeather()).isNullOrEmpty();
+    }
+
+    // ========== CORRECT BEHAVIOR (REGRESSION) ==========
 
     @ParameterizedTest
     @ValueSource(strings = {"RMK VCSH S", "RMK VCSH S T01720026", "RMK VCSH S P0001", "RMK VCSH S AO2"})

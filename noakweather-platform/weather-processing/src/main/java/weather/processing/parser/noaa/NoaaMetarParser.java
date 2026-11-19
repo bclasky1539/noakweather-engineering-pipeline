@@ -103,14 +103,16 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
 
     /**
-     * Main body. First matching handler wins; a rejected group
-     * is moved to the unparsed list and parsing continues after it; parsing stops at
-     * the first group no handler recognizes. Both end up in unparsedMainBody.
+     * Main body. First matching handler wins; a rejected group is moved to the unparsed
+     * list and parsing continues after it; a token no handler recognizes is skipped to
+     * the unparsed list and parsing continues. The section stops at the trend
+     * (TEMPO, BECMG, ...), which stays unparsed. All of it ends up in unparsedMainBody.
      */
     private static final SectionPolicy MAIN_BODY_POLICY = SectionPolicy.of(
-            SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
-            SectionPolicy.RejectedText.MOVE_TO_UNPARSED,
-            SectionPolicy.UnrecognizedToken.STOP);
+                    SectionPolicy.Scheduling.FIRST_MATCH_RESTART,
+                    SectionPolicy.RejectedText.MOVE_TO_UNPARSED,
+                    SectionPolicy.UnrecognizedToken.SKIP_TO_UNPARSED)
+            .withBoundary(text -> METAR_TREND_START_PATTERN.matcher(text).find());
     private static final String MAIN_BODY_SECTION = "METAR main body";
 
     /**
@@ -216,8 +218,8 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Parse the main METAR body (before RMK).
      *
      * @param mainBody the main body section
-     * @return everything not parsed, in report order (rejected groups, then the text
-     * from the first unrecognized group on), or "" when everything was parsed
+     * @return everything not parsed, in report order (everything not parsed, in report order (rejected
+     * and skipped groups, then the trend from its first indicator on), or “” when everything was parsed.
      */
     private String parseMainBody(String mainBody) {
         mainBody = parseIssueDateTime(mainBody);
