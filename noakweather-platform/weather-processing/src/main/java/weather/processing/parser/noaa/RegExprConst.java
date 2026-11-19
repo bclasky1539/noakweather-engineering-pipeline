@@ -164,9 +164,10 @@ public final class RegExprConst {
      * Example: "FEW250", "SCT100", "BKN050CB", "OVC020"
      */
     // "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?\\s+"
+    // "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?\s*"
     @SuppressWarnings("java:S5843") // Complex regex required for weather phenomena combinations
     public static final Pattern SKY_CONDITION_PATTERN = Pattern.compile(
-            "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?\\s*"
+            "^(?<cover>VV|CLR|SKC|SCK|NSC|NCD|BKN|SCT|FEW|[O0]VC|///)(?<height>[\\dO]{2,4}|///)?(?<cloud>([A-Z][A-Z]+|///))?(?=\\s|$)"
     );
 
     /**
@@ -222,9 +223,11 @@ public final class RegExprConst {
 
     /**
      * No Significant Change (NOSIG)
+     * Ends on a token boundary, so NOSIG also matches as the last token of the main
+     * body, e.g. after a skipped token.
      */
     public static final Pattern NO_SIG_CHANGE_PATTERN = Pattern.compile(
-            "^(?<nosigchng>NOSIG)\\s+"
+            "^(?<nosigchng>NOSIG)(?=\\s|$)"
     );
 
     /**
@@ -657,6 +660,13 @@ public final class RegExprConst {
      */
     public static final Pattern FM_PATTERN =
             Pattern.compile("^FM(?<time>\\d{6})\\s+");
+
+    /**
+     * Start of a METAR trend (TEMPO, BECMG, ...); the main body stops there (#211).
+     * Not the TAF change groups ({@link #TEMPO_PATTERN} etc.): a METAR trend has no validity period.
+     */
+    public static final Pattern METAR_TREND_START_PATTERN = Pattern.compile(
+            "^\\s*+(?:TEMPO|BECMG|PROB\\d{2}|FM\\d{4})(?=\\s|$)");
 
     /**
      * TAF temperature forecast (TX/TN)

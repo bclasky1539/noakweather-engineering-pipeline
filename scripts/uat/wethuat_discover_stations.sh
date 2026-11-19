@@ -114,6 +114,10 @@ declare -a PATTERNS=(
      # #180 — temperature/dewpoint with a one- or three-digit value; rejected and kept in unparsedMainBody.
      "180-temp-dewpoint-truncated-dewpoint|(^|\"| )M?[0-9]{2}/M?([0-9]|[0-9]{3})( |\"|\$)"
      "180-temp-dewpoint-bad-temperature|(^|\"| )M?([0-9]|[0-9]{3})/M?[0-9]{2}( (A|Q)[0-9]{4}|\"|\$)"
+     #211 malformed wind (4-digit)|\b[0-9]{4}(KT|MPS)\b
+     #211 bare M sky condition|SM M [M0-9]{2}/
+     #211 cloud cover glued to text|\b(FEW|SCT|BKN|OVC)[A-Z]+[0-9]{3}\b
+     #211 visibility and weather run together|\b[0-9]{4}[-+]?(RA|SN|DZ|TS|SH|FG|BR)
 )
 
 for entry in "${PATTERNS[@]}"; do

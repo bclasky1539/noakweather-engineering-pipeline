@@ -2988,6 +2988,22 @@ class RegExprConstTest {
         assertThat(matcher.group("nosigchng")).isEqualTo("NOSIG");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"NOSIG", "NOSIG ", "NOSIG RMK"})
+    @DisplayName("NO_SIG_CHANGE_PATTERN should match NOSIG at end of text or before another token (#211)")
+    void testNoSigChangePattern_TokenBoundary(String input) {
+        Matcher matcher = RegExprConst.NO_SIG_CHANGE_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("nosigchng")).isEqualTo("NOSIG");
+    }
+
+    @Test
+    @DisplayName("NO_SIG_CHANGE_PATTERN should not match a token that only starts with NOSIG (#211)")
+    void testNoSigChangePattern_NotPartOfLongerToken() {
+        assertThat(RegExprConst.NO_SIG_CHANGE_PATTERN.matcher("NOSIGX").find()).isFalse();
+    }
+
     // ========== UNPARSED PATTERN TEST ==========
 
     @Test
@@ -3360,5 +3376,26 @@ class RegExprConstTest {
         assertThat(matched)
                 .as("TAF pattern should match: %s", input.trim())
                 .isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEMPO 5000-TSRA", "TEMPO 4000 +RA BKN008", "BECMG FM1300 9999 NSW",
+            "PROB30 TSRA", "FM1300 24010KT", "TEMPO"})
+    @DisplayName("METAR trend start matches METAR trend indicators (#211)")
+    void metarTrendStartMatches(String text) {
+        assertThat(RegExprConst.METAR_TREND_START_PATTERN.matcher(text).find()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TEMPOX 5000", "BKN014 TEMPO 5000", "FM12 24010KT", "NOSIG", "8000-RA"})
+    @DisplayName("METAR trend start does not match other tokens or a trend later in the text (#211)")
+    void metarTrendStartDoesNotMatch(String text) {
+        assertThat(RegExprConst.METAR_TREND_START_PATTERN.matcher(text).find()).isFalse();
+    }
+
+    @Test
+    @DisplayName("TAF TEMPO pattern does not match a METAR trend, which has no validity period (#211)")
+    void tafTempoPatternDoesNotMatchMetarTrend() {
+        assertThat(RegExprConst.TEMPO_PATTERN.matcher("TEMPO 5000-TSRA ").find()).isFalse();
     }
 }
