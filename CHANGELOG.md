@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.32.1-SNAPSHOT - November 19, 2026
+
+### Fixed
+- METAR main body parsing no longer stops at the first unrecognized token (#211). The token is moved to unparsedMainBody and parsing continues, so later groups (visibility, clouds, temperature/dewpoint, altimeter, NOSIG) are no longer lost. Evidence: KTRK, KGUS (#207), EIDW, DNMM, MHLC.
+- The METAR trend (TEMPO, BECMG, PROBnn, FMhhmm) is now a section boundary, like RMK. Trend groups stay in unparsedMainBody and are never parsed as current conditions (#55 remains open for trend parsing).
+- SKY_CONDITION_PATTERN ends on a token boundary, so a malformed group such as BKNN070 is kept whole instead of being split at BKN.
+- NO_SIG_CHANGE_PATTERN ends on a token boundary, so NOSIG is parsed when it is the last token of the main body.
+
+### Added
+- Watch patterns for #211 in wethuat_discover_stations.sh: 4-digit wind, bare M sky condition, cloud cover joined to text, and visibility joined to weather.
+
 ## Version 1.32.0-SNAPSHOT - November 12, 2026
 
 ### Fixed
