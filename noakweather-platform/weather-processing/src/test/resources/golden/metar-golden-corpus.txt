@@ -68,3 +68,6 @@ SPECI KDEN 121853Z 36008KT 1/4SM FZFG VV002 M02/M03 A3020 RMK AO2 SLPNO
 
 # --- rejected main-body groups (1/0SM, 10/15) are kept, then the unrecognized XYZ stops parsing (#138) ---
 METAR KJFK 151751Z 27012KT 1/0SM FEW250 10/15 A3012 XYZ RMK AO2 SLP201
+
+# --- pressure tendency group with missing data (5////) not recognized (#198) ---
+METAR MMCM 151143Z 00000KT 4SM OVC008 24/23 A3000 RMK SLP159 5//// 930 8/6// HZY RTS

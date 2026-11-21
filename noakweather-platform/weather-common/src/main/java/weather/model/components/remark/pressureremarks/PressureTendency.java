@@ -24,27 +24,39 @@ import weather.model.components.Pressure;
  * <p>
  * Format: 5TCCC where:
  * - 5 = Indicator (always 5)
- * - T = Tendency code (0-8, WMO Code 0200)
- * - CCC = Pressure change in tenths of hPa (3 digits)
+ * - T = Tendency code (0-8, WMO Code 0200), or "/" when missing
+ * - CCC = Pressure change in tenths of hPa (3 digits), or "///" when missing
  * <p>
  * WMO Code 0200 - Pressure Tendency Characteristic:
- * - 0 = Increasing, then decreasing
- * - 1 = Increasing, then steady; or increasing more slowly
- * - 2 = Increasing (steadily or unsteadily)
- * - 3 = Decreasing or steady, then increasing; or increasing more rapidly
+ * - 0 = Rising, then falling
+ * - 1 = Rising, then steady; or rising more slowly
+ * - 2 = Rising (steadily or unsteadily)
+ * - 3 = Falling or steady, then rising; or rising more rapidly
  * - 4 = Steady
- * - 5 = Decreasing, then increasing
- * - 6 = Decreasing, then steady; or decreasing more slowly
- * - 7 = Decreasing (steadily or unsteadily)
- * - 8 = Steady or increasing, then decreasing; or decreasing more rapidly
+ * - 5 = Falling, then rising
+ * - 6 = Falling, then steady; or falling more slowly
+ * - 7 = Falling (steadily or unsteadily)
+ * - 8 = Steady or rising, then falling; or falling more rapidly
  * <p>
  * Examples:
- * - "52032" → Increasing then steady, +3.2 hPa
- * - "57045" → Decreasing steadily, -4.5 hPa
+ * - "52032" → Rising then steady, +3.2 hPa
+ * - "57045" → Falling steadily, -4.5 hPa
  * - "54000" → Steady, 0.0 hPa change
+ * - "54///" → Steady, change not reported
+ * - "5/123" → Tendency not reported, change of 12.3 hPa
+ * - "5////" → Group reported with every element missing (see {@link #missing()})
+ * <p>
+ * Each element is reported independently, so either component may be null when
+ * that element was sent as solidi. A report with no "5" group at all has no
+ * PressureTendency; a "5////" group is a PressureTendency with both components
+ * null, so the two cases stay distinct (#198).
+ * <p>
+ * Methods that need the tendency code (direction) return false or "Not reported"
+ * when it is missing; methods that need the change (magnitude) do the same when
+ * the change is missing. A signed change needs both.
  *
- * @param tendencyCode       WMO tendency code (0-8)
- * @param changeHectopascals Pressure change in hectopascals (can be 0.0)
+ * @param tendencyCode       WMO tendency code (0-8), or null when reported as "/"
+ * @param changeHectopascals Pressure change in hectopascals (can be 0.0), or null when reported as "///"
  * @author bclasky1539
  *
  */
@@ -65,14 +77,37 @@ public record PressureTendency(
      */
     public static final double RAPID_CHANGE_HPA = 6.0;
 
+    /**
+     * METAR text of a missing tendency code element
+     */
+    private static final String MISSING_TENDENCY_CODE = "/";
+
+    /**
+     * METAR text of a missing pressure change element
+     */
+    private static final String MISSING_CHANGE_CODE = "///";
+
+    /**
+     * Description returned for an element that was not reported
+     */
+    private static final String MISSING_DESCRIPTION = "Not reported";
+
+    private static final String SUMMARY_PREFIX = "Pressure tendency: ";
+
     // ==================== Compact Constructor ====================
 
     /**
      * Compact constructor with validation.
+     * Either component may be null (element reported as solidi); a component that
+     * is present must be valid.
      */
     public PressureTendency {
-        validateTendencyCode(tendencyCode);
-        validateChangeValue(changeHectopascals);
+        if (tendencyCode != null) {
+            validateTendencyCode(tendencyCode);
+        }
+        if (changeHectopascals != null) {
+            validateChangeValue(changeHectopascals);
+        }
     }
 
     // ==================== Validation ====================
@@ -80,11 +115,7 @@ public record PressureTendency(
     /**
      * Validate tendency code is in valid range (0-8).
      */
-    private static void validateTendencyCode(Integer code) {
-        if (code == null) {
-            throw new IllegalArgumentException("Tendency code cannot be null");
-        }
-
+    private static void validateTendencyCode(int code) {
         if (code < 0 || code > 8) {
             throw new InvalidObservationException(
                     "PressureTendency.tendencyCode", String.valueOf(code), "Tendency code must be 0-8");
@@ -94,11 +125,7 @@ public record PressureTendency(
     /**
      * Validate pressure change value.
      */
-    private static void validateChangeValue(Double change) {
-        if (change == null) {
-            throw new IllegalArgumentException("Pressure change cannot be null");
-        }
-
+    private static void validateChangeValue(double change) {
         if (change < 0.0) {
             throw new InvalidObservationException(
                     "PressureTendency.changeHectopascals", String.valueOf(change), "Pressure change cannot be negative");
@@ -135,6 +162,30 @@ public record PressureTendency(
     }
 
     /**
+     * Factory method to create from the two elements of a METAR "5TCCC" group as
+     * reported, where either element may be sent as solidi when missing (#198).
+     * <p>
+     * Examples:
+     * - ("7", "045") → code 7, 4.5 hPa
+     * - ("4", "///") → code 4, change not reported
+     * - ("/", "123") → code not reported, 12.3 hPa
+     * - ("/", "///") → every element missing
+     *
+     * @param tendencyCodeText the tendency code element: one digit, or "/"
+     * @param changeCodeText   the change element: 3 digits in tenths of hPa, or "///"
+     * @return PressureTendency instance
+     * @throws InvalidObservationException if an element is not in one of those forms,
+     *                                     or a present value fails validation
+     */
+    public static PressureTendency fromMetarGroup(String tendencyCodeText, String changeCodeText) {
+        if (tendencyCodeText == null || changeCodeText == null) {
+            throw new IllegalArgumentException("Tendency code and change code text cannot be null");
+        }
+
+        return new PressureTendency(parseTendencyCodeText(tendencyCodeText), parseChangeCodeText(changeCodeText));
+    }
+
+    /**
      * Factory method with explicit values.
      *
      * @param tendencyCode WMO tendency code (0-8)
@@ -145,61 +196,124 @@ public record PressureTendency(
         return new PressureTendency(tendencyCode, changeHpa);
     }
 
-    // ==================== Query Methods ====================
+    /**
+     * Factory method for a pressure tendency group reported with every element
+     * missing ("5////"). The station sent the group, but neither the tendency code
+     * nor the change was available (#198).
+     *
+     * @return a PressureTendency with both components null
+     */
+    public static PressureTendency missing() {
+        return new PressureTendency(null, null);
+    }
+
+    private static Integer parseTendencyCodeText(String text) {
+        if (MISSING_TENDENCY_CODE.equals(text)) {
+            return null;
+        }
+        if (!text.matches("\\d")) {
+            throw new InvalidObservationException(
+                    "PressureTendency.tendencyCode", text, "Tendency code must be one digit or /");
+        }
+        return Integer.parseInt(text);
+    }
+
+    private static Double parseChangeCodeText(String text) {
+        if (MISSING_CHANGE_CODE.equals(text)) {
+            return null;
+        }
+        if (!text.matches("\\d{3}")) {
+            throw new InvalidObservationException(
+                    "PressureTendency.changeCode", text, "Change code must be 3 digits or ///");
+        }
+        return Integer.parseInt(text) / 10.0;
+    }
+
+    // ==================== Element Presence ====================
 
     /**
-     * Check if pressure is increasing (codes 0-3).
+     * Check if the tendency code element was reported (not "/").
      *
-     * @return true if pressure is increasing
+     * @return true if the tendency code is available
      */
-    public boolean isIncreasing() {
-        return tendencyCode >= 0 && tendencyCode <= 3;
+    public boolean hasTendencyCode() {
+        return tendencyCode != null;
     }
 
     /**
-     * Check if pressure is decreasing (codes 5-8).
+     * Check if the pressure change element was reported (not "///").
      *
-     * @return true if pressure is decreasing
+     * @return true if the pressure change is available
      */
-    public boolean isDecreasing() {
-        return tendencyCode >= 5 && tendencyCode <= 8;
+    public boolean hasChange() {
+        return changeHectopascals != null;
+    }
+
+    /**
+     * Check if the group was reported with every element missing (5////).
+     *
+     * @return true if neither the tendency code nor the change is available
+     */
+    public boolean isMissing() {
+        return !hasTendencyCode() && !hasChange();
+    }
+
+    // ==================== Query Methods ====================
+
+    /**
+     * Check if pressure is rising (codes 0-3).
+     *
+     * @return true if pressure is rising; false if the tendency code is missing
+     */
+    public boolean isRising() {
+        return hasTendencyCode() && tendencyCode >= 0 && tendencyCode <= 3;
+    }
+
+    /**
+     * Check if pressure is falling (codes 5-8).
+     *
+     * @return true if pressure is falling; false if the tendency code is missing
+     */
+    public boolean isFalling() {
+        return hasTendencyCode() && tendencyCode >= 5 && tendencyCode <= 8;
     }
 
     /**
      * Check if pressure is steady (code 4).
      *
-     * @return true if pressure is steady
+     * @return true if pressure is steady; false if the tendency code is missing
      */
     public boolean isSteady() {
-        return tendencyCode == 4;
+        return hasTendencyCode() && tendencyCode == 4;
     }
 
     /**
      * Check if this represents a significant change (>= 3.0 hPa).
      *
-     * @return true if change is significant
+     * @return true if change is significant; false if the change is missing
      */
     public boolean isSignificant() {
-        return changeHectopascals >= SIGNIFICANT_CHANGE_HPA;
+        return hasChange() && changeHectopascals >= SIGNIFICANT_CHANGE_HPA;
     }
 
     /**
      * Check if this represents a rapid change (>= 6.0 hPa).
      * Rapid pressure changes are meteorologically significant.
      *
-     * @return true if change is rapid
+     * @return true if change is rapid; false if the change is missing
      */
     public boolean isRapidChange() {
-        return changeHectopascals >= RAPID_CHANGE_HPA;
+        return hasChange() && changeHectopascals >= RAPID_CHANGE_HPA;
     }
 
     /**
      * Check if pressure change is negligible (< 1.0 hPa).
+     * An unknown change is not treated as negligible.
      *
-     * @return true if change is minimal
+     * @return true if change is minimal; false if the change is missing
      */
     public boolean isNegligible() {
-        return changeHectopascals < 1.0;
+        return hasChange() && changeHectopascals < 1.0;
     }
 
     // ==================== Conversion Methods ====================
@@ -207,20 +321,27 @@ public record PressureTendency(
     /**
      * Get pressure change in inches of mercury.
      *
-     * @return pressure change in inHg
+     * @return pressure change in inHg, or null if the change is missing
      */
-    public double getChangeInchesHg() {
+    public Double getChangeInchesHg() {
+        if (!hasChange()) {
+            return null;
+        }
         return changeHectopascals * Pressure.HPA_TO_INHG;
     }
 
     /**
-     * Get signed pressure change (positive for increasing, negative for decreasing).
-     * This represents the actual direction of change.
+     * Get signed pressure change (positive for rising, negative for falling).
+     * This represents the actual direction of change, which comes from the tendency
+     * code, so both elements are needed.
      *
-     * @return signed pressure change in hPa
+     * @return signed pressure change in hPa, or null if the tendency code or the change is missing
      */
-    public double getSignedChange() {
-        if (isDecreasing()) {
+    public Double getSignedChange() {
+        if (!hasTendencyCode() || !hasChange()) {
+            return null;
+        }
+        if (isFalling()) {
             return -changeHectopascals;
         }
         return changeHectopascals;
@@ -231,19 +352,22 @@ public record PressureTendency(
     /**
      * Get human-readable description of the tendency code.
      *
-     * @return tendency description
+     * @return tendency description, or "Not reported" if the tendency code is missing
      */
     public String getTendencyDescription() {
+        if (!hasTendencyCode()) {
+            return MISSING_DESCRIPTION;
+        }
         return switch (tendencyCode) {
-            case 0 -> "Increasing, then decreasing";
-            case 1 -> "Increasing, then steady";
-            case 2 -> "Increasing";
-            case 3 -> "Increasing rapidly";
+            case 0 -> "Rising, then falling";
+            case 1 -> "Rising, then steady";
+            case 2 -> "Rising";
+            case 3 -> "Rising rapidly";
             case 4 -> "Steady";
-            case 5 -> "Decreasing, then increasing";
-            case 6 -> "Decreasing, then steady";
-            case 7 -> "Decreasing";
-            case 8 -> "Decreasing rapidly";
+            case 5 -> "Falling, then rising";
+            case 6 -> "Falling, then steady";
+            case 7 -> "Falling";
+            case 8 -> "Falling rapidly";
             default -> "Unknown";
         };
     }
@@ -251,9 +375,12 @@ public record PressureTendency(
     /**
      * Get short tendency description (single word).
      *
-     * @return short description
+     * @return short description, or "Not reported" if the tendency code is missing
      */
     public String getShortDescription() {
+        if (!hasTendencyCode()) {
+            return MISSING_DESCRIPTION;
+        }
         return switch (tendencyCode) {
             case 0, 1, 2, 3 -> "Rising";
             case 4 -> "Steady";
@@ -265,10 +392,12 @@ public record PressureTendency(
     /**
      * Get change magnitude description.
      *
-     * @return magnitude description
+     * @return magnitude description, or "Not reported" if the change is missing
      */
     public String getChangeMagnitude() {
-        if (changeHectopascals >= RAPID_CHANGE_HPA) {
+        if (!hasChange()) {
+            return MISSING_DESCRIPTION;
+        } else if (changeHectopascals >= RAPID_CHANGE_HPA) {
             return "Rapid";
         } else if (changeHectopascals >= SIGNIFICANT_CHANGE_HPA) {
             return "Significant";
@@ -282,24 +411,35 @@ public record PressureTendency(
     }
 
     /**
-     * Get complete human-readable summary.
+     * Get complete human-readable summary. A group with a missing element ends with
+     * its METAR code, e.g. "(54///)".
      *
      * @return formatted summary
      */
     public String getSummary() {
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("Pressure tendency: ");
-        sb.append(getTendencyDescription());
-        sb.append(", change of ");
-
-        if (isDecreasing()) {
-            sb.append("-");
-        } else if (isIncreasing()) {
-            sb.append("+");
+        if (isMissing()) {
+            return SUMMARY_PREFIX + MISSING_DESCRIPTION + " (" + toMetarCode() + ")";
         }
 
-        sb.append(String.format("%.1f hPa", changeHectopascals));
+        StringBuilder sb = new StringBuilder(SUMMARY_PREFIX);
+        sb.append(getTendencyDescription());
+        appendChangeSummary(sb);
+
+        if (!hasTendencyCode() || !hasChange()) {
+            sb.append(" (").append(toMetarCode()).append(")");
+        }
+
+        return sb.toString();
+    }
+
+    private void appendChangeSummary(StringBuilder sb) {
+        if (!hasChange()) {
+            sb.append(", change not reported");
+            return;
+        }
+
+        sb.append(", change of ");
+        sb.append(getFormattedChange());
         sb.append(String.format(" (%.2f inHg)", getChangeInchesHg()));
 
         if (isRapidChange()) {
@@ -307,16 +447,19 @@ public record PressureTendency(
         } else if (isSignificant()) {
             sb.append(" [SIGNIFICANT]");
         }
-
-        return sb.toString();
     }
 
     /**
-     * Get weather implications based on tendency.
+     * Get weather implications based on tendency. Both the direction (tendency code)
+     * and the size (change) are needed.
      *
      * @return weather implication description
      */
     public String getWeatherImplication() {
+        if (!hasTendencyCode() || !hasChange()) {
+            return "Pressure tendency not fully reported - no implication available";
+        }
+
         if (isRapidChange()) {
             return getRapidChangeImplication();
         }
@@ -329,27 +472,27 @@ public record PressureTendency(
     }
 
     private String getRapidChangeImplication() {
-        if (isIncreasing()) {
+        if (isRising()) {
             return "Rapid pressure rise - weather likely improving quickly, storm clearing";
-        } else if (isDecreasing()) {
+        } else if (isFalling()) {
             return "Rapid pressure fall - severe weather approaching, deteriorating conditions";
         }
         return "Steady pressure - stable weather conditions";
     }
 
     private String getSignificantChangeImplication() {
-        if (isIncreasing()) {
+        if (isRising()) {
             return "Rising pressure - improving weather, clearing conditions";
-        } else if (isDecreasing()) {
+        } else if (isFalling()) {
             return "Falling pressure - weather deteriorating, potential storm development";
         }
         return "Steady pressure - weather conditions stable";
     }
 
     private String getModerateChangeImplication() {
-        if (isIncreasing()) {
+        if (isRising()) {
             return "Slight pressure rise - weather becoming more settled";
-        } else if (isDecreasing()) {
+        } else if (isFalling()) {
             return "Slight pressure fall - weather may deteriorate slightly";
         }
         return "Pressure steady - no significant weather change expected";
@@ -358,24 +501,32 @@ public record PressureTendency(
     // ==================== Formatting Methods ====================
 
     /**
-     * Format as METAR remark code (5TCCC).
+     * Format as METAR remark code (5TCCC). Each element is written on its own, with
+     * solidi for a missing element, so the result matches the group as reported:
+     * "57045", "54///", "5/123" or "5////".
      *
      * @return METAR format string
      */
     public String toMetarCode() {
-        int changeCode = (int) Math.round(changeHectopascals * 10);
-        return String.format("5%d%03d", tendencyCode, changeCode);
+        String codePart = hasTendencyCode() ? String.valueOf(tendencyCode) : MISSING_TENDENCY_CODE;
+        String changePart = hasChange()
+                ? String.format("%03d", (int) Math.round(changeHectopascals * 10))
+                : MISSING_CHANGE_CODE;
+        return "5" + codePart + changePart;
     }
 
     /**
-     * Format with unit label.
+     * Format with unit label. The sign comes from the tendency code, so a change
+     * without a tendency code is shown unsigned.
      *
-     * @return formatted string with unit
+     * @return formatted string with unit, or "Not reported" if the change is missing
      */
     public String getFormattedChange() {
-        if (isDecreasing()) {
+        if (!hasChange()) {
+            return MISSING_DESCRIPTION;
+        } else if (isFalling()) {
             return String.format("-%.1f hPa", changeHectopascals);
-        } else if (isIncreasing()) {
+        } else if (isRising()) {
             return String.format("+%.1f hPa", changeHectopascals);
         } else {
             return String.format("%.1f hPa", changeHectopascals);

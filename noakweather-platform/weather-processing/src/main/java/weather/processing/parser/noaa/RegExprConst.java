@@ -528,10 +528,10 @@ public final class RegExprConst {
 
     /**
      * 3-hour pressure tendency
-     * Example: "52032"
+     * Examples: "52032", "54///", "5/123", "5////" (missing elements as solidi, #198)
      */
     public static final Pattern PRESS_3HR_PATTERN = Pattern.compile(
-            "^(?<type>5)(?<tend>[0-8])(?<press>\\d{3})(?=\\s|$)"
+            "^(?<type>5)(?<tend>[0-8/])(?<press>\\d{3}|/{3})(?=\\s|$)"
     );
 
     /**
