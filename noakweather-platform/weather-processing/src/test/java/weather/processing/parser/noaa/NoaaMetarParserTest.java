@@ -647,8 +647,8 @@ class NoaaMetarParserTest {
             "'METAR KJFK 251651Z 19005KT R22R/0400N', 22R, 400, , , , N, 'RVR with no-change trend'",
             "'METAR KJFK 251651Z 19005KT R24/P2000N', 24, 2000, , , P, N, 'RVR greater than with trend'",
             "'METAR KJFK 251651Z 19005KT R23R/0450N', 23R, 450, , , , N, 'RVR with right designator'",
-            "'METAR KJFK 251651Z 19005KT R23L/0350D', 23L, 350, , , , D, 'RVR with decreasing trend'",
-            "'METAR KJFK 251651Z 19005KT R22C/1200U', 22C, 1200, , , , U, 'RVR with increasing trend and center designator'",
+            "'METAR KJFK 251651Z 19005KT R23L/0350D', 23L, 350, , , , D, 'RVR with falling trend'",
+            "'METAR KJFK 251651Z 19005KT R22C/1200U', 22C, 1200, , , , U, 'RVR with rising trend and center designator'",
             "'METAR KJFK 251651Z 19005KT R04L/M0400N', 04L, 400, , , M, N, 'RVR less than'",
             // Variable RVR
             "'METAR KJFK 251651Z 19005KT R23L/0900V6000FT', 23L, , 900, 6000, , , 'Variable RVR with FT unit'",
@@ -7477,20 +7477,20 @@ class NoaaMetarParserTest {
 
     @ParameterizedTest
     @CsvSource({
-            // Increasing pressure (codes 0-3)
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 50125', 0, 12.5, 'Increasing, then decreasing (code 0)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 51025', 1, 2.5, 'Increasing, then steady (code 1)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 52015', 2, 1.5, 'Increasing (code 2)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 53010', 3, 1.0, 'Increasing rapidly (code 3)'",
+            // Rising pressure (codes 0-3)
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 50125', 0, 12.5, 'Rising, then falling (code 0)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 51025', 1, 2.5, 'Rising, then steady (code 1)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 52015', 2, 1.5, 'Rising (code 2)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 53010', 3, 1.0, 'Rising rapidly (code 3)'",
 
             // Steady pressure (code 4)
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 54000', 4, 0.0, 'Steady (code 4)'",
 
-            // Decreasing pressure (codes 5-8)
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 55008', 5, 0.8, 'Decreasing, then increasing (code 5)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 56018', 6, 1.8, 'Decreasing, then steady (code 6)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 57035', 7, 3.5, 'Decreasing (code 7)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 58045', 8, 4.5, 'Decreasing rapidly (code 8)'"
+            // Falling pressure (codes 5-8)
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 55008', 5, 0.8, 'Falling, then rising (code 5)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 56018', 6, 1.8, 'Falling, then steady (code 6)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 57035', 7, 3.5, 'Falling (code 7)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 58045', 8, 4.5, 'Falling rapidly (code 8)'"
     })
     @DisplayName("Should parse 3-hour pressure tendency with all tendency codes")
     void testParsePressureTendency(String metar, int expectedCode,
@@ -7686,8 +7686,8 @@ class NoaaMetarParserTest {
         assertThat(tendency).isNotNull();
 
         // Query methods
-        assertThat(tendency.isIncreasing()).isFalse();
-        assertThat(tendency.isDecreasing()).isTrue();
+        assertThat(tendency.isRising()).isFalse();
+        assertThat(tendency.isFalling()).isTrue();
         assertThat(tendency.isSteady()).isFalse();
 
         // Significance methods
@@ -7696,7 +7696,7 @@ class NoaaMetarParserTest {
 
         // Tendency description
         String description = tendency.getTendencyDescription();
-        assertThat(description).contains("Decreasing");
+        assertThat(description).contains("Falling");
     }
 
     @Test
@@ -7734,8 +7734,8 @@ class NoaaMetarParserTest {
         assertThat(tendency).isNotNull();
 
         // 3.5 hPa ≈ 0.103 inHg
-        double inchesHg = tendency.getChangeInchesHg();
-        assertThat(inchesHg).isCloseTo(0.103, within(0.01));
+        assertThat(tendency.getChangeInchesHg())
+                .isCloseTo(0.103, within(0.01));
     }
 
     @Test
@@ -7757,7 +7757,7 @@ class NoaaMetarParserTest {
         // Summary
         String summary = tendency.getSummary();
         assertThat(summary)
-                .contains("Decreasing")
+                .contains("Falling")
                 .contains("-3.5")
                 .contains("hPa")
                 .contains("SIGNIFICANT");
@@ -7810,7 +7810,7 @@ class NoaaMetarParserTest {
         PressureTendency tendency = data.getRemarks().pressureTendency();
         assertThat(tendency.tendencyCode()).isEqualTo(7);
         assertThat(tendency.changeHectopascals()).isEqualTo(3.5, within(0.01));
-        assertThat(tendency.isDecreasing()).isTrue();
+        assertThat(tendency.isFalling()).isTrue();
         assertThat(tendency.isRapidChange()).isFalse(); // 3.5 < 6.0
     }
 
@@ -7841,29 +7841,29 @@ class NoaaMetarParserTest {
     @Test
     @DisplayName("Should compare pressure tendency types correctly")
     void testPressureTendency_TypeComparison() {
-        // Increasing
-        String increasingMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 51025";
-        PressureTendency increasing = extractMetarData(parser.parse(increasingMetar))
+        // Rising
+        String risingMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 51025";
+        PressureTendency rising = extractMetarData(parser.parse(risingMetar))
                 .getRemarks().pressureTendency();
-        assertThat(increasing.isIncreasing()).isTrue();
-        assertThat(increasing.isDecreasing()).isFalse();
-        assertThat(increasing.isSteady()).isFalse();
+        assertThat(rising.isRising()).isTrue();
+        assertThat(rising.isFalling()).isFalse();
+        assertThat(rising.isSteady()).isFalse();
 
         // Steady
         String steadyMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 54000";
         PressureTendency steady = extractMetarData(parser.parse(steadyMetar))
                 .getRemarks().pressureTendency();
-        assertThat(steady.isIncreasing()).isFalse();
-        assertThat(steady.isDecreasing()).isFalse();
+        assertThat(steady.isRising()).isFalse();
+        assertThat(steady.isFalling()).isFalse();
         assertThat(steady.isSteady()).isTrue();
 
-        // Decreasing
-        String decreasingMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 57035";
-        PressureTendency decreasing = extractMetarData(parser.parse(decreasingMetar))
+        // Falling
+        String fallingMetar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK 57035";
+        PressureTendency falling = extractMetarData(parser.parse(fallingMetar))
                 .getRemarks().pressureTendency();
-        assertThat(decreasing.isIncreasing()).isFalse();
-        assertThat(decreasing.isDecreasing()).isTrue();
-        assertThat(decreasing.isSteady()).isFalse();
+        assertThat(falling.isRising()).isFalse();
+        assertThat(falling.isFalling()).isTrue();
+        assertThat(falling.isSteady()).isFalse();
     }
 
     @Test
@@ -7928,7 +7928,7 @@ class NoaaMetarParserTest {
         PressureTendency tendency = data.getRemarks().pressureTendency();
         assertThat(tendency.tendencyCode()).isEqualTo(7);
         assertThat(tendency.changeHectopascals()).isEqualTo(3.5, within(0.01));
-        assertThat(tendency.isDecreasing()).isTrue();
+        assertThat(tendency.isFalling()).isTrue();
         assertThat(tendency.isRapidChange()).isFalse(); // 3.5 < 6.0
     }
 
@@ -8026,6 +8026,89 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().pressureTendency())
                 .as("Pressure tendency should be null: %s", scenario)
                 .isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 57045', 7,    4.5, 57045, 'Complete group'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 54///', 4,       , 54///, 'Change missing'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5/123',  ,   12.3, 5/123, 'Tendency code missing'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5////',  ,       , 5////, 'Every element missing'"
+    })
+    @DisplayName("Should recognize pressure tendency groups with missing elements - Issue #198")
+    void testParsePressureTendency_MissingElements(String metar, Integer expectedCode, Double expectedChange,
+                                                   String expectedMetarCode, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarData data = extractMetarData(result);
+
+        PressureTendency tendency = data.getRemarks().pressureTendency();
+        assertThat(tendency).as(scenario).isNotNull();
+        assertThat(tendency.tendencyCode()).as(scenario).isEqualTo(expectedCode);
+        assertThat(tendency.changeHectopascals()).as(scenario).isEqualTo(expectedChange);
+        assertThat(tendency.toMetarCode()).as(scenario).isEqualTo(expectedMetarCode);
+        assertThat(data.getRemarks().freeText()).as(scenario).isNull();
+    }
+
+    @Test
+    @DisplayName("Should recognize 5//// within a full remarks section - MMCM real-world (Issue #198)")
+    void testParsePressureTendency_MissingDataGroup_MMCM() {
+        String metar = "METAR MMCM 151143Z 00000KT 4SM OVC008 24/23 A3000 " +
+                "RMK SLP159 5//// 930 8/6// HZY RTS";
+
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).isTrue();
+        NoaaMetarRemarks remarks = extractMetarData(result).getRemarks();
+
+        assertThat(remarks.seaLevelPressure()).isNotNull();
+        assertThat(remarks.pressureTendency()).isNotNull();
+        assertThat(remarks.pressureTendency().isMissing()).isTrue();
+        // Partially missing predominant cloud type group in the same report parses too
+        assertThat(remarks.predominantCloudTypes()).isNotNull();
+        assertThat(remarks.freeText())
+                .doesNotContain("5////")
+                .doesNotContain("8/6//");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 54///', 'Change missing'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5////', 'Every element missing'"
+    })
+    @DisplayName("Should not copy a top-level pressure tendency when the change is missing - Issue #198")
+    void testParsePressureTendency_MissingChangeNotCopiedToTopLevel(String metar, String scenario) {
+        NoaaMetarData data = extractMetarData(parser.parse(metar));
+
+        assertThat(data.getThreeHourPressureTendency()).as(scenario).isNull();
+    }
+
+    @Test
+    @DisplayName("Should copy a top-level pressure tendency when only the tendency code is missing - Issue #198")
+    void testParsePressureTendency_MissingCodeChangeCopiedToTopLevel() {
+        NoaaMetarData data = extractMetarData(
+                parser.parse("METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5/123"));
+
+        assertThat(data.getThreeHourPressureTendency()).isEqualTo(12.3, within(0.01));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5401/', 5401/, 'Solidus inside the change'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5//12', 5//12, 'Partly missing change'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5/////', 5/////, 'Too many solidi'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 59///', 59///, 'Invalid tendency code with missing change'"
+    })
+    @DisplayName("Should leave malformed pressure tendency groups in freeText - Issue #198")
+    void testParsePressureTendency_MalformedSolidusGroups(String metar, String expectedFreeText, String scenario) {
+        ParseResult<NoaaWeatherData> result = parser.parse(metar);
+
+        assertThat(result.isSuccess()).as(scenario).isTrue();
+        NoaaMetarRemarks remarks = extractMetarData(result).getRemarks();
+
+        assertThat(remarks.pressureTendency()).as(scenario).isNull();
+        assertThat(remarks.freeText()).as(scenario).contains(expectedFreeText);
     }
 
     // ========== PRESSURE RAPID CHANGE (PRESRR/PRESFR) PARSING TESTS ==========

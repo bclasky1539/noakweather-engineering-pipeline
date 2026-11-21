@@ -73,21 +73,37 @@ class PressureTendencyTest {
     // ==================== Validation Tests ====================
 
     @Test
-    @DisplayName("Should reject null tendency code")
+    @DisplayName("Should accept null tendency code as a missing element (5/ccc) - Issue #198")
     void testValidation_NullTendencyCode() {
-        assertThatThrownBy(() -> new PressureTendency(null, 3.2))
-                .isInstanceOf(IllegalArgumentException.class)
-                .isNotInstanceOf(InvalidObservationException.class)
-                .hasMessageContaining("Tendency code cannot be null");
+        PressureTendency tendency = new PressureTendency(null, 3.2);
+
+        assertThat(tendency.tendencyCode()).isNull();
+        assertThat(tendency.changeHectopascals()).isEqualTo(3.2);
     }
 
     @Test
-    @DisplayName("Should reject null change value")
+    @DisplayName("Should accept null change value as a missing element (5a///) - Issue #198")
     void testValidation_NullChange() {
-        assertThatThrownBy(() -> new PressureTendency(2, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .isNotInstanceOf(InvalidObservationException.class)
-                .hasMessageContaining("Pressure change cannot be null");
+        PressureTendency tendency = new PressureTendency(2, null);
+
+        assertThat(tendency.tendencyCode()).isEqualTo(2);
+        assertThat(tendency.changeHectopascals()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should still validate the present element when the other is missing - Issue #198")
+    void testValidation_PresentElementStillValidated() {
+        assertThatThrownBy(() -> new PressureTendency(9, null))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Tendency code must be 0-8");
+
+        assertThatThrownBy(() -> new PressureTendency(null, 51.0))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Pressure change too large");
+
+        assertThatThrownBy(() -> new PressureTendency(null, -1.0))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("Pressure change cannot be negative");
     }
 
     @ParameterizedTest
@@ -155,13 +171,13 @@ class PressureTendencyTest {
             "8, false, false, true"
     })
     @DisplayName("Should identify tendency direction correctly")
-    void testTendencyDirection(int code, boolean expectedIncreasing,
-                               boolean expectedSteady, boolean expectedDecreasing) {
+    void testTendencyDirection(int code, boolean expectedRising,
+                               boolean expectedSteady, boolean expectedFalling) {
         PressureTendency tendency = PressureTendency.of(code, 3.0);
 
-        assertThat(tendency.isIncreasing()).isEqualTo(expectedIncreasing);
+        assertThat(tendency.isRising()).isEqualTo(expectedRising);
         assertThat(tendency.isSteady()).isEqualTo(expectedSteady);
-        assertThat(tendency.isDecreasing()).isEqualTo(expectedDecreasing);
+        assertThat(tendency.isFalling()).isEqualTo(expectedFalling);
     }
 
     // ==================== Change Magnitude Tests ====================
@@ -198,16 +214,14 @@ class PressureTendencyTest {
     void testGetChangeInchesHg() {
         PressureTendency tendency = PressureTendency.of(2, 3.4);
 
-        double inHg = tendency.getChangeInchesHg();
-
         // 3.4 hPa * 0.02953 ≈ 0.1 inHg
-        assertThat(inHg).isCloseTo(0.1, org.assertj.core.data.Offset.offset(0.01));
+        assertThat(tendency.getChangeInchesHg()).isCloseTo(0.1, org.assertj.core.data.Offset.offset(0.01));
     }
 
     @ParameterizedTest
     @CsvSource({
-            "2, 3.2, 3.2",      // Increasing: positive
-            "7, 4.5, -4.5",     // Decreasing: negative
+            "2, 3.2, 3.2",      // Rising: positive
+            "7, 4.5, -4.5",     // Falling: negative
             "4, 0.0, 0.0"       // Steady: zero
     })
     @DisplayName("Should calculate signed change correctly")
@@ -221,15 +235,15 @@ class PressureTendencyTest {
 
     @ParameterizedTest
     @CsvSource({
-            "0, 'Increasing, then decreasing'",
-            "1, 'Increasing, then steady'",
-            "2, 'Increasing'",
-            "3, 'Increasing rapidly'",
+            "0, 'Rising, then falling'",
+            "1, 'Rising, then steady'",
+            "2, 'Rising'",
+            "3, 'Rising rapidly'",
             "4, 'Steady'",
-            "5, 'Decreasing, then increasing'",
-            "6, 'Decreasing, then steady'",
-            "7, 'Decreasing'",
-            "8, 'Decreasing rapidly'"
+            "5, 'Falling, then rising'",
+            "6, 'Falling, then steady'",
+            "7, 'Falling'",
+            "8, 'Falling rapidly'"
     })
     @DisplayName("Should return correct tendency description")
     void testGetTendencyDescription(int code, String expectedDescription) {
@@ -276,30 +290,30 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should generate complete summary for increasing tendency")
-    void testGetSummary_Increasing() {
+    @DisplayName("Should generate complete summary for rising tendency")
+    void testGetSummary_Rising() {
         PressureTendency tendency = PressureTendency.of(2, 3.2);
 
         String summary = tendency.getSummary();
 
         assertThat(summary)
                 .contains("Pressure tendency")
-                .contains("Increasing")
+                .contains("Rising")
                 .contains("+3.2 hPa")
                 .contains("inHg")
                 .contains("[SIGNIFICANT]");
     }
 
     @Test
-    @DisplayName("Should generate complete summary for decreasing tendency")
-    void testGetSummary_Decreasing() {
+    @DisplayName("Should generate complete summary for falling tendency")
+    void testGetSummary_Falling() {
         PressureTendency tendency = PressureTendency.of(7, 4.5);
 
         String summary = tendency.getSummary();
 
         assertThat(summary)
                 .contains("Pressure tendency")
-                .contains("Decreasing")
+                .contains("Falling")
                 .contains("-4.5 hPa")
                 .contains("inHg")
                 .contains("[SIGNIFICANT]");
@@ -333,8 +347,8 @@ class PressureTendencyTest {
     // ==================== Weather Implication Tests ====================
 
     @Test
-    @DisplayName("Should provide weather implication for rapid increasing")
-    void testWeatherImplication_RapidIncreasing() {
+    @DisplayName("Should provide weather implication for rapid rising")
+    void testWeatherImplication_RapidRising() {
         PressureTendency tendency = PressureTendency.of(2, 6.5);
 
         String implication = tendency.getWeatherImplication();
@@ -346,8 +360,8 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should provide weather implication for rapid decreasing")
-    void testWeatherImplication_RapidDecreasing() {
+    @DisplayName("Should provide weather implication for rapid falling")
+    void testWeatherImplication_RapidFalling() {
         PressureTendency tendency = PressureTendency.of(7, 7.0);
 
         String implication = tendency.getWeatherImplication();
@@ -359,8 +373,8 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should provide weather implication for significant increasing")
-    void testWeatherImplication_SignificantIncreasing() {
+    @DisplayName("Should provide weather implication for significant rising")
+    void testWeatherImplication_SignificantRising() {
         PressureTendency tendency = PressureTendency.of(2, 4.0);
 
         String implication = tendency.getWeatherImplication();
@@ -371,8 +385,8 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should provide weather implication for significant decreasing")
-    void testWeatherImplication_SignificantDecreasing() {
+    @DisplayName("Should provide weather implication for significant falling")
+    void testWeatherImplication_SignificantFalling() {
         PressureTendency tendency = PressureTendency.of(7, 4.0);
 
         String implication = tendency.getWeatherImplication();
@@ -493,9 +507,9 @@ class PressureTendencyTest {
     // ========== Additional Coverage Tests for getModerateChangeImplication() ==========
 
     @Test
-    @DisplayName("Should provide implication for moderate increasing pressure")
-    void testWeatherImplication_ModerateIncreasing() {
-        // Change < 3.0 hPa (not significant), but isIncreasing() = true
+    @DisplayName("Should provide implication for moderate rising pressure")
+    void testWeatherImplication_ModerateRising() {
+        // Change < 3.0 hPa (not significant), but isRising() = true
         PressureTendency tendency = PressureTendency.of(2, 1.5);
 
         String implication = tendency.getWeatherImplication();
@@ -507,9 +521,9 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should provide implication for moderate decreasing pressure")
-    void testWeatherImplication_ModerateDecreasing() {
-        // Change < 3.0 hPa (not significant), but isDecreasing() = true
+    @DisplayName("Should provide implication for moderate falling pressure")
+    void testWeatherImplication_ModerateFalling() {
+        // Change < 3.0 hPa (not significant), but isFalling() = true
         PressureTendency tendency = PressureTendency.of(7, 2.0);
 
         String implication = tendency.getWeatherImplication();
@@ -536,9 +550,9 @@ class PressureTendencyTest {
     // ========== Coverage Tests for getRapidChangeImplication() ==========
 
     @Test
-    @DisplayName("Should provide rapid increasing implication")
-    void testWeatherImplication_RapidIncreasing_Covered() {
-        // Change >= 6.0 hPa and isIncreasing() = true
+    @DisplayName("Should provide rapid rising implication")
+    void testWeatherImplication_RapidRising_Covered() {
+        // Change >= 6.0 hPa and isRising() = true
         PressureTendency tendency = PressureTendency.of(2, 6.5);
 
         String implication = tendency.getWeatherImplication();
@@ -551,9 +565,9 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should provide rapid decreasing implication")
-    void testWeatherImplication_RapidDecreasing_Covered() {
-        // Change >= 6.0 hPa and isDecreasing() = true
+    @DisplayName("Should provide rapid falling implication")
+    void testWeatherImplication_RapidFalling_Covered() {
+        // Change >= 6.0 hPa and isFalling() = true
         PressureTendency tendency = PressureTendency.of(7, 7.0);
 
         String implication = tendency.getWeatherImplication();
@@ -582,9 +596,9 @@ class PressureTendencyTest {
     // ========== Coverage Tests for getSignificantChangeImplication() ==========
 
     @Test
-    @DisplayName("Should provide significant increasing implication")
-    void testWeatherImplication_SignificantIncreasing_Covered() {
-        // 3.0 <= change < 6.0 and isIncreasing() = true
+    @DisplayName("Should provide significant rising implication")
+    void testWeatherImplication_SignificantRising_Covered() {
+        // 3.0 <= change < 6.0 and isRising() = true
         PressureTendency tendency = PressureTendency.of(2, 4.0);
 
         String implication = tendency.getWeatherImplication();
@@ -596,9 +610,9 @@ class PressureTendencyTest {
     }
 
     @Test
-    @DisplayName("Should provide significant decreasing implication")
-    void testWeatherImplication_SignificantDecreasing_Covered() {
-        // 3.0 <= change < 6.0 and isDecreasing() = true
+    @DisplayName("Should provide significant falling implication")
+    void testWeatherImplication_SignificantFalling_Covered() {
+        // 3.0 <= change < 6.0 and isFalling() = true
         PressureTendency tendency = PressureTendency.of(7, 4.0);
 
         String implication = tendency.getWeatherImplication();
@@ -621,5 +635,168 @@ class PressureTendencyTest {
         assertThat(implication)
                 .containsIgnoringCase("Steady pressure")
                 .containsIgnoringCase("weather conditions stable");
+    }
+
+    // ========== Missing Elements (5////, 5a///, 5/ccc) Tests ==========
+
+    @ParameterizedTest
+    @CsvSource({
+            "7, 045, 7,    4.5,  57045",
+            "4, ///, 4,       ,  54///",
+            "/, 123,  ,   12.3,  5/123",
+            "/, ///,  ,       ,  5////"
+    })
+    @DisplayName("Should create from METAR group elements and format back to the same group - Issue #198")
+    void testFromMetarGroup_RoundTrip(String codeText, String changeText,
+                                      Integer expectedCode, Double expectedChange, String expectedMetar) {
+        PressureTendency tendency = PressureTendency.fromMetarGroup(codeText, changeText);
+
+        assertThat(tendency.tendencyCode()).isEqualTo(expectedCode);
+        assertThat(tendency.changeHectopascals()).isEqualTo(expectedChange);
+        assertThat(tendency.toMetarCode()).isEqualTo(expectedMetar);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "A, 045, 'Tendency code must be one digit or /'",
+            "//, 045, 'Tendency code must be one digit or /'",
+            "7, //, 'Change code must be 3 digits or ///'",
+            "7, 4/5, 'Change code must be 3 digits or ///'",
+            "7, 12, 'Change code must be 3 digits or ///'",
+            "9, ///, 'Tendency code must be 0-8'",
+            "/, 999, 'Pressure change too large'"
+    })
+    @DisplayName("Should reject invalid METAR group elements - Issue #198")
+    void testFromMetarGroup_InvalidElements(String codeText, String changeText, String expectedMessage) {
+        assertThatThrownBy(() -> PressureTendency.fromMetarGroup(codeText, changeText))
+                .isInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining(expectedMessage);
+    }
+
+    @Test
+    @DisplayName("Should reject null METAR group element text - Issue #198")
+    @SuppressWarnings("DataFlowIssue")
+        // Intentionally testing null handling
+    void testFromMetarGroup_NullText() {
+        assertThatThrownBy(() -> PressureTendency.fromMetarGroup(null, "045"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("cannot be null");
+
+        assertThatThrownBy(() -> PressureTendency.fromMetarGroup("7", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .isNotInstanceOf(InvalidObservationException.class)
+                .hasMessageContaining("cannot be null");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "7,    4.5, true,  true,  false",
+            "4,       , true,  false, false",
+            " ,   12.3, false, true,  false",
+            " ,       , false, false, true"
+    })
+    @DisplayName("Should report which elements are present - Issue #198")
+    void testElementPresence(Integer code, Double change,
+                             boolean expectedHasCode, boolean expectedHasChange, boolean expectedMissing) {
+        PressureTendency tendency = new PressureTendency(code, change);
+
+        assertThat(tendency.hasTendencyCode()).isEqualTo(expectedHasCode);
+        assertThat(tendency.hasChange()).isEqualTo(expectedHasChange);
+        assertThat(tendency.isMissing()).isEqualTo(expectedMissing);
+    }
+
+    @Test
+    @DisplayName("missing() should equal a group with both elements missing - Issue #198")
+    void testMissing() {
+        PressureTendency tendency = PressureTendency.missing();
+
+        assertThat(tendency.isMissing()).isTrue();
+        assertThat(tendency)
+                .isEqualTo(new PressureTendency(null, null))
+                .isEqualTo(PressureTendency.fromMetarGroup("/", "///"))
+                .isNotEqualTo(PressureTendency.of(4, 0.0));
+        assertThat(tendency.toString())
+                .contains("tendencyCode=null")
+                .contains("changeHectopascals=null");
+    }
+
+    @Test
+    @DisplayName("Missing tendency code: direction unknown, change still usable (5/123) - Issue #198")
+    void testMissingTendencyCode() {
+        PressureTendency tendency = PressureTendency.fromMetarGroup("/", "123");
+
+        assertThat(tendency.isRising()).isFalse();
+        assertThat(tendency.isFalling()).isFalse();
+        assertThat(tendency.isSteady()).isFalse();
+        assertThat(tendency.isSignificant()).isTrue();
+        assertThat(tendency.isRapidChange()).isTrue();
+        assertThat(tendency.isNegligible()).isFalse();
+
+        assertThat(tendency.getChangeInchesHg()).isCloseTo(0.363, org.assertj.core.data.Offset.offset(0.01));
+        assertThat(tendency).extracting(PressureTendency::getSignedChange).isNull();
+
+        assertThat(tendency.getTendencyDescription()).isEqualTo("Not reported");
+        assertThat(tendency.getShortDescription()).isEqualTo("Not reported");
+        assertThat(tendency.getChangeMagnitude()).isEqualTo("Rapid");
+        assertThat(tendency.getFormattedChange()).isEqualTo("12.3 hPa");
+        assertThat(tendency.getSummary())
+                .isEqualTo("Pressure tendency: Not reported, change of 12.3 hPa (0.36 inHg) [RAPID] (5/123)");
+        assertThat(tendency.getWeatherImplication()).containsIgnoringCase("no implication");
+    }
+
+    @Test
+    @DisplayName("Missing change: direction still usable, size unknown (54///) - Issue #198")
+    void testMissingChange() {
+        PressureTendency tendency = PressureTendency.fromMetarGroup("4", "///");
+
+        assertThat(tendency.isSteady()).isTrue();
+        assertThat(tendency.isRising()).isFalse();
+        assertThat(tendency.isFalling()).isFalse();
+        assertThat(tendency.isSignificant()).isFalse();
+        assertThat(tendency.isRapidChange()).isFalse();
+        assertThat(tendency.isNegligible()).isFalse();
+
+        assertThat(tendency)
+                .extracting(PressureTendency::getChangeInchesHg, PressureTendency::getSignedChange)
+                .containsOnlyNulls();
+
+        assertThat(tendency.getTendencyDescription()).isEqualTo("Steady");
+        assertThat(tendency.getShortDescription()).isEqualTo("Steady");
+        assertThat(tendency.getChangeMagnitude()).isEqualTo("Not reported");
+        assertThat(tendency.getFormattedChange()).isEqualTo("Not reported");
+        assertThat(tendency.getSummary())
+                .isEqualTo("Pressure tendency: Steady, change not reported (54///)");
+        assertThat(tendency.getWeatherImplication()).containsIgnoringCase("no implication");
+    }
+
+    @Test
+    @DisplayName("Every element missing: nothing to report (5////) - Issue #198")
+    void testEveryElementMissing() {
+        PressureTendency tendency = PressureTendency.missing();
+
+        assertThat(tendency.isRising()).isFalse();
+        assertThat(tendency.isFalling()).isFalse();
+        assertThat(tendency.isSteady()).isFalse();
+        assertThat(tendency.isSignificant()).isFalse();
+        assertThat(tendency.isRapidChange()).isFalse();
+        assertThat(tendency.isNegligible()).isFalse();
+
+        assertThat(tendency)
+                .extracting(PressureTendency::getChangeInchesHg, PressureTendency::getSignedChange)
+                .containsOnlyNulls();
+
+        assertThat(tendency.getTendencyDescription()).isEqualTo("Not reported");
+        assertThat(tendency.getChangeMagnitude()).isEqualTo("Not reported");
+        assertThat(tendency.getFormattedChange()).isEqualTo("Not reported");
+        assertThat(tendency.getSummary()).isEqualTo("Pressure tendency: Not reported (5////)");
+        assertThat(tendency.getWeatherImplication()).containsIgnoringCase("no implication");
+    }
+
+    @Test
+    @DisplayName("Complete group summary should not end with its METAR code - Issue #198")
+    void testSummary_CompleteGroupHasNoCodeSuffix() {
+        assertThat(PressureTendency.of(7, 4.5).getSummary())
+                .isEqualTo("Pressure tendency: Falling, change of -4.5 hPa (0.13 inHg) [SIGNIFICANT]");
     }
 }

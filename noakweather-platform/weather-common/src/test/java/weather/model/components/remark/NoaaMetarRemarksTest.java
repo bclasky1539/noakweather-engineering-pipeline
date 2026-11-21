@@ -2705,8 +2705,8 @@ class NoaaMetarRemarksTest {
     // ========== Tests with Various Pressure Tendencies ==========
 
     @Test
-    @DisplayName("Should handle increasing pressure tendency")
-    void testIncreasingPressureTendency() {
+    @DisplayName("Should handle rising pressure tendency")
+    void testRisingPressureTendency() {
         PressureTendency tendency = PressureTendency.of(2, 3.2);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
@@ -2714,13 +2714,13 @@ class NoaaMetarRemarksTest {
                 .build();
 
         assertEquals(tendency, remarks.pressureTendency());
-        assertTrue(remarks.pressureTendency().isIncreasing());
-        assertFalse(remarks.pressureTendency().isDecreasing());
+        assertTrue(remarks.pressureTendency().isRising());
+        assertFalse(remarks.pressureTendency().isFalling());
     }
 
     @Test
-    @DisplayName("Should handle decreasing pressure tendency")
-    void testDecreasingPressureTendency() {
+    @DisplayName("Should handle falling pressure tendency")
+    void testFallingPressureTendency() {
         PressureTendency tendency = PressureTendency.of(7, 4.5);
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
@@ -2728,8 +2728,8 @@ class NoaaMetarRemarksTest {
                 .build();
 
         assertEquals(tendency, remarks.pressureTendency());
-        assertTrue(remarks.pressureTendency().isDecreasing());
-        assertFalse(remarks.pressureTendency().isIncreasing());
+        assertTrue(remarks.pressureTendency().isFalling());
+        assertFalse(remarks.pressureTendency().isRising());
     }
 
     @Test
@@ -2743,8 +2743,8 @@ class NoaaMetarRemarksTest {
 
         assertEquals(tendency, remarks.pressureTendency());
         assertTrue(remarks.pressureTendency().isSteady());
-        assertFalse(remarks.pressureTendency().isIncreasing());
-        assertFalse(remarks.pressureTendency().isDecreasing());
+        assertFalse(remarks.pressureTendency().isRising());
+        assertFalse(remarks.pressureTendency().isFalling());
     }
 
     @Test

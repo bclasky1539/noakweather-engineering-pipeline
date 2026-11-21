@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.33.0-SNAPSHOT - November 21, 2026
+
+### Added
+- Pressure tendency groups with missing elements are recognized (#198)
+    - `5////` (every element missing), `5a///` (change missing) and `5/ccc` (tendency code missing)
+    - `PressureTendency.fromMetarGroup()` factory method for the two elements as reported
+    - `PressureTendency.missing()` factory method for a group with every element missing
+    - `hasTendencyCode()`, `hasChange()` and `isMissing()` query methods
+    - MMCM `5////` report added to the golden output corpus
+    - Discovery watch patterns for missing-element groups and for solidi mixed with digits in the change
+
+### Changed
+- `PressureTendency` uses rising/falling terminology
+    - `isIncreasing()` and `isDecreasing()` renamed to `isRising()` and `isFalling()`
+    - Tendency descriptions read "Rising" and "Falling" in place of "Increasing" and "Decreasing"
+- `PressureTendency` components may be null individually; a present value is still validated
+- `getChangeInchesHg()` and `getSignedChange()` return `Double`, null when the needed element is missing
+- `toMetarCode()` writes each element separately, so a group converts back to its reported form
+- The top-level three-hour pressure tendency is set only when the change element is reported
+
 ## Version 1.32.1-SNAPSHOT - November 19, 2026
 
 ### Fixed

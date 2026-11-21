@@ -218,7 +218,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Parse the main METAR body (before RMK).
      *
      * @param mainBody the main body section
-     * @return everything not parsed, in report order (everything not parsed, in report order (rejected
+     * @return everything not parsed, in report order (everything not parsed, in report order rejected
      * and skipped groups, then the trend from its first indicator on), or “” when everything was parsed.
      */
     private String parseMainBody(String mainBody) {
@@ -830,8 +830,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         // Copy 3-hour pressure tendency (extract hPa change from PressureTendency record)
-        if (remarks.pressureTendency() != null) {
-            weatherData.setThreeHourPressureTendency(remarks.pressureTendency().changeHectopascals());
+        // nothing to copy when the change element was reported as "///"
+        PressureTendency pressureTendency = remarks.pressureTendency();
+        if (pressureTendency != null && pressureTendency.hasChange()) {
+            weatherData.setThreeHourPressureTendency(pressureTendency.changeHectopascals());
         }
 
         // Copy pressure rapid change (PressureRapidChange type matches - direct copy)
@@ -2539,15 +2541,18 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * <p>Format: 5TCCC where:
      * <ul>
      *   <li>5 = Indicator (always 5)</li>
-     *   <li>T = Tendency code (0-8, WMO Code 0200)</li>
-     *   <li>CCC = Pressure change in tenths of hPa (3 digits)</li>
+     *   <li>T = Tendency code (0-8, WMO Code 0200), or "/" when missing</li>
+     *   <li>CCC = Pressure change in tenths of hPa (3 digits), or "///" when missing</li>
      * </ul>
      *
      * <p>Examples:
      * <ul>
-     *   <li>52032 → Increasing then steady, +3.2 hPa</li>
-     *   <li>57045 → Decreasing steadily, -4.5 hPa</li>
+     *   <li>52032 → Rising then steady, +3.2 hPa</li>
+     *   <li>57045 → Falling steadily, -4.5 hPa</li>
      *   <li>54000 → Steady, 0.0 hPa change</li>
+     *   <li>54/// → Steady, change not reported (#198)</li>
+     *   <li>5/123 → Tendency not reported, change of 12.3 hPa (#198)</li>
+     *   <li>5//// → Group reported with every element missing (#198)</li>
      * </ul>
      *
      * <p>Note: This remark appears at most once per METAR.
@@ -2587,19 +2592,20 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Helper method to parse PressureTendency from a Matcher.
+     * <p>
+     * Either element may be reported as solidi when missing ("/" for the tendency
+     * code, "///" for the change); that element is stored as null (#198).
      *
      * @param matcher the matcher with a successful match
      * @return a new PressureTendency instance
-     * @throws NumberFormatException if tendency code or pressure cannot be parsed
+     * @throws InvalidObservationException if a present value fails validation
      */
     private PressureTendency parsePressureTendencyFromMatcher(Matcher matcher) {
         String tendencyCodeStr = matcher.group(GROUP_TENDENCY_CODE);
         String pressureChangeStr = matcher.group(GROUP_PRESSURE_CHANGE);
 
-        int tendencyCode = Integer.parseInt(tendencyCodeStr);
-
-        // Use PressureTendency.fromMetar factory method
-        return PressureTendency.fromMetar(tendencyCode, pressureChangeStr);
+        // Use PressureTendency.fromMetarGroup factory method (handles missing elements)
+        return PressureTendency.fromMetarGroup(tendencyCodeStr, pressureChangeStr);
     }
 
     /**

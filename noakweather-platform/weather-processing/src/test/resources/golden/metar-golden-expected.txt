@@ -3437,3 +3437,64 @@
   parseIssue[1].rejectedValue: 15.0
   parseIssue[1].reason: Dewpoint cannot be higher than temperature (10.0°C)
 
+=== METAR MMCM 151143Z 00000KT 4SM OVC008 24/23 A3000 RMK SLP159 5//// 930 8/6// HZY RTS
+  stationId: MMCM
+  reportType: METAR
+  reportModifier: null
+  unparsedMainBody: null
+  conditions.wind: Wind[directionDegrees=null, speedValue=0, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  conditions.visibility: Visibility[distanceValue=4.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  conditions.presentWeather: []
+  conditions.skyConditions: [SkyCondition[coverage=OVERCAST, heightFeet=800, cloudType=null]]
+  conditions.temperature: Temperature[celsius=24.0, dewpointCelsius=23.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
+  conditions.pressure: Pressure[value=30.0, unit=INCHES_HG]
+  runwayVisualRange: []
+  runwayStates: []
+  recentWeather: []
+  recentWeatherNotObservable: false
+  noSignificantChange: false
+  automatedStation: null
+  seaLevelPressure: 1015.9
+  hourlyPrecipitation: null
+  sixHourMaxTemp: null
+  sixHourMinTemp: null
+  twentyFourHourMaxTemp: null
+  twentyFourHourMinTemp: null
+  threeHourPressureTendency: null
+  peakWind: null
+  windShift: null
+  pressureRapidChange: null
+  icing: null
+  remarks.automatedStationType: null
+  remarks.seaLevelPressure: Pressure[value=1015.9, unit=HECTOPASCALS]
+  remarks.preciseTemperature: null
+  remarks.preciseDewpoint: null
+  remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
+  remarks.directionalWeather: null
+  remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
+  remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
+  remarks.obscurationLayers: []
+  remarks.cloudTypes: []
+  remarks.hourlyPrecipitation: null
+  remarks.ppGroupValue: null
+  remarks.sixHourPrecipitation: null
+  remarks.twentyFourHourPrecipitation: null
+  remarks.hailSize: null
+  remarks.weatherEvents: []
+  remarks.thunderstormLocations: []
+  remarks.exceptDirections: []
+  remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=null, changeHectopascals=null], pressureRapidChange=null]
+  remarks.icing: null
+  remarks.secondaryAltimeter: null
+  remarks.sixHourMaxTemperature: null
+  remarks.sixHourMinTemperature: null
+  remarks.twentyFourHourMaxTemperature: null
+  remarks.twentyFourHourMinTemperature: null
+  remarks.densityAltitudeFeet: null
+  remarks.maintenance: MaintenanceRemarks[automatedMaintenanceIndicators=[], maintenanceRequired=false]
+  remarks.observationProgramStatus: null
+  remarks.lightningRemarks: []
+  remarks.predominantCloudTypes: PredominantCloudTypes[lowCloud=STRATUS_NEBULOSUS_OR_FRACTUS_FAIR_WEATHER, middleCloud=OBSCURED, highCloud=OBSCURED]
+  remarks.freeText: 930 HZY RTS
+  parseIssues: 0
+
