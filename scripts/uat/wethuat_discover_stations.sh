@@ -122,6 +122,8 @@ declare -a PATTERNS=(
      "198-pressure-tendency-missing-elements|(^|\"| )5([0-8/]///|/[0-9]{3})( |\"|\$)"
      # #198 exploratory — solidi mixed with digits inside the change (not parsed, stays in freeText).
      "198-pressure-tendency-mixed-change (exploratory)|(^|\"| )5[0-8/]([0-9][0-9]/|[0-9]/[0-9]|[0-9]//|/[0-9][0-9]|/[0-9]/|//[0-9])( |\"|\$)"
+     # #218 — pressure tendency codes 3 and 8 (descriptions corrected to WMO code 0200 wording).
+     "218-pressure-tendency-code-3-or-8|RMK.* 5[38][0-9]{3}( |\"|\$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

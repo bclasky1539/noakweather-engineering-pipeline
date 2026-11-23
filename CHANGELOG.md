@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.33.1-SNAPSHOT - November 23, 2026
+
+### Fixed
+- Pressure tendency descriptions and derived fields are consistent (#218)
+    - Tendency descriptions for codes 0 to 8 follow the WMO code 0200 wording; code 3 and code 8
+      no longer read as "Rising rapidly" and "Falling rapidly"
+    - `MODERATE_CHANGE_HPA` (1.0 hPa) added alongside the significant and rapid thresholds
+    - `isSignificant()`, `isRapidChange()`, `isNegligible()`, `getChangeMagnitude()` and
+      `getWeatherImplication()` use one classification of the change, so they always agree
+    - Weather implications gain a moderate level that matches `changeMagnitude`
+    - Discovery watch pattern for pressure tendency codes 3 and 8
+
 ## Version 1.33.0-SNAPSHOT - November 21, 2026
 
 ### Added

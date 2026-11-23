@@ -28,15 +28,20 @@ import weather.model.components.Pressure;
  * - CCC = Pressure change in tenths of hPa (3 digits), or "///" when missing
  * <p>
  * WMO Code 0200 - Pressure Tendency Characteristic:
- * - 0 = Rising, then falling
- * - 1 = Rising, then steady; or rising more slowly
- * - 2 = Rising (steadily or unsteadily)
- * - 3 = Falling or steady, then rising; or rising more rapidly
- * - 4 = Steady
- * - 5 = Falling, then rising
- * - 6 = Falling, then steady; or falling more slowly
- * - 7 = Falling (steadily or unsteadily)
- * - 8 = Steady or rising, then falling; or falling more rapidly
+ * - 0 = Rising, then falling (pressure the same or higher than 3 hours ago)
+ * - 1 = Rising, then steady; or rising, then rising more slowly (higher)
+ * - 2 = Rising (steadily or unsteadily) (higher)
+ * - 3 = Falling or steady, then rising; or rising, then rising more rapidly (higher)
+ * - 4 = Steady (the same as 3 hours ago)
+ * - 5 = Falling, then rising (the same or lower than 3 hours ago)
+ * - 6 = Falling, then steady; or falling, then falling more slowly (lower)
+ * - 7 = Falling (steadily or unsteadily) (lower)
+ * - 8 = Steady or rising, then falling; or falling, then falling more rapidly (lower)
+ * <p>
+ * The code describes how pressure changed over the 3 hours; the net direction is
+ * rising for codes 0-3, steady for 4 and falling for 5-8. The size of the change
+ * (none, slight, moderate, significant, rapid) comes only from the change value,
+ * classified once against the thresholds below (#218).
  * <p>
  * Examples:
  * - "52032" → Rising then steady, +3.2 hPa
@@ -68,6 +73,11 @@ public record PressureTendency(
     // ==================== Constants ====================
 
     /**
+     * Threshold for moderate pressure change (1.0 hPa)
+     */
+    public static final double MODERATE_CHANGE_HPA = 1.0;
+
+    /**
      * Threshold for significant pressure change (3.0 hPa)
      */
     public static final double SIGNIFICANT_CHANGE_HPA = 3.0;
@@ -93,6 +103,46 @@ public record PressureTendency(
     private static final String MISSING_DESCRIPTION = "Not reported";
 
     private static final String SUMMARY_PREFIX = "Pressure tendency: ";
+
+    /**
+     * Weather implication for no change, and for a steady tendency (code 4) with a
+     * moderate or smaller change
+     */
+    private static final String STEADY_IMPLICATION = "Pressure steady - no significant weather change expected";
+
+    // ==================== Change Magnitude ====================
+
+    /**
+     * Size of a pressure change, classified once against the thresholds above so that
+     * every derived value (isSignificant, isRapidChange, isNegligible, getChangeMagnitude,
+     * getWeatherImplication) agrees (#218).
+     */
+    private enum Magnitude {
+        NONE("None"),
+        SLIGHT("Slight"),
+        MODERATE("Moderate"),
+        SIGNIFICANT("Significant"),
+        RAPID("Rapid");
+
+        private final String label;
+
+        Magnitude(String label) {
+            this.label = label;
+        }
+
+        static Magnitude fromChange(double changeHpa) {
+            if (changeHpa >= RAPID_CHANGE_HPA) {
+                return RAPID;
+            } else if (changeHpa >= SIGNIFICANT_CHANGE_HPA) {
+                return SIGNIFICANT;
+            } else if (changeHpa >= MODERATE_CHANGE_HPA) {
+                return MODERATE;
+            } else if (changeHpa > 0.0) {
+                return SLIGHT;
+            }
+            return NONE;
+        }
+    }
 
     // ==================== Compact Constructor ====================
 
@@ -293,7 +343,7 @@ public record PressureTendency(
      * @return true if change is significant; false if the change is missing
      */
     public boolean isSignificant() {
-        return hasChange() && changeHectopascals >= SIGNIFICANT_CHANGE_HPA;
+        return hasChange() && magnitude().compareTo(Magnitude.SIGNIFICANT) >= 0;
     }
 
     /**
@@ -303,7 +353,7 @@ public record PressureTendency(
      * @return true if change is rapid; false if the change is missing
      */
     public boolean isRapidChange() {
-        return hasChange() && changeHectopascals >= RAPID_CHANGE_HPA;
+        return hasChange() && magnitude() == Magnitude.RAPID;
     }
 
     /**
@@ -313,7 +363,14 @@ public record PressureTendency(
      * @return true if change is minimal; false if the change is missing
      */
     public boolean isNegligible() {
-        return hasChange() && changeHectopascals < 1.0;
+        return hasChange() && magnitude().compareTo(Magnitude.SLIGHT) <= 0;
+    }
+
+    /**
+     * Classify the change against the thresholds. Call only when {@link #hasChange()} is true.
+     */
+    private Magnitude magnitude() {
+        return Magnitude.fromChange(changeHectopascals);
     }
 
     // ==================== Conversion Methods ====================
@@ -350,7 +407,8 @@ public record PressureTendency(
     // ==================== Description Methods ====================
 
     /**
-     * Get human-readable description of the tendency code.
+     * Get human-readable description of the tendency code, as worded in WMO code
+     * table 0200 (rising/falling terminology).
      *
      * @return tendency description, or "Not reported" if the tendency code is missing
      */
@@ -360,14 +418,14 @@ public record PressureTendency(
         }
         return switch (tendencyCode) {
             case 0 -> "Rising, then falling";
-            case 1 -> "Rising, then steady";
-            case 2 -> "Rising";
-            case 3 -> "Rising rapidly";
+            case 1 -> "Rising, then steady; or rising, then rising more slowly";
+            case 2 -> "Rising (steadily or unsteadily)";
+            case 3 -> "Falling or steady, then rising; or rising, then rising more rapidly";
             case 4 -> "Steady";
             case 5 -> "Falling, then rising";
-            case 6 -> "Falling, then steady";
-            case 7 -> "Falling";
-            case 8 -> "Falling rapidly";
+            case 6 -> "Falling, then steady; or falling, then falling more slowly";
+            case 7 -> "Falling (steadily or unsteadily)";
+            case 8 -> "Steady or rising, then falling; or falling, then falling more rapidly";
             default -> "Unknown";
         };
     }
@@ -397,17 +455,8 @@ public record PressureTendency(
     public String getChangeMagnitude() {
         if (!hasChange()) {
             return MISSING_DESCRIPTION;
-        } else if (changeHectopascals >= RAPID_CHANGE_HPA) {
-            return "Rapid";
-        } else if (changeHectopascals >= SIGNIFICANT_CHANGE_HPA) {
-            return "Significant";
-        } else if (changeHectopascals >= 1.0) {
-            return "Moderate";
-        } else if (changeHectopascals > 0.0) {
-            return "Slight";
-        } else {
-            return "None";
         }
+        return magnitude().label;
     }
 
     /**
@@ -451,7 +500,8 @@ public record PressureTendency(
 
     /**
      * Get weather implications based on tendency. Both the direction (tendency code)
-     * and the size (change) are needed.
+     * and the size (change) are needed. The level used here is the same one returned
+     * by {@link #getChangeMagnitude()} (#218).
      *
      * @return weather implication description
      */
@@ -460,42 +510,37 @@ public record PressureTendency(
             return "Pressure tendency not fully reported - no implication available";
         }
 
-        if (isRapidChange()) {
-            return getRapidChangeImplication();
-        }
-
-        if (isSignificant()) {
-            return getSignificantChangeImplication();
-        }
-
-        return getModerateChangeImplication();
+        return switch (magnitude()) {
+            case RAPID -> byDirection(
+                    "Rapid pressure rise - weather likely improving quickly, storm clearing",
+                    "Rapid pressure fall - severe weather approaching, deteriorating conditions",
+                    "Steady pressure - stable weather conditions");
+            case SIGNIFICANT -> byDirection(
+                    "Rising pressure - improving weather, clearing conditions",
+                    "Falling pressure - weather deteriorating, potential storm development",
+                    "Steady pressure - weather conditions stable");
+            case MODERATE -> byDirection(
+                    "Moderate pressure rise - weather becoming more settled",
+                    "Moderate pressure fall - weather may deteriorate",
+                    STEADY_IMPLICATION);
+            case SLIGHT -> byDirection(
+                    "Slight pressure rise - little weather change expected",
+                    "Slight pressure fall - little weather change expected",
+                    STEADY_IMPLICATION);
+            case NONE -> STEADY_IMPLICATION;
+        };
     }
 
-    private String getRapidChangeImplication() {
+    /**
+     * Pick the wording that matches the net direction of the tendency code.
+     */
+    private String byDirection(String rising, String falling, String steady) {
         if (isRising()) {
-            return "Rapid pressure rise - weather likely improving quickly, storm clearing";
+            return rising;
         } else if (isFalling()) {
-            return "Rapid pressure fall - severe weather approaching, deteriorating conditions";
+            return falling;
         }
-        return "Steady pressure - stable weather conditions";
-    }
-
-    private String getSignificantChangeImplication() {
-        if (isRising()) {
-            return "Rising pressure - improving weather, clearing conditions";
-        } else if (isFalling()) {
-            return "Falling pressure - weather deteriorating, potential storm development";
-        }
-        return "Steady pressure - weather conditions stable";
-    }
-
-    private String getModerateChangeImplication() {
-        if (isRising()) {
-            return "Slight pressure rise - weather becoming more settled";
-        } else if (isFalling()) {
-            return "Slight pressure fall - weather may deteriorate slightly";
-        }
-        return "Pressure steady - no significant weather change expected";
+        return steady;
     }
 
     // ==================== Formatting Methods ====================
