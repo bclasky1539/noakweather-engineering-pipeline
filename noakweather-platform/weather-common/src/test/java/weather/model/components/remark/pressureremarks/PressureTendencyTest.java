@@ -236,16 +236,16 @@ class PressureTendencyTest {
     @ParameterizedTest
     @CsvSource({
             "0, 'Rising, then falling'",
-            "1, 'Rising, then steady'",
-            "2, 'Rising'",
-            "3, 'Rising rapidly'",
+            "1, 'Rising, then steady; or rising, then rising more slowly'",
+            "2, 'Rising (steadily or unsteadily)'",
+            "3, 'Falling or steady, then rising; or rising, then rising more rapidly'",
             "4, 'Steady'",
             "5, 'Falling, then rising'",
-            "6, 'Falling, then steady'",
-            "7, 'Falling'",
-            "8, 'Falling rapidly'"
+            "6, 'Falling, then steady; or falling, then falling more slowly'",
+            "7, 'Falling (steadily or unsteadily)'",
+            "8, 'Steady or rising, then falling; or falling, then falling more rapidly'"
     })
-    @DisplayName("Should return correct tendency description")
+    @DisplayName("Should return the WMO code 0200 description for every tendency code - Issue #218")
     void testGetTendencyDescription(int code, String expectedDescription) {
         PressureTendency tendency = PressureTendency.of(code, 3.0);
 
@@ -504,18 +504,18 @@ class PressureTendencyTest {
                 .contains("changeHectopascals=3.2");
     }
 
-    // ========== Additional Coverage Tests for getModerateChangeImplication() ==========
+    // ========== Coverage Tests for Moderate and Slight Implications ==========
 
     @Test
     @DisplayName("Should provide implication for moderate rising pressure")
     void testWeatherImplication_ModerateRising() {
-        // Change < 3.0 hPa (not significant), but isRising() = true
+        // 1.0 <= change < 3.0 hPa and isRising() = true
         PressureTendency tendency = PressureTendency.of(2, 1.5);
 
         String implication = tendency.getWeatherImplication();
 
         assertThat(implication)
-                .containsIgnoringCase("slight")
+                .containsIgnoringCase("moderate")
                 .containsIgnoringCase("pressure rise")
                 .containsIgnoringCase("more settled");
     }
@@ -523,15 +523,38 @@ class PressureTendencyTest {
     @Test
     @DisplayName("Should provide implication for moderate falling pressure")
     void testWeatherImplication_ModerateFalling() {
-        // Change < 3.0 hPa (not significant), but isFalling() = true
+        // 1.0 <= change < 3.0 hPa and isFalling() = true
         PressureTendency tendency = PressureTendency.of(7, 2.0);
 
         String implication = tendency.getWeatherImplication();
 
         assertThat(implication)
-                .containsIgnoringCase("slight")
+                .containsIgnoringCase("moderate")
                 .containsIgnoringCase("pressure fall")
                 .containsIgnoringCase("may deteriorate");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2, 0.5, 'Slight pressure rise - little weather change expected'",
+            "7, 0.5, 'Slight pressure fall - little weather change expected'"
+    })
+    @DisplayName("Should provide implication for slight rising and falling pressure - Issue #218")
+    void testWeatherImplication_Slight(int code, double change, String expectedImplication) {
+        // 0.0 < change < 1.0 hPa
+        PressureTendency tendency = PressureTendency.of(code, change);
+
+        assertThat(tendency.getWeatherImplication()).isEqualTo(expectedImplication);
+    }
+
+    @Test
+    @DisplayName("Should provide steady implication for no change with a rising or falling code - Issue #218")
+    void testWeatherImplication_NoChange() {
+        // Codes 0 and 5 allow a net change of zero
+        assertThat(PressureTendency.of(0, 0.0).getWeatherImplication())
+                .isEqualTo("Pressure steady - no significant weather change expected");
+        assertThat(PressureTendency.of(5, 0.0).getWeatherImplication())
+                .isEqualTo("Pressure steady - no significant weather change expected");
     }
 
     @Test
@@ -547,7 +570,7 @@ class PressureTendencyTest {
                 .containsIgnoringCase("no significant weather change");
     }
 
-    // ========== Coverage Tests for getRapidChangeImplication() ==========
+    // ========== Coverage Tests for Rapid Implications ==========
 
     @Test
     @DisplayName("Should provide rapid rising implication")
@@ -583,7 +606,7 @@ class PressureTendencyTest {
     @DisplayName("Should provide steady implication for rapid steady pressure")
     void testWeatherImplication_RapidSteady() {
         // Change >= 6.0 hPa but isSteady() = true (edge case)
-        // This covers the else branch in getRapidChangeImplication
+        // This covers the steady wording for the rapid level
         PressureTendency tendency = PressureTendency.of(4, 6.5);
 
         String implication = tendency.getWeatherImplication();
@@ -593,7 +616,7 @@ class PressureTendencyTest {
                 .containsIgnoringCase("stable weather");
     }
 
-    // ========== Coverage Tests for getSignificantChangeImplication() ==========
+    // ========== Coverage Tests for Significant Implications ==========
 
     @Test
     @DisplayName("Should provide significant rising implication")
@@ -627,7 +650,7 @@ class PressureTendencyTest {
     @DisplayName("Should provide steady implication for significant steady pressure")
     void testWeatherImplication_SignificantSteady() {
         // 3.0 <= change < 6.0 but isSteady() = true (edge case)
-        // This covers the else branch in getSignificantChangeImplication
+        // This covers the steady wording for the significant level
         PressureTendency tendency = PressureTendency.of(4, 4.0);
 
         String implication = tendency.getWeatherImplication();
@@ -797,6 +820,53 @@ class PressureTendencyTest {
     @DisplayName("Complete group summary should not end with its METAR code - Issue #198")
     void testSummary_CompleteGroupHasNoCodeSuffix() {
         assertThat(PressureTendency.of(7, 4.5).getSummary())
-                .isEqualTo("Pressure tendency: Falling, change of -4.5 hPa (0.13 inHg) [SIGNIFICANT]");
+                .isEqualTo("Pressure tendency: Falling (steadily or unsteadily), change of -4.5 hPa (0.13 inHg) [SIGNIFICANT]");
+    }
+
+    // ========== Derived Field Consistency Tests - Issue #218 ==========
+
+    @Test
+    @DisplayName("Code 8 derived fields should agree with each other - KDJT real-world (Issue #218)")
+    void testCode8DerivedFields_KDJT() {
+        // KDJT 171753Z ... 58021: code 8, change 2.1 hPa
+        PressureTendency tendency = PressureTendency.fromMetarGroup("8", "021");
+
+        assertThat(tendency.getTendencyDescription())
+                .isEqualTo("Steady or rising, then falling; or falling, then falling more rapidly");
+        assertThat(tendency.isFalling()).isTrue();
+        assertThat(tendency.getSignedChange()).isEqualTo(-2.1);
+        assertThat(tendency.getChangeMagnitude()).isEqualTo("Moderate");
+        assertThat(tendency.isSignificant()).isFalse();
+        assertThat(tendency.isRapidChange()).isFalse();
+        assertThat(tendency.isNegligible()).isFalse();
+        assertThat(tendency.getWeatherImplication())
+                .isEqualTo("Moderate pressure fall - weather may deteriorate");
+        assertThat(tendency.getSummary())
+                .isEqualTo("Pressure tendency: Steady or rising, then falling; or falling, then falling more rapidly, "
+                        + "change of -2.1 hPa (0.06 inHg)");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "0.0, None,        true,  false, false, 'Pressure steady'",
+            "0.5, Slight,      true,  false, false, 'Slight pressure rise'",
+            "0.9, Slight,      true,  false, false, 'Slight pressure rise'",
+            "1.0, Moderate,    false, false, false, 'Moderate pressure rise'",
+            "2.9, Moderate,    false, false, false, 'Moderate pressure rise'",
+            "3.0, Significant, false, true,  false, 'Rising pressure'",
+            "5.9, Significant, false, true,  false, 'Rising pressure'",
+            "6.0, Rapid,       false, true,  true,  'Rapid pressure rise'"
+    })
+    @DisplayName("Derived fields should agree at every threshold boundary - Issue #218")
+    void testDerivedFieldsAgreeAtThresholds(double change, String expectedMagnitude,
+                                            boolean expectedNegligible, boolean expectedSignificant,
+                                            boolean expectedRapid, String expectedImplicationStart) {
+        PressureTendency tendency = PressureTendency.of(2, change);
+
+        assertThat(tendency.getChangeMagnitude()).isEqualTo(expectedMagnitude);
+        assertThat(tendency.isNegligible()).isEqualTo(expectedNegligible);
+        assertThat(tendency.isSignificant()).isEqualTo(expectedSignificant);
+        assertThat(tendency.isRapidChange()).isEqualTo(expectedRapid);
+        assertThat(tendency.getWeatherImplication()).startsWith(expectedImplicationStart);
     }
 }

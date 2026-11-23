@@ -7481,7 +7481,7 @@ class NoaaMetarParserTest {
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 50125', 0, 12.5, 'Rising, then falling (code 0)'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 51025', 1, 2.5, 'Rising, then steady (code 1)'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 52015', 2, 1.5, 'Rising (code 2)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 53010', 3, 1.0, 'Rising rapidly (code 3)'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 53010', 3, 1.0, 'Falling or steady, then rising (code 3)'",
 
             // Steady pressure (code 4)
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 54000', 4, 0.0, 'Steady (code 4)'",
@@ -7490,7 +7490,7 @@ class NoaaMetarParserTest {
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 55008', 5, 0.8, 'Falling, then rising (code 5)'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 56018', 6, 1.8, 'Falling, then steady (code 6)'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 57035', 7, 3.5, 'Falling (code 7)'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 58045', 8, 4.5, 'Falling rapidly (code 8)'"
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 58045', 8, 4.5, 'Rising, then falling (code 8)'"
     })
     @DisplayName("Should parse 3-hour pressure tendency with all tendency codes")
     void testParsePressureTendency(String metar, int expectedCode,
