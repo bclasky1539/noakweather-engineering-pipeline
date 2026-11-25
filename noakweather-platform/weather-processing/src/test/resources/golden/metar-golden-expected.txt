@@ -14,22 +14,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1015.1
-  hourlyPrecipitation: 0.02
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1015.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=23.3, dewpointCelsius=22.2, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=23.3, dewpointCelsius=22.2, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -75,22 +62,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1015.1
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1015.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=29.4, dewpointCelsius=23.9, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=29.4, dewpointCelsius=23.9, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -136,22 +110,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1006.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1006.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=36.1, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=36.1, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -197,22 +158,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1004.1
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1004.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=40.6, dewpointCelsius=16.7, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=40.6, dewpointCelsius=16.7, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -258,22 +206,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: Icing[inClouds=false, inPrecipitation=false, qualifier=PAST HR]
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: Temperature[celsius=27.8, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=27.8, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -319,22 +254,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1004.4
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1004.4, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -380,22 +302,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1004.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1004.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -441,22 +350,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1014.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1014.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -502,22 +398,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1013.1
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1013.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -563,22 +446,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -624,22 +494,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1003.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1003.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -685,22 +542,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 999.8
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=999.8, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -746,22 +590,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1000.9
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1000.9, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -807,22 +638,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1014.1
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1014.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -868,22 +686,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1000.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1000.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -929,22 +734,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1029.9
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1029.9, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -990,22 +782,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1009.3
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: FALLING
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1009.3, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1051,22 +830,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1010.1
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1010.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1112,22 +878,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 975.5
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=975.5, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1173,22 +926,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1234,22 +974,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1014.6
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1014.6, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1295,22 +1022,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 998.7
-  hourlyPrecipitation: 0.17
-  sixHourMaxTemp: 2.2
-  sixHourMinTemp: 1.7
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: 1.0
-  peakWind: PeakWind[directionDegrees=330, speedKnots=35, hour=11, minute=42]
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=998.7, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=1.7, dewpointCelsius=-1.1, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=1.7, dewpointCelsius=-1.1, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=PeakWind[directionDegrees=330, speedKnots=35, hour=11, minute=42], windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1356,22 +1070,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1022.5
-  hourlyPrecipitation: 0.0
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: 3.3
-  peakWind: null
-  windShift: null
-  pressureRapidChange: FALLING
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1022.5, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=-3.3, dewpointCelsius=-5.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=-3.3, dewpointCelsius=-5.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1417,22 +1118,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: 0.05
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: Temperature[celsius=23.9, dewpointCelsius=22.8, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=23.9, dewpointCelsius=22.8, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1478,22 +1166,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1012.8
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1012.8, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=25.6, dewpointCelsius=17.8, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=25.6, dewpointCelsius=17.8, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1539,22 +1214,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1011.0
-  hourlyPrecipitation: 0.1
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1011.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=13.9, dewpointCelsius=10.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=13.9, dewpointCelsius=10.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1600,22 +1262,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1661,22 +1310,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1011.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: 31.7
-  sixHourMinTemp: 24.4
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: 1.3
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1011.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=31.1, dewpointCelsius=24.4, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=31.1, dewpointCelsius=24.4, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1722,22 +1358,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO1
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO1
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: Temperature[celsius=4.2, dewpointCelsius=-3.2, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=4.2, dewpointCelsius=-3.2, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1783,22 +1406,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1023.7
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: 0.3
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1023.7, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=18.3, dewpointCelsius=8.9, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=18.3, dewpointCelsius=8.9, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1844,22 +1454,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1012.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: 1.5
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1012.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=27.2, dewpointCelsius=26.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=27.2, dewpointCelsius=26.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1905,22 +1502,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1013.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: 1.2
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1013.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=28.0, dewpointCelsius=24.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=28.0, dewpointCelsius=24.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -1966,22 +1550,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1015.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1015.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=25.3, dewpointCelsius=20.4, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=25.3, dewpointCelsius=20.4, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2027,22 +1598,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2A
-  seaLevelPressure: 1003.4
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2A
   remarks.seaLevelPressure: Pressure[value=1003.4, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2088,22 +1646,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1019.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1019.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2149,22 +1694,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1018.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1018.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=27.2, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=27.2, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2210,22 +1742,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1014.2
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1014.2, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=30.0, dewpointCelsius=22.2, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=30.0, dewpointCelsius=22.2, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2271,22 +1790,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=null, descriptor=null, precipitation=null, obscuration=HZ, other=null, rawCode=HZ], location=null, directionSegments=null, allQuadrants=true]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2332,22 +1838,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1015.5
-  hourlyPrecipitation: 0.16
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1015.5, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=27.8, dewpointCelsius=25.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=27.8, dewpointCelsius=25.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directionSegments=null, allQuadrants=true]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2393,22 +1886,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1018.6
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1018.6, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=17.2, dewpointCelsius=2.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=17.2, dewpointCelsius=2.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directionSegments=[DirectionSegment[points=[S]]], allQuadrants=false]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2454,22 +1934,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2515,22 +1982,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2576,22 +2030,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1019.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1019.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2637,22 +2078,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: true
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2698,22 +2126,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 999.8
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: PeakWind[directionDegrees=330, speedKnots=35, hour=11, minute=42]
-  windShift: null
-  pressureRapidChange: RISING
-  icing: Icing[inClouds=false, inPrecipitation=false, qualifier=PAST HR]
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=999.8, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=27.8, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=27.8, dewpointCelsius=20.6, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=PeakWind[directionDegrees=330, speedKnots=35, hour=11, minute=42], windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2759,22 +2174,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: DirectionalWeather[presentWeather=PresentWeather[intensity=VC, descriptor=SH, precipitation=null, obscuration=null, other=null, rawCode=VCSH], location=null, directionSegments=[DirectionSegment[points=[NE]]], allQuadrants=false]
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2820,22 +2222,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO1
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO1
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -2881,18 +2270,6 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: true
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks: null
   parseIssues: 0
 
@@ -2912,18 +2289,6 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: true
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks: null
   parseIssues: 0
 
@@ -2943,18 +2308,6 @@
   recentWeather: [PresentWeather[intensity=null, descriptor=null, precipitation=DZRA, obscuration=null, other=null, rawCode=DZRA]]
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks: null
   parseIssues: 0
 
@@ -2974,18 +2327,6 @@
   recentWeather: [PresentWeather[intensity=null, descriptor=SH, precipitation=RA, obscuration=null, other=null, rawCode=SHRA]]
   recentWeatherNotObservable: false
   noSignificantChange: true
-  automatedStation: null
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks: null
   parseIssues: 0
 
@@ -3005,22 +2346,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1021.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1021.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -3073,22 +2401,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO1
-  seaLevelPressure: 1021.0
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: PeakWind[directionDegrees=280, speedKnots=32, hour=15, minute=30]
-  windShift: WindShift[hour=15, minute=15, frontalPassage=true]
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO1
   remarks.seaLevelPressure: Pressure[value=1021.0, unit=HECTOPASCALS]
   remarks.preciseTemperature: Temperature[celsius=23.3, dewpointCelsius=13.9, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
-  remarks.preciseDewpoint: Temperature[celsius=23.3, dewpointCelsius=13.9, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.wind: WindRemarks[peakWind=PeakWind[directionDegrees=280, speedKnots=32, hour=15, minute=30], windShift=WindShift[hour=15, minute=15, frontalPassage=true], windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -3134,22 +2449,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: 0.03
-  sixHourMaxTemp: 14.2
-  sixHourMinTemp: 8.9
-  twentyFourHourMaxTemp: 11.2
-  twentyFourHourMinTemp: 8.4
-  threeHourPressureTendency: 1.5
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=VariableVisibility[minimumVisibility=Visibility[distanceValue=0.5, unit=SM, lessThan=false, greaterThan=false, specialCondition=null], maximumVisibility=Visibility[distanceValue=2.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null], direction=null, location=null]]
@@ -3195,22 +2497,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: FALLING
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -3256,22 +2545,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=Visibility[distanceValue=1.5, unit=SM, lessThan=false, greaterThan=false, specialCondition=null], surfaceVisibility=Visibility[distanceValue=2.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null], variableVisibility=null]
@@ -3317,22 +2593,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: null
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: null
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -3378,22 +2641,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: AO2
-  seaLevelPressure: 1020.1
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: AO2
   remarks.seaLevelPressure: Pressure[value=1020.1, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
@@ -3453,22 +2703,9 @@
   recentWeather: []
   recentWeatherNotObservable: false
   noSignificantChange: false
-  automatedStation: null
-  seaLevelPressure: 1015.9
-  hourlyPrecipitation: null
-  sixHourMaxTemp: null
-  sixHourMinTemp: null
-  twentyFourHourMaxTemp: null
-  twentyFourHourMinTemp: null
-  threeHourPressureTendency: null
-  peakWind: null
-  windShift: null
-  pressureRapidChange: null
-  icing: null
   remarks.automatedStationType: null
   remarks.seaLevelPressure: Pressure[value=1015.9, unit=HECTOPASCALS]
   remarks.preciseTemperature: null
-  remarks.preciseDewpoint: null
   remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
   remarks.directionalWeather: null
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]

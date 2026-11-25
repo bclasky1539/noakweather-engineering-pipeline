@@ -22,10 +22,6 @@ import weather.model.components.Pressure;
 import weather.model.components.Temperature;
 import weather.model.components.Visibility;
 import weather.model.components.Wind;
-import weather.model.components.remark.*;
-import weather.model.components.remark.pressureremarks.PressureRapidChange;
-import weather.model.components.remark.windremarks.PeakWind;
-import weather.model.components.remark.windremarks.WindShift;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -41,8 +37,10 @@ import java.util.Objects;
  * <p>
  * Architecture:
  * - Weather conditions (wind, visibility, weather, sky, temp, pressure) inherited from NoaaWeatherData
- * - METAR-specific fields for remarks and supplemental data remain here
+ * - METAR-specific supplemental data (NOSIG) remains here
  * - All condition getters inherited from parent class
+ * - Remark values (sea level pressure, peak wind, temperature extremes and so on)
+ *   live only in {@code getRemarks()}; this class keeps no top-level copies (#217)
  *
  * @author bclasky1539
  *
@@ -50,68 +48,7 @@ import java.util.Objects;
 @JsonTypeName("METAR")
 public class NoaaMetarData extends NoaaWeatherData {
 
-    // ========== REMARKS SECTION COMPONENTS ==========
-    // These are METAR-specific and not part of the general conditions
-
-    /**
-     * Peak wind information from remarks
-     */
-    private PeakWind peakWind;
-
-    /**
-     * Wind shift information from remarks
-     */
-    private WindShift windShift;
-
-    /**
-     * Pressure rising or falling rapidly indicator from remarks (PRESRR/PRESFR)
-     */
-    private PressureRapidChange pressureRapidChange;
-
-    /**
-     * Icing information from remarks
-     */
-    private Icing icing;
-
-    /**
-     * Automated station indicator (AO1, AO2)
-     */
-    private String automatedStation;
-
-    /**
-     * Sea level pressure from remarks (in hPa)
-     */
-    private Double seaLevelPressure;
-
-    /**
-     * Hourly precipitation amount (in inches)
-     */
-    private Double hourlyPrecipitation;
-
-    /**
-     * 6-hour maximum temperature (Celsius)
-     */
-    private Double sixHourMaxTemp;
-
-    /**
-     * 6-hour minimum temperature (Celsius)
-     */
-    private Double sixHourMinTemp;
-
-    /**
-     * 24-hour maximum temperature (Celsius)
-     */
-    private Double twentyFourHourMaxTemp;
-
-    /**
-     * 24-hour minimum temperature (Celsius)
-     */
-    private Double twentyFourHourMinTemp;
-
-    /**
-     * 3-hour pressure tendency (in hPa)
-     */
-    private Double threeHourPressureTendency;
+    // ========== METAR-SPECIFIC FIELDS ==========
 
     /**
      * No significant change indicator (NOSIG)
@@ -140,99 +77,7 @@ public class NoaaMetarData extends NoaaWeatherData {
     // Note: getConditions() and setConditions() are inherited from NoaaWeatherData
     // Note: All convenience getters (getWind(), getVisibility(), etc.) are inherited
 
-    // ========== REMARKS GETTERS/SETTERS ==========
-
-    public PeakWind getPeakWind() {
-        return peakWind;
-    }
-
-    public void setPeakWind(PeakWind peakWind) {
-        this.peakWind = peakWind;
-    }
-
-    public WindShift getWindShift() {
-        return windShift;
-    }
-
-    public void setWindShift(WindShift windShift) {
-        this.windShift = windShift;
-    }
-
-    public PressureRapidChange getPressureRapidChange() {
-        return pressureRapidChange;
-    }
-
-    public void setPressureRapidChange(PressureRapidChange pressureRapidChange) {
-        this.pressureRapidChange = pressureRapidChange;
-    }
-
-    public Icing getIcing() { return icing; }
-
-    public void setIcing(Icing icing) { this.icing = icing; }
-
-    public String getAutomatedStation() {
-        return automatedStation;
-    }
-
-    public void setAutomatedStation(String automatedStation) {
-        this.automatedStation = automatedStation;
-    }
-
-    public Double getSeaLevelPressure() {
-        return seaLevelPressure;
-    }
-
-    public void setSeaLevelPressure(Double seaLevelPressure) {
-        this.seaLevelPressure = seaLevelPressure;
-    }
-
-    public Double getHourlyPrecipitation() {
-        return hourlyPrecipitation;
-    }
-
-    public void setHourlyPrecipitation(Double hourlyPrecipitation) {
-        this.hourlyPrecipitation = hourlyPrecipitation;
-    }
-
-    public Double getSixHourMaxTemp() {
-        return sixHourMaxTemp;
-    }
-
-    public void setSixHourMaxTemp(Double sixHourMaxTemp) {
-        this.sixHourMaxTemp = sixHourMaxTemp;
-    }
-
-    public Double getSixHourMinTemp() {
-        return sixHourMinTemp;
-    }
-
-    public void setSixHourMinTemp(Double sixHourMinTemp) {
-        this.sixHourMinTemp = sixHourMinTemp;
-    }
-
-    public Double getTwentyFourHourMaxTemp() {
-        return twentyFourHourMaxTemp;
-    }
-
-    public void setTwentyFourHourMaxTemp(Double twentyFourHourMaxTemp) {
-        this.twentyFourHourMaxTemp = twentyFourHourMaxTemp;
-    }
-
-    public Double getTwentyFourHourMinTemp() {
-        return twentyFourHourMinTemp;
-    }
-
-    public void setTwentyFourHourMinTemp(Double twentyFourHourMinTemp) {
-        this.twentyFourHourMinTemp = twentyFourHourMinTemp;
-    }
-
-    public Double getThreeHourPressureTendency() {
-        return threeHourPressureTendency;
-    }
-
-    public void setThreeHourPressureTendency(Double threeHourPressureTendency) {
-        this.threeHourPressureTendency = threeHourPressureTendency;
-    }
+    // ========== METAR-SPECIFIC GETTERS/SETTERS ==========
 
     public boolean isNoSignificantChange() {
         return noSignificantChange;
@@ -240,56 +85,6 @@ public class NoaaMetarData extends NoaaWeatherData {
 
     public void setNoSignificantChange(boolean noSignificantChange) {
         this.noSignificantChange = noSignificantChange;
-    }
-
-    // ========== METAR-SPECIFIC UTILITY METHODS ==========
-
-    /**
-     * Check if this METAR is an automated station with precipitation discriminator (AO2).
-     *
-     * @return true if AO2
-     */
-    public boolean hasAO2() {
-        return "AO2".equals(automatedStation);
-    }
-
-    /**
-     * Check if this METAR is an automated station without precipitation discriminator (AO1).
-     *
-     * @return true if AO1
-     */
-    public boolean hasAO1() {
-        return "AO1".equals(automatedStation);
-    }
-
-    /**
-     * Check if this METAR is from an automated station (AO1 or AO2).
-     *
-     * @return true if automated
-     */
-    @JsonIgnore
-    public boolean isAutomated() {
-        return automatedStation != null &&
-                (automatedStation.equals("AO1") || automatedStation.equals("AO2"));
-    }
-
-    /**
-     * Check if any precipitation data is available in remarks.
-     *
-     * @return true if precipitation data exists
-     */
-    public boolean hasPrecipitationData() {
-        return hourlyPrecipitation != null;
-    }
-
-    /**
-     * Check if temperature extremes data is available in remarks.
-     *
-     * @return true if 6-hour or 24-hour temperature data exists
-     */
-    public boolean hasTemperatureExtremes() {
-        return sixHourMaxTemp != null || sixHourMinTemp != null ||
-                twentyFourHourMaxTemp != null || twentyFourHourMinTemp != null;
     }
 
     // ========== OVERRIDES ==========
@@ -370,38 +165,11 @@ public class NoaaMetarData extends NoaaWeatherData {
 
         // Compare NoaaMetarData-specific fields only
         // Parent fields (including conditions) are compared in parent's equals()
-        return noSignificantChange == that.noSignificantChange &&
-                Objects.equals(peakWind, that.peakWind) &&
-                Objects.equals(windShift, that.windShift) &&
-                Objects.equals(pressureRapidChange, that.pressureRapidChange) &&
-                Objects.equals(icing, that.icing) &&
-                Objects.equals(automatedStation, that.automatedStation) &&
-                Objects.equals(seaLevelPressure, that.seaLevelPressure) &&
-                Objects.equals(hourlyPrecipitation, that.hourlyPrecipitation) &&
-                Objects.equals(sixHourMaxTemp, that.sixHourMaxTemp) &&
-                Objects.equals(sixHourMinTemp, that.sixHourMinTemp) &&
-                Objects.equals(twentyFourHourMaxTemp, that.twentyFourHourMaxTemp) &&
-                Objects.equals(twentyFourHourMinTemp, that.twentyFourHourMinTemp) &&
-                Objects.equals(threeHourPressureTendency, that.threeHourPressureTendency);
+        return noSignificantChange == that.noSignificantChange;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(
-                super.hashCode(),
-                peakWind,
-                windShift,
-                pressureRapidChange,
-                icing,
-                automatedStation,
-                seaLevelPressure,
-                hourlyPrecipitation,
-                sixHourMaxTemp,
-                sixHourMinTemp,
-                twentyFourHourMaxTemp,
-                twentyFourHourMinTemp,
-                threeHourPressureTendency,
-                noSignificantChange
-        );
+        return Objects.hash(super.hashCode(), noSignificantChange);
     }
 }

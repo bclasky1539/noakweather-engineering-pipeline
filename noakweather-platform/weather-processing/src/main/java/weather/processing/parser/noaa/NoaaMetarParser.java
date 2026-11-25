@@ -163,7 +163,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             }
 
             remarks = parseRemarks(remarks);
-            copyRemarksToTopLevel();
 
             validateParsedData();
             buildAndSetConditions();
@@ -774,85 +773,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
     }
 
     /**
-     * Copy commonly-accessed remark fields to top-level NoaaMetarData fields
-     * for convenient access without navigating through remarks object.
-     * Extracts values from complex remark types into simple types.
-     */
-    private void copyRemarksToTopLevel() {
-        // Guard against null weatherData (parsing failed before initialization)
-        if (weatherData == null) {
-            return;
-        }
-
-        NoaaMetarRemarks remarks = weatherData.getRemarks();
-        if (remarks == null) {
-            return;
-        }
-
-        // Copy automated station type (convert enum to String: "AO1" or "AO2")
-        if (remarks.automatedStationType() != null) {
-            weatherData.setAutomatedStation(remarks.automatedStationType().toString());
-        }
-
-        // Copy sea level pressure (extract hPa value from Pressure record)
-        if (remarks.seaLevelPressure() != null) {
-            weatherData.setSeaLevelPressure(remarks.seaLevelPressure().toHectopascals());
-        }
-
-        // Copy peak wind (PeakWind type matches - direct copy)
-        if (remarks.peakWind() != null) {
-            weatherData.setPeakWind(remarks.peakWind());
-        }
-
-        // Copy hourly precipitation (extract inches from PrecipitationAmount record)
-        if (remarks.hourlyPrecipitation() != null) {
-            weatherData.setHourlyPrecipitation(remarks.hourlyPrecipitation().inches());
-        }
-
-        // Copy 6-hour max temperature (extract Celsius from Temperature record)
-        if (remarks.sixHourMaxTemperature() != null) {
-            weatherData.setSixHourMaxTemp(remarks.sixHourMaxTemperature().celsius());
-        }
-
-        // Copy 6-hour min temperature (extract Celsius from Temperature record)
-        if (remarks.sixHourMinTemperature() != null) {
-            weatherData.setSixHourMinTemp(remarks.sixHourMinTemperature().celsius());
-        }
-
-        // Copy 24-hour max temperature (extract Celsius from Temperature record)
-        if (remarks.twentyFourHourMaxTemperature() != null) {
-            weatherData.setTwentyFourHourMaxTemp(remarks.twentyFourHourMaxTemperature().celsius());
-        }
-
-        // Copy 24-hour min temperature (extract Celsius from Temperature record)
-        if (remarks.twentyFourHourMinTemperature() != null) {
-            weatherData.setTwentyFourHourMinTemp(remarks.twentyFourHourMinTemperature().celsius());
-        }
-
-        // Copy 3-hour pressure tendency (extract hPa change from PressureTendency record)
-        // nothing to copy when the change element was reported as "///"
-        PressureTendency pressureTendency = remarks.pressureTendency();
-        if (pressureTendency != null && pressureTendency.hasChange()) {
-            weatherData.setThreeHourPressureTendency(pressureTendency.changeHectopascals());
-        }
-
-        // Copy pressure rapid change (PressureRapidChange type matches - direct copy)
-        if (remarks.pressureRapidChange() != null) {
-            weatherData.setPressureRapidChange(remarks.pressureRapidChange());
-        }
-
-        // Copy icing (Icing type matches - direct copy)
-        if (remarks.icing() != null) {
-            weatherData.setIcing(remarks.icing());
-        }
-
-        // Copy wind shift (WindShift type matches - direct copy)
-        if (remarks.windShift() != null) {
-            weatherData.setWindShift(remarks.windShift());
-        }
-    }
-
-    /**
      * Handle automated station type remark for sequential parsing.
      * <p>
      * Format: AO1, AO2, AO1A, or AO2A
@@ -1009,7 +929,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
                 Temperature preciseTemp = Temperature.of(tempCelsius, dewptCelsius);
                 remarks.preciseTemperature(preciseTemp);
-                remarks.preciseDewpoint(preciseTemp); // Store the same object for dewpoint access
 
                 LOGGER.debug("Precise temperature: {}°C, dewpoint: {}°C", tempCelsius, dewptCelsius);
 

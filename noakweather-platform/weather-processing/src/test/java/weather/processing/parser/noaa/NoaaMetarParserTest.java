@@ -4057,7 +4057,7 @@ class NoaaMetarParserTest {
         }
         assertThat(dw.allQuadrants()).isEqualTo(allQuadrants);
         assertThat(data.getRemarks().freeText()).as(remark).isNull();
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
     }
 
     @Test
@@ -4067,7 +4067,7 @@ class NoaaMetarParserTest {
 
         assertThat(data.getRemarks().directionalWeather()).isNull();
         assertThat(data.getRemarks().freeText()).isEqualTo("SH");
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
     }
 
     // ========== VARIABLE VISIBILITY PARSING TESTS ==========
@@ -8074,27 +8074,6 @@ class NoaaMetarParserTest {
 
     @ParameterizedTest
     @CsvSource({
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 54///', 'Change missing'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5////', 'Every element missing'"
-    })
-    @DisplayName("Should not copy a top-level pressure tendency when the change is missing - Issue #198")
-    void testParsePressureTendency_MissingChangeNotCopiedToTopLevel(String metar, String scenario) {
-        NoaaMetarData data = extractMetarData(parser.parse(metar));
-
-        assertThat(data.getThreeHourPressureTendency()).as(scenario).isNull();
-    }
-
-    @Test
-    @DisplayName("Should copy a top-level pressure tendency when only the tendency code is missing - Issue #198")
-    void testParsePressureTendency_MissingCodeChangeCopiedToTopLevel() {
-        NoaaMetarData data = extractMetarData(
-                parser.parse("METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5/123"));
-
-        assertThat(data.getThreeHourPressureTendency()).isEqualTo(12.3, within(0.01));
-    }
-
-    @ParameterizedTest
-    @CsvSource({
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5401/', 5401/, 'Solidus inside the change'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5//12', 5//12, 'Partly missing change'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK 5/////', 5/////, 'Too many solidi'",
@@ -8110,6 +8089,8 @@ class NoaaMetarParserTest {
         assertThat(remarks.pressureTendency()).as(scenario).isNull();
         assertThat(remarks.freeText()).as(scenario).contains(expectedFreeText);
     }
+
+
 
     // ========== PRESSURE RAPID CHANGE (PRESRR/PRESFR) PARSING TESTS ==========
 
@@ -8294,22 +8275,6 @@ class NoaaMetarParserTest {
     }
 
     @Test
-    @DisplayName("Should copy pressure rapid change to top-level NoaaMetarData field")
-    void testParsePressureRapidChange_CopiedToTopLevel() {
-        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK PRESFR";
-
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
-
-        assertThat(result.isSuccess()).isTrue();
-        NoaaMetarData data = extractMetarData(result);
-
-        // copyRemarksToTopLevel() should mirror remarks.pressureRapidChange()
-        // onto the top-level NoaaMetarData field
-        assertThat(data.getPressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
-        assertThat(data.getPressureRapidChange()).isEqualTo(data.getRemarks().pressureRapidChange());
-    }
-
-    @Test
     @DisplayName("Should parse real-world METAR with PRESFR and complete remarks suite")
     void testParsePressureRapidChange_CompleteRemarksSuite() {
         String metar = "METAR KJFK 121851Z 24008KT 10SM FEW250 23/14 A3012 " +
@@ -8403,7 +8368,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().icing()).isNotNull();
         assertThat(data.getRemarks().icing().qualifier()).isEqualTo("PAST HR");
         assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.RISING);
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0, within(0.1));
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8, within(0.1));
         assertThat(data.getRemarks().maintenanceRequired()).isTrue();
@@ -8515,20 +8480,6 @@ class NoaaMetarParserTest {
         assertThat(icing.inClouds()).isTrue();
         assertThat(icing.hasQualifier()).isTrue();
         assertThat(icing.getSummary()).isEqualTo("Icing in clouds (PAST HR)");
-    }
-
-    @Test
-    @DisplayName("Should copy icing to top-level NoaaMetarData field")
-    void testParseIcing_CopiedToTopLevel() {
-        String metar = "METAR KJFK 121853Z 28016KT 10SM A3015 RMK ICG PAST HR";
-
-        ParseResult<NoaaWeatherData> result = parser.parse(metar);
-
-        assertThat(result.isSuccess()).isTrue();
-        NoaaMetarData data = extractMetarData(result);
-
-        assertThat(data.getIcing()).isEqualTo(data.getRemarks().icing());
-        assertThat(data.getIcing().qualifier()).isEqualTo("PAST HR");
     }
 
     // ========== CLOUD TYPE - CI0 AND EMBDD TESTS ==========
@@ -8853,7 +8804,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1006.9, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(32.2, within(0.1));
-        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(21.1, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(21.1, within(0.1));
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -8884,7 +8835,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1018.8, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(32.8, within(0.1));
-        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.2, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(22.2, within(0.1));
         assertThat(data.getRemarks().freeText())
                 .as("AND SW no longer left orphaned in freeText")
                 .isNull();
@@ -8917,7 +8868,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1004.1, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(40.6, within(0.1));
-        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(16.7, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(16.7, within(0.1));
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -9068,7 +9019,7 @@ class NoaaMetarParserTest {
         NoaaMetarData data = extractMetarData(result);
 
         assertThat(data.getRemarks().secondaryAltimeter()).isNull();
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
         assertThat(data.getRemarks().freeText())
                 .as("A//// is a recognised 'not available' report, like SLPNO")
                 .isNull();
@@ -11617,7 +11568,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText())
                 .as("Nothing may be silently dropped: %s", scenario)
                 .isEqualTo(remark);
-        assertThat(data.getSeaLevelPressure())
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                 .as("Remarks after the rejected group still parse: %s", scenario)
                 .isEqualTo(1021.0);
     }
@@ -11638,7 +11589,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText())
                 .as("The rejected altitude reading surfaces whole; the loop does not spin on it")
                 .isEqualTo("WIND 1400FT 99910KT");
-        assertThat(data.getSeaLevelPressure())
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                 .as("Remarks after the rejected group still parse")
                 .isEqualTo(1021.0);
     }
@@ -11658,7 +11609,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().peakWind()).isNotNull();
         assertThat(data.getRemarks().windShift()).isNotNull();
         assertThat(data.getRemarks().windShift().frontalPassage()).isTrue();
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().freeText()).isNull();
     }
@@ -12023,7 +11974,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText())
                 .as("The rejected group surfaces whole")
                 .isEqualTo("GR 0");
-        assertThat(data.getSeaLevelPressure())
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                 .as("Remarks after the rejected group still parse")
                 .isEqualTo(1021.0);
     }
@@ -12040,7 +11991,7 @@ class NoaaMetarParserTest {
 
         // #115: the hail handler takes the null path (1/0 has a zero denominator) and leaves the text in place
         assertThat(data.getRemarks().hailSize()).isNull();
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
 
         // #129: a bare GR has no location, so directional weather declines it and the group surfaces whole
         assertThat(data.getRemarks().directionalWeather()).isNull();
@@ -12066,7 +12017,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().twentyFourHourPrecipitation()).isNotNull();
         assertThat(data.getRemarks().hailSize()).isNotNull();
         assertThat(data.getRemarks().obscurationLayers()).hasSize(1);
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -12082,7 +12033,7 @@ class NoaaMetarParserTest {
 
         assertThat(data.getRemarks().lightningRemarks()).hasSize(1);
         assertThat(data.getRemarks().freeText()).isEqualTo("LTG DSNT NS");
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
     }
 
     @Test
@@ -12097,13 +12048,13 @@ class NoaaMetarParserTest {
         NoaaMetarData data = extractMetarData(result);
 
         assertThat(data.getRemarks().weatherEvents()).isNotEmpty();
-        assertThat(data.getPressureRapidChange()).isNotNull();
+        assertThat(data.getRemarks().pressureRapidChange()).isNotNull();
         assertThat(data.getRemarks().sixHourMaxTemperature()).isNotNull();
         assertThat(data.getRemarks().sixHourMinTemperature()).isNotNull();
         assertThat(data.getRemarks().twentyFourHourMaxTemperature()).isNotNull();
         assertThat(data.getRemarks().twentyFourHourMinTemperature()).isNotNull();
         assertThat(data.getRemarks().pressureTendency()).isNotNull();
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
         assertThat(data.getRemarks().freeText()).isNull();
     }
 }

@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,6 @@ class NoaaMetarRemarksTest {
         assertNull(remarks.automatedStationType());
         assertNull(remarks.seaLevelPressure());
         assertNull(remarks.preciseTemperature());
-        assertNull(remarks.preciseDewpoint());
         assertTrue(remarks.weatherEvents().isEmpty());
         assertNull(remarks.freeText());
         assertTrue(remarks.isEmpty());
@@ -77,22 +76,20 @@ class NoaaMetarRemarksTest {
     void testBuilder() {
         AutomatedStationType stationType = AutomatedStationType.AO2;
         Pressure slp = Pressure.hectopascals(1013.2);
-        Temperature temp = Temperature.of(22.2);
-        Temperature dewpoint = Temperature.of(11.7);
+        Temperature temp = Temperature.of(22.2, 11.7);
         String freeText = "Some unparsed text";
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .automatedStationType(stationType)
                 .seaLevelPressure(slp)
                 .preciseTemperature(temp)
-                .preciseDewpoint(dewpoint)
                 .freeText(freeText)
                 .build();
 
         assertEquals(stationType, remarks.automatedStationType());
         assertEquals(slp, remarks.seaLevelPressure());
         assertEquals(temp, remarks.preciseTemperature());
-        assertEquals(dewpoint, remarks.preciseDewpoint());
+        assertEquals(11.7, remarks.preciseTemperature().dewpointCelsius());
         assertEquals(freeText, remarks.freeText());
         assertFalse(remarks.isEmpty());
     }
@@ -106,7 +103,6 @@ class NoaaMetarRemarksTest {
         assertEquals(AutomatedStationType.AO1, remarks.automatedStationType());
         assertNull(remarks.seaLevelPressure());
         assertNull(remarks.preciseTemperature());
-        assertNull(remarks.preciseDewpoint());
         assertNull(remarks.freeText());
         assertFalse(remarks.isEmpty());
     }
@@ -143,7 +139,6 @@ class NoaaMetarRemarksTest {
                 .automatedStationType(AutomatedStationType.AO2)
                 .seaLevelPressure(Pressure.hectopascals(1013.2))
                 .preciseTemperature(Temperature.of(22.2))
-                .preciseDewpoint(Temperature.of(11.7))
                 .freeText("Some text")
                 .build();
 
@@ -182,12 +177,11 @@ class NoaaMetarRemarksTest {
     void testRecordConstructor() {
         AutomatedStationType stationType = AutomatedStationType.AO2;
         Pressure slp = Pressure.hectopascals(1013.2);
-        Temperature temp = Temperature.of(22.2);
-        Temperature dewpoint = Temperature.of(11.7);
+        Temperature temp = Temperature.of(22.2, 11.7);
         String freeText = "Text";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                stationType, slp, temp, dewpoint, null, null, null, null,
+                stationType, slp, temp, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
@@ -198,7 +192,7 @@ class NoaaMetarRemarksTest {
         assertEquals(stationType, remarks.automatedStationType());
         assertEquals(slp, remarks.seaLevelPressure());
         assertEquals(temp, remarks.preciseTemperature());
-        assertEquals(dewpoint, remarks.preciseDewpoint());
+        assertEquals(11.7, remarks.preciseTemperature().dewpointCelsius());
         assertEquals(freeText, remarks.freeText());
     }
 
@@ -302,15 +296,6 @@ class NoaaMetarRemarksTest {
     }
 
     @Test
-    void testIsEmptyWithOnlyPreciseDewpoint() {
-        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
-                .preciseDewpoint(Temperature.of(11.7))
-                .build();
-
-        assertFalse(remarks.isEmpty());
-    }
-
-    @Test
     void testIsEmptyWithOnlyPeakWind() {
         PeakWind peakWind = new PeakWind(280, 32, 15, 30);
 
@@ -359,7 +344,7 @@ class NoaaMetarRemarksTest {
         PeakWind peakWind = new PeakWind(280, 32, 15, 30);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null,
+                null, null, null,
                 new WindRemarks(peakWind, null, null), null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
@@ -377,7 +362,7 @@ class NoaaMetarRemarksTest {
         WindShift windShift = new WindShift(15, 30, true);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null,
+                null, null, null,
                 new WindRemarks(null, windShift, null), null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null, null,
@@ -790,7 +775,7 @@ class NoaaMetarRemarksTest {
         VariableVisibility varVis = new VariableVisibility(min, max, "NE", null);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, new VisibilityRemarks(null, null, varVis),
                 null, null, null, null, null, null,
                 null, null, null, null, null,
@@ -996,7 +981,7 @@ class NoaaMetarRemarksTest {
         Visibility towerVis = Visibility.statuteMiles(1.5);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, new VisibilityRemarks(towerVis, null, null), null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -1015,7 +1000,7 @@ class NoaaMetarRemarksTest {
         Visibility surfaceVis = Visibility.statuteMiles(0.25);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, new VisibilityRemarks(null, surfaceVis, null),
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -1035,7 +1020,7 @@ class NoaaMetarRemarksTest {
         Visibility surfaceVis = Visibility.statuteMiles(1.0);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, new VisibilityRemarks(towerVis, surfaceVis, null), null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -1244,7 +1229,7 @@ class NoaaMetarRemarksTest {
         PrecipitationAmount hourly = PrecipitationAmount.fromEncoded("0015", 1);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, hourly, null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -1263,7 +1248,7 @@ class NoaaMetarRemarksTest {
         PrecipitationAmount sixHour = PrecipitationAmount.fromEncoded("0025", 6);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, sixHour, null, null, null, null,
                 null, null, null, null, null, null,
@@ -1282,7 +1267,7 @@ class NoaaMetarRemarksTest {
         PrecipitationAmount twentyFourHour = PrecipitationAmount.fromEncoded("0125", 24);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, twentyFourHour, null, null, null,
                 null, null, null, null, null, null,
@@ -1303,7 +1288,7 @@ class NoaaMetarRemarksTest {
         PrecipitationAmount twentyFourHour = PrecipitationAmount.fromEncoded("0125", 24);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, hourly, null,
                 sixHour, twentyFourHour, null, null, null, null, null,
                 null, null, null, null, null,
@@ -1550,7 +1535,7 @@ class NoaaMetarRemarksTest {
         HailSize hailSize = HailSize.inches(1.75);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, hailSize, null, null,
                 null, null, null, null, null, null,
@@ -1565,7 +1550,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should create remarks with null hailSize via record constructor")
     void testRecordConstructorWithNullHailSize() {
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -1767,7 +1752,7 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation location = ThunderstormLocation.of("TS", "SE");
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, List.of(location),
                 null, null, null, null, null, null,
@@ -1786,7 +1771,7 @@ class NoaaMetarRemarksTest {
         ThunderstormLocation location2 = ThunderstormLocation.of("CB", "W");
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
                 List.of(location1, location2), null, null, null, null, null,
@@ -2169,7 +2154,7 @@ class NoaaMetarRemarksTest {
         WeatherEvent event = new WeatherEvent("RA", null, null, 5, null, null);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, List.of(event), null,
                 null, null, null, null, null, null,
@@ -2188,7 +2173,7 @@ class NoaaMetarRemarksTest {
         WeatherEvent event2 = new WeatherEvent("SN", null, null, 30, null, null);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, List.of(event1, event2),
                 null, null, null, null, null, null,
@@ -2572,7 +2557,7 @@ class NoaaMetarRemarksTest {
         PressureTendency tendency = PressureTendency.of(7, 4.5);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, new PressureRemarks(tendency, null), null, null, null,
@@ -2588,7 +2573,7 @@ class NoaaMetarRemarksTest {
     @DisplayName("Should create remarks with null pressureTendency via record constructor")
     void testRecordConstructorWithNullPressureTendency() {
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -3545,7 +3530,7 @@ class NoaaMetarRemarksTest {
                 List.of(new DirectionSegment(List.of("N"))), false);
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                null, null, null, null, null,
+                null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
@@ -5216,7 +5201,6 @@ class NoaaMetarRemarksTest {
                 .automatedStationType(AutomatedStationType.AO2)
                 .seaLevelPressure(Pressure.hectopascals(1013.2))
                 .preciseTemperature(Temperature.of(22.2))
-                .preciseDewpoint(Temperature.of(11.7))
                 .updateWind(w -> w.withPeakWind(new PeakWind(280, 32, 15, 30)))
                 .updateWind(w -> w.withWindShift(new WindShift(15, 30, true)))
                 .updateVisibility(v -> v.withVariableVisibility(VariableVisibility.of(
@@ -5267,7 +5251,7 @@ class NoaaMetarRemarksTest {
                 () -> assertTrue(str.contains("AO2")),
                 () -> assertTrue(str.contains("seaLevelPressure")),
                 () -> assertTrue(str.contains("preciseTemp")),
-                () -> assertTrue(str.contains("preciseDewpoint")),
+                () -> assertFalse(str.contains("preciseDewpoint")),
                 () -> assertTrue(str.contains("peakWind")),
                 () -> assertTrue(str.contains("windShift")),
                 () -> assertTrue(str.contains("variableVisibility")),
@@ -5294,7 +5278,6 @@ class NoaaMetarRemarksTest {
                 .automatedStationType(AutomatedStationType.AO2)
                 .seaLevelPressure(Pressure.hectopascals(1013.2))
                 .preciseTemperature(Temperature.of(22.2))
-                .preciseDewpoint(Temperature.of(11.7))
                 .updateWind(w -> w.withPeakWind(new PeakWind(280, 32, 15, 30)))
                 .updateWind(w -> w.withWindShift(new WindShift(15, 30, true)))
                 .updateVisibility(v -> v.withVariableVisibility(VariableVisibility.of(
@@ -5372,8 +5355,7 @@ class NoaaMetarRemarksTest {
     void testRecordConstructorWithAllFields_Part1() {
         AutomatedStationType stationType = AutomatedStationType.AO2;
         Pressure slp = Pressure.hectopascals(1013.2);
-        Temperature temp = Temperature.of(22.2);
-        Temperature dewpoint = Temperature.of(11.7);
+        Temperature temp = Temperature.of(22.2, 11.7);
         PeakWind peakWind = new PeakWind(280, 32, 15, 30);
         WindShift windShift = new WindShift(15, 30, true);
         List<WindAtLocation> windsAtLocation = List.of(
@@ -5445,7 +5427,7 @@ class NoaaMetarRemarksTest {
         String freeText = "Additional remarks";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                stationType, slp, temp, dewpoint, new WindRemarks(peakWind, windShift, windsAtLocation), directionalWeather,
+                stationType, slp, temp, new WindRemarks(peakWind, windShift, windsAtLocation), directionalWeather,
                 new VisibilityRemarks(towerVis, surfaceVis, varVis), new CeilingRemarks(variableCeiling, ceilingSecondSite),
                 obscurationLayers, cloudTypes, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize, weatherEvents,
                 thunderstormLocations, exceptDirections, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
@@ -5459,7 +5441,7 @@ class NoaaMetarRemarksTest {
                 () -> assertEquals(stationType, remarks.automatedStationType()),
                 () -> assertEquals(slp, remarks.seaLevelPressure()),
                 () -> assertEquals(temp, remarks.preciseTemperature()),
-                () -> assertEquals(dewpoint, remarks.preciseDewpoint()),
+                () -> assertEquals(11.7, remarks.preciseTemperature().dewpointCelsius()),
                 () -> assertEquals(peakWind, remarks.peakWind()),
                 () -> assertEquals(windShift, remarks.windShift()),
                 () -> assertEquals(windsAtLocation, remarks.windsAtLocation()),
@@ -5483,8 +5465,7 @@ class NoaaMetarRemarksTest {
     void testRecordConstructorWithAllFields_Part2() {
         AutomatedStationType stationType = AutomatedStationType.AO2;
         Pressure slp = Pressure.hectopascals(1013.2);
-        Temperature temp = Temperature.of(22.2);
-        Temperature dewpoint = Temperature.of(11.7);
+        Temperature temp = Temperature.of(22.2, 11.7);
         PeakWind peakWind = new PeakWind(280, 32, 15, 30);
         WindShift windShift = new WindShift(15, 30, true);
         List<WindAtLocation> windsAtLocation = List.of(
@@ -5556,7 +5537,7 @@ class NoaaMetarRemarksTest {
         String freeText = "Additional remarks";
 
         NoaaMetarRemarks remarks = new NoaaMetarRemarks(
-                stationType, slp, temp, dewpoint, new WindRemarks(peakWind, windShift, windsAtLocation), directionalWeather,
+                stationType, slp, temp, new WindRemarks(peakWind, windShift, windsAtLocation), directionalWeather,
                 new VisibilityRemarks(towerVis, surfaceVis, varVis), new CeilingRemarks(variableCeiling, ceilingSecondSite),
                 obscurationLayers, cloudTypes, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize, weatherEvents,
                 thunderstormLocations, exceptDirections, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,

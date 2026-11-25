@@ -81,10 +81,10 @@ class NoaaMetarParserRemarksRecoveryTest {
                                 "RMK RAE20 SLP151 P0002 T02330222 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1015.1);
-                            assertThat(data.getHourlyPrecipitation()).isEqualTo(0.02);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1015.1);
+                            assertThat(data.getRemarks().hourlyPrecipitation().inches()).isEqualTo(0.02);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(23.3);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.2);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(22.2);
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
 
@@ -106,11 +106,11 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(lightning.types()).isEmpty();
                             assertThat(lightning.location()).isEqualTo("DSNT");
                             assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("W")));
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP151 must parse despite the earlier LTG clause")
                                     .isEqualTo(1015.1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(29.4);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(23.9);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(23.9);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
                             assertThat(cb.cloudType()).isEqualTo("CB");
@@ -140,9 +140,9 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2026/09/11 22:53 KAFW 112253Z 14013KT 10SM FEW060 BKN120 BKN250 36/21 " +
                                 "A2976 RMK AO2 LTG DSNT SE-SW SLP060 T03610206 $",
                         (Consumer<NoaaMetarData>) data -> {
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1006.0);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1006.0);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(36.1);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.6);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(20.6);
                             assertThat(data.getRemarks().maintenanceRequired())
                                     .as("Trailing $ should now parse instead of being lost in freeText")
                                     .isTrue();
@@ -159,7 +159,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .as("CB DSNT N-E AND SE-S now fully parses as one ThunderstormLocation " +
                                             "with two direction-range segments")
                                     .isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1004.1);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1004.1);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             ThunderstormLocation cb = data.getRemarks().thunderstormLocations().get(0);
                             assertThat(cb.cloudType()).isEqualTo("CB");
@@ -204,7 +204,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(secondLtg.directionSegments()).containsExactly(new DirectionSegment(List.of("E")));
                             assertThat(data.getRemarks().icing()).isEqualTo(Icing.of(false, false, "PAST HR"));
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(27.8);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.6);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(20.6);
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(3);
                             ThunderstormLocation tcu = data.getRemarks().thunderstormLocations().get(2);
                             assertThat(tcu.cloudType()).isEqualTo("TCU");
@@ -230,7 +230,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(lightning.types()).containsExactly("CG");
                             assertThat(lightning.location()).isNull();
                             assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("SE")));
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1004.4);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1004.4);
                             assertThat(data.getRemarks().cloudTypes())
                                     .as("SC5, AC3, and now CB EMBDD - three cloud types")
                                     .hasSize(3);
@@ -245,21 +245,21 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2017/04/10 00:00 CYQX 141200Z CCB 32008KT 1/4SM FG VV002 09/08 A2963 RMK F8 SLP040",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("F8");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1004.0);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1004.0);
                         }),
 
                 arguments("CYYQ-VSBYQuadrantDoesNotBlockSLP140",
                         "2017/04/10 00:00 CYYQ 241700Z 34011KT 2SM -DZ BR OVC004 05/05 A2994 RMK F4SF3 VSBY NE QUAD 1 SLP140",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("F4SF3 VSBY NE QUAD 1");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1014.0);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1014.0);
                         }),
 
                 arguments("CYYQ-F8DoesNotBlockSLP131",
                         "2017/04/10 00:00 CYYQ 301300Z 35011KT 1/8SM FG VV001 02/02 A2991 RMK F8 SLP131",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("F8");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1013.1);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1013.1);
                         }),
 
                 arguments("CYVR-TCUEmbddNowParsesCorrectly",
@@ -279,7 +279,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2017/04/10 00:00 CYQB 201900Z 00000KT 3/4SM -SHRA BR BKN004 OVC020 19/18 A2962 RMK SF6SC2 SLP032",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1003.2);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1003.2);
                             assertThat(data.getRemarks().cloudTypes()).hasSize(2);
                         }),
 
@@ -287,21 +287,21 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2017/04/10 00:00 CYVR 151100Z VRB03KT 1/4SM FG VV002 09/08 A2963 RMK F8 SLP998",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("F8");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(999.8);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(999.8);
                         }),
 
                 arguments("CYYC-F6SF2DoesNotBlockSLP009",
                         "2017/04/10 00:00 CYYC 151100Z 09005KT 1 1/2SM -SN BR OVC003 00/00 A2990 RMK F6SF2 SLP009",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("F6SF2");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1000.9);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1000.9);
                         }),
 
                 arguments("CYEG-AllTokensParse",
                         "2017/04/10 00:00 CYEG 151100Z 00000KT 15SM FEW018 BKN040 OVC095 M00/M02 A2996 RMK CF2SC3AC3 SLP141",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1014.1);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1014.1);
                             assertThat(data.getRemarks().cloudTypes()).hasSize(3);
                         }),
 
@@ -309,7 +309,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2017/04/10 00:00 CYYQ 151100Z 34015G30KT 1/2SM -SN BLSN VV005 M05/M07 A2975 RMK S8 SLP002",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("S8");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1000.2);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1000.2);
                         }),
 
                 arguments("CYHZ-ZeroOktaCloudNowParsesCorrectly",
@@ -318,7 +318,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().freeText())
                                     .as("CI0 now parses via widened okta range [0-8] - no orphaned fragment")
                                     .isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1029.9);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1029.9);
                             assertThat(data.getRemarks().cloudTypes())
                                     .as("All three chained cloud types now parse, including CI0")
                                     .hasSize(3);
@@ -340,7 +340,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(status.hour()).isEqualTo(12);
                             assertThat(status.minute()).isZero();
                             assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1009.3);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1009.3);
                             assertThat(data.getRemarks().cloudTypes()).hasSize(3);
                         }),
 
@@ -357,7 +357,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(status.day()).isEqualTo(27);
                             assertThat(status.hour()).isEqualTo(12);
                             assertThat(status.minute()).isZero();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1010.1);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1010.1);
                             assertThat(data.getRemarks().cloudTypes()).hasSize(2);
                         }),
 
@@ -378,7 +378,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(status.minute()).isZero();
                             assertThat(status.viaStation()).isEqualTo("CYQB");
 
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP755 must survive, immediately after VIA CYQB")
                                     .isEqualTo(975.5);
                             assertThat(data.getRemarks().densityAltitudeFeet())
@@ -419,7 +419,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                         "2017/04/10 00:00 CYQX 151100Z 30007KT 1/8SM FZFG VV001 M02/M03 A2998 RMK F8 SLP146",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isEqualTo("F8");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1014.6);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1014.6);
                         }),
 
                 // Confirms TSE09/UPE12-style leading segments and the chained continuation (B29E31...)
@@ -431,9 +431,9 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().freeText())
                                     .as("B29E31/RA/SN segments now all parse - nothing left unparsed")
                                     .isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(998.7);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(998.7);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(1.7);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(-1.1);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(-1.1);
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
 
                             assertThat(data.getRemarks().weatherEvents())
@@ -462,9 +462,9 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .as("PRESFR now has a dedicated handler and should no longer appear in freeText")
                                     .isNull();
                             assertThat(data.getRemarks().pressureRapidChange()).isEqualTo(PressureRapidChange.FALLING);
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1022.5);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1022.5);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(-3.3);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(-5.6);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(-5.6);
                             assertThat(data.getRemarks().sixHourPrecipitation()).isNotNull();
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
@@ -482,7 +482,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(lightning.directionSegments()).containsExactly(new DirectionSegment(List.of("N")));
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(23.9);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.8);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(22.8);
                         }),
 
                 arguments("KELP-LightningAndThunderstormLocationComposeCorrectly",
@@ -510,9 +510,9 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .containsExactly(new DirectionSegment(List.of("SE", "S")));
                             assertThat(cb.movingDirection()).isEqualTo("NE");
 
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1012.8);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1012.8);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(25.6, within(0.1));
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(17.8, within(0.1));
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(17.8, within(0.1));
                         }),
 
                 arguments("KMIA-MultipleLightningRemarksAndThunderstormLocationComposeCorrectly",
@@ -548,7 +548,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().weatherEvents().get(0).weatherCode()).isEqualTo("RA");
                             assertThat(data.getRemarks().weatherEvents().get(0).beginMinute()).isEqualTo(1);
 
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1011.0);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1011.0);
 
                             assertThat(data.getRemarks().thunderstormLocations()).hasSize(1);
                             ThunderstormLocation ts = data.getRemarks().thunderstormLocations().get(0);
@@ -560,7 +560,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().hourlyPrecipitation().inches()).isEqualTo(0.10, within(0.01));
 
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(13.9, within(0.1));
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(10.6, within(0.1));
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(10.6, within(0.1));
                         }),
 
                 arguments("K46D-LightningAndChainNowParsesBothSectors",
@@ -595,16 +595,16 @@ class NoaaMetarParserRemarksRecoveryTest {
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isNull();
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(4.2);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(-3.2);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(-3.2);
                         }),
 
                 arguments("KBUF2026-AllTokensParse",
                         "2026/09/14 20:54 KBUF 142054Z 25006KT 10SM FEW041 BKN060 18/09 A3023 RMK AO2 SLP237 T01830089 50003 $",
                         (Consumer<NoaaMetarData>) data -> {
                             assertThat(data.getRemarks().freeText()).isNull();
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1023.7);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1023.7);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(18.3);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(8.9);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(8.9);
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
                         }),
 
@@ -626,7 +626,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().predominantCloudTypes().highCloud())
                                     .isEqualTo(HighCloudType.CIRROSTRATUS_NOT_INVADING_NOT_COVERING);
 
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP122 must survive, ahead of the new 8/378 handler")
                                     .isEqualTo(1012.2);
                             assertThat(data.getRemarks().sixHourPrecipitation())
@@ -635,7 +635,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().preciseTemperature().celsius())
                                     .as("T02720260 must survive, immediately after 8/378")
                                     .isEqualTo(27.2);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(26.0);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(26.0);
 
                             assertThat(data.getRemarks().weatherEvents())
                                     .as("SHRAB09E30 - shower rain began :09 ended :30")
@@ -663,13 +663,13 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().predominantCloudTypes().highCloud())
                                     .isEqualTo(HighCloudType.OBSCURED);
 
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP132 must survive, immediately ahead of 8/87/")
                                     .isEqualTo(1013.2);
                             assertThat(data.getRemarks().preciseTemperature().celsius())
                                     .as("T02800240 must survive, immediately after 8/87/")
                                     .isEqualTo(28.0);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(24.0);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(24.0);
 
                             assertThat(data.getRemarks().thunderstormLocations())
                                     .as("TCU NW-NE-SE should also parse independently of the 8/87/ group")
@@ -693,13 +693,13 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .isEqualTo("ALQDS");
                             assertThat(tcu.directionSegments()).isEmpty();
 
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP152 must survive, immediately after TCU ALQDS")
                                     .isEqualTo(1015.2);
                             assertThat(data.getRemarks().preciseTemperature().celsius())
                                     .as("T02530204 must survive, after SLP152")
                                     .isEqualTo(25.3);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(20.4);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(20.4);
                         }),
 
                 arguments("KBLV-AugmentedAutomatedStationTypeDoesNotBlockSLP",
@@ -718,7 +718,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .as("A02A indicates manual augmentation by a human observer")
                                     .isTrue();
 
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP034 must survive, immediately after the augmented station type")
                                     .isEqualTo(1003.4);
                         }),
@@ -734,7 +734,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().freeText())
                                     .as("FG8 (Canadian obscuration with oktas) is a separate, unwired finding")
                                     .isEqualTo("FG8");
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1019.2);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1019.2);
                         }),
 
                 arguments("KATL-SpaceSeparatedThunderstormContinuationNowParsesCorrectly",
@@ -756,7 +756,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     new DirectionSegment(List.of("SW"))
                             );
 
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1018.0);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1018.0);
                             assertThat(data.getRemarks().cloudTypes()).hasSize(1);
                             assertThat(data.getRemarks().cloudTypes().get(0).location()).isEqualTo("ALQDS");
                             assertThat(data.getRemarks().preciseTemperature()).isNotNull();
@@ -786,7 +786,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     new DirectionSegment(List.of("SE"))
                             );
 
-                            assertThat(data.getSeaLevelPressure()).isEqualTo(1014.2);
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1014.2);
                             assertThat(data.getRemarks().preciseTemperature()).isNotNull();
                         }),
 
@@ -815,11 +815,11 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().freeText())
                                     .as("STNRY has no model yet, so only it remains")
                                     .isEqualTo("STNRY");
-                            assertThat(data.getSeaLevelPressure())
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals())
                                     .as("SLP186 must survive after STNRY")
                                     .isEqualTo(1018.6);
                             assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(17.2);
-                            assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(2.6);
+                            assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(2.6);
                         }),
 
                 arguments("PTRO-CbOverheadAndAllQuadrantsNowParsesCorrectly",
@@ -850,7 +850,7 @@ class NoaaMetarParserRemarksRecoveryTest {
                                     .as("Whole VIS 1/2 E-SE-SW-W; VIS 1/2 no longer silently consumed (#115)")
                                     .isEqualTo("VIS 1/2 E-SE-SW-W");
                             assertThat(data.getRemarks().variableVisibility()).isNull();
-                            assertThat(data.getSeaLevelPressure()).isNotNull();
+                            assertThat(data.getRemarks().seaLevelPressure()).isNotNull();
                         }),
 
                 arguments("RPLL-RemarksAltimeterWithUnitStillParses",
@@ -896,7 +896,7 @@ class NoaaMetarParserRemarksRecoveryTest {
 
                             assertThat(data.getRemarks().densityAltitudeFeet()).isEqualTo(900);
                             assertThat(data.getRemarks().maintenanceRequired()).isTrue();
-                            assertThat(data.getSeaLevelPressure()).isCloseTo(999.8, within(0.1));
+                            assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isCloseTo(999.8, within(0.1));
                         }),
 
                 // MBSC: weather code hyphen-joined to its direction
@@ -964,10 +964,10 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  conditions: {}", data.getConditions());
             LOGGER.info(separator());
             LOGGER.info("  freeText: {}", data.getRemarks() != null ? data.getRemarks().freeText() : "n/a");
-            LOGGER.info("  pressureRapidChange: {}", data.getPressureRapidChange());
+            LOGGER.info("  pressureRapidChange: {}", data.getRemarks() != null ? data.getRemarks().pressureRapidChange() : "n/a");
             LOGGER.info("  icing: {}", data.getRemarks() != null ? data.getRemarks().icing() : "n/a");
             LOGGER.info("  automatedStationType: {}", data.getRemarks() != null ? data.getRemarks().automatedStationType() : "n/a");
-            LOGGER.info("  seaLevelPressure: {}", data.getSeaLevelPressure());
+            LOGGER.info("  seaLevelPressure: {}", data.getRemarks() != null ? data.getRemarks().seaLevelPressure() : "n/a");
             LOGGER.info("  peakWind: {}", data.getRemarks() != null ? data.getRemarks().peakWind() : "n/a");
             LOGGER.info("  windShift: {}", data.getRemarks() != null ? data.getRemarks().windShift() : "n/a");
             LOGGER.info("  windsAtLocation: {}", data.getRemarks() != null ? data.getRemarks().windsAtLocation() : "n/a");

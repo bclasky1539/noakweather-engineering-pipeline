@@ -20,12 +20,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import weather.model.components.*;
-import weather.model.components.remark.Icing;
-import weather.model.components.remark.windremarks.PeakWind;
-import weather.model.components.remark.pressureremarks.PressureRapidChange;
-import weather.model.components.remark.windremarks.WindShift;
 import weather.model.enums.SkyCoverage;
 
 import java.time.Instant;
@@ -162,135 +164,7 @@ class NoaaMetarDataTest {
         assertThat(data.getPressure()).isEqualTo(pressure);
     }
 
-    // ========== REMARKS SECTION TESTS (METAR-Specific) ==========
-
-    @Test
-    @DisplayName("Should set and get peak wind")
-    void testSetAndGetPeakWind() {
-        NoaaMetarData data = new NoaaMetarData();
-        PeakWind peakWind = new PeakWind(280, 32, 15, 30);
-
-        data.setPeakWind(peakWind);
-
-        assertThat(data.getPeakWind()).isEqualTo(peakWind);
-    }
-
-    @Test
-    @DisplayName("Should set and get wind shift")
-    void testSetAndGetWindShift() {
-        NoaaMetarData data = new NoaaMetarData();
-        WindShift windShift = new WindShift(15, 30, true);
-
-        data.setWindShift(windShift);
-
-        assertThat(data.getWindShift()).isEqualTo(windShift);
-    }
-
-    @Test
-    @DisplayName("Should set and get pressure rapid change")
-    void testSetAndGetPressureRapidChange() {
-        NoaaMetarData data = new NoaaMetarData();
-        PressureRapidChange pressureRapidChange = PressureRapidChange.of("F");
-
-        data.setPressureRapidChange(pressureRapidChange);
-
-        assertThat(data.getPressureRapidChange()).isEqualTo(pressureRapidChange);
-    }
-
-    @Test
-    @DisplayName("Should set and get automated station")
-    void testSetAndGetAutomatedStation() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setAutomatedStation("AO2");
-
-        assertThat(data.getAutomatedStation()).isEqualTo("AO2");
-    }
-
-    @Test
-    @DisplayName("Should not be equal when pressureRapidChange differs")
-    void testEquals_DifferentPressureRapidChange() {
-        Instant now = Instant.now();
-
-        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
-        data1.setPressureRapidChange(PressureRapidChange.of("R"));
-
-        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
-        data2.setPressureRapidChange(PressureRapidChange.of("F"));
-
-        assertThat(data1).isNotEqualTo(data2);
-    }
-
-    @Test
-    @DisplayName("Should set and get icing")
-    void testSetAndGetIcing() {
-        NoaaMetarData data = new NoaaMetarData();
-        Icing icing = Icing.of(true, false, "PAST HR");
-
-        data.setIcing(icing);
-
-        assertThat(data.getIcing()).isEqualTo(icing);
-    }
-
-    @Test
-    @DisplayName("Should not be equal when icing differs")
-    void testEquals_DifferentIcing() {
-        Instant now = Instant.now();
-
-        NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
-        data1.setIcing(Icing.of(true, false, "PAST HR"));
-
-        NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
-        data2.setIcing(Icing.of(false, true, "PAST HR"));
-
-        assertThat(data1).isNotEqualTo(data2);
-    }
-
-    @Test
-    @DisplayName("Should set and get sea level pressure")
-    void testSetAndGetSeaLevelPressure() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setSeaLevelPressure(1013.2);
-
-        assertThat(data.getSeaLevelPressure()).isEqualTo(1013.2);
-    }
-
-    @Test
-    @DisplayName("Should set and get hourly precipitation")
-    void testSetAndGetHourlyPrecipitation() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setHourlyPrecipitation(0.25);
-
-        assertThat(data.getHourlyPrecipitation()).isEqualTo(0.25);
-    }
-
-    @Test
-    @DisplayName("Should set and get temperature extremes")
-    void testSetAndGetTemperatureExtremes() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setSixHourMaxTemp(30.0);
-        data.setSixHourMinTemp(15.0);
-        data.setTwentyFourHourMaxTemp(35.0);
-        data.setTwentyFourHourMinTemp(10.0);
-
-        assertThat(data.getSixHourMaxTemp()).isEqualTo(30.0);
-        assertThat(data.getSixHourMinTemp()).isEqualTo(15.0);
-        assertThat(data.getTwentyFourHourMaxTemp()).isEqualTo(35.0);
-        assertThat(data.getTwentyFourHourMinTemp()).isEqualTo(10.0);
-    }
-
-    @Test
-    @DisplayName("Should set and get three hour pressure tendency")
-    void testSetAndGetThreeHourPressureTendency() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setThreeHourPressureTendency(2.5);
-
-        assertThat(data.getThreeHourPressureTendency()).isEqualTo(2.5);
-    }
+    // ========== METAR-SPECIFIC FIELD TESTS ==========
 
     @Test
     @DisplayName("Should set and get no significant change")
@@ -303,74 +177,6 @@ class NoaaMetarDataTest {
     }
 
     // ========== UTILITY METHOD TESTS (METAR-Specific) ==========
-
-    @Test
-    @DisplayName("Should check if has AO2")
-    void testHasAO2() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setAutomatedStation("AO2");
-        assertThat(data.hasAO2()).isTrue();
-
-        data.setAutomatedStation("AO1");
-        assertThat(data.hasAO2()).isFalse();
-    }
-
-    @Test
-    @DisplayName("Should check if has AO1")
-    void testHasAO1() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setAutomatedStation("AO1");
-        assertThat(data.hasAO1()).isTrue();
-
-        data.setAutomatedStation("AO2");
-        assertThat(data.hasAO1()).isFalse();
-    }
-
-    @Test
-    @DisplayName("Should check if is automated")
-    void testIsAutomated() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        data.setAutomatedStation("AO1");
-        assertThat(data.isAutomated()).isTrue();
-
-        data.setAutomatedStation("AO2");
-        assertThat(data.isAutomated()).isTrue();
-
-        data.setAutomatedStation(null);
-        assertThat(data.isAutomated()).isFalse();
-
-        data.setAutomatedStation("MANUAL");
-        assertThat(data.isAutomated()).isFalse();
-    }
-
-    @Test
-    @DisplayName("Should check if has precipitation data")
-    void testHasPrecipitationData() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        assertThat(data.hasPrecipitationData()).isFalse();
-
-        data.setHourlyPrecipitation(0.25);
-        assertThat(data.hasPrecipitationData()).isTrue();
-    }
-
-    @Test
-    @DisplayName("Should check if has temperature extremes")
-    void testHasTemperatureExtremes() {
-        NoaaMetarData data = new NoaaMetarData();
-
-        assertThat(data.hasTemperatureExtremes()).isFalse();
-
-        data.setSixHourMaxTemp(30.0);
-        assertThat(data.hasTemperatureExtremes()).isTrue();
-
-        data = new NoaaMetarData();
-        data.setTwentyFourHourMinTemp(10.0);
-        assertThat(data.hasTemperatureExtremes()).isTrue();
-    }
 
     @Test
     @DisplayName("Should get minimum RVR feet")
@@ -488,14 +294,12 @@ class NoaaMetarDataTest {
         NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
         data1.setRawText("METAR KJFK 191651Z");
         data1.setConditions(conditions);
-        data1.setAutomatedStation("AO2");
-        data1.setSeaLevelPressure(1013.2);
+        data1.setNoSignificantChange(true);
 
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
         data2.setRawText("METAR KJFK 191651Z");
         data2.setConditions(conditions);
-        data2.setAutomatedStation("AO2");
-        data2.setSeaLevelPressure(1013.2);
+        data2.setNoSignificantChange(true);
 
         assertThat(data1).isEqualTo(data2);
         assertThat(data2).isEqualTo(data1);
@@ -540,10 +344,10 @@ class NoaaMetarDataTest {
         Instant now = Instant.now();
 
         NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
-        data1.setAutomatedStation("AO2");
+        data1.setNoSignificantChange(true);
 
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
-        data2.setAutomatedStation("AO1");
+        data2.setNoSignificantChange(false);
 
         assertThat(data1).isNotEqualTo(data2);
     }
@@ -565,7 +369,7 @@ class NoaaMetarDataTest {
                 .wind(Wind.of(280, 16, "KT"))
                 .build();
         data.setConditions(conditions);
-        data.setAutomatedStation("AO2");
+        data.setNoSignificantChange(true);
 
         int hash1 = data.hashCode();
         int hash2 = data.hashCode();
@@ -584,14 +388,33 @@ class NoaaMetarDataTest {
 
         NoaaMetarData data1 = new NoaaMetarData("KJFK", now);
         data1.setConditions(conditions);
-        data1.setAutomatedStation("AO2");
+        data1.setNoSignificantChange(true);
 
         NoaaMetarData data2 = new NoaaMetarData("KJFK", now);
         data2.setConditions(conditions);
-        data2.setAutomatedStation("AO2");
+        data2.setNoSignificantChange(true);
 
         assertThat(data1).hasSameHashCodeAs(data2);
     }
 
+    // ========== SERIALIZATION TESTS ==========
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "peakWind", "windShift", "pressureRapidChange", "icing",
+            "automatedStation", "seaLevelPressure", "hourlyPrecipitation",
+            "sixHourMaxTemp", "sixHourMinTemp", "twentyFourHourMaxTemp",
+            "twentyFourHourMinTemp", "threeHourPressureTendency"
+    })
+    @DisplayName("Should not write top-level copies of remark values to JSON - Issue #217")
+    void testJson_NoTopLevelRemarkCopies(String key) throws JsonProcessingException {
+        // Same mapper setup as S3UploadService, which writes the Bronze layer
+        ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        NoaaMetarData data = new NoaaMetarData("KJFK", Instant.parse("2026-11-24T18:51:00Z"));
+
+        JsonNode root = mapper.readTree(mapper.writeValueAsString(data));
+
+        assertThat(root.has("stationId")).as("sanity check: root-level keys are present").isTrue();
+        assertThat(root.has(key)).as(key).isFalse();
+    }
 }
