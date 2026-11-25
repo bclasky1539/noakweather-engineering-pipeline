@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.33.2-SNAPSHOT - November 25, 2026
+
+### Fixed
+- Removed the duplicate `preciseDewpoint` field from `NoaaMetarRemarks` (#217).
+  The parser stored the same `Temperature` object in both `preciseTemperature`
+  and `preciseDewpoint`, so the Bronze JSON carried the T-group twice. The
+  dewpoint remains available as `preciseTemperature.dewpointCelsius`.
+
+### Changed
+- Removed the twelve top-level copies of remark values from `NoaaMetarData`
+  (#217), along with `copyRemarksToTopLevel()` in `NoaaMetarParser`. Values
+  such as sea level pressure, peak wind, the temperature extremes and the
+  three-hour pressure tendency are now read only from `remarks`. No main
+  code, Glue job or Silver table read the copies.
+- Removed the unused helpers `hasAO1`, `hasAO2`, `isAutomated`,
+  `hasPrecipitationData` and `hasTemperatureExtremes` from `NoaaMetarData`.
+
 ## Version 1.33.1-SNAPSHOT - November 23, 2026
 
 ### Fixed
