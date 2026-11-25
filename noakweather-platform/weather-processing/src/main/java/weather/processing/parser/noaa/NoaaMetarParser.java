@@ -1009,7 +1009,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
                 Temperature preciseTemp = Temperature.of(tempCelsius, dewptCelsius);
                 remarks.preciseTemperature(preciseTemp);
-                remarks.preciseDewpoint(preciseTemp); // Store the same object for dewpoint access
 
                 LOGGER.debug("Precise temperature: {}°C, dewpoint: {}°C", tempCelsius, dewptCelsius);
 

@@ -61,7 +61,8 @@ import java.util.stream.Collectors;
  * <p>
  * * @param automatedStationType AO1 or AO2 indicator
  * * @param seaLevelPressure Sea level pressure in hPa (SLP)
- * * @param hourlyTemperature Hourly temperature and dewpoint (T-group)
+ * * @param preciseTemperature Precise temperature and dewpoint from the T-group; the precise
+ * *                           dewpoint is {@code preciseTemperature.dewpointCelsius()} (#217)
  * * @param wind Wind-related remarks (peak wind, wind shift, winds at location)
  * * @param directionalWeather Directional Weather
  * * @param visibility Visibility-related remarks (tower, surface, variable)
@@ -99,7 +100,6 @@ public record NoaaMetarRemarks(
         AutomatedStationType automatedStationType,
         Pressure seaLevelPressure,
         Temperature preciseTemperature,
-        Temperature preciseDewpoint,
         WindRemarks wind,
         DirectionalWeather directionalWeather,
         VisibilityRemarks visibility,
@@ -164,7 +164,7 @@ public record NoaaMetarRemarks(
      * @return an empty remarks instance
      */
     public static NoaaMetarRemarks empty() {
-        return new NoaaMetarRemarks(null, null, null, null,
+        return new NoaaMetarRemarks(null, null, null,
                 WindRemarks.empty(), null, VisibilityRemarks.empty(), CeilingRemarks.empty(),
                 List.of(), List.of(), null, null, null, null, null,
                 List.of(), List.of(), List.of(), PressureRemarks.empty(), null, null, null,
@@ -282,7 +282,6 @@ public record NoaaMetarRemarks(
         return automatedStationType == null
                 && seaLevelPressure == null
                 && preciseTemperature == null
-                && preciseDewpoint == null
                 && wind.isEmpty()
                 && directionalWeather == null;
     }
@@ -355,7 +354,6 @@ public record NoaaMetarRemarks(
         private AutomatedStationType automatedStationType;
         private Pressure seaLevelPressure;
         private Temperature preciseTemperature;
-        private Temperature preciseDewpoint;
         private DirectionalWeather directionalWeather;
         private List<ObscurationLayer> obscurationLayers = new ArrayList<>();
         private List<CloudType> cloudTypes = new ArrayList<>();
@@ -411,24 +409,14 @@ public record NoaaMetarRemarks(
         }
 
         /**
-         * Sets the precise temperature from the T group.
+         * Sets the precise temperature and dewpoint from the T group. The dewpoint,
+         * when reported, is held in the same object ({@code dewpointCelsius}).
          *
-         * @param preciseTemperature the precise temperature
+         * @param preciseTemperature the precise temperature and dewpoint
          * @return this builder
          */
         public Builder preciseTemperature(Temperature preciseTemperature) {
             this.preciseTemperature = preciseTemperature;
-            return this;
-        }
-
-        /**
-         * Sets the precise dewpoint from the T group.
-         *
-         * @param preciseDewpoint the precise dewpoint
-         * @return this builder
-         */
-        public Builder preciseDewpoint(Temperature preciseDewpoint) {
-            this.preciseDewpoint = preciseDewpoint;
             return this;
         }
 
@@ -950,7 +938,7 @@ public record NoaaMetarRemarks(
          */
         public NoaaMetarRemarks build() {
             return new NoaaMetarRemarks(
-                    automatedStationType, seaLevelPressure, preciseTemperature, preciseDewpoint,
+                    automatedStationType, seaLevelPressure, preciseTemperature,
                     wind, directionalWeather, visibility, ceiling,
                     List.copyOf(obscurationLayers), List.copyOf(cloudTypes),
                     hourlyPrecipitation, ppGroupValue, sixHourPrecipitation, twentyFourHourPrecipitation,
@@ -974,8 +962,6 @@ public record NoaaMetarRemarks(
         addIfPresent(parts, automatedStationType, "stationType", Object::toString);
         addIfPresent(parts, seaLevelPressure, "seaLevelPressure", Pressure::getFormattedValue);
         addIfPresent(parts, preciseTemperature, "preciseTemp",
-                t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
-        addIfPresent(parts, preciseDewpoint, "preciseDewpoint",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, wind.peakWind(), "peakWind", Object::toString);
         addIfPresent(parts, wind.windShift(), "windShift", Object::toString);

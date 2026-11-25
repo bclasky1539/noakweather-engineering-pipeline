@@ -8853,7 +8853,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1006.9, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(32.2, within(0.1));
-        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(21.1, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(21.1, within(0.1));
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
@@ -8884,7 +8884,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1018.8, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(32.8, within(0.1));
-        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(22.2, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(22.2, within(0.1));
         assertThat(data.getRemarks().freeText())
                 .as("AND SW no longer left orphaned in freeText")
                 .isNull();
@@ -8917,7 +8917,7 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1004.1, within(0.1));
         assertThat(data.getRemarks().preciseTemperature()).isNotNull();
         assertThat(data.getRemarks().preciseTemperature().celsius()).isEqualTo(40.6, within(0.1));
-        assertThat(data.getRemarks().preciseDewpoint().dewpointCelsius()).isEqualTo(16.7, within(0.1));
+        assertThat(data.getRemarks().preciseTemperature().dewpointCelsius()).isEqualTo(16.7, within(0.1));
         assertThat(data.getRemarks().freeText()).isNull();
     }
 
