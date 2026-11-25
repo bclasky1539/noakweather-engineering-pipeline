@@ -78,20 +78,6 @@ class NoaaMetarParserGoldenOutputTest {
         field(sb, "recentWeatherNotObservable", data.isRecentWeatherNotObservable());
         field(sb, "noSignificantChange", data.isNoSignificantChange());
 
-        // Top-level copies of remark values (copyRemarksToTopLevel)
-        field(sb, "automatedStation", data.getAutomatedStation());
-        field(sb, "seaLevelPressure", data.getSeaLevelPressure());
-        field(sb, "hourlyPrecipitation", data.getHourlyPrecipitation());
-        field(sb, "sixHourMaxTemp", data.getSixHourMaxTemp());
-        field(sb, "sixHourMinTemp", data.getSixHourMinTemp());
-        field(sb, "twentyFourHourMaxTemp", data.getTwentyFourHourMaxTemp());
-        field(sb, "twentyFourHourMinTemp", data.getTwentyFourHourMinTemp());
-        field(sb, "threeHourPressureTendency", data.getThreeHourPressureTendency());
-        field(sb, "peakWind", data.getPeakWind());
-        field(sb, "windShift", data.getWindShift());
-        field(sb, "pressureRapidChange", data.getPressureRapidChange());
-        field(sb, "icing", data.getIcing());
-
         expand(sb, "remarks", data.getRemarks());
         parseIssues(sb, data.getParseIssues());
         return sb.toString();
