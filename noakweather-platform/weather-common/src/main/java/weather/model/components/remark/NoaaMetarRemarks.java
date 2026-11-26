@@ -23,6 +23,7 @@ import weather.model.components.remark.ceilingremarks.CeilingSecondSite;
 import weather.model.components.remark.ceilingremarks.VariableCeiling;
 import weather.model.components.remark.maintenanceremarks.AutomatedMaintenanceIndicator;
 import weather.model.components.remark.maintenanceremarks.MaintenanceRemarks;
+import weather.model.components.remark.pressureremarks.AerodromePressure;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
 import weather.model.components.remark.pressureremarks.PressureRemarks;
 import weather.model.components.remark.pressureremarks.PressureTendency;
@@ -81,7 +82,8 @@ import java.util.stream.Collectors;
  * * @param exceptDirections List of "except [direction]" remarks (XCPT/XCP/EXCP/EXC)
  * * @param pressure Pressure-anomaly remarks (3-hour tendency, rapid change)
  * * @param icing Icing information
- * * @param secondaryAltimeter Secondary altimeter reading
+ * * @param secondaryAltimeter Secondary altimeter reading (A#### in inHg, or QNH### in mmHg)
+ * * @param qfe Pressure at aerodrome elevation (QFE###, optionally /hPa), Russian region (#193)
  * * @param sixHourMaxTemperature 6-hour maximum temperature
  * * @param sixHourMinTemperature 6-hour minimum temperature
  * * @param twentyFourHourMaxTemperature 24-hour maximum temperature
@@ -117,6 +119,7 @@ public record NoaaMetarRemarks(
         PressureRemarks pressure,
         Icing icing,
         Pressure secondaryAltimeter,
+        AerodromePressure qfe,
         Temperature sixHourMaxTemperature,
         Temperature sixHourMinTemperature,
         Temperature twentyFourHourMaxTemperature,
@@ -167,7 +170,7 @@ public record NoaaMetarRemarks(
         return new NoaaMetarRemarks(null, null, null,
                 WindRemarks.empty(), null, VisibilityRemarks.empty(), CeilingRemarks.empty(),
                 List.of(), List.of(), null, null, null, null, null,
-                List.of(), List.of(), List.of(), PressureRemarks.empty(), null, null, null,
+                List.of(), List.of(), List.of(), PressureRemarks.empty(), null, null, null, null,
                 null, null, null, null,
                 MaintenanceRemarks.empty(), null, List.of(), null, null);
     }
@@ -309,6 +312,7 @@ public record NoaaMetarRemarks(
         return pressure.isEmpty()
                 && icing == null
                 && secondaryAltimeter == null
+                && qfe == null
                 && sixHourMaxTemperature == null
                 && sixHourMinTemperature == null
                 && twentyFourHourMaxTemperature == null
@@ -367,6 +371,7 @@ public record NoaaMetarRemarks(
         private List<ExceptDirection> exceptDirections = new ArrayList<>();
         private Icing icing;
         private Pressure secondaryAltimeter;
+        private AerodromePressure qfe;
         private Temperature sixHourMaxTemperature;
         private Temperature sixHourMinTemperature;
         private Temperature twentyFourHourMaxTemperature;
@@ -734,13 +739,26 @@ public record NoaaMetarRemarks(
         /**
          * Sets the secondary altimeter setting repeated inside the remarks section.
          * Common in the Philippines/Taiwan-region METARs as a redundant confirmation
-         * of the main body's altimeter reading, in US-style inches of mercury.
+         * of the main body's altimeter reading, in US-style inches of mercury, and in
+         * Russian-region METARs as QNH in millimeters of mercury (#193).
          *
          * @param secondaryAltimeter the secondary altimeter pressure
          * @return this builder
          */
         public Builder secondaryAltimeter(Pressure secondaryAltimeter) {
             this.secondaryAltimeter = secondaryAltimeter;
+            return this;
+        }
+
+        /**
+         * Sets the pressure at aerodrome elevation (QFE) reported in the remarks
+         * section by Russian-region stations (#193).
+         *
+         * @param qfe the aerodrome pressure
+         * @return this builder
+         */
+        public Builder qfe(AerodromePressure qfe) {
+            this.qfe = qfe;
             return this;
         }
 
@@ -943,7 +961,7 @@ public record NoaaMetarRemarks(
                     List.copyOf(obscurationLayers), List.copyOf(cloudTypes),
                     hourlyPrecipitation, ppGroupValue, sixHourPrecipitation, twentyFourHourPrecipitation,
                     hailSize, List.copyOf(weatherEvents), List.copyOf(thunderstormLocations),
-                    List.copyOf(exceptDirections), pressure, icing, secondaryAltimeter,
+                    List.copyOf(exceptDirections), pressure, icing, secondaryAltimeter, qfe,
                     sixHourMaxTemperature, sixHourMinTemperature,
                     twentyFourHourMaxTemperature, twentyFourHourMinTemperature,
                     densityAltitudeFeet, maintenance, observationProgramStatus,
@@ -1010,6 +1028,7 @@ public record NoaaMetarRemarks(
         addIfPresent(parts, pressure.pressureRapidChange(), "pressureRapidChange", PressureRapidChange::getSummary);
         addIfPresent(parts, icing, "icing", Icing::getSummary);
         addIfPresent(parts, secondaryAltimeter, "secondaryAltimeter", Pressure::getFormattedValue);
+        addIfPresent(parts, qfe, "qfe", AerodromePressure::getSummary);
         addIfPresent(parts, sixHourMaxTemperature, "sixHourMaxTemp",
                 t -> String.format(TEMPERATURE_FORMAT, t.celsius()));
         addIfPresent(parts, sixHourMinTemperature, "sixHourMinTemp",

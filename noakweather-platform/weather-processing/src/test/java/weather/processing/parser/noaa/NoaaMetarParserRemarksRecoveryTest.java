@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import weather.model.NoaaMetarData;
 import weather.model.NoaaWeatherData;
 import weather.model.components.remark.*;
+import weather.model.components.remark.pressureremarks.AerodromePressure;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
 import weather.model.enums.*;
 import weather.processing.parser.common.ParseResult;
@@ -864,6 +865,39 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.INCHES_HG);
                         }),
 
+                arguments("UEEE-QnhMillimetersHgAndQfeParse",
+                        "METAR UEEE 150000Z 29001MPS 9999 -SN SCT024 M30/M33 Q1024 R23/450160 NOSIG RMK QNH768 QFE759",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("QNH768 (mmHg) and QFE759 both parse - nothing left unparsed (#193)")
+                                    .isNull();
+                            assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(768.0);
+                            assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.MILLIMETERS_HG);
+                            assertThat(data.getRemarks().secondaryAltimeter().toMetarQNH())
+                                    .as("QNH768 mmHg is the same setting as the main-body Q1024")
+                                    .isEqualTo("Q1024");
+                            assertThat(data.getRemarks().qfe()).isEqualTo(AerodromePressure.of(759));
+                        }),
+
+                arguments("UHPP-PlainLanguageDoesNotBlockQfe",
+                        "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 R34L/CLRD62 NOSIG RMK MT OBSC QFE752/1003",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("MT OBSC has no model, so only it remains (#193)")
+                                    .isEqualTo("MT OBSC");
+                            assertThat(data.getRemarks().qfe())
+                                    .as("QFE752/1003 must survive, after the plain-language MT OBSC")
+                                    .isEqualTo(AerodromePressure.of(752, 1003));
+                            assertThat(data.getRemarks().secondaryAltimeter()).isNull();
+                        }),
+
+                arguments("UHPP-QfeWithHectopascalsAllTokensParse",
+                        "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 NOSIG RMK QFE751/1002",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText()).isNull();
+                            assertThat(data.getRemarks().qfe()).isEqualTo(AerodromePressure.of(751, 1002));
+                        }),
+
                 arguments("KCLT-TightenedRemarkHandlersStillParseRealWorldGroups",
                         "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
                                 "RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 " +
@@ -948,6 +982,10 @@ class NoaaMetarParserRemarksRecoveryTest {
                 // Synthetic: rejected hail group surfaces whole in freeText
                 "METAR KJFK 121853Z 28016KT 10SM A3015 RMK GR 0 SLP210",
                 "2026/10/08 17:00 MBSC 081700Z 12010KT 9999 VCSH SCT015 31/25 Q1011 RMK VCSH-NE",
+                // #193: QNH in mmHg and QFE in the remarks (Russian region)
+                "METAR UEEE 150000Z 29001MPS 9999 -SN SCT024 M30/M33 Q1024 R23/450160 NOSIG RMK QNH768 QFE759",
+                "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 R34L/CLRD62 NOSIG RMK MT OBSC QFE752/1003",
+                "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 NOSIG RMK QFE751/1002",
         };
 
         for (String raw : raws) {
@@ -979,6 +1017,7 @@ class NoaaMetarParserRemarksRecoveryTest {
             LOGGER.info("  twentyFourHourMaxTemperature: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourMaxTemperature() : "n/a");
             LOGGER.info("  twentyFourHourMinTemperature: {}", data.getRemarks() != null ? data.getRemarks().twentyFourHourMinTemperature() : "n/a");
             LOGGER.info("  secondaryAltimeter: {}", data.getRemarks() != null ? data.getRemarks().secondaryAltimeter() : "n/a");
+            LOGGER.info("  qfe: {}", data.getRemarks() != null ? data.getRemarks().qfe() : "n/a");
             LOGGER.info("  preciseTemperature: {}", data.getRemarks() != null ? data.getRemarks().preciseTemperature() : "n/a");
             LOGGER.info("  sixHourPrecipitation: {}", data.getRemarks() != null ? data.getRemarks().sixHourPrecipitation() : "n/a");
             LOGGER.info("  thunderstormLocations: {}", data.getRemarks() != null ? data.getRemarks().thunderstormLocations() : "n/a");

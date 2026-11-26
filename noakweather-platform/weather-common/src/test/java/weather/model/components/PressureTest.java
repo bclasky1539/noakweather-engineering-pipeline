@@ -1017,6 +1017,92 @@ class PressureTest {
         }
     }
 
+    // ==================== Millimeters of Mercury Tests (#193) ====================
+
+    @Nested
+    @SuppressWarnings("java:S2187")
+    @DisplayName("Millimeters of Mercury")
+    class MillimetersHgTests {
+
+        @Test
+        @DisplayName("millimetersHg() should create Pressure with mmHg unit")
+        void testFactoryMethod_MillimetersHg() {
+            Pressure pressure = Pressure.millimetersHg(768.0);
+
+            assertThat(pressure.value()).isEqualTo(768.0);
+            assertThat(pressure.unit()).isEqualTo(PressureUnit.MILLIMETERS_HG);
+        }
+
+        @ParameterizedTest
+        @CsvSource({
+                "768, 1023.9, 30.24",
+                "760, 1013.2, 29.92",
+                "752, 1002.6, 29.61",
+                "740,  986.6, 29.13"
+        })
+        @DisplayName("Should convert mmHg to hPa and inHg")
+        void testConversion_MillimetersHg(double mmHg, double expectedHpa, double expectedInHg) {
+            Pressure pressure = Pressure.millimetersHg(mmHg);
+
+            assertThat(pressure.toHectopascals()).isCloseTo(expectedHpa, within(0.1));
+            assertThat(pressure.toInchesHg()).isCloseTo(expectedInHg, within(0.01));
+            assertThat(pressure.toMillimetersHg()).isEqualTo(mmHg);
+        }
+
+        @Test
+        @DisplayName("Should convert hPa and inHg to mmHg")
+        void testToMillimetersHg_FromOtherUnits() {
+            assertThat(Pressure.hectopascals(1013.25).toMillimetersHg()).isCloseTo(760.0, within(0.1));
+            assertThat(Pressure.inchesHg(29.92).toMillimetersHg()).isCloseTo(760.0, within(0.1));
+        }
+
+        @Test
+        @DisplayName("QNH768 should match the main-body Q1024 (UEEE evidence)")
+        void testQnh768MatchesQ1024() {
+            Pressure remarksQnh = Pressure.millimetersHg(768.0);
+
+            assertThat(remarksQnh.toMetarQNH()).isEqualTo("Q1024");
+        }
+
+        @ParameterizedTest
+        @ValueSource(doubles = {637.6, 700.0, 813.8})
+        @DisplayName("Should accept mmHg values inside the range")
+        void testValidPressure_MillimetersHg(double mmHg) {
+            assertThat(Pressure.millimetersHg(mmHg).value()).isEqualTo(mmHg);
+        }
+
+        @ParameterizedTest
+        @ValueSource(doubles = {637.5, 600.0, 813.9, 850.0})
+        @DisplayName("Should reject mmHg values outside the range")
+        void testInvalidPressure_MillimetersHg_OutOfRange(double mmHg) {
+            assertThatThrownBy(() -> Pressure.millimetersHg(mmHg))
+                    .isInstanceOf(InvalidObservationException.class)
+                    .hasMessageContaining("Pressure out of reasonable range")
+                    .hasMessageContaining("637.6-813.8 mmHg");
+        }
+
+        @Test
+        @DisplayName("Should format mmHg as a whole number")
+        void testGetFormattedValue_MillimetersHg() {
+            assertThat(Pressure.millimetersHg(768.0).getFormattedValue()).isEqualTo("768 mmHg");
+        }
+
+        @Test
+        @DisplayName("Summary should include inHg and hPa conversions")
+        void testGetSummary_MillimetersHg() {
+            assertThat(Pressure.millimetersHg(768.0).getSummary())
+                    .isEqualTo("768 mmHg (30.24 inHg, 1024 hPa)");
+        }
+
+        @Test
+        @DisplayName("mmHg range constants should mirror the hPa range")
+        void testMillimetersHgRangeConstants() {
+            assertThat(Pressure.MIN_PRESSURE_MMHG).isCloseTo(637.55, within(0.01));
+            assertThat(Pressure.MAX_PRESSURE_MMHG).isCloseTo(813.82, within(0.01));
+            assertThat(Pressure.MMHG_TO_HPA).isCloseTo(1.333224, within(0.000001));
+        }
+    }
+
     // ==================== Edge Cases Tests ====================
 
     @Test

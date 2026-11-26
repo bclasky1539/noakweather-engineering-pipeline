@@ -209,6 +209,17 @@ public final class RegExprConst {
     );
 
     /**
+     * QFE (pressure at aerodrome elevation) in the remarks section, reported in
+     * millimeters of mercury by Russian-region stations, optionally followed by
+     * the hPa value (#193).
+     * <p>
+     * Examples: QFE759, QFE752/1003, QFE640/853
+     */
+    public static final Pattern QFE_PATTERN = Pattern.compile(
+            "^QFE(?<mmhg>\\d{3})(?:/(?<hpa>\\d{3,4}))?(?=\\s|$)"
+    );
+
+    /**
      * One or more space-separated direction segments following a present-weather
      * remark, e.g. "E SE", "N NE S SW", "S-SW", "S-SW W".
      * Each segment is a compass point or a hyphenated range and must end at a token

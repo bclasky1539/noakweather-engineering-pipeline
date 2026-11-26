@@ -35,6 +35,7 @@ import weather.model.enums.HighCloudType;
 import weather.model.enums.LowCloudType;
 import weather.model.enums.MiddleCloudType;
 import weather.processing.parser.common.ParseResult;
+import weather.model.components.remark.pressureremarks.AerodromePressure;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -767,6 +768,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 GroupHandler.textStep("density altitude", this::handleDensityAltitudeSequential),
                 GroupHandler.textStep("automated maintenance", this::handleAutomatedMaintenanceSequential),
                 GroupHandler.textStep("secondary altimeter", this::handleSecondaryAltimeterSequential),
+                GroupHandler.textStep("QFE", this::handleQfeSequential),
                 GroupHandler.textStep("directional weather", this::handleDirectionalWeatherSequential),
                 GroupHandler.textStep("observation program status", this::handleObservationProgramStatusSequential),
                 GroupHandler.textStep("except-direction", this::handleExceptDirectionSequential));
@@ -2616,9 +2618,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * Handle secondary altimeter setting repeated inside the remarks section.
      * Common in the Philippines/Taiwan-region METARs where the main body reports
      * altimeter in ICAO hPa format (Q####) and remarks repeat it in US-style
-     * inches of mercury (A####) as a redundant confirmation.
+     * inches of mercury (A####) as a redundant confirmation. Russian-region
+     * METARs repeat it as QNH in millimeters of mercury (QNH###, #193).
      * <p>
-     * Example: RMK A2977 → 29.77 inHg
+     * Examples: RMK A2977 → 29.77 inHg; RMK QNH768 → 768 mmHg
      *
      * @param remarksText remaining remarks text to process
      * @param remarks     the remarks builder to populate
@@ -2659,7 +2662,10 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         }
 
         try {
-            Pressure pressure = parsePressure(matcher.group("unit"), pressureStr, matcher.group("unit2"));
+            String unit = matcher.group("unit");
+            Pressure pressure = isQnhMillimetersHg(unit, pressureStr)
+                    ? Pressure.millimetersHg(Integer.parseInt(pressureStr.replace('O', '0')))
+                    : parsePressure(unit, pressureStr, matcher.group("unit2"));
 
             remarks.secondaryAltimeter(pressure);
 
@@ -2671,6 +2677,58 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         } catch (InvalidObservationException e) {
             logRejectedRemark("secondary altimeter", matchedText, e);
             return false;
+        }
+    }
+
+    /**
+     * A three-digit QNH in the remarks is the Russian-region millimeters-of-mercury
+     * form (QNH768). A four-digit QNH stays hectopascals. Applies to the remarks
+     * only: the shared main-body altimeter parsing is unchanged (#193).
+     *
+     * @param unit        the unit prefix group, or null
+     * @param pressureStr the pressure digit group
+     * @return true if the group is QNH in mmHg
+     */
+    private static boolean isQnhMillimetersHg(String unit, String pressureStr) {
+        return "QNH".equalsIgnoreCase(unit) && pressureStr.length() == 3;
+    }
+
+    /**
+     * Handle QFE (pressure at aerodrome elevation) in the remarks section,
+     * reported by Russian-region stations in millimeters of mercury, optionally
+     * followed by the hPa value (#193).
+     * <p>
+     * Examples: RMK QFE759; RMK QFE752/1003
+     *
+     * @param remarksText remaining remarks text to process
+     * @param remarks     the remarks builder to populate
+     * @return the remaining text after processing (never null); a rejected group
+     * is left in place for freeText
+     */
+    private String handleQfeSequential(String remarksText, NoaaMetarRemarks.Builder remarks) {
+        if (remarksText == null || remarksText.trim().isEmpty()) {
+            return remarksText != null ? remarksText : "";
+        }
+
+        String remaining = remarksText.trim();
+        Matcher matcher = QFE_PATTERN.matcher(remaining);
+        if (!matcher.find()) {
+            return remaining;
+        }
+
+        String matchedText = matcher.group();
+        try {
+            AerodromePressure qfe = AerodromePressure.fromMetarGroup(matcher.group("mmhg"), matcher.group("hpa"));
+            remarks.qfe(qfe);
+
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("QFE: {}", qfe.getSummary());
+            }
+            return remaining.substring(matcher.end()).trim();
+
+        } catch (InvalidObservationException e) {
+            logRejectedRemark("QFE", matchedText, e);
+            return remaining;
         }
     }
 
