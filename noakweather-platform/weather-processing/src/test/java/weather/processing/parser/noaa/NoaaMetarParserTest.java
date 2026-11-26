@@ -29,6 +29,7 @@ import weather.model.components.remark.*;
 import weather.model.components.remark.ceilingremarks.CeilingSecondSite;
 import weather.model.components.remark.ceilingremarks.VariableCeiling;
 import weather.model.components.remark.maintenanceremarks.AutomatedMaintenanceIndicator;
+import weather.model.components.remark.pressureremarks.AerodromePressure;
 import weather.model.components.remark.pressureremarks.PressureRapidChange;
 import weather.model.components.remark.pressureremarks.PressureTendency;
 import weather.model.components.remark.visibilityremarks.VariableVisibility;
@@ -8091,7 +8092,6 @@ class NoaaMetarParserTest {
     }
 
 
-
     // ========== PRESSURE RAPID CHANGE (PRESRR/PRESFR) PARSING TESTS ==========
 
     @ParameterizedTest
@@ -9023,6 +9023,80 @@ class NoaaMetarParserTest {
         assertThat(data.getRemarks().freeText())
                 .as("A//// is a recognised 'not available' report, like SLPNO")
                 .isNull();
+    }
+
+    // ========== QFE PARSING TESTS ==========
+
+    @Test
+    @DisplayName("Should parse QNH in mmHg and QFE from a Russian-region report (UEEE) - Issue #193")
+    void testParseQnhMillimetersHgAndQfe_UEEE() {
+        String metar = "METAR UEEE 150000Z 29001MPS 9999 -SN SCT024 M30/M33 Q1024 R23/450160 NOSIG "
+                + "RMK QNH768 QFE759";
+
+        NoaaMetarData data = extractMetarData(parser.parse(metar));
+
+        Pressure qnh = data.getRemarks().secondaryAltimeter();
+        assertThat(qnh).isNotNull();
+        assertThat(qnh.value()).isEqualTo(768.0);
+        assertThat(qnh.unit()).isEqualTo(PressureUnit.MILLIMETERS_HG);
+        assertThat(qnh.toMetarQNH())
+                .as("QNH768 mmHg is the same setting as the main-body Q1024")
+                .isEqualTo("Q1024");
+
+        assertThat(data.getRemarks().qfe()).isEqualTo(AerodromePressure.of(759));
+        assertThat(data.getRemarks().freeText()).isNull();
+
+        // The main-body altimeter is unchanged
+        assertThat(data.getPressure().unit()).isEqualTo(PressureUnit.HECTOPASCALS);
+        assertThat(data.getPressure().value()).isEqualTo(1024.0);
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            "'RMK QFE759',            759, NULL, NULL,    'mmHg only'",
+            "'RMK QFE752/1003',       752, 1003, NULL,    'mmHg and hPa'",
+            "'RMK QFE751/1002',       751, 1002, NULL,    'mmHg and hPa, earlier UHPP run'",
+            "'RMK MT OBSC QFE752/1003', 752, 1003, 'MT OBSC', 'after plain-language text (UHPP)'",
+            "'RMK QFE752/1003 MT OBSC', 752, 1003, 'MT OBSC', 'before plain-language text'"
+    }, nullValues = "NULL")
+    @DisplayName("Should parse QFE groups alone and with plain-language remarks - Issue #193")
+    void testParseQfe(String remark, double expectedMmHg, Double expectedHpa,
+                      String expectedFreeText, String scenario) {
+        String metar = "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 R34L/CLRD62 NOSIG " + remark;
+
+        NoaaMetarData data = extractMetarData(parser.parse(metar));
+
+        AerodromePressure qfe = data.getRemarks().qfe();
+        assertThat(qfe).as(scenario).isNotNull();
+        assertThat(qfe.millimetersHg()).as(scenario).isEqualTo(expectedMmHg);
+        assertThat(qfe.hectopascals()).as(scenario).isEqualTo(expectedHpa);
+        assertThat(data.getRemarks().freeText()).as(scenario).isEqualTo(expectedFreeText);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "'QFE752/1010', 'hPa disagrees with mmHg'",
+            "'QFE300',      'mmHg out of range'"
+    })
+    @DisplayName("Should leave a rejected QFE group in freeText - Issue #193")
+    void testParseQfe_RejectedSurfacesWhole(String group, String scenario) {
+        String metar = "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 NOSIG RMK " + group;
+
+        NoaaMetarData data = extractMetarData(parser.parse(metar));
+
+        assertThat(data.getRemarks().qfe()).as(scenario).isNull();
+        assertThat(data.getRemarks().freeText()).as(scenario).isEqualTo(group);
+    }
+
+    @Test
+    @DisplayName("Should keep a four-digit QNH in remarks as hPa - Issue #193")
+    void testSecondaryAltimeter_FourDigitQnhStaysHectopascals() {
+        String metar = "METAR UEEE 150000Z 29001MPS 9999 SCT024 M30/M33 Q1024 NOSIG RMK QNH1024";
+
+        NoaaMetarData data = extractMetarData(parser.parse(metar));
+
+        assertThat(data.getRemarks().secondaryAltimeter().value()).isEqualTo(1024.0);
+        assertThat(data.getRemarks().secondaryAltimeter().unit()).isEqualTo(PressureUnit.HECTOPASCALS);
     }
 
     // ========== OBSERVATION YEAR FROM HEADER TESTS ==========
@@ -11739,6 +11813,20 @@ class NoaaMetarParserTest {
             assertLogged(base, "Present Weather: -RA");
             assertLogged(base, "Recent weather: RA (");
             assertLogged(base, "feet (CB)");
+        }
+    }
+
+    @Test
+    @DisplayName("Should log QFE and mmHg QNH when DEBUG is enabled - Issue #193")
+    void testDebugLogging_QfeAndQnhMillimetersHg_LoggedWhenDebugEnabled() {
+        try (LogCapture metar = LogCapture.of(NoaaMetarParser.class.getName(), Level.DEBUG)) {
+
+            ParseResult<NoaaWeatherData> result = parser.parse(
+                    "METAR UEEE 150000Z 29001MPS 9999 -SN SCT024 M30/M33 Q1024 R23/450160 NOSIG RMK QNH768 QFE759");
+
+            assertTrue(result.isSuccess());
+            assertLogged(metar, "Secondary altimeter: 768 mmHg (30.24 inHg, 1024 hPa)");
+            assertLogged(metar, "QFE: QFE 759 mmHg (1012 hPa)");
         }
     }
 

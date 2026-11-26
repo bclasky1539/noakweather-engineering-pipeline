@@ -34,10 +34,7 @@ import weather.model.enums.PressureUnit;
  * @author bclasky1539
  *
  */
-public record Pressure(
-        Double value,
-        PressureUnit unit
-) {
+public record Pressure(Double value, PressureUnit unit) {
 
     // ==================== Constants ====================
 
@@ -80,6 +77,26 @@ public record Pressure(
      * Conversion factor: hPa to inHg
      */
     public static final double HPA_TO_INHG = 0.02953;
+
+    /**
+     * Conversion factor: mmHg to hPa
+     */
+    public static final double MMHG_TO_HPA = 1.333224;
+
+    /**
+     * Conversion factor: millimeters per inch (mmHg to inHg divides by this)
+     */
+    public static final double MM_PER_INCH = 25.4;
+
+    /**
+     * Minimum reasonable pressure in mmHg, the hPa minimum expressed in mmHg
+     */
+    public static final double MIN_PRESSURE_MMHG = MIN_PRESSURE_HPA / MMHG_TO_HPA;
+
+    /**
+     * Maximum reasonable pressure in mmHg, the hPa maximum expressed in mmHg
+     */
+    public static final double MAX_PRESSURE_MMHG = MAX_PRESSURE_HPA / MMHG_TO_HPA;
 
     /**
      * Conversion factor: hPa to mb (millibars - same as hPa)
@@ -131,21 +148,15 @@ public record Pressure(
      */
     private static void validatePressureRange(Double value, PressureUnit unit) {
         if (unit == PressureUnit.INCHES_HG && (value < MIN_PRESSURE_INHG || value > MAX_PRESSURE_INHG)) {
-            throw new InvalidObservationException(
-                    "Pressure.value",
-                    String.valueOf(value),
-                    String.format("Pressure out of reasonable range (%.1f-%.1f inHg)",
-                            MIN_PRESSURE_INHG, MAX_PRESSURE_INHG)
-            );
+            throw new InvalidObservationException("Pressure.value", String.valueOf(value), String.format("Pressure out of reasonable range (%.1f-%.1f inHg)", MIN_PRESSURE_INHG, MAX_PRESSURE_INHG));
         }
 
         if (unit == PressureUnit.HECTOPASCALS && (value < MIN_PRESSURE_HPA || value > MAX_PRESSURE_HPA)) {
-            throw new InvalidObservationException(
-                    "Pressure.value",
-                    String.valueOf(value),
-                    String.format("Pressure out of reasonable range (%.0f-%.0f hPa)",
-                            MIN_PRESSURE_HPA, MAX_PRESSURE_HPA)
-            );
+            throw new InvalidObservationException("Pressure.value", String.valueOf(value), String.format("Pressure out of reasonable range (%.0f-%.0f hPa)", MIN_PRESSURE_HPA, MAX_PRESSURE_HPA));
+        }
+
+        if (unit == PressureUnit.MILLIMETERS_HG && (value < MIN_PRESSURE_MMHG || value > MAX_PRESSURE_MMHG)) {
+            throw new InvalidObservationException("Pressure.value", String.valueOf(value), String.format("Pressure out of reasonable range (%.1f-%.1f mmHg)", MIN_PRESSURE_MMHG, MAX_PRESSURE_MMHG));
         }
     }
 
@@ -160,6 +171,7 @@ public record Pressure(
         return switch (unit) {
             case INCHES_HG -> value;
             case HECTOPASCALS -> value * HPA_TO_INHG;
+            case MILLIMETERS_HG -> value / MM_PER_INCH;
         };
     }
 
@@ -172,6 +184,20 @@ public record Pressure(
         return switch (unit) {
             case HECTOPASCALS -> value;
             case INCHES_HG -> value * INHG_TO_HPA;
+            case MILLIMETERS_HG -> value * MMHG_TO_HPA;
+        };
+    }
+
+    /**
+     * Convert pressure to millimeters of mercury.
+     *
+     * @return pressure in mmHg
+     */
+    public double toMillimetersHg() {
+        return switch (unit) {
+            case MILLIMETERS_HG -> value;
+            case HECTOPASCALS -> value / MMHG_TO_HPA;
+            case INCHES_HG -> value * MM_PER_INCH;
         };
     }
 
@@ -439,7 +465,7 @@ public record Pressure(
     public String getFormattedValue() {
         return switch (unit) {
             case INCHES_HG -> String.format("%.2f %s", value, unit.getSymbol());
-            case HECTOPASCALS -> String.format("%.0f %s", value, unit.getSymbol());
+            case HECTOPASCALS, MILLIMETERS_HG -> String.format("%.0f %s", value, unit.getSymbol());
         };
     }
 
@@ -470,10 +496,7 @@ public record Pressure(
      * @return formatted pressure summary with conversions
      */
     public String getSummary() {
-        return String.format("%s (%.2f inHg, %.0f hPa)",
-                getFormattedValue(),
-                toInchesHg(),
-                toHectopascals());
+        return String.format("%s (%.2f inHg, %.0f hPa)", getFormattedValue(), toInchesHg(), toHectopascals());
     }
 
     // ==================== Factory Methods ====================
@@ -499,6 +522,16 @@ public record Pressure(
     }
 
     /**
+     * Factory method for millimeters of mercury.
+     *
+     * @param mmHg Pressure in millimeters of mercury
+     * @return Pressure instance
+     */
+    public static Pressure millimetersHg(double mmHg) {
+        return new Pressure(mmHg, PressureUnit.MILLIMETERS_HG);
+    }
+
+    /**
      * Factory method for standard sea level pressure.
      *
      * @return Standard pressure (1013.25 hPa / 29.92 inHg)
@@ -518,8 +551,7 @@ public record Pressure(
             throw new IllegalArgumentException("METAR altimeter cannot be null");
         }
         if (!altimeter.matches("A\\d{4}")) {
-            throw new InvalidObservationException("Pressure.altimeter", altimeter,
-                    "Invalid METAR altimeter format (expected Annnn)");
+            throw new InvalidObservationException("Pressure.altimeter", altimeter, "Invalid METAR altimeter format (expected Annnn)");
         }
         double inHg = Integer.parseInt(altimeter.substring(1)) / 100.0;
         return new Pressure(inHg, PressureUnit.INCHES_HG);
@@ -536,8 +568,7 @@ public record Pressure(
             throw new IllegalArgumentException("METAR QNH cannot be null");
         }
         if (!qnh.matches("Q\\d{4}")) {
-            throw new InvalidObservationException("Pressure.qnh", qnh,
-                    "Invalid METAR QNH format (expected Qnnnn)");
+            throw new InvalidObservationException("Pressure.qnh", qnh, "Invalid METAR QNH format (expected Qnnnn)");
         }
         double hPa = Integer.parseInt(qnh.substring(1));
         return new Pressure(hPa, PressureUnit.HECTOPASCALS);

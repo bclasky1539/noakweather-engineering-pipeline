@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.34.0-SNAPSHOT - November 25, 2026
+
+### Added
+- Parsing of QFE and QNH remark groups reported in millimeters of mercury by
+  Russian-region stations (#193). These groups previously fell into
+  `remarks.freeText`.
+  - `QNHnnn` (for example `QNH768`) is stored in `remarks.secondaryAltimeter`
+    as mmHg. A four-digit QNH remains hPa, and main-body altimeter parsing is
+    unchanged.
+  - `QFEnnn` and `QFEnnn/nnnn` (for example `QFE752/1003`) are stored in the
+    new `remarks.qfe` component as an `AerodromePressure`, keeping both the
+    mmHg value and the reported hPa value.
+- `MILLIMETERS_HG` unit in `PressureUnit`, with mmHg conversions in `Pressure`.
+
+### Notes
+- QFE is the pressure at aerodrome elevation and is not reduced to sea level,
+  so `AerodromePressure` accepts a wider range (400-820 mmHg) than `Pressure`.
+  A reported hPa value that disagrees with the mmHg value by more than 2 hPa
+  is rejected and left in `remarks.freeText`.
+- The Bronze JSON gains a `remarks.qfe` key. The Glue job does not read it, so
+  Silver is unaffected.
+
 ## Version 1.33.2-SNAPSHOT - November 25, 2026
 
 ### Fixed

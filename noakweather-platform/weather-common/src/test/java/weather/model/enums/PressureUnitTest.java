@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,38 +17,46 @@
 package weather.model.enums;
 
 import org.junit.jupiter.api.Test;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests for PressureUnit enum.
- * 
+ *
  * @author bclasky1539
  *
  */
 class PressureUnitTest {
-    
+
     @Test
     void testInchesHgSymbol() {
         assertThat(PressureUnit.INCHES_HG.getSymbol()).isEqualTo("inHg");
     }
-    
+
     @Test
     void testHectopascalsSymbol() {
         assertThat(PressureUnit.HECTOPASCALS.getSymbol()).isEqualTo("hPa");
     }
-    
+
+    @Test
+    void testMillimetersSymbol() {
+        assertThat(PressureUnit.MILLIMETERS_HG.getSymbol()).isEqualTo("mmHg");
+    }
+
     @Test
     void testEnumValues() {
-        assertThat(PressureUnit.values()).hasSize(2);
+        assertThat(PressureUnit.values()).hasSize(3);
         assertThat(PressureUnit.values()).containsExactly(
-            PressureUnit.INCHES_HG,
-            PressureUnit.HECTOPASCALS
+                PressureUnit.INCHES_HG,
+                PressureUnit.HECTOPASCALS,
+                PressureUnit.MILLIMETERS_HG
         );
     }
-    
+
     @Test
     void testValueOf() {
         assertThat(PressureUnit.valueOf("INCHES_HG")).isEqualTo(PressureUnit.INCHES_HG);
         assertThat(PressureUnit.valueOf("HECTOPASCALS")).isEqualTo(PressureUnit.HECTOPASCALS);
+        assertThat(PressureUnit.valueOf("MILLIMETERS_HG")).isEqualTo(PressureUnit.MILLIMETERS_HG);
     }
 }

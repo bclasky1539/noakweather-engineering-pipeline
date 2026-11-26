@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import weather.model.components.*;
 import weather.model.components.remark.ceilingremarks.CeilingRemarks;
 import weather.model.components.remark.maintenanceremarks.MaintenanceRemarks;
+import weather.model.components.remark.pressureremarks.AerodromePressure;
 import weather.model.components.remark.pressureremarks.PressureRemarks;
 import weather.model.components.remark.visibilityremarks.VisibilityRemarks;
 import weather.model.components.remark.windremarks.WindRemarks;
@@ -184,7 +185,7 @@ class NoaaMetarRemarksTest {
                 stationType, slp, temp, null, null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, freeText
         );
@@ -348,7 +349,7 @@ class NoaaMetarRemarksTest {
                 new WindRemarks(peakWind, null, null), null, null, null,
                 null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null, null,
                 null, null
         );
@@ -366,7 +367,7 @@ class NoaaMetarRemarksTest {
                 new WindRemarks(null, windShift, null), null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null, null,
-                null, null, null, null,
+                null, null, null, null, null,
                 null, null, null, null,
                 null, null
         );
@@ -779,7 +780,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(null, null, varVis),
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -985,7 +986,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(towerVis, null, null), null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null
         );
@@ -1004,7 +1005,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(null, surfaceVis, null),
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null, null,
                 null, null
         );
@@ -1024,7 +1025,7 @@ class NoaaMetarRemarksTest {
                 null, new VisibilityRemarks(towerVis, surfaceVis, null), null,
                 null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null
         );
@@ -1232,7 +1233,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, hourly, null,
                 null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1251,7 +1252,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, sixHour, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1270,7 +1271,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, twentyFourHour, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1291,7 +1292,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, hourly, null,
                 sixHour, twentyFourHour, null, null, null, null, null,
-                null, null, null, null, null,
+                null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null
         );
@@ -1538,7 +1539,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, hailSize, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1553,7 +1554,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null, null
         );
@@ -1755,7 +1756,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, List.of(location),
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -1774,7 +1775,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                List.of(location1, location2), null, null, null, null, null,
+                List.of(location1, location2), null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null
@@ -2157,7 +2158,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, List.of(event), null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null
         );
@@ -2176,7 +2177,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, List.of(event1, event2),
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null
@@ -2560,7 +2561,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, new PressureRemarks(tendency, null), null, null, null,
+                null, new PressureRemarks(tendency, null), null, null, null, null,
                 null, null, null,
                 null, null, null, null, null,
                 null
@@ -2576,7 +2577,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null, null, null,
                 null, null, null, null, null
         );
@@ -3377,6 +3378,20 @@ class NoaaMetarRemarksTest {
         assertNotEquals(remarks1, remarks2);
     }
 
+    // ========== QFE TESTS ==========
+
+    @Test
+    @DisplayName("Should not be empty when only QFE is present - Issue #193")
+    void testIsEmptyWithOnlyQfe() {
+        NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
+                .qfe(AerodromePressure.of(752, 1003))
+                .build();
+
+        assertFalse(remarks.isEmpty());
+        assertEquals(AerodromePressure.of(752, 1003), remarks.qfe());
+        assertTrue(remarks.toString().contains("qfe=QFE 752 mmHg (1003 hPa)"));
+    }
+
     // ========== OBSERVATION PROGRAM STATUS TESTS ==========
 
     @Test
@@ -3533,7 +3548,7 @@ class NoaaMetarRemarksTest {
                 null, null, null, null,
                 null, null, null, null, null, null,
                 null, null, null, null, null, null,
-                null, null, null, null, null, null,
+                null, null, null, null, null, null, null,
                 null, null,
                 null, null, null, List.of(remark), null
                 , null
@@ -5402,6 +5417,7 @@ class NoaaMetarRemarksTest {
         PressureRapidChange pressureRapidChange = PressureRapidChange.of("R");
         Icing icing = Icing.of(true, false, "PAST HR");
         Pressure secondaryAltimeter = Pressure.ofInchesHg(30.02);
+        AerodromePressure qfe = AerodromePressure.of(752, 1003);
         Temperature sixHourMaxTemp = Temperature.of(14.2);
         Temperature sixHourMinTemp = Temperature.of(-0.1);
         Temperature twentyFourHourMaxTemp = Temperature.of(4.6);
@@ -5431,7 +5447,7 @@ class NoaaMetarRemarksTest {
                 new VisibilityRemarks(towerVis, surfaceVis, varVis), new CeilingRemarks(variableCeiling, ceilingSecondSite),
                 obscurationLayers, cloudTypes, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize, weatherEvents,
                 thunderstormLocations, exceptDirections, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
-                sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet,
+                qfe, sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet,
                 new MaintenanceRemarks(automatedMaintenanceIndicators, maintenanceRequired), observationProgramStatus,
                 lightningRemarks, predominantCloudTypes, freeText
         );
@@ -5512,6 +5528,7 @@ class NoaaMetarRemarksTest {
         PressureRapidChange pressureRapidChange = PressureRapidChange.of("R");
         Icing icing = Icing.of(true, false, "PAST HR");
         Pressure secondaryAltimeter = Pressure.ofInchesHg(30.02);
+        AerodromePressure qfe = AerodromePressure.of(752, 1003);
         Temperature sixHourMaxTemp = Temperature.of(14.2);
         Temperature sixHourMinTemp = Temperature.of(-0.1);
         Temperature twentyFourHourMaxTemp = Temperature.of(4.6);
@@ -5541,12 +5558,12 @@ class NoaaMetarRemarksTest {
                 new VisibilityRemarks(towerVis, surfaceVis, varVis), new CeilingRemarks(variableCeiling, ceilingSecondSite),
                 obscurationLayers, cloudTypes, hourly, ppGroupValue, sixHour, twentyFourHour, hailSize, weatherEvents,
                 thunderstormLocations, exceptDirections, new PressureRemarks(tendency, pressureRapidChange), icing, secondaryAltimeter,
-                sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet,
+                qfe, sixHourMaxTemp, sixHourMinTemp, twentyFourHourMaxTemp, twentyFourHourMinTemp, densityAltitudeFeet,
                 new MaintenanceRemarks(automatedMaintenanceIndicators, maintenanceRequired), observationProgramStatus,
                 lightningRemarks, predominantCloudTypes, freeText
         );
 
-        // Verify remaining 19 fields
+        // Verify remaining 20 fields
         assertAll("Second half of fields should be correctly set",
                 () -> assertEquals(hailSize, remarks.hailSize()),
                 () -> assertEquals(weatherEvents, remarks.weatherEvents()),
@@ -5556,6 +5573,7 @@ class NoaaMetarRemarksTest {
                 () -> assertEquals(pressureRapidChange, remarks.pressureRapidChange()),
                 () -> assertEquals(icing, remarks.icing()),
                 () -> assertEquals(secondaryAltimeter, remarks.secondaryAltimeter()),
+                () -> assertEquals(qfe, remarks.qfe()),
                 () -> assertEquals(sixHourMaxTemp, remarks.sixHourMaxTemperature()),
                 () -> assertEquals(sixHourMinTemp, remarks.sixHourMinTemperature()),
                 () -> assertEquals(twentyFourHourMaxTemp, remarks.twentyFourHourMaxTemperature()),

@@ -136,6 +136,10 @@ declare -a PATTERNS=(
      # #133 (exception-handling policy) and #146 (no-station NPE) have no raw-report pattern:
      # they are confirmed from the UAT logs (no parser WARN/ERROR, no "disabled for the rest of
      # this section", no "Unexpected error parsing METAR data").
+     # #193 Parse QFE / QNH remark groups (mmHg with optional hPa)
+     "193-qfe|QFE[0-9]{3}(/[0-9]{3,4})?( |$)"
+     "193-qnh-mmhg|QNH[0-9]{3}( |$)"
+     "193-qfe-qnh-variant|Q(FE|NH) [0-9]|QFE[0-9]{3}/[0-9]{1,2}( |$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

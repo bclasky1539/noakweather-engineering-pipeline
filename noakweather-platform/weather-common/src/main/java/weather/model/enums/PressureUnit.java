@@ -1,6 +1,6 @@
 /*
  * NoakWeather Engineering Pipeline(TM) is a multi-source weather data engineering platform
- * Copyright (C) 2025 bclasky1539
+ * Copyright (C) 2025-2026 bclasky1539
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,23 +18,32 @@ package weather.model.enums;
 
 /**
  * Enumeration of atmospheric pressure units.
- * 
+ *
  * @author bclasky1539
- * 
+ *
  */
 public enum PressureUnit {
-    /** Inches of Mercury (US standard) */
+    /**
+     * Inches of Mercury (US standard)
+     */
     INCHES_HG("inHg"),
-    
-    /** Hectopascals / Millibars (ICAO standard) */
-    HECTOPASCALS("hPa");
-    
+
+    /**
+     * Hectopascals / Millibars (ICAO standard)
+     */
+    HECTOPASCALS("hPa"),
+
+    /**
+     * Millimeters of Mercury (Russian-region remarks, for example QNH768)
+     */
+    MILLIMETERS_HG("mmHg");
+
     private final String symbol;
-    
+
     PressureUnit(String symbol) {
         this.symbol = symbol;
     }
-    
+
     public String getSymbol() {
         return symbol;
     }

@@ -34,6 +34,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -82,6 +83,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -130,6 +132,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -178,6 +181,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -226,6 +230,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: Icing[inClouds=false, inPrecipitation=false, qualifier=PAST HR]
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -274,6 +279,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -322,6 +328,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -370,6 +377,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -418,6 +426,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -466,6 +475,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -514,6 +524,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -562,6 +573,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -610,6 +622,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -658,6 +671,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -706,6 +720,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -754,6 +769,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -802,6 +818,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=FALLING]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -850,6 +867,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -898,6 +916,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -946,6 +965,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -994,6 +1014,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1042,6 +1063,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=6, changeHectopascals=1.0], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: Temperature[celsius=2.2, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.sixHourMinTemperature: Temperature[celsius=1.7, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.twentyFourHourMaxTemperature: null
@@ -1090,6 +1112,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=8, changeHectopascals=3.3], pressureRapidChange=FALLING]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1138,6 +1161,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1186,6 +1210,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1234,6 +1259,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1282,6 +1308,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1330,6 +1357,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=5, changeHectopascals=1.3], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: Temperature[celsius=31.7, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.sixHourMinTemperature: Temperature[celsius=24.4, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.twentyFourHourMaxTemperature: null
@@ -1378,6 +1406,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1426,6 +1455,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=0, changeHectopascals=0.3], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1474,6 +1504,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=8, changeHectopascals=1.5], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1522,6 +1553,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=6, changeHectopascals=1.2], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1570,6 +1602,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1618,6 +1651,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1666,6 +1700,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1714,6 +1749,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1762,6 +1798,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1810,6 +1847,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1858,6 +1896,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1906,6 +1945,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -1954,6 +1994,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2002,6 +2043,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2050,6 +2092,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2098,6 +2141,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: Pressure[value=29.77, unit=INCHES_HG]
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2146,6 +2190,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=RISING]
   remarks.icing: Icing[inClouds=false, inPrecipitation=false, qualifier=PAST HR]
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2194,6 +2239,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2242,6 +2288,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2366,6 +2413,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2421,6 +2469,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2469,6 +2518,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=2, changeHectopascals=1.5], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: Temperature[celsius=14.2, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.sixHourMinTemperature: Temperature[celsius=8.9, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
   remarks.twentyFourHourMaxTemperature: Temperature[celsius=11.2, dewpointCelsius=null, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
@@ -2517,6 +2567,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=FALLING]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2565,6 +2616,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2613,6 +2665,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2661,6 +2714,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2723,6 +2777,7 @@
   remarks.pressure: PressureRemarks[pressureTendency=PressureTendency[tendencyCode=null, changeHectopascals=null], pressureRapidChange=null]
   remarks.icing: null
   remarks.secondaryAltimeter: null
+  remarks.qfe: null
   remarks.sixHourMaxTemperature: null
   remarks.sixHourMinTemperature: null
   remarks.twentyFourHourMaxTemperature: null
@@ -2733,5 +2788,103 @@
   remarks.lightningRemarks: []
   remarks.predominantCloudTypes: PredominantCloudTypes[lowCloud=STRATUS_NEBULOSUS_OR_FRACTUS_FAIR_WEATHER, middleCloud=OBSCURED, highCloud=OBSCURED]
   remarks.freeText: 930 HZY RTS
+  parseIssues: 0
+
+=== METAR UEEE 150000Z 29001MPS 9999 -SN SCT024 M30/M33 Q1024 R23/450160 NOSIG RMK QNH768 QFE759
+  stationId: UEEE
+  reportType: METAR
+  reportModifier: null
+  unparsedMainBody: null
+  conditions.wind: Wind[directionDegrees=290, speedValue=1, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=MPS]
+  conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  conditions.presentWeather: [PresentWeather[intensity=-, descriptor=null, precipitation=SN, obscuration=null, other=null, rawCode=-SN]]
+  conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=2400, cloudType=null]]
+  conditions.temperature: Temperature[celsius=-30.0, dewpointCelsius=-33.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
+  conditions.pressure: Pressure[value=1024.0, unit=HECTOPASCALS]
+  runwayVisualRange: []
+  runwayStates: [RunwayState[runway=23, deposit=DRY_SNOW, extent=PERCENT_26_TO_50, depth=MILLIMETRES, depthMm=1, friction=MEASURED, frictionValue=0.6, cleared=false, reportNotUpdated=false]]
+  recentWeather: []
+  recentWeatherNotObservable: false
+  noSignificantChange: true
+  remarks.automatedStationType: null
+  remarks.seaLevelPressure: null
+  remarks.preciseTemperature: null
+  remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
+  remarks.directionalWeather: null
+  remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
+  remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
+  remarks.obscurationLayers: []
+  remarks.cloudTypes: []
+  remarks.hourlyPrecipitation: null
+  remarks.ppGroupValue: null
+  remarks.sixHourPrecipitation: null
+  remarks.twentyFourHourPrecipitation: null
+  remarks.hailSize: null
+  remarks.weatherEvents: []
+  remarks.thunderstormLocations: []
+  remarks.exceptDirections: []
+  remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
+  remarks.icing: null
+  remarks.secondaryAltimeter: Pressure[value=768.0, unit=MILLIMETERS_HG]
+  remarks.qfe: AerodromePressure[millimetersHg=759.0, hectopascals=null]
+  remarks.sixHourMaxTemperature: null
+  remarks.sixHourMinTemperature: null
+  remarks.twentyFourHourMaxTemperature: null
+  remarks.twentyFourHourMinTemperature: null
+  remarks.densityAltitudeFeet: null
+  remarks.maintenance: MaintenanceRemarks[automatedMaintenanceIndicators=[], maintenanceRequired=false]
+  remarks.observationProgramStatus: null
+  remarks.lightningRemarks: []
+  remarks.predominantCloudTypes: null
+  remarks.freeText: null
+  parseIssues: 0
+
+=== METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 R34L/CLRD62 NOSIG RMK MT OBSC QFE752/1003
+  stationId: UHPP
+  reportType: METAR
+  reportModifier: null
+  unparsedMainBody: null
+  conditions.wind: Wind[directionDegrees=280, speedValue=6, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=MPS]
+  conditions.visibility: Visibility[distanceValue=9999.0, unit=M, lessThan=false, greaterThan=false, specialCondition=null]
+  conditions.presentWeather: []
+  conditions.skyConditions: [SkyCondition[coverage=FEW, heightFeet=5000, cloudType=null]]
+  conditions.temperature: Temperature[celsius=2.0, dewpointCelsius=-15.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
+  conditions.pressure: Pressure[value=1007.0, unit=HECTOPASCALS]
+  runwayVisualRange: []
+  runwayStates: [RunwayState[runway=34L, deposit=null, extent=null, depth=null, depthMm=null, friction=MEASURED, frictionValue=0.62, cleared=true, reportNotUpdated=false]]
+  recentWeather: []
+  recentWeatherNotObservable: false
+  noSignificantChange: true
+  remarks.automatedStationType: null
+  remarks.seaLevelPressure: null
+  remarks.preciseTemperature: null
+  remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
+  remarks.directionalWeather: null
+  remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
+  remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
+  remarks.obscurationLayers: []
+  remarks.cloudTypes: []
+  remarks.hourlyPrecipitation: null
+  remarks.ppGroupValue: null
+  remarks.sixHourPrecipitation: null
+  remarks.twentyFourHourPrecipitation: null
+  remarks.hailSize: null
+  remarks.weatherEvents: []
+  remarks.thunderstormLocations: []
+  remarks.exceptDirections: []
+  remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
+  remarks.icing: null
+  remarks.secondaryAltimeter: null
+  remarks.qfe: AerodromePressure[millimetersHg=752.0, hectopascals=1003.0]
+  remarks.sixHourMaxTemperature: null
+  remarks.sixHourMinTemperature: null
+  remarks.twentyFourHourMaxTemperature: null
+  remarks.twentyFourHourMinTemperature: null
+  remarks.densityAltitudeFeet: null
+  remarks.maintenance: MaintenanceRemarks[automatedMaintenanceIndicators=[], maintenanceRequired=false]
+  remarks.observationProgramStatus: null
+  remarks.lightningRemarks: []
+  remarks.predominantCloudTypes: null
+  remarks.freeText: MT OBSC
   parseIssues: 0
 
