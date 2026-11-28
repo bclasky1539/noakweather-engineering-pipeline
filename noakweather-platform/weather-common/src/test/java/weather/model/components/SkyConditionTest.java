@@ -132,12 +132,13 @@ class SkyConditionTest {
                     assertThat(e.getComponent()).isEqualTo("SkyCondition.cloudType");
                     assertThat(e.getRejectedValue()).isEqualTo("XX");
                     assertThat(e.getMessage()).isEqualTo(
-                            "Invalid cloud type (valid types: CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL): XX");
+                            "Invalid cloud type (valid types: CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL, SCSL, CCSL, CBMAM): XX");
                 });
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"})
+    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL",
+            "SCSL", "CCSL", "CBMAM"})
     void testValidation_ValidCloudTypes(String validType) {
         SkyCondition sky = new SkyCondition(SkyCoverage.BROKEN, 5000, validType);
 

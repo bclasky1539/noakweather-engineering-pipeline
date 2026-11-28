@@ -101,7 +101,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
      * resolved in favor of the more specific thunderstorm-location handler.
      */
     private static final Set<String> THUNDERSTORM_LOCATION_CODES =
-            Set.of("TS", "CB", "TCU", "ACC", "CBMAM", "VIRGA");
+            Set.of("TS", "CB", "TCU", "VIRGA");
 
     /**
      * Main body. First matching handler wins; a rejected group is moved to the unparsed
@@ -3123,11 +3123,12 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
 
     /**
      * Extract cloud type components from a pattern matcher.
-     * Validates that at least one optional field (oktas, intensity, location, movement) is present.
+     * Validates that at least one optional field (oktas, intensity, location,
+     * directions, movement) is present.
      *
      * @param matcher the pattern matcher (must not be null)
      * @return the constructed CloudType (never null)
-     * @throws InvalidObservationException if no optional field (oktas, intensity, location, movement) is present
+     * @throws InvalidObservationException if no optional field is present
      */
     private CloudType extractCloudTypeFromMatcher(Matcher matcher) {
         String intensity = matcher.group("intensity");
@@ -3135,13 +3136,11 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         String oktaStr = matcher.group("okta");
         String verb = matcher.group("verb");
         String directionMovement = matcher.group("dirm");
-        String directionLocation = matcher.group("direction");
+        String location = trimOrNull(matcher.group("location"));
 
         Integer oktas = parseOktas(oktaStr);
-        String[] locationAndMovement = determineLocationAndMovement(verb, directionMovement, directionLocation);
-
-        String location = locationAndMovement[0];
-        String movement = locationAndMovement[1];
+        List<DirectionSegment> directionSegments = parseDirectionChain(matcher.group(DIRECTION_CHAIN_CODE));
+        String movement = verb != null ? directionMovement : null;
         String trimmedIntensity = trimOrNull(intensity);
 
         // VALIDATION: At least one optional field must be present
@@ -3150,12 +3149,14 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
         boolean hasValidOptionalField = (oktas != null) ||
                 (trimmedIntensity != null) ||
                 (location != null) ||
+                !directionSegments.isEmpty() ||
                 (movement != null);
 
         if (!hasValidOptionalField) {
             // Cloud type alone is not valid - must have at least one qualifier
             throw new InvalidObservationException("CloudType.qualifiers", cloudTypeCode,
-                    "Cloud type must have at least one optional field (oktas, intensity, location, or movement)");
+                    "Cloud type must have at least one optional field "
+                            + "(oktas, intensity, location, directions, or movement)");
         }
 
         return new CloudType(
@@ -3163,6 +3164,7 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
                 oktas,
                 trimmedIntensity,
                 location,
+                directionSegments,
                 movement
         );
     }
@@ -3178,27 +3180,6 @@ public class NoaaMetarParser extends NoaaAviationWeatherParser<NoaaMetarData> {
             return Integer.parseInt(oktaStr);
         }
         return null;
-    }
-
-    /**
-     * Determine location and movement from pattern groups.
-     *
-     * @param verb              the verb group (it may be null)
-     * @param directionMovement the movement direction (it may be null)
-     * @param directionLocation the location qualifier (it may be null)
-     * @return array with [location, movement] - never null, but elements may be null
-     */
-    private String[] determineLocationAndMovement(String verb, String directionMovement, String directionLocation) {
-        String location = null;
-        String movement = null;
-
-        if ("MOVG".equals(verb)) {
-            movement = directionMovement;
-        } else if (directionLocation != null) {
-            location = directionLocation;
-        }
-
-        return new String[]{location, movement};
     }
 
     /**

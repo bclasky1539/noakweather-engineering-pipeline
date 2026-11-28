@@ -28,7 +28,7 @@ import java.util.Arrays;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for {@link CloudTypeAbbreviation}: the shared cloud type vocabulary (#140).
+ * Tests for {@link CloudTypeAbbreviation}: the shared cloud type vocabulary.
  */
 class CloudTypeAbbreviationTest {
 
@@ -36,13 +36,13 @@ class CloudTypeAbbreviationTest {
     void testConstantsPinnedInOrder() {
         assertThat(Arrays.stream(CloudTypeAbbreviation.values()).map(Enum::name))
                 .containsExactly("CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS",
-                        "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL");
+                        "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL", "SCSL", "CCSL", "CBMAM");
     }
 
     @Test
     void testValidCodesDisplay() {
         assertThat(CloudTypeAbbreviation.validCodesDisplay())
-                .isEqualTo("CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL");
+                .isEqualTo("CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL, SCSL, CCSL, CBMAM");
     }
 
     @ParameterizedTest
@@ -74,7 +74,10 @@ class CloudTypeAbbreviationTest {
             "CC, Cirrocumulus",
             "CI, Cirrus",
             "ACC, Altocumulus Castellanus",
-            "ACSL, Altocumulus Standing Lenticular Cloud"
+            "ACSL, Altocumulus Standing Lenticular Cloud",
+            "SCSL, Stratocumulus Standing Lenticular Cloud",
+            "CCSL, Cirrocumulus Standing Lenticular Cloud",
+            "CBMAM, Cumulonimbus Mammatus"
     })
     void testDescriptions(String code, String description) {
         assertThat(CloudTypeAbbreviation.valueOf(code).getDescription()).isEqualTo(description);

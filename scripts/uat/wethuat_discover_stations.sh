@@ -114,14 +114,14 @@ declare -a PATTERNS=(
      # #180 — temperature/dewpoint with a one- or three-digit value; rejected and kept in unparsedMainBody.
      "180-temp-dewpoint-truncated-dewpoint|(^|\"| )M?[0-9]{2}/M?([0-9]|[0-9]{3})( |\"|\$) (closed)"
      "180-temp-dewpoint-bad-temperature|(^|\"| )M?([0-9]|[0-9]{3})/M?[0-9]{2}( (A|Q)[0-9]{4}|\"|\$) (closed)"
-     "211 malformed wind (4-digit)|\b[0-9]{4}(KT|MPS)\b"
+     "211 malformed wind (4-digit)|\b[0-9]{4}(KT|MPS)\b (closed)"
      "211/207 bare M sky condition|SM M [M0-9]{2}/"
-     "211 cloud cover glued to text|\b(FEW|SCT|BKN|OVC)[A-Z]+[0-9]{3}\b"
-     "211 visibility and weather run together|\b[0-9]{4}[-+]?(RA|SN|DZ|TS|SH|FG|BR)"
+     "211 cloud cover glued to text|\b(FEW|SCT|BKN|OVC)[A-Z]+[0-9]{3}\b (closed)"
+     "211 visibility and weather run together|\b[0-9]{4}[-+]?(RA|SN|DZ|TS|SH|FG|BR) (closed)"
      # #198 — pressure tendency group with one or both elements missing (5////, 5a///, 5/ccc).
-     "198-pressure-tendency-missing-elements|(^|\"| )5([0-8/]///|/[0-9]{3})( |\"|\$)"
+     "198-pressure-tendency-missing-elements|(^|\"| )5([0-8/]///|/[0-9]{3})( |\"|\$) (closed)"
      # #198 exploratory — solidi mixed with digits inside the change (not parsed, stays in freeText).
-     "198-pressure-tendency-mixed-change (exploratory)|(^|\"| )5[0-8/]([0-9][0-9]/|[0-9]/[0-9]|[0-9]//|/[0-9][0-9]|/[0-9]/|//[0-9])( |\"|\$)"
+     "198-pressure-tendency-mixed-change (exploratory)|(^|\"| )5[0-8/]([0-9][0-9]/|[0-9]/[0-9]|[0-9]//|/[0-9][0-9]|/[0-9]/|//[0-9])( |\"|\$) (closed)"
      # #218 — pressure tendency codes 3 and 8 (descriptions corrected to WMO code 0200 wording).
      "218-pressure-tendency-code-3-or-8|RMK.* 5[38][0-9]{3}( |\"|\$)"
      # #129 — remark weather code joined to one compass point with a hyphen (VCSH-NE, -RA-SW).
@@ -140,6 +140,9 @@ declare -a PATTERNS=(
      "193-qfe|QFE[0-9]{3}(/[0-9]{3,4})?( |$)"
      "193-qnh-mmhg|QNH[0-9]{3}( |$)"
      "193-qfe-qnh-variant|Q(FE|NH) [0-9]|QFE[0-9]{3}/[0-9]{1,2}( |$)"
+     # #225 significant cloud type with a direction (ACSL NE) not recognized
+     "225-significant-cloud|(^| )(ACSL|SCSL|CCSL|CBMAM|ACC)( |$)"
+     "225-cloud-direction|(^| )(AC|AS|CC|CF|CI|CS|CU|NS|SC|SF|ST)[0-8]? (N|NE|E|SE|S|SW|W|NW)([- ]|$)"
 )
 
 for entry in "${PATTERNS[@]}"; do

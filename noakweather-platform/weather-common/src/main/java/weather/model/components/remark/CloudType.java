@@ -20,13 +20,16 @@ import weather.exception.InvalidObservationException;
 import weather.model.enums.CloudTypeAbbreviation;
 import weather.model.enums.CompassDirection;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 /**
  * Immutable value object representing a cloud type observation in METAR remarks.
  * <p>
  * Cloud types describe cloud formations using standard abbreviations with optional
  * okta coverage (eighths of sky covered), intensity, and location/movement.
  * <p>
- * Format: [Intensity] CloudType [Oktas] [Location/Movement]
+ * Format: [Intensity] CloudType [Oktas] [Location] [Directions] [Movement]
  * <p>
  * Examples:
  * "SC1" → CloudType("SC", 1, null, null, null)
@@ -34,10 +37,13 @@ import weather.model.enums.CompassDirection;
  * "MDT CU OHD" → CloudType("CU", null, "MDT", "OHD", null)
  * "AC8" → CloudType("AC", 8, null, null, null)
  * "CI MOVG NE" → CloudType("CI", null, null, null, "NE")
+ * "ACSL NE" → CloudType("ACSL", null, null, null, [NE], null)
+ * "ACSL SW-S MOV E" → CloudType("ACSL", null, null, null, [SW-S], "E")
+ * "ACC DSNT N AND W" → CloudType("ACC", null, null, "DSNT", [N, W], null), two direction segments
  * <p>
  * Cloud Type Codes: see {@link CloudTypeAbbreviation}, the shared vocabulary (#140).
  * <p>
- * Oktas: 1-8 (eighths of sky covered), null if not specified
+ * Oktas: 0-8 (eighths of sky covered), null if not specified
  * <p>
  * Intensity:
  * MDT - Moderate
@@ -47,6 +53,14 @@ import weather.model.enums.CompassDirection;
  * OHD-ALQDS - Overhead all quadrants
  * ALQDS - All quadrants
  * TR - Trace
+ * EMBDD - Embedded
+ * DSNT - Distant
+ * VC - In the vicinity
+ * DSIPTD - Dissipated
+ * <p>
+ * Directions: the bearings where the cloud is seen, as {@link DirectionSegment}s
+ * (a single point "NE", a range "SW-S", or several joined by AND). The location
+ * says where in general; the directions give the bearings (#225).
  * <p>
  * Movement Direction: the 8 principal points of {@link CompassDirection}
  * (N, NE, E, SE, S, SW, W, NW)
@@ -55,6 +69,7 @@ import weather.model.enums.CompassDirection;
  * @param oktas             Coverage in eighths (1-8), null if not specified
  * @param intensity         Intensity modifier (MDT), null if not specified
  * @param location          Location indicator (OHD, TR, etc.), null if not specified
+ * @param directionSegments Bearings where the cloud is seen, empty if not specified
  * @param movementDirection Movement direction (N, NE, etc.), null if not specified
  * @author bclasky1539
  *
@@ -64,6 +79,7 @@ public record CloudType(
         Integer oktas,
         String intensity,
         String location,
+        List<DirectionSegment> directionSegments,
         String movementDirection
 ) {
 
@@ -76,7 +92,7 @@ public record CloudType(
 
     // Valid location indicators
     private static final String[] VALID_LOCATIONS = {
-            "OHD", OVERHEAD_ALL_QUADRANTS_CODE, "ALQDS", "TR", "EMBDD"
+            "OHD", OVERHEAD_ALL_QUADRANTS_CODE, "ALQDS", "TR", "EMBDD", "DSNT", "VC", "DSIPTD"
     };
 
     /**
@@ -87,7 +103,22 @@ public record CloudType(
         validateOktas(oktas);
         intensity = validateAndNormalizeIntensity(intensity);
         location = validateAndNormalizeLocation(location);
+        directionSegments = directionSegments == null ? List.of() : List.copyOf(directionSegments);
         movementDirection = validateAndNormalizeMovementDirection(movementDirection);
+    }
+
+    /**
+     * Cloud type without directions, the common case.
+     *
+     * @param cloudType         Cloud type code (CU, CI, AC, etc.) - required
+     * @param oktas             Coverage in eighths (0-8), null if not specified
+     * @param intensity         Intensity modifier (MDT), null if not specified
+     * @param location          Location indicator (OHD, TR, etc.), null if not specified
+     * @param movementDirection Movement direction (N, NE, etc.), null if not specified
+     */
+    public CloudType(String cloudType, Integer oktas, String intensity,
+                     String location, String movementDirection) {
+        this(cloudType, oktas, intensity, location, List.of(), movementDirection);
     }
 
     /**
@@ -230,6 +261,15 @@ public record CloudType(
     }
 
     /**
+     * Check if this cloud type has bearings where it is seen.
+     *
+     * @return true if at least one direction segment is present
+     */
+    public boolean hasDirections() {
+        return !directionSegments.isEmpty();
+    }
+
+    /**
      * Check if this cloud type has movement direction.
      *
      * @return true if movementDirection is not null
@@ -298,6 +338,7 @@ public record CloudType(
      * "Cumulus (moderate, overhead)"
      * "Altocumulus (8/8)"
      * "Cirrus (moving NE)"
+     * "Altocumulus Standing Lenticular Cloud (SW-S, moving E)"
      *
      * @return formatted string describing the cloud type
      */
@@ -326,6 +367,16 @@ public record CloudType(
                 details.append(", ");
             }
             details.append(location.toLowerCase());
+        }
+
+        // Add directions
+        if (!directionSegments.isEmpty()) {
+            if (!details.isEmpty()) {
+                details.append(", ");
+            }
+            details.append(directionSegments.stream()
+                    .map(DirectionSegment::getSummary)
+                    .collect(Collectors.joining(" and ")));
         }
 
         // Add movement
@@ -376,5 +427,16 @@ public record CloudType(
      */
     public static CloudType withLocation(String cloudType, String location) {
         return new CloudType(cloudType, null, null, location, null);
+    }
+
+    /**
+     * Factory method for cloud type seen at one or more bearings.
+     *
+     * @param cloudType         cloud type code
+     * @param directionSegments bearings where the cloud is seen
+     * @return new CloudType
+     */
+    public static CloudType withDirections(String cloudType, List<DirectionSegment> directionSegments) {
+        return new CloudType(cloudType, null, null, null, directionSegments, null);
     }
 }

@@ -898,6 +898,19 @@ class NoaaMetarParserRemarksRecoveryTest {
                             assertThat(data.getRemarks().qfe()).isEqualTo(AerodromePressure.of(751, 1002));
                         }),
 
+                arguments("KTRK-SignificantCloudDirectionNowParses",
+                        "2026/11/21 17:51 KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK ACSL NE",
+                        (Consumer<NoaaMetarData>) data -> {
+                            assertThat(data.getRemarks().freeText())
+                                    .as("ACSL NE now parses as a CloudType with a direction (#225)")
+                                    .isNull();
+                            assertThat(data.getRemarks().cloudTypes()).hasSize(1);
+                            CloudType acsl = data.getRemarks().cloudTypes().get(0);
+                            assertThat(acsl.cloudType()).isEqualTo("ACSL");
+                            assertThat(acsl.directionSegments())
+                                    .containsExactly(new DirectionSegment(List.of("NE")));
+                        }),
+
                 arguments("KCLT-TightenedRemarkHandlersStillParseRealWorldGroups",
                         "2020/06/05 22:04 KCLT 052204Z 18010KT 10SM FEW035 SCT041TCU SCT065 BKN250 28/21 A2989 " +
                                 "RMK AO2 F8 SLP998 CU1AS2CI0 TCU EMBDD PK WND 33035/1142 UPE12B29E31RAB12SNB15E20 " +
@@ -986,6 +999,8 @@ class NoaaMetarParserRemarksRecoveryTest {
                 "METAR UEEE 150000Z 29001MPS 9999 -SN SCT024 M30/M33 Q1024 R23/450160 NOSIG RMK QNH768 QFE759",
                 "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 R34L/CLRD62 NOSIG RMK MT OBSC QFE752/1003",
                 "METAR UHPP 150300Z 28006MPS 9999 FEW050 02/M15 Q1007 NOSIG RMK QFE751/1002",
+                // #225: Significant cloud type ACSL with a direction is not recognized
+                "METAR KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK ACSL NE",
         };
 
         for (String raw : raws) {

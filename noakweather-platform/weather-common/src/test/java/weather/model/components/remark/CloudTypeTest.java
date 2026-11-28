@@ -24,6 +24,9 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import weather.exception.InvalidObservationException;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -38,7 +41,8 @@ class CloudTypeTest {
     // ==================== Constructor and Validation Tests ====================
 
     @ParameterizedTest
-    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL"})
+    @ValueSource(strings = {"CU", "TCU", "CB", "CF", "ST", "SC", "SF", "NS", "AS", "AC", "CS", "CC", "CI", "ACC", "ACSL",
+            "SCSL", "CCSL", "CBMAM"})
     void testValidCloudTypes(String cloudType) {
         CloudType cloud = new CloudType(cloudType, null, null, null, null);
 
@@ -79,7 +83,8 @@ class CloudTypeTest {
     void testInvalidCloudType(String invalidCloudType) {
         assertThatThrownBy(() -> new CloudType(invalidCloudType, null, null, null, null))
                 .isInstanceOf(InvalidObservationException.class)
-                .hasMessage("Invalid cloud type (valid types: CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL): "
+                .hasMessage("Invalid cloud type (valid types: CU, TCU, CB, CF, ST, SC, SF, NS, AS, AC, CS, CC, CI, ACC, ACSL, "
+                        + "SCSL, CCSL, CBMAM): "
                         + invalidCloudType)
                 .hasFieldOrPropertyWithValue("component", "CloudType.cloudType")
                 .hasFieldOrPropertyWithValue("rejectedValue", invalidCloudType);
@@ -142,7 +147,7 @@ class CloudTypeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"OHD", "OHD-ALQDS", "ALQDS", "TR", "EMBDD"})
+    @ValueSource(strings = {"OHD", "OHD-ALQDS", "ALQDS", "TR", "EMBDD", "DSNT", "VC", "DSIPTD"})
     void testValidLocation(String location) {
         CloudType cloud = new CloudType("AC", null, null, location, null);
 
@@ -161,7 +166,7 @@ class CloudTypeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"DSNT", "VC", "XXX", "OVERHEAD"})
+    @ValueSource(strings = {"TOP", "XXX", "OVERHEAD", "DIST"})
     void testInvalidLocation(String invalidLocation) {
         assertThatThrownBy(() -> new CloudType("AC", null, null, invalidLocation, null))
                 .isInstanceOf(InvalidObservationException.class)
@@ -314,7 +319,10 @@ class CloudTypeTest {
             "CC, Cirrocumulus",
             "CI, Cirrus",
             "ACC, Altocumulus Castellanus",
-            "ACSL, Altocumulus Standing Lenticular Cloud"
+            "ACSL, Altocumulus Standing Lenticular Cloud",
+            "SCSL, Stratocumulus Standing Lenticular Cloud",
+            "CCSL, Cirrocumulus Standing Lenticular Cloud",
+            "CBMAM, Cumulonimbus Mammatus"
     })
     void testGetCloudTypeDescription(String code, String description) {
         CloudType cloud = new CloudType(code, null, null, null, null);
@@ -765,11 +773,138 @@ class CloudTypeTest {
             "CC, Cirrocumulus",
             "CI, Cirrus",
             "ACC, Altocumulus Castellanus",
-            "ACSL, Altocumulus Standing Lenticular Cloud"
+            "ACSL, Altocumulus Standing Lenticular Cloud",
+            "SCSL, Stratocumulus Standing Lenticular Cloud",
+            "CCSL, Cirrocumulus Standing Lenticular Cloud",
+            "CBMAM, Cumulonimbus Mammatus"
     })
     @DisplayName("Should return correct descriptions for all cloud types")
     void testCloudTypeDescriptions(String code, String expectedDescription) {
         CloudType ct = CloudType.of(code);
         assertThat(ct.getCloudTypeDescription()).isEqualTo(expectedDescription);
+    }
+
+    // ==================== Direction Tests (#225) ====================
+
+    private static DirectionSegment segment(String... points) {
+        return new DirectionSegment(List.of(points));
+    }
+
+    @Test
+    @DisplayName("Five-argument constructor should leave directions empty")
+    void testFiveArgumentConstructor_NoDirections() {
+        CloudType cloud = new CloudType("SC", 1, null, null, null);
+
+        assertThat(cloud.directionSegments()).isEmpty();
+        assertThat(cloud.hasDirections()).isFalse();
+    }
+
+    @Test
+    @DisplayName("Null directions should become an empty list")
+    void testNullDirectionsBecomeEmpty() {
+        CloudType cloud = new CloudType("ACSL", null, null, "OHD", null, null);
+
+        assertThat(cloud.directionSegments()).isEmpty();
+        assertThat(cloud.hasDirections()).isFalse();
+    }
+
+    @Test
+    @DisplayName("withDirections should keep the segments in order")
+    void testFactoryWithDirections() {
+        CloudType cloud = CloudType.withDirections("ACSL", List.of(segment("SW", "S"), segment("W")));
+
+        assertThat(cloud.cloudType()).isEqualTo("ACSL");
+        assertThat(cloud.oktas()).isNull();
+        assertThat(cloud.intensity()).isNull();
+        assertThat(cloud.location()).isNull();
+        assertThat(cloud.movementDirection()).isNull();
+        assertThat(cloud.hasDirections()).isTrue();
+        assertThat(cloud.directionSegments()).containsExactly(segment("SW", "S"), segment("W"));
+    }
+
+    @Test
+    @DisplayName("Directions should be copied, so later changes to the source list do not leak in")
+    void testDirectionsAreDefensivelyCopied() {
+        List<DirectionSegment> source = new ArrayList<>(List.of(segment("NE")));
+        CloudType cloud = CloudType.withDirections("ACSL", source);
+
+        source.add(segment("SW"));
+
+        assertThat(cloud.directionSegments()).containsExactly(segment("NE"));
+
+        List<DirectionSegment> directions = cloud.directionSegments();
+        DirectionSegment extra = segment("S");
+        assertThatThrownBy(() -> directions.add(extra))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "ACSL,  , NE, , 'Altocumulus Standing Lenticular Cloud (NE)'",
+            "SCSL,  , NW, , 'Stratocumulus Standing Lenticular Cloud (NW)'",
+            "CCSL, OHD, , , 'Cirrocumulus Standing Lenticular Cloud (ohd)'",
+            "CBMAM, OHD, , E, 'Cumulonimbus Mammatus (ohd, moving E)'",
+            "ACC, DSIPTD, E, , 'Altocumulus Castellanus (dsiptd, E)'"
+    })
+    @DisplayName("Summary should include location, a single direction and movement")
+    void testGetSummary_WithSingleDirection(String code, String location, String direction,
+                                            String movement, String expected) {
+        List<DirectionSegment> directions = direction == null ? List.of() : List.of(segment(direction));
+        CloudType cloud = new CloudType(code, null, null, location, directions, movement);
+
+        assertThat(cloud.getSummary()).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("Summary should show a range and movement - ACSL SW-S MOV E")
+    void testGetSummary_RangeAndMovement() {
+        CloudType cloud = new CloudType("ACSL", null, null, null, List.of(segment("SW", "S")), "E");
+
+        assertThat(cloud.getSummary()).isEqualTo("Altocumulus Standing Lenticular Cloud (SW-S, moving E)");
+    }
+
+    @Test
+    @DisplayName("Summary should join several segments with 'and' - ACC DSNT N AND W")
+    void testGetSummary_SeveralSegments() {
+        CloudType cloud = new CloudType("ACC", null, null, "DSNT", List.of(segment("N"), segment("W")), null);
+
+        assertThat(cloud.getSummary()).isEqualTo("Altocumulus Castellanus (dsnt, N and W)");
+    }
+
+    @Test
+    @DisplayName("Summary should list oktas, location, directions and movement in that order")
+    void testGetSummary_AllFieldsWithDirections() {
+        CloudType cloud = new CloudType("AC", 2, "MDT", "DSNT", List.of(segment("NE", "E")), "S");
+
+        assertThat(cloud.getSummary()).isEqualTo("mdt Altocumulus (2/8, dsnt, NE-E, moving S)");
+    }
+
+    @Test
+    @DisplayName("Directions should take part in equality")
+    void testEquality_WithDirections() {
+        CloudType ne = CloudType.withDirections("ACSL", List.of(segment("NE")));
+        CloudType sameNe = CloudType.withDirections("ACSL", List.of(segment("NE")));
+        CloudType sw = CloudType.withDirections("ACSL", List.of(segment("SW")));
+        CloudType noDirection = CloudType.of("ACSL");
+
+        assertThat(ne)
+                .isEqualTo(sameNe)
+                .isNotEqualTo(sw)
+                .isNotEqualTo(noDirection)
+                .hasSameHashCodeAs(sameNe);
+    }
+
+    @Test
+    @DisplayName("Should model the KTRK real-world example - RMK ACSL NE")
+    void testRealWorldExample_KTRK_AcslNe() {
+        // From METAR: KTRK 211751Z ... RMK ACSL NE (#225)
+        CloudType acsl = CloudType.withDirections("ACSL", List.of(segment("NE")));
+
+        assertThat(acsl.cloudType()).isEqualTo("ACSL");
+        assertThat(acsl.location()).isNull();
+        assertThat(acsl.hasDirections()).isTrue();
+        assertThat(acsl.directionSegments()).containsExactly(segment("NE"));
+        assertThat(acsl.hasMovement()).isFalse();
+        assertThat(acsl.getSummary()).isEqualTo("Altocumulus Standing Lenticular Cloud (NE)");
     }
 }

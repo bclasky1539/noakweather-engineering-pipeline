@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
  * - TS SE → Thunderstorm Southeast
  * - CB OHD MOV E → Cumulonimbus Overhead Moving East
  * - TCU DSNT N-NE → Towering Cumulus Distant North to Northeast
- * - ACC VC W → Altocumulus Castellanus in Vicinity West
  * - CB DSNT E-S-SW → Cumulonimbus Distant, arc from East through South to Southwest
  * - TCU N AND SW → Towering Cumulus reported both North and Southwest
  * - CB DSNT N-E AND SE-S → Cumulonimbus Distant, two arcs: North-East and Southeast-South
@@ -36,8 +35,6 @@ import java.util.stream.Collectors;
  * - TS: Thunderstorm
  * - CB: Cumulonimbus
  * - TCU: Towering Cumulus
- * - ACC: Altocumulus Castellanus
- * - CBMAM: Cumulonimbus Mammatus
  * - VIRGA: Virga
  * <p>
  * Location qualifiers:
@@ -48,10 +45,10 @@ import java.util.stream.Collectors;
  * - TOP: At or above reference level
  * - TR: At all quadrants
  *
- * @param cloudType         Type of cloud or phenomenon (TS, CB, TCU, ACC, CBMAM, VIRGA)
+ * @param cloudType         Type of cloud or phenomenon (TS, CB, TCU, VIRGA)
  * @param locationQualifier Optional qualifier (OHD, VC, DSNT, DSIPTD, TOP, TR)
  * @param directionSegments Directions reported for this location. One or more
- *                          segments, each a single compass point or a multi-point arc/range;
+ *                          segments, each a single compass point or a multipoint arc/range;
  *                          multiple segments mean the same cloud type was reported at more
  *                          than one place (AND-chained), e.g. "N-E AND SE-S". Empty if no
  *                          direction was reported.
