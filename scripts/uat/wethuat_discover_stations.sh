@@ -143,6 +143,9 @@ declare -a PATTERNS=(
      # #225 significant cloud type with a direction (ACSL NE) not recognized
      "225-significant-cloud|(^| )(ACSL|SCSL|CCSL|CBMAM|ACC)( |$)"
      "225-cloud-direction|(^| )(AC|AS|CC|CF|CI|CS|CU|NS|SC|SF|ST)[0-8]? (N|NE|E|SE|S|SW|W|NW)([- ]|$)"
+     # Monitoring items not a fix awaiting UAT
+     # #226 Weather begin/end group with a missing time (MM)
+     "226-monitor-missing-event-time|[A-Z]{2}[BE]MM"
 )
 
 for entry in "${PATTERNS[@]}"; do
