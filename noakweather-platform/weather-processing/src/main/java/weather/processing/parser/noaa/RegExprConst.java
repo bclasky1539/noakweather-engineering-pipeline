@@ -405,11 +405,11 @@ public final class RegExprConst {
      */
     @SuppressWarnings("java:S5843") // Complex regex required for cloud location format
     public static final Pattern TS_CLD_LOC_PATTERN = Pattern.compile(
-            "^(?<type>TS|CB|TCU|ACC|CBMAM|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*"
-                    + "(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)?\\s*"
-                    + "(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$)"
-                    + "(?:\\s+(?:AND\\s+)?[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$))*+)?"
-                    + "(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
+            "^(?<type>TS|CB|TCU|VIRGA)(?!\\d)(?!\\s+EMBDD(?=\\s|$))\\s*" +
+                    "(?<loc>OHD|VC|DSNT|DSIPTD|TOP|TR|ALQDS)?\\s*" +
+                    "(?<dirchain>[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$)" +
+                    "(?:\\s+(?:AND\\s+)?[NSEW]{1,2}+(?:-[NSEW]{1,2}+)*+(?=\\s|$))*+)?" +
+                    "(?:\\s*MOV\\s*(?<dirm>[NSEW]{1,2}))?(?=\\s|$)"
     );
 
     /**
@@ -590,14 +590,30 @@ public final class RegExprConst {
     );
 
     /**
+     * Cloud type remark: [MDT] CLOUD[oktas] [location] [directions] [MOV/MOVG dir]
+     * <p>
      * Sky Conditions FEW = 1 to 2 oktas; SCT (Scattered) = 3 to 4 oktas; BKN
      * (Broken) = 5 to 7 oktas; OVC (Overcast) = 8 oktas;
-     * Examples AC8SC1, CI0, CI TR, MDT CU OHD-ALQDS, TCU EMBDD
-     * Complexity is required to capture cloud type, coverage in oktas, and location
+     * Examples AC8SC1, CI0, CI TR, MDT CU OHD-ALQDS, TCU EMBDD, CI MOVG NE,
+     * ACSL NE, ACSL SW-S MOV E, ACC DSNT N AND W, CBMAM OHD MOV E.
+     * <p>
+     * Longer codes are listed before their prefixes (ACSL before AC, SCSL before SC,
+     * CCSL before CC, CBMAM before CB), and the code must be followed by an okta
+     * digit, whitespace or the end. This is necessary so SCSL is never read as SC plus "SL".
+     * Directions use the same segment grammar as the thunderstorm location pattern.
+     * Complexity is required to capture cloud type, coverage in oktas, location,
+     * directions and movement
      */
     @SuppressWarnings("java:S5843") // Complex regex required for okta cloud format
     public static final Pattern CLOUD_OKTA_PATTERN = Pattern.compile(
-            "^(?<intensity>MDT\\s+)?(?<cloud>(TCU|ACSL|ACC|CB|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI))(?<okta>[0-8](?=\\s|$|[A-Z]))?((\\s*(?<verb>MOVG)\\s*(?<dirm>[NSEW][EW]?))|(\\s+(?<direction>OHD-ALQDS|ALQDS|OHD|TR|EMBDD)))?"
+            "^(?<intensity>MDT\\s+)?" +
+                    "(?<cloud>TCU|ACSL|ACC|SCSL|CCSL|CBMAM|CB|CU|CF|ST|SC|SF(?!C\\s+VIS)|NS|AS|AC|CS|CC|CI)" +
+                    "(?=[0-8]|\\s|$)" +
+                    "(?<okta>[0-8](?=\\s|$|[A-Z]))?" +
+                    "(?:\\s+(?<location>OHD-ALQDS|ALQDS|OHD|TR|EMBDD|DSNT|DSIPTD|VC)(?=\\s|$))?" +
+                    "(?:\\s+(?<dirchain>" + DIRECTION_SEGMENT +
+                    "(?:\\s+(?:AND\\s+)?" + DIRECTION_SEGMENT + ")*+))?" +
+                    "(?:\\s+(?<verb>MOVG|MOV)\\s*(?<dirm>" + COMPASS_POINT + "))?"
     );
 
     /**

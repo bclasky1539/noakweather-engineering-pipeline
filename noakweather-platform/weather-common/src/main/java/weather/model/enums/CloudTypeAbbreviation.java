@@ -49,7 +49,10 @@ public enum CloudTypeAbbreviation {
     CC("Cirrocumulus"),
     CI("Cirrus"),
     ACC("Altocumulus Castellanus"),
-    ACSL("Altocumulus Standing Lenticular Cloud");
+    ACSL("Altocumulus Standing Lenticular Cloud"),
+    SCSL("Stratocumulus Standing Lenticular Cloud"),
+    CCSL("Cirrocumulus Standing Lenticular Cloud"),
+    CBMAM("Cumulonimbus Mammatus");
 
     private static final Map<String, CloudTypeAbbreviation> BY_CODE = Arrays.stream(values())
             .collect(Collectors.toUnmodifiableMap(Enum::name, Function.identity()));
@@ -93,7 +96,7 @@ public enum CloudTypeAbbreviation {
 
     /**
      * @return all valid codes in declaration order, for rejection messages,
-     * e.g. "CU, TCU, CB, ... ACC, ACSL"
+     * e.g. "CU, TCU, CB, ... ACC, ACSL, SCSL, CCSL, CBMAM"
      */
     public static String validCodesDisplay() {
         return VALID_CODES_DISPLAY;

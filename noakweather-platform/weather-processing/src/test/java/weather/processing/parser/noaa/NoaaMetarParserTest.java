@@ -6276,8 +6276,6 @@ class NoaaMetarParserTest {
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TS SE', TS, SE, 'Thunderstorm Southeast'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB W', CB, W, 'Cumulonimbus West'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU N', TCU, N, 'Towering Cumulus North'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ACC E', ACC, E, 'Altocumulus Castellanus East'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CBMAM S', CBMAM, S, 'Cumulonimbus Mammatus South'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK VIRGA NW', VIRGA, NW, 'Virga Northwest'"
     })
     @DisplayName("Should parse simple thunderstorm/cloud locations")
@@ -6319,7 +6317,7 @@ class NoaaMetarParserTest {
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB OHD', OHD, 'Overhead'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TS VC W', VC, 'In vicinity'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU DSNT N', DSNT, 'Distant'",
-            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK ACC DSIPTD E', DSIPTD, 'Dissipated'",
+            "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB DSIPTD E', DSIPTD, 'Dissipated'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TS TOP S', TOP, 'At or above level'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK CB TR', TR, 'At all quadrants'",
             "'METAR KJFK 121853Z 28016KT 10SM A3015 RMK TCU ALQDS', ALQDS, 'All quadrants'"
@@ -10947,6 +10945,87 @@ class NoaaMetarParserTest {
         assertThat(ac2.oktas()).isEqualTo(2);
 
         assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    // ========== CLOUD TYPE DIRECTION TESTS ==========
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            "'ACSL NE',         ACSL,  NULL,   NE,   NULL, 'Single direction (KTRK)'",
+            "'ACSL SW-S',       ACSL,  NULL,   SW-S, NULL, 'Direction range'",
+            "'ACSL SW-S MOV E', ACSL,  NULL,   SW-S, E,    'Range and MOV movement'",
+            "'ACSL NE MOVG SW', ACSL,  NULL,   NE,   SW,   'MOVG movement'",
+            "'ACSL DSNT NE',    ACSL,  DSNT,   NE,   NULL, 'Distant with direction'",
+            "'ACC E',           ACC,   NULL,   E,    NULL, 'ACC now a cloud type'",
+            "'ACC DSIPTD E',    ACC,   DSIPTD, E,    NULL, 'ACC dissipated'",
+            "'CBMAM S',         CBMAM, NULL,   S,    NULL, 'CBMAM now a cloud type'",
+            "'CBMAM OHD MOV E', CBMAM, OHD,    NULL, E,    'CBMAM overhead and moving'",
+            "'SCSL NW',         SCSL,  NULL,   NW,   NULL, 'SCSL not read as SC plus SL'",
+            "'CCSL OHD',        CCSL,  OHD,    NULL, NULL, 'CCSL not read as CC plus SL'",
+            "'AC NE-E MOVG S',  AC,    NULL,   NE-E, S,    'Any cloud type takes directions'"
+    }, nullValues = "NULL")
+    @DisplayName("Should parse cloud types with location, directions and movement - Issue #225")
+    void testParseCloudType_WithDirections(String remark, String expectedCloud, String expectedLocation,
+                                           String expectedDirection, String expectedMovement, String scenario) {
+        NoaaMetarData data = extractMetarData(
+                parser.parse("METAR KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK " + remark));
+
+        assertThat(data.getRemarks().freeText()).as(scenario).isNull();
+        assertThat(data.getRemarks().thunderstormLocations()).as(scenario).isEmpty();
+        assertThat(data.getRemarks().cloudTypes()).as(scenario).hasSize(1);
+
+        CloudType cloud = data.getRemarks().cloudTypes().get(0);
+        assertThat(cloud.cloudType()).as(scenario).isEqualTo(expectedCloud);
+        assertThat(cloud.location()).as(scenario).isEqualTo(expectedLocation);
+        assertThat(cloud.movementDirection()).as(scenario).isEqualTo(expectedMovement);
+        if (expectedDirection == null) {
+            assertThat(cloud.directionSegments()).as(scenario).isEmpty();
+        } else {
+            assertThat(cloud.directionSegments()).as(scenario)
+                    .extracting(DirectionSegment::getSummary)
+                    .containsExactly(expectedDirection);
+        }
+    }
+
+    @Test
+    @DisplayName("Should parse an AND-chained cloud direction and keep later remarks - Issue #225")
+    void testParseCloudType_AndChainedDirections() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK ACC DSNT N AND W SLP210"));
+
+        CloudType acc = data.getRemarks().cloudTypes().get(0);
+        assertThat(acc.location()).isEqualTo("DSNT");
+        assertThat(acc.directionSegments())
+                .extracting(DirectionSegment::getSummary)
+                .containsExactly("N", "W");
+        assertThat(data.getRemarks().seaLevelPressure().toHectopascals()).isEqualTo(1021.0);
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should keep CB and TCU with directions as thunderstorm locations - Issue #225")
+    void testParseCloudType_ConvectiveStaysThunderstormLocation() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "METAR KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK CB W TCU NE ACSL SW"));
+
+        assertThat(data.getRemarks().thunderstormLocations())
+                .extracting(ThunderstormLocation::cloudType)
+                .containsExactly("CB", "TCU");
+        assertThat(data.getRemarks().cloudTypes())
+                .extracting(CloudType::cloudType)
+                .containsExactly("ACSL");
+        assertThat(data.getRemarks().freeText()).isNull();
+    }
+
+    @Test
+    @DisplayName("Should parse ACSL NE in the KTRK real-world report - Issue #225")
+    void testParseCloudType_KTRK_RealWorld() {
+        NoaaMetarData data = extractMetarData(parser.parse(
+                "2026/11/21 17:51 KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK ACSL NE"));
+
+        assertThat(data.getRemarks().freeText()).isNull();
+        assertThat(data.getRemarks().cloudTypes()).containsExactly(
+                CloudType.withDirections("ACSL", List.of(new DirectionSegment(List.of("NE")))));
     }
 
     // ========== DENSITY ALTITUDE PARSING TESTS ==========

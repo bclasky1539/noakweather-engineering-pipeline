@@ -267,7 +267,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=5, intensity=null, location=null, movementDirection=null], CloudType[cloudType=AC, oktas=3, intensity=null, location=null, movementDirection=null], CloudType[cloudType=CB, oktas=null, intensity=null, location=EMBDD, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=5, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=AC, oktas=3, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=CB, oktas=null, intensity=null, location=EMBDD, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -463,7 +463,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=CF, oktas=6, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=1, intensity=null, location=null, movementDirection=null], CloudType[cloudType=TCU, oktas=null, intensity=null, location=EMBDD, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=CF, oktas=6, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=1, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=TCU, oktas=null, intensity=null, location=EMBDD, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -512,7 +512,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=SF, oktas=6, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=SF, oktas=6, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -659,7 +659,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=CF, oktas=2, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=3, intensity=null, location=null, movementDirection=null], CloudType[cloudType=AC, oktas=3, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=CF, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=3, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=AC, oktas=3, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -757,7 +757,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=CU, oktas=1, intensity=null, location=null, movementDirection=null], CloudType[cloudType=AS, oktas=2, intensity=null, location=null, movementDirection=null], CloudType[cloudType=CI, oktas=0, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=CU, oktas=1, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=AS, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=CI, oktas=0, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -806,7 +806,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=5, intensity=null, location=null, movementDirection=null], CloudType[cloudType=TCU, oktas=1, intensity=null, location=null, movementDirection=null], CloudType[cloudType=ACC, oktas=2, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=5, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=TCU, oktas=1, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=ACC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -855,7 +855,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=5, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=5, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -904,7 +904,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=ST, oktas=2, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=3, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=ST, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=3, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -1737,7 +1737,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=CU, oktas=null, intensity=MDT, location=ALQDS, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=CU, oktas=null, intensity=MDT, location=ALQDS, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -2080,7 +2080,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=ST, oktas=2, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=4, intensity=null, location=null, movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=ST, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=4, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=SC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -2178,7 +2178,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=CU, oktas=1, intensity=null, location=null, movementDirection=null], CloudType[cloudType=AS, oktas=2, intensity=null, location=null, movementDirection=null], CloudType[cloudType=CI, oktas=0, intensity=null, location=null, movementDirection=null], CloudType[cloudType=TCU, oktas=null, intensity=null, location=EMBDD, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=CU, oktas=1, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=AS, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=CI, oktas=0, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=TCU, oktas=null, intensity=null, location=EMBDD, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -2555,7 +2555,7 @@
   remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
   remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
   remarks.obscurationLayers: []
-  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=1, intensity=null, location=null, movementDirection=null], CloudType[cloudType=AC, oktas=2, intensity=null, location=null, movementDirection=null]]
+  remarks.cloudTypes: [CloudType[cloudType=SC, oktas=1, intensity=null, location=null, directionSegments=[], movementDirection=null], CloudType[cloudType=AC, oktas=2, intensity=null, location=null, directionSegments=[], movementDirection=null]]
   remarks.hourlyPrecipitation: null
   remarks.ppGroupValue: null
   remarks.sixHourPrecipitation: null
@@ -2886,5 +2886,54 @@
   remarks.lightningRemarks: []
   remarks.predominantCloudTypes: null
   remarks.freeText: MT OBSC
+  parseIssues: 0
+
+=== METAR KTRK 211751Z 00000KT 10SM SCT120 M08/M09 A3009 RMK ACSL NE
+  stationId: KTRK
+  reportType: METAR
+  reportModifier: null
+  unparsedMainBody: null
+  conditions.wind: Wind[directionDegrees=null, speedValue=0, gustValue=null, variabilityFrom=null, variabilityTo=null, unit=KT]
+  conditions.visibility: Visibility[distanceValue=10.0, unit=SM, lessThan=false, greaterThan=false, specialCondition=null]
+  conditions.presentWeather: []
+  conditions.skyConditions: [SkyCondition[coverage=SCATTERED, heightFeet=12000, cloudType=null]]
+  conditions.temperature: Temperature[celsius=-8.0, dewpointCelsius=-9.0, maxCelsius=null, maxTime=null, minCelsius=null, minTime=null]
+  conditions.pressure: Pressure[value=30.09, unit=INCHES_HG]
+  runwayVisualRange: []
+  runwayStates: []
+  recentWeather: []
+  recentWeatherNotObservable: false
+  noSignificantChange: false
+  remarks.automatedStationType: null
+  remarks.seaLevelPressure: null
+  remarks.preciseTemperature: null
+  remarks.wind: WindRemarks[peakWind=null, windShift=null, windsAtLocation=[]]
+  remarks.directionalWeather: null
+  remarks.visibility: VisibilityRemarks[towerVisibility=null, surfaceVisibility=null, variableVisibility=null]
+  remarks.ceiling: CeilingRemarks[variableCeiling=null, ceilingSecondSite=null]
+  remarks.obscurationLayers: []
+  remarks.cloudTypes: [CloudType[cloudType=ACSL, oktas=null, intensity=null, location=null, directionSegments=[DirectionSegment[points=[NE]]], movementDirection=null]]
+  remarks.hourlyPrecipitation: null
+  remarks.ppGroupValue: null
+  remarks.sixHourPrecipitation: null
+  remarks.twentyFourHourPrecipitation: null
+  remarks.hailSize: null
+  remarks.weatherEvents: []
+  remarks.thunderstormLocations: []
+  remarks.exceptDirections: []
+  remarks.pressure: PressureRemarks[pressureTendency=null, pressureRapidChange=null]
+  remarks.icing: null
+  remarks.secondaryAltimeter: null
+  remarks.qfe: null
+  remarks.sixHourMaxTemperature: null
+  remarks.sixHourMinTemperature: null
+  remarks.twentyFourHourMaxTemperature: null
+  remarks.twentyFourHourMinTemperature: null
+  remarks.densityAltitudeFeet: null
+  remarks.maintenance: MaintenanceRemarks[automatedMaintenanceIndicators=[], maintenanceRequired=false]
+  remarks.observationProgramStatus: null
+  remarks.lightningRemarks: []
+  remarks.predominantCloudTypes: null
+  remarks.freeText: null
   parseIssues: 0
 

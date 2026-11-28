@@ -2023,27 +2023,28 @@ class NoaaMetarRemarksTest {
     }
 
     @Test
-    @DisplayName("Should handle various cloud types")
+    @DisplayName("Should hold convective types as thunderstorm locations and ACC/CBMAM as cloud types")
     void testVariousCloudTypes() {
         ThunderstormLocation ts = ThunderstormLocation.of("TS", "SE");
         ThunderstormLocation cb = ThunderstormLocation.of("CB", "W");
         ThunderstormLocation tcu = ThunderstormLocation.of("TCU", "NW");
-        ThunderstormLocation acc = ThunderstormLocation.of("ACC", "E");
-        ThunderstormLocation cbmam = ThunderstormLocation.of("CBMAM", "N");
         ThunderstormLocation virga = ThunderstormLocation.of("VIRGA", "S");
+        CloudType acc = CloudType.withDirections("ACC", List.of(new DirectionSegment(List.of("E"))));
+        CloudType cbmam = CloudType.withDirections("CBMAM", List.of(new DirectionSegment(List.of("N"))));
 
         NoaaMetarRemarks remarks = NoaaMetarRemarks.builder()
                 .addThunderstormLocation(ts)
                 .addThunderstormLocation(cb)
                 .addThunderstormLocation(tcu)
-                .addThunderstormLocation(acc)
-                .addThunderstormLocation(cbmam)
                 .addThunderstormLocation(virga)
+                .addCloudType(acc)
+                .addCloudType(cbmam)
                 .build();
 
-        assertEquals(6, remarks.thunderstormLocations().size());
+        assertEquals(4, remarks.thunderstormLocations().size());
         assertTrue(remarks.thunderstormLocations().get(0).isThunderstorm());
         assertFalse(remarks.thunderstormLocations().get(1).isThunderstorm());
+        assertEquals(List.of(acc, cbmam), remarks.cloudTypes());
     }
 
     @Test
@@ -4505,7 +4506,10 @@ class NoaaMetarRemarksTest {
             "CC, Cirrocumulus",
             "CI, Cirrus",
             "ACC, Altocumulus Castellanus",
-            "ACSL, Altocumulus Standing Lenticular Cloud"
+            "ACSL, Altocumulus Standing Lenticular Cloud",
+            "SCSL, Stratocumulus Standing Lenticular Cloud",
+            "CCSL, Cirrocumulus Standing Lenticular Cloud",
+            "CBMAM, Cumulonimbus Mammatus"
     })
     @DisplayName("Should generate correct description for all cloud type codes")
     void testGetCloudTypeDescription_AllCodes(String code, String expectedDescription) {

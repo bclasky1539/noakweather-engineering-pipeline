@@ -908,10 +908,9 @@ class RegExprConstTest {
         String input = "CI9 ";
         Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
 
-        assertThat(matcher.find()).isTrue();
-        // Okta group should not capture "9" - pattern falls back to bare
-        // cloud type match with no Okta
-        assertThat(matcher.group("okta")).isNull();
+        // The boundary after the cloud code rejects "CI9" outright rather
+        // than falling back to a bare "CI" match with the "9" ignored (#225)
+        assertThat(matcher.find()).isFalse();
     }
 
     @Test
@@ -923,7 +922,7 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cloud")).isEqualTo("TCU");
         assertThat(matcher.group("okta")).isNull();
-        assertThat(matcher.group("direction")).isEqualTo("EMBDD");
+        assertThat(matcher.group("location")).isEqualTo("EMBDD");
     }
 
     @Test
@@ -937,18 +936,18 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cloud")).isEqualTo("CU");
-        assertThat(matcher.group("direction")).isEqualTo("EMBDD");
+        assertThat(matcher.group("location")).isEqualTo("EMBDD");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"OHD-ALQDS", "ALQDS", "OHD", "TR", "EMBDD"})
+    @ValueSource(strings = {"OHD-ALQDS", "ALQDS", "OHD", "TR", "EMBDD", "DSNT", "DSIPTD", "VC"})
     @DisplayName("CLOUD_OKTA_PATTERN should match all recognized location qualifiers")
     void testCloudOktaPattern_AllLocationQualifiers(String qualifier) {
         String input = "SC " + qualifier;
         Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
 
         assertThat(matcher.find()).isTrue();
-        assertThat(matcher.group("direction")).isEqualTo(qualifier);
+        assertThat(matcher.group("location")).isEqualTo(qualifier);
     }
 
     @Test
@@ -961,7 +960,8 @@ class RegExprConstTest {
         assertThat(matcher.group("cloud")).isEqualTo("CI");
         assertThat(matcher.group("verb")).isEqualTo("MOVG");
         assertThat(matcher.group("dirm")).isEqualTo("NE");
-        assertThat(matcher.group("direction")).isNull();
+        assertThat(matcher.group("location")).isNull();
+        assertThat(matcher.group("dirchain")).isNull();
     }
 
     @Test
@@ -973,7 +973,7 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("intensity")).isEqualTo("MDT ");
         assertThat(matcher.group("cloud")).isEqualTo("CU");
-        assertThat(matcher.group("direction")).isEqualTo("OHD");
+        assertThat(matcher.group("location")).isEqualTo("OHD");
     }
 
     @Test
@@ -989,8 +989,52 @@ class RegExprConstTest {
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cloud")).isEqualTo("TCU");
         assertThat(matcher.group("okta")).isNull();
-        assertThat(matcher.group("direction")).isNull();
+        assertThat(matcher.group("location")).isNull();
+        assertThat(matcher.group("dirchain")).isNull();
         assertThat(matcher.group("verb")).isNull();
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should capture a direction chain separately from location (#225)")
+    void testCloudOktaPattern_LocationAndDirectionChain() {
+        String input = "ACC DSNT N AND W";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("ACC");
+        assertThat(matcher.group("location")).isEqualTo("DSNT");
+        assertThat(matcher.group("dirchain")).isEqualTo("N AND W");
+        assertThat(matcher.group("verb")).isNull();
+    }
+
+    @Test
+    @DisplayName("CLOUD_OKTA_PATTERN should capture a direction range followed by movement (#225)")
+    void testCloudOktaPattern_DirectionRangeWithMovement() {
+        String input = "ACSL SW-S MOV E";
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo("ACSL");
+        assertThat(matcher.group("location")).isNull();
+        assertThat(matcher.group("dirchain")).isEqualTo("SW-S");
+        assertThat(matcher.group("verb")).isEqualTo("MOV");
+        assertThat(matcher.group("dirm")).isEqualTo("E");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "ACSL NE,  ACSL",
+            "ACC NW,   ACC",
+            "SCSL S,   SCSL",
+            "CCSL E,   CCSL",
+            "CBMAM W,  CBMAM"
+    })
+    @DisplayName("CLOUD_OKTA_PATTERN should match the full significant cloud code, not a shorter prefix (#225)")
+    void testCloudOktaPattern_LongestCodeWins(String input, String expectedCloud) {
+        Matcher matcher = RegExprConst.CLOUD_OKTA_PATTERN.matcher(input);
+
+        assertThat(matcher.find()).isTrue();
+        assertThat(matcher.group("cloud")).isEqualTo(expectedCloud);
     }
 
     // ========== WIND AT LOCATION PATTERN TESTS ==========
@@ -1285,7 +1329,7 @@ class RegExprConstTest {
 
         assertThat(matcher.find()).isTrue();
         assertThat(matcher.group("cloud")).isEqualTo("CB");
-        assertThat(matcher.group("direction")).isEqualTo("EMBDD");
+        assertThat(matcher.group("location")).isEqualTo("EMBDD");
     }
 
     @Test
