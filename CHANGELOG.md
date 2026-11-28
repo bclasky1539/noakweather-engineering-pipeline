@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## Version 1.35.0-SNAPSHOT - November 27, 2026
+
+### Added
+- Significant cloud types in remarks are parsed with directions,
+  location and movement, for example `ACSL NE`, `ACC DSNT N AND W`
+  and `ACSL SW-S MOV E` (#225)
+- New cloud type codes: SCSL, CCSL and CBMAM
+- New cloud locations: DSNT, VC and DSIPTD
+
+### Changed
+- ACC and CBMAM are parsed as cloud types instead of thunderstorm
+  locations (#225)
+
 ## Version 1.34.0-SNAPSHOT - November 25, 2026
 
 ### Added
